@@ -833,9 +833,9 @@ class Session {
                ],
             ]
          );
-         if ($result->next()['count'] === 0) {
+        /* if ($result->next()['count'] === 0) {
             $valid_user = false;
-         }
+         }*/
       }
 
       if (!$valid_user) {
