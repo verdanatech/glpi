@@ -1,0 +1,1 @@
+{"version":3,"file":"glpi.js","mappings":";;AAAA;;AAEA","sources":["webpack://@glpi/glpi/./js/main.js"],"sourcesContent":["// This file is the entry point of webpack.\n\n// TODO Make JS code splitted into modules that can be imported by the \"import\" directive\n"],"names":[],"sourceRoot":""}
