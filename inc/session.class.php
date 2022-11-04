@@ -829,13 +829,12 @@ class Session {
                   $user_table . '.is_active'  => 1,
                   $user_table . '.is_deleted' => 0,
                   $pu_table . '.profiles_id'  => $profile_id,
-                  $pu_table . '.entities_id'  => $entity_id,
-               ],
+               ] + getEntitiesRestrictCriteria($pu_table, 'entities_id', $entity_id, true),
             ]
          );
-        /* if ($result->next()['count'] === 0) {
+         if ($result->next()['count'] === 0) {
             $valid_user = false;
-         }*/
+         }
       }
 
       if (!$valid_user) {
