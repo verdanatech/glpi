@@ -910,9 +910,11 @@ class Ticket extends CommonITILObject {
       $this->getFromDB($input['id']);
 
       // Clean new lines before passing to rules
-      if (isset($input["content"])) {
-         $input["content"] = preg_replace('/\\\\r\\\\n/', "\n", $input['content']);
-         $input["content"] = preg_replace('/\\\\n/', "\n", $input['content']);
+      if (isset($options['content'])) {
+         // Clean new lines to be fix encoding
+         $order              = ['\\r', '\\n', "\\'", '\\"', "\\\\"];
+         $replace            = ["", "", "'", '"', "\\"];
+         $options['content'] = str_replace($order, $replace, $options['content']);
       }
 
       // automatic recalculate if user changes urgence or technician change impact
@@ -1663,9 +1665,11 @@ class Ticket extends CommonITILObject {
       }
 
       // Clean new lines before passing to rules
-      if (isset($input["content"])) {
-         $input["content"] = preg_replace('/\\\\r\\\\n/', "\\n", $input['content']);
-         $input["content"] = preg_replace('/\\\\n/', "\\n", $input['content']);
+      if (isset($options['content'])) {
+         // Clean new lines to be fix encoding
+         $order              = ['\\r', '\\n', "\\'", '\\"', "\\\\"];
+         $replace            = ["", "", "'", '"', "\\"];
+         $options['content'] = str_replace($order, $replace, $options['content']);
       }
 
       $input = $rules->processAllRules($input,
