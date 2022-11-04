@@ -1,4 +1,4 @@
-![GLPI Logo](https://raw.githubusercontent.com/glpi-project/glpi/master/pics/logos/logo-GLPI-250-black.png)
+![GLPI Logo](https://raw.githubusercontent.com/glpi-project/glpi/main/pics/logos/logo-GLPI-250-black.png)
 
 ![GLPI CI](https://github.com/glpi-project/glpi/workflows/GLPI%20CI/badge.svg?branch=9.5%2Fbugfixes)
 [![Github All Releases](https://img.shields.io/github/downloads/glpi-project/glpi/total.svg)](#download)
@@ -30,46 +30,50 @@ Check GLPI features by asking for a free personal demonstration on **[glpi-netwo
 
 ![license](https://img.shields.io/github/license/glpi-project/glpi.svg)
 
-It is distributed under the GNU GENERAL PUBLIC LICENSE Version 2 - please consult the file called [COPYING](https://raw.githubusercontent.com/glpi-project/glpi/master/COPYING.txt) for more details.
+It is distributed under the GNU GENERAL PUBLIC LICENSE Version 3 - please consult the file called [LICENSE](https://raw.githubusercontent.com/glpi-project/glpi/main/LICENSE) for more details.
 
 ## Some screenshots
 
-**Tickets Timeline**
+**Tickets**
 
-![Tickets Timeline](pics/screenshots/timeline.png)
+![Tickets Timeline](pics/screenshots/ticket.png)
 
-**DCIM drag&drop**
+**DCIM**
 
 ![DCIM drag&drop](pics/screenshots/dcim_racks_draganddrop.gif)
 
-**Components**
+**Assets**
 
-![Components](pics/screenshots/components.png)
+![asset view](pics/screenshots/asset.png)
+
+**Dashboards**
+
+![Asset dashboard](pics/screenshots/dashboard.png)
 
 ## Prerequisites
 
 * A web server (Apache, Nginx, IIS, etc.)
-* MariaDB >= 10.0 or MySQL >= 5.6
-* PHP 7.2 or higher
-* Mandatory PHP extensions:
-    - ctype
-    - curl
-    - gd (picture generation)
-    - iconv
-    - intl
-    - json
-    - mbstring
-    - mysqli
-    - session
-    - simplexml
-    - zlib
+* MariaDB >= 10.2 or MySQL >= 5.7
+* PHP (See compatibility matrix below)
 
-* Recommended PHP extensions (to enable optional features)
+    | GLPI Version | Minimum PHP | Maximum PHP |
+    | ------------ | ----------- | ----------- |
+    | 9.4.X        | 5.6         | 7.4         |
+    | 9.5.X        | 7.2         | 8.0         |
+    | 10.0.X       | 7.4         | 8.1         |
+* Mandatory PHP extensions:
+    - dom, fileinfo, json, session, simplexml (these are enabled in PHP by default)
+    - curl (access to remote resources, like inventory agents, marketplace API, RSS feeds, ...)
+    - gd (pictures handling)
+    - intl (internationalization)
+    - libxml (XML handling)
+    - mysqli (communication with database server)
+    - zlib (handling of compressed communication with inventory agents, installation of gzip packages from marketplace, PDF generation)
+
+* Suggested PHP extensions
     - exif (security enhancement on images validation)
-    - imap (mail collector and users authentication)
-    - ldap (users authentication)
-    - openssl (encrypted communication)
-    - sodium (performances enhancement on sensitive data encryption/decryption)
+    - ldap (usage of authentication through remote LDAP server)
+    - openssl (email sending using SSL/TLS)
     - zip and bz2 (installation of zip and bz2 packages from marketplace)
 
  * Supported browsers:

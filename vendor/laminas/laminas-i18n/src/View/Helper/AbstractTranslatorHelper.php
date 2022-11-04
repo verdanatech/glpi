@@ -1,20 +1,17 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\View\Helper;
 
 use Laminas\I18n\Translator\TranslatorAwareInterface;
 use Laminas\I18n\Translator\TranslatorInterface as Translator;
 use Laminas\View\Helper\AbstractHelper;
+use Laminas\View\Helper\DeprecatedAbstractHelperHierarchyTrait;
 
 abstract class AbstractTranslatorHelper extends AbstractHelper implements
     TranslatorAwareInterface
 {
+    use DeprecatedAbstractHelperHierarchyTrait;
+
     /**
      * Translator (optional)
      *
@@ -43,7 +40,7 @@ abstract class AbstractTranslatorHelper extends AbstractHelper implements
      * @param  string|null     $textDomain Default is null, which skips setTranslatorTextDomain
      * @return $this
      */
-    public function setTranslator(Translator $translator = null, $textDomain = null)
+    public function setTranslator(?Translator $translator = null, $textDomain = null)
     {
         $this->translator = $translator;
         if (null !== $textDomain) {

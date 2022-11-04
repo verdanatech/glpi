@@ -1,14 +1,7 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Validator;
 
-use Laminas\I18n\Exception as I18nException;
 use Laminas\Stdlib\ArrayUtils;
 use Laminas\Validator\AbstractValidator;
 use Laminas\Validator\Callback;
@@ -16,12 +9,19 @@ use Laminas\Validator\Exception;
 use Locale;
 use Traversable;
 
+use function array_key_exists;
+use function is_callable;
+use function is_int;
+use function is_string;
+use function preg_match;
+use function strlen;
+
 class PostCode extends AbstractValidator
 {
-    const INVALID        = 'postcodeInvalid';
-    const NO_MATCH       = 'postcodeNoMatch';
-    const SERVICE        = 'postcodeService';
-    const SERVICEFAILURE = 'postcodeServiceFailure';
+    public const INVALID        = 'postcodeInvalid';
+    public const NO_MATCH       = 'postcodeNoMatch';
+    public const SERVICE        = 'postcodeService';
+    public const SERVICEFAILURE = 'postcodeServiceFailure';
 
     /**
      * Validation failure message template definitions
@@ -231,17 +231,9 @@ class PostCode extends AbstractValidator
      * Accepts a string locale and/or "format".
      *
      * @param  array|Traversable $options
-     * @throws Exception\ExtensionNotLoadedException if ext/intl is not present
      */
     public function __construct($options = [])
     {
-        if (! extension_loaded('intl')) {
-            throw new I18nException\ExtensionNotLoadedException(sprintf(
-                '%s component requires the intl PHP extension',
-                __NAMESPACE__
-            ));
-        }
-
         if ($options instanceof Traversable) {
             $options = ArrayUtils::iteratorToArray($options);
         }
@@ -308,6 +300,9 @@ class PostCode extends AbstractValidator
     /**
      * Returns the actual set service
      *
+     * @deprecated since 2.12.0, this method will be removed in version 3.0.0 of this component.
+     *             Additional validations should be done via a validation chain.
+     *
      * @return mixed|null
      */
     public function getService()
@@ -317,6 +312,9 @@ class PostCode extends AbstractValidator
 
     /**
      * Sets a new callback for service validation
+     *
+     * @deprecated since 2.12.0, this method will be removed in version 3.0.0 of this component.
+     *             Additional validations should be done via a validation chain.
      *
      * @param mixed|null $service
      * @return $this
@@ -387,7 +385,7 @@ class PostCode extends AbstractValidator
             }
         }
 
-        if (! preg_match($format, $value)) {
+        if (! preg_match($format, (string) $value)) {
             $this->error(self::NO_MATCH);
             return false;
         }

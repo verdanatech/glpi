@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-mail for the canonical source repository
- * @copyright https://github.com/laminas/laminas-mail/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-mail/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\Mail\Header;
 
 use Laminas\Mail\Headers;
@@ -18,7 +12,7 @@ class ContentDisposition implements UnstructuredInterface
      *
      * @var int
      */
-    const MAX_PARAMETER_LENGTH = 76;
+    public const MAX_PARAMETER_LENGTH = 76;
 
     /**
      * @var string
@@ -95,7 +89,7 @@ class ContentDisposition implements UnstructuredInterface
 
             foreach ($continuedValues as $name => $values) {
                 $value = '';
-                for ($i = 0; $i < count($values); $i++) {
+                for ($i = 0, $iMax = count($values); $i < $iMax; $i++) {
                     if (! isset($values[$i])) {
                         throw new Exception\InvalidArgumentException(
                             'Invalid header line for Content-Disposition string - incomplete continuation'.
@@ -104,13 +98,6 @@ class ContentDisposition implements UnstructuredInterface
                     }
                     $value .= $values[$i];
                 }
-
-                // Fix malformed header
-                if (strncmp($value, '=?', 2) === 0) {
-                    $value = preg_replace('/\?\=\=\?[\w-]+\?\w\?/', '', $value);
-                    $value = HeaderWrap::mimeDecodeValue($value);
-                }
-
                 $header->setParameter($name, $value);
             }
         }

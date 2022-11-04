@@ -1,15 +1,8 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Validator;
 
 use IntlException;
-use Laminas\I18n\Exception as I18nException;
 use Laminas\Stdlib\ArrayUtils;
 use Laminas\Validator\AbstractValidator;
 use Laminas\Validator\Exception;
@@ -17,11 +10,19 @@ use Locale;
 use NumberFormatter;
 use Traversable;
 
+use function array_key_exists;
+use function intl_is_failure;
+use function is_bool;
+use function is_float;
+use function is_int;
+use function is_string;
+use function strtr;
+
 class IsInt extends AbstractValidator
 {
-    const INVALID = 'intInvalid';
-    const NOT_INT = 'notInt';
-    const NOT_INT_STRICT = 'notIntStrict';
+    public const INVALID        = 'intInvalid';
+    public const NOT_INT        = 'notInt';
+    public const NOT_INT_STRICT = 'notIntStrict';
 
     /**
      * Validation failure message template definitions
@@ -53,17 +54,9 @@ class IsInt extends AbstractValidator
      * Constructor for the integer validator
      *
      * @param  array|Traversable $options
-     * @throws Exception\ExtensionNotLoadedException if ext/intl is not present
      */
     public function __construct($options = [])
     {
-        if (! extension_loaded('intl')) {
-            throw new I18nException\ExtensionNotLoadedException(sprintf(
-                '%s component requires the intl PHP extension',
-                __NAMESPACE__
-            ));
-        }
-
         if ($options instanceof Traversable) {
             $options = ArrayUtils::iteratorToArray($options);
         }
@@ -167,7 +160,7 @@ class IsInt extends AbstractValidator
         }
 
         try {
-            $parsedInt = $format->parse($value, NumberFormatter::TYPE_INT64);
+            $parsedInt = $format->parse((string) $value, NumberFormatter::TYPE_INT64);
             if (intl_is_failure($format->getErrorCode())) {
                 $this->error(self::NOT_INT);
                 return false;
@@ -180,9 +173,9 @@ class IsInt extends AbstractValidator
         $decimalSep  = $format->getSymbol(NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
         $groupingSep = $format->getSymbol(NumberFormatter::GROUPING_SEPARATOR_SYMBOL);
 
-        $valueFiltered = strtr($value, [
+        $valueFiltered = strtr((string) $value, [
             $groupingSep => '',
-            $decimalSep => '.',
+            $decimalSep  => '.',
         ]);
 
         if ((string) $parsedInt !== $valueFiltered) {

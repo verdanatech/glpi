@@ -1,6 +1,6 @@
 {
 	"name": "wapmorgan/unified-archive",
-	"description": "UnifiedArchive - unified interface to all popular archive formats (zip, 7z, rar, gz, bz2, xz, cab, tar, tar.gz, tar.bz2, tar.xz, tar.Z, iso) for listing, reading, extracting and creation + built-in console archive manager + PclZip-like interface for zip archives.",
+	"description": "UnifiedArchive - an archive manager with a unified way of working with all popular archive formats (zip/7z/rar/gz/bz2/xz/cab/tar/tar.gz/tar.bz2/tar.x/tar.Z/...) for PHP with ability for listing, reading, extracting and creation + built-in console archive manager.",
 	"keywords": ["archive", "compression", "rar", "7z", "zip", "gzip", "bzip2", "tar", "lzma2", "cab", "ncompress", "iso"],
 	"license": "MIT",
 	"authors": [
@@ -15,7 +15,7 @@
 		"ext-fileinfo": "*"
 	},
 	"require-dev": {
-		"phpunit/phpunit": "~4.8",
+		"phpunit/phpunit": "~4.8|~9.5.2",
 		"docopt/docopt": "~1.0"
 	},
 	"replace": {
@@ -25,12 +25,13 @@
 		"ext-zip": "ZIP support",
 		"ext-rar": "RAR support",
 		"ext-phar": "TAR support",
-		"ext-zlib": "GZ and TAR.GZ support",
-		"ext-bz2": "BZ2 and TAR.BZ2 support",
-		"ext-xz": "XZ and TAR.XZ support",
+		"ext-zlib": "GZ and TAR.GZ (GZIP) support",
+		"ext-bz2": "BZ2 and TAR.BZ2 (BZIP2) support",
+		"ext-xz": "XZ and TAR.XZ (LZMA) support",
 		"pear/archive_tar": "another TAR support",
-		"bin-ncompress": "TAR.Z support",
-		"gemorroj/archive7z": "7ZIP support",
+		"bin-ncompress": "TAR.Z support via console program",
+		"gemorroj/archive7z": "7ZIP (and a lot of formats) support via console program",
+		"alchemy/zippy": "ZIP, TAR, GZIP, BZIP2 support (with combinations) via console programs",
 		"wapmorgan/cab-archive": "CAB support",
 		"phpclasses/php-iso-file": "ISO support",
 		"docopt/docopt": "Requirement for cam (Console Archive Manager)"
@@ -41,7 +42,6 @@
 		}
 	},
 	"bin": ["bin/cam"],
-	"minimum-stability": "dev",
 	"extra": {
         "phar-builder": {
             "compression": "BZip2",

@@ -1,20 +1,16 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Validator;
 
 use Laminas\I18n\Filter\Alpha as AlphaFilter;
 
+use function is_string;
+
 class Alpha extends Alnum
 {
-    const INVALID      = 'alphaInvalid';
-    const NOT_ALPHA    = 'notAlpha';
-    const STRING_EMPTY = 'alphaStringEmpty';
+    public const INVALID      = 'alphaInvalid';
+    public const NOT_ALPHA    = 'notAlpha';
+    public const STRING_EMPTY = 'alphaStringEmpty';
 
     /**
      * Alphabetic filter used for validation
@@ -31,7 +27,7 @@ class Alpha extends Alnum
     protected $messageTemplates = [
         self::INVALID      => 'Invalid type given. String expected',
         self::NOT_ALPHA    => 'The input contains non alphabetic characters',
-        self::STRING_EMPTY => 'The input is an empty string'
+        self::STRING_EMPTY => 'The input is an empty string',
     ];
 
     /**
@@ -40,7 +36,7 @@ class Alpha extends Alnum
      * @var array
      */
     protected $options = [
-        'allowWhiteSpace' => false,  // Whether to allow white space characters; off by default
+        'allowWhiteSpace' => false, // Whether to allow white space characters; off by default
     ];
 
     /**

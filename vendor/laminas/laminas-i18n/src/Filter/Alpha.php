@@ -1,15 +1,14 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Filter;
 
 use Laminas\Stdlib\StringUtils;
 use Locale;
+
+use function in_array;
+use function is_array;
+use function is_scalar;
+use function preg_replace;
 
 class Alpha extends Alnum
 {
@@ -35,7 +34,7 @@ class Alpha extends Alnum
             $pattern = '/[^a-zA-Z' . $whiteSpace . ']/';
         } elseif (in_array($language, ['ja', 'ko', 'zh'], true)) {
             // Use english alphabet
-            $pattern = '/[^a-zA-Z'  . $whiteSpace . ']/u';
+            $pattern = '/[^a-zA-Z' . $whiteSpace . ']/u';
         } else {
             // Use native language alphabet
             $pattern = '/[^\p{L}' . $whiteSpace . ']/u';

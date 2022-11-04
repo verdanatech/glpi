@@ -1,10 +1,6 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-servicemanager for the canonical source repository
- * @copyright https://github.com/laminas/laminas-servicemanager/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-servicemanager/blob/master/LICENSE.md New BSD License
- */
+declare(strict_types=1);
 
 namespace Laminas\ServiceManager;
 
@@ -23,13 +19,13 @@ interface ServiceLocatorInterface extends
      * Build a service by its name, using optional options (such services are NEVER cached).
      *
      * @param  string $name
-     * @param  null|array  $options
+     * @param  null|array<mixed>  $options
      * @return mixed
      * @throws Exception\ServiceNotFoundException If no factory/abstract
      *     factory could be found to create the instance.
      * @throws Exception\ServiceNotCreatedException If factory/delegator fails
      *     to create the instance.
-     * @throws ContainerExceptionInterface if any other error occurs
+     * @throws ContainerExceptionInterface If any other error occurs.
      */
-    public function build($name, array $options = null);
+    public function build($name, ?array $options = null);
 }

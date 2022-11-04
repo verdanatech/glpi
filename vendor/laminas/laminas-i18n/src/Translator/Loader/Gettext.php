@@ -1,17 +1,22 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Translator\Loader;
 
 use Laminas\I18n\Exception;
 use Laminas\I18n\Translator\Plural\Rule as PluralRule;
 use Laminas\I18n\Translator\TextDomain;
 use Laminas\Stdlib\ErrorHandler;
+
+use function array_shift;
+use function explode;
+use function fclose;
+use function fopen;
+use function fread;
+use function fseek;
+use function sprintf;
+use function strtolower;
+use function trim;
+use function unpack;
 
 /**
  * Gettext loader.
@@ -36,6 +41,7 @@ class Gettext extends AbstractFileLoader
      * load(): defined by FileLoaderInterface.
      *
      * @see    FileLoaderInterface::load()
+     *
      * @param  string $locale
      * @param  string $filename
      * @return TextDomain
@@ -55,7 +61,7 @@ class Gettext extends AbstractFileLoader
 
         ErrorHandler::start();
         $this->file = fopen($resolvedFile, 'rb');
-        $error = ErrorHandler::stop();
+        $error      = ErrorHandler::stop();
         if (false === $this->file) {
             throw new Exception\InvalidArgumentException(sprintf(
                 'Could not open file %s for reading',
@@ -79,7 +85,7 @@ class Gettext extends AbstractFileLoader
         }
 
         // Verify major revision (only 0 and 1 supported)
-        $majorRevision = ($this->readInteger() >> 16);
+        $majorRevision = $this->readInteger() >> 16;
 
         if ($majorRevision !== 0 && $majorRevision !== 1) {
             fclose($this->file);
@@ -142,7 +148,7 @@ class Gettext extends AbstractFileLoader
             $rawHeaders = explode("\n", trim($textDomain['']));
 
             foreach ($rawHeaders as $rawHeader) {
-                list($header, $content) = explode(':', $rawHeader, 2);
+                [$header, $content] = explode(':', $rawHeader, 2);
 
                 if (strtolower(trim($header)) === 'plural-forms') {
                     $textDomain->setPluralRule(PluralRule::fromString($content));

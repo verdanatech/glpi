@@ -25,8 +25,8 @@ use Sabre\Xml\Writer;
  */
 class Server implements LoggerAwareInterface, EmitterInterface
 {
-    use WildcardEmitterTrait;
     use LoggerAwareTrait;
+    use WildcardEmitterTrait;
 
     /**
      * Infinity is used for some request supporting the HTTP Depth header and indicates that the operation should traverse the entire tree.
@@ -895,7 +895,7 @@ class Server implements LoggerAwareInterface, EmitterInterface
         }
 
         $propertyNames = $propFind->getRequestedProperties();
-        $propFindType = !empty($propertyNames) ? PropFind::NORMAL : PropFind::ALLPROPS;
+        $propFindType = !$propFind->isAllProps() ? PropFind::NORMAL : PropFind::ALLPROPS;
 
         foreach ($this->tree->getChildren($path) as $childNode) {
             if ('' !== $path) {
@@ -1237,6 +1237,7 @@ class Server implements LoggerAwareInterface, EmitterInterface
 
         $this->tree->markDirty($parentUri);
         $this->emit('afterBind', [$uri]);
+        $this->emit('afterCreateCollection', [$uri]);
     }
 
     /**

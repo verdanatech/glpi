@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Validator;
 
 use Laminas\Stdlib\ArrayUtils;
@@ -13,11 +7,21 @@ use Laminas\Validator\AbstractValidator;
 use Locale;
 use Traversable;
 
+use function array_key_exists;
+use function file_exists;
+use function in_array;
+use function is_scalar;
+use function preg_match;
+use function strlen;
+use function strpos;
+use function strtoupper;
+use function substr;
+
 class PhoneNumber extends AbstractValidator
 {
-    const NO_MATCH    = 'phoneNumberNoMatch';
-    const UNSUPPORTED = 'phoneNumberUnsupported';
-    const INVALID     = 'phoneNumberInvalid';
+    public const NO_MATCH    = 'phoneNumberNoMatch';
+    public const UNSUPPORTED = 'phoneNumberUnsupported';
+    public const INVALID     = 'phoneNumberInvalid';
 
     /**
      * Validation failure message template definitions
@@ -34,6 +38,7 @@ class PhoneNumber extends AbstractValidator
      * Phone Number Patterns
      *
      * @link http://code.google.com/p/libphonenumber/source/browse/trunk/resources/PhoneNumberMetadata.xml
+     *
      * @var array
      */
     protected static $phone = [];
@@ -107,7 +112,7 @@ class PhoneNumber extends AbstractValidator
      * @param  string[]|null $types
      * @return $this|string[]
      */
-    public function allowedTypes(array $types = null)
+    public function allowedTypes(?array $types = null)
     {
         if (null !== $types) {
             $this->allowedTypes = $types;

@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-servicemanager for the canonical source repository
- * @copyright https://github.com/laminas/laminas-servicemanager/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-servicemanager/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\ServiceManager;
 
 use Interop\Container\ContainerInterface;
@@ -16,10 +10,7 @@ use Psr\Container\ContainerInterface as PsrContainerInterface;
  */
 final class PsrContainerDecorator implements ContainerInterface
 {
-    /**
-     * @var PsrContainerInterface
-     */
-    private $container;
+    private PsrContainerInterface $container;
 
     public function __construct(PsrContainerInterface $container)
     {

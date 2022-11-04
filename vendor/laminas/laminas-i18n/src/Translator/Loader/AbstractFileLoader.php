@@ -1,12 +1,10 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Translator\Loader;
+
+use function is_file;
+use function is_readable;
+use function stream_resolve_include_path;
 
 /**
  * Abstract file loader implementation; provides facilities around resolving

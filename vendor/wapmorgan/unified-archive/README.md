@@ -1,7 +1,8 @@
-UnifiedArchive - unified interface to all popular archive formats (zip # 7z #
-rar # gz # bz2 # xz # cab # tar # tar.gz # tar.bz2 # tar.x # tar.Z # iso-9660)
-for listing, reading, extracting and creation + built-in console archive
-manager.
+*UnifiedArchive* - an archive manager with a unified way for different formats. 
+Supports all basic (listing, reading, extracting and creation) and specific features (compression level, password-protection). 
+Bundled with console program for working with archives.
+
+Supported formats (depends on installed drivers): zip, 7z, rar, one-file(gz, bz2, xz), tar (tar.gz, tar.bz2, tar.x, tar.Z), and a lot of others. 
 
 [![Latest Stable Version](https://poser.pugx.org/wapmorgan/unified-archive/v/stable)](https://packagist.org/packages/wapmorgan/unified-archive)
 [![Total Downloads](https://poser.pugx.org/wapmorgan/unified-archive/downloads)](https://packagist.org/packages/wapmorgan/unified-archive)
@@ -9,90 +10,79 @@ manager.
 [![License](https://poser.pugx.org/wapmorgan/unified-archive/license)](https://packagist.org/packages/wapmorgan/unified-archive)
 [![Latest Unstable Version](https://poser.pugx.org/wapmorgan/unified-archive/v/unstable)](https://packagist.org/packages/wapmorgan/unified-archive)
 
-Tests & Quality: [![Build status](https://travis-ci.org/wapmorgan/UnifiedArchive.svg?branch=0.1.x)](https://travis-ci.org/wapmorgan/UnifiedArchive)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/badges/quality-score.png?b=0.1.x)](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/?branch=0.1.x)
-[![Code Coverage](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/badges/coverage.png?b=0.1.x)](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/?branch=0.1.x)
+Tests & Quality: [![Build status](https://travis-ci.com/wapmorgan/UnifiedArchive.svg?branch=master)](https://travis-ci.com/github/wapmorgan/UnifiedArchive)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/wapmorgan/UnifiedArchive/?branch=master)
 
-**Contents**:
----
-1. [**Preamble**](#preamble)
-2. [**Functions**](#functions)
-3. [**Formats support**](#formats-support)
-4. [**Installation**](#installation)
-5. [**Usage**](#usage)
-6. [**API**](#api)
-7. [**Built-in console archive manager**](#built-in-console-archive-manager)
-8. [**Changelog**](#changelog)
-
-## Preamble
+## Goal
 If on your site/service there is a possibility of usage archives of many types, and you would
 like to work with them unified, you can use this library.
 
-## Functions
-- Opening an archive with automatic format detection
-- Getting information about uncompressed size of archive contents
-- Listing archive content
-- Getting details (\[un\]compressed size, date of modification) of every archived file
-- Extracting archived file content as is or on a disk
-- Reading archived file content as stream
-- Adding files to archive
-- Removing files from archive
-- Creating new archives with files/directories
+UnifiedArchive can utilize to handle as many formats as possible:
+* ZipArchive, RarArchive, PharData
+* Pear/Tar
+* 7zip cli program via Gemorroj/Archive7z
+* zip, tar cli programs via Alchemy/Zippy
+* ext-zlib, ext-bz2, ext-xz
 
-## Formats support
+## Functions & Features
+- Open an archive with automatic format detection (more 20 formats)
+- Open archives encrypted with password (zip, rar, 7z)
+- List archive content, calculate original size of archive, read (zip, rar) & set (zip) archive comment
+- Get details (original size, date of modification) of every archived file. Read archived file content as stream (zip, rar, gz, bz2, xz). Extract archived file content as is or on a disk
+- Extract all archive content
+- Append an archive with new files or directories
+- Remove files from archive
+- Creat new archives with files/directories
+- Adjust compression level (zip, gzip, 7zip) for new archives
+- Set passwords (7z, zip) for new archives
 
-| Formats                                                     | Driver                                                                                            | getFileContent() / getFileResource() | addFiles() / removeFiles() | archiveFiles() | Notes                                                                                                                              |
-|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------|--------------------------------------|----------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------|
-| .zip                                                        | extension: `zip`                                                                                  | ✔                                    | ✔                          | ✔              |                                                                                                                                    |
-| .7zip, .7z                                                  | package: [`gemorroj/archive7z`](https://packagist.org/packages/gemorroj/archive7z) AND `7zip-cli` | ✔ / ✔ \[1\]                          | ✔                          | ✔              | Uses system binary `7z` to work                                                                                                    |
-| .tar, .tar.gz, .tar.bz2, .tar.xz, .tar.Z, .tgz, .tbz2, .txz | package: [`pear/archive_tar`](https://packagist.org/packages/pear/archive_tar)                    | ✔ / ✔ \[1\]                          | ❌                          | ✔              | Compressed versions of tar are supported by appropriate libraries or extenions (zlib, bzip2, xz) or installed software (ncompress) |
-| .tar, .tar.gz, .tar.bz2, .tgz, .tbz2                        | extension: `phar`                                                                                 | ✔ / ✔ \[1\]                          | ✔                          | ✔              | Compressed versions of tar are supported by appropriate libraries or extenions (zlib, bzip2)                                       |
-| .rar                                                        | extension: `rar`                                                                                  | ✔                                    | ❌                          | ❌              |                                                                                                                                    |
-| .iso                                                        | package: [`phpclasses/php-iso-file`](https://packagist.org/packages/phpclasses/php-iso-file)      | ✔ / ✔ \[1\]                          | ❌                          | ❌              |                                                                                                                                    |
-| .cab                                                        | package: [`wapmorgan/cab-archive`](https://packagist.org/packages/wapmorgan/cab-archive)          | ✔\[2\] / ✔ \[1\]\[2\]                | ❌                          | ❌              | Extraction is supported only on PHP 7.0.22+, 7.1.8+, 7.2.0.                                                                        |
-| .gz                                                         | extension: `zlib`                                                                                 | ✔                                    |                            | ✔              |                                                                                                                                    |
-| .bz2                                                        | extension: `bzip2`                                                                                | ✔                                    |                            | ✔              |                                                                                                                                    |
-| .xz                                                         | extension: [`lzma2`](https://github.com/payden/php-xz)                                            | ✔                                    |                            | ✔              |                                                                                                                                    |
+## Quick start
+```sh
+composer require wapmorgan/unified-archive
+# install php libraries for support: tar.gz, tar.bz2, zip
+composer require pear/archive_tar alchemy/zippy
+# if you can, install `p7zip` package in OS and `SevenZip` driver
+sudo apt-get install p7zip-full && composer require gemorroj/archive7z
+# install ext-rar for native work
+pecl install rar
 
-- \[1\] Simulation mode
-- \[2\] Extraction ability depends on PHP version
+# Check supported formats
+./vendor/bin/cam --formats
+```
+More information about formats support in [formats page](docs/Drivers.md).
 
+Use it in code:
+```php
+# Extraction
+$archive = \wapmorgan\UnifiedArchive\UnifiedArchive::open('archive.zip'); // archive.rar, archive.tar.bz2
 
-## Installation
-Composer package: `wapmorgan/unified-archive`
-[[1](https://packagist.org/packages/wapmorgan/unified-archive)]
-
-- Add these lines to composer.json
-```json
-{
-    "require": {
-        "wapmorgan/unified-archive": "^1.0.0"
+if ($archive !== null) {
+    $output_dir = '/var/www/extracted';
+    if (disk_free_space($output_dir) > $archive->getOriginalSize()) {
+        $archive->extractFiles($output_dir);
+        echo 'Extracted files list: '.implode(', ', $archive->getFileNames()).PHP_EOL;
     }
 }
+
+# Archiving
+\wapmorgan\UnifiedArchive\UnifiedArchive::archiveFiles([
+    'README.md' => '/default/path/to/README.md',
+    'content' => '/folder/with/content/',
+], 'archive.zip', \wapmorgan\UnifiedArchive\Drivers\BasicDriver::COMPRESSION_MAXIMUM);
 ```
-
-- Or run `composer require wapmorgan/unified-archive` from your main package root folder.
-
-## Usage
-
-Complex usage example of UnifiedArchive of described in [Usage section](docs/Usage.md).
-
-## API
-
-Full API of UnifiedArchive is described in [API document](docs/API.md).
-
-## Changelog
-
-To see all changes in library go to [CHANGELOG file](CHANGELOG.md).
 
 ## Built-in console archive manager
-UnifiedArchive is distributed with a unified console program to manipulate popular
-archive formats. This script is stored in `vendor/bin/cam`.
-
+UnifiedArchive is distributed with a unified console program to manipulate archives.
 It supports all formats that UnifiedArchive does and can be used to manipulate
-archives without other software. To check your configuration and check formats
-support launch it with `-f` flag in console:
+archives without other software. To show help, launch it:
+```
+./vendor/bin/cam --help
+```
 
-```
-$ php vendor/bin/cam -f
-```
+## Details
+
+1. [Drivers and their formats](docs/Drivers.md).
+2. [Usage with examples](docs/Usage.md).
+3. [Full API description](docs/API.md).
+4. [Changelog](CHANGELOG.md).

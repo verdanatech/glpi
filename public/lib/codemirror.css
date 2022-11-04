@@ -385,7 +385,6 @@ span.CodeMirror-selectedtext { background: none; }
 
   max-height: 20em;
   overflow-y: auto;
-  box-sizing: border-box;
 }
 
 .CodeMirror-hint {

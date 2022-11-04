@@ -7,6 +7,7 @@ namespace Sabre\CalDAV\Backend;
 use Sabre\CalDAV;
 use Sabre\DAV;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\PropPatch;
 use Sabre\DAV\Xml\Element\Sharee;
 use Sabre\VObject;
 
@@ -289,7 +290,7 @@ SQL
      *
      * @param mixed $calendarId
      */
-    public function updateCalendar($calendarId, \Sabre\DAV\PropPatch $propPatch)
+    public function updateCalendar($calendarId, PropPatch $propPatch)
     {
         if (!is_array($calendarId)) {
             throw new \InvalidArgumentException('The value passed to $calendarId is expected to be an array with a calendarId and an instanceId');
@@ -779,17 +780,20 @@ SQL
             $componentType = $filters['comp-filters'][0]['name'];
 
             // Checking if we need post-filters
-            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters']) {
+            $has_time_range = array_key_exists('time-range', $filters['comp-filters'][0]) && $filters['comp-filters'][0]['time-range'];
+            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$has_time_range && !$filters['comp-filters'][0]['prop-filters']) {
                 $requirePostFilter = false;
             }
             // There was a time-range filter
-            if ('VEVENT' == $componentType && isset($filters['comp-filters'][0]['time-range'])) {
+            if ('VEVENT' == $componentType && $has_time_range) {
                 $timeRange = $filters['comp-filters'][0]['time-range'];
 
                 // If start time OR the end time is not specified, we can do a
                 // 100% accurate mysql query.
-                if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end'])) {
-                    $requirePostFilter = false;
+                if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && $timeRange) {
+                    if ((array_key_exists('start', $timeRange) && !$timeRange['start']) || (array_key_exists('end', $timeRange) && !$timeRange['end'])) {
+                        $requirePostFilter = false;
+                    }
                 }
             }
         }
@@ -809,11 +813,11 @@ SQL
             $values['componenttype'] = $componentType;
         }
 
-        if ($timeRange && $timeRange['start']) {
+        if ($timeRange && array_key_exists('start', $timeRange) && $timeRange['start']) {
             $query .= ' AND lastoccurence > :startdate';
             $values['startdate'] = $timeRange['start']->getTimeStamp();
         }
-        if ($timeRange && $timeRange['end']) {
+        if ($timeRange && array_key_exists('end', $timeRange) && $timeRange['end']) {
             $query .= ' AND firstoccurence < :enddate';
             $values['enddate'] = $timeRange['end']->getTimeStamp();
         }
@@ -944,42 +948,46 @@ SQL;
         }
         list($calendarId, $instanceId) = $calendarId;
 
-        // Current synctoken
-        $stmt = $this->pdo->prepare('SELECT synctoken FROM '.$this->calendarTableName.' WHERE id = ?');
-        $stmt->execute([$calendarId]);
-        $currentToken = $stmt->fetchColumn(0);
-
-        if (is_null($currentToken)) {
-            return null;
-        }
-
         $result = [
-            'syncToken' => $currentToken,
             'added' => [],
             'modified' => [],
             'deleted' => [],
         ];
 
         if ($syncToken) {
-            $query = 'SELECT uri, operation FROM '.$this->calendarChangesTableName.' WHERE synctoken >= ? AND synctoken < ? AND calendarid = ? ORDER BY synctoken';
+            $query = 'SELECT uri, operation, synctoken FROM '.$this->calendarChangesTableName.' WHERE synctoken >= ?  AND calendarid = ? ORDER BY synctoken';
             if ($limit > 0) {
-                $query .= ' LIMIT '.(int) $limit;
+                // Fetch one more raw to detect result truncation
+                $query .= ' LIMIT '.((int) $limit + 1);
             }
 
             // Fetching all changes
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute([$syncToken, $currentToken, $calendarId]);
+            $stmt->execute([$syncToken, $calendarId]);
 
             $changes = [];
 
             // This loop ensures that any duplicates are overwritten, only the
             // last change on a node is relevant.
             while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $changes[$row['uri']] = $row['operation'];
+                $changes[$row['uri']] = $row;
             }
+            $currentToken = null;
 
+            $result_count = 0;
             foreach ($changes as $uri => $operation) {
-                switch ($operation) {
+                if (!is_null($limit) && $result_count >= $limit) {
+                    $result['result_truncated'] = true;
+                    break;
+                }
+
+                if (null === $currentToken || $currentToken < $operation['synctoken'] + 1) {
+                    // SyncToken in CalDAV perspective is consistently the next number of the last synced change event in this class.
+                    $currentToken = $operation['synctoken'] + 1;
+                }
+
+                ++$result_count;
+                switch ($operation['operation']) {
                     case 1:
                         $result['added'][] = $uri;
                         break;
@@ -991,7 +999,24 @@ SQL;
                         break;
                 }
             }
+
+            if (!is_null($currentToken)) {
+                $result['syncToken'] = $currentToken;
+            } else {
+                // This means returned value is equivalent to syncToken
+                $result['syncToken'] = $syncToken;
+            }
         } else {
+            // Current synctoken
+            $stmt = $this->pdo->prepare('SELECT synctoken FROM '.$this->calendarTableName.' WHERE id = ?');
+            $stmt->execute([$calendarId]);
+            $currentToken = $stmt->fetchColumn(0);
+
+            if (is_null($currentToken)) {
+                return null;
+            }
+            $result['syncToken'] = $currentToken;
+
             // No synctoken supplied, this is the initial sync.
             $query = 'SELECT uri FROM '.$this->calendarObjectTableName.' WHERE calendarid = ?';
             $stmt = $this->pdo->prepare($query);
@@ -1153,10 +1178,9 @@ SQL;
      *
      * Read the PropPatch documentation for more info and examples.
      *
-     * @param mixed                $subscriptionId
-     * @param \Sabre\DAV\PropPatch $propPatch
+     * @param mixed $subscriptionId
      */
-    public function updateSubscription($subscriptionId, DAV\PropPatch $propPatch)
+    public function updateSubscription($subscriptionId, PropPatch $propPatch)
     {
         $supportedProperties = array_keys($this->subscriptionPropertyMap);
         $supportedProperties[] = '{http://calendarserver.org/ns/}source';

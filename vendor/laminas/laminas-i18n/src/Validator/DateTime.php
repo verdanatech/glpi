@@ -1,30 +1,27 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Validator;
 
 use IntlDateFormatter;
 use IntlException;
-use Laminas\I18n\Exception as I18nException;
 use Laminas\Validator\AbstractValidator;
 use Laminas\Validator\Exception as ValidatorException;
 use Locale;
 use Traversable;
 
+use function date_default_timezone_get;
+use function intl_is_failure;
+use function is_string;
+
 class DateTime extends AbstractValidator
 {
-    const INVALID          = 'datetimeInvalid';
-    const INVALID_DATETIME = 'datetimeInvalidDateTime';
+    public const INVALID          = 'datetimeInvalid';
+    public const INVALID_DATETIME = 'datetimeInvalidDateTime';
 
     /**
      * Validation failure message template definitions
      *
-     * @var string[]
+     * @var array<string, string>
      */
     protected $messageTemplates = [
         self::INVALID          => 'Invalid type given. String expected',
@@ -38,14 +35,10 @@ class DateTime extends AbstractValidator
      */
     protected $locale;
 
-    /**
-     * @var int|null
-     */
+    /** @var int|null */
     protected $dateType;
 
-    /**
-     * @var int|null
-     */
+    /** @var int|null */
     protected $timeType;
 
     /**
@@ -55,19 +48,13 @@ class DateTime extends AbstractValidator
      */
     protected $timezone;
 
-    /**
-     * @var string|null
-     */
+    /** @var string|null */
     protected $pattern;
 
-    /**
-     * @var int|null
-     */
+    /** @var int|null */
     protected $calendar;
 
-    /**
-     * @var IntlDateFormatter
-     */
+    /** @var IntlDateFormatter */
     protected $formatter;
 
     /**
@@ -82,16 +69,9 @@ class DateTime extends AbstractValidator
      * Constructor for the Date validator
      *
      * @param array|Traversable $options
-     * @throws I18nException\ExtensionNotLoadedException if ext/intl is not present
      */
     public function __construct($options = [])
     {
-        if (! extension_loaded('intl')) {
-            throw new I18nException\ExtensionNotLoadedException(
-                sprintf('%s component requires the intl PHP extension', __NAMESPACE__)
-            );
-        }
-
         // Delaying initialization until we know ext/intl is available
         $this->dateType = IntlDateFormatter::NONE;
         $this->timeType = IntlDateFormatter::NONE;
@@ -318,7 +298,7 @@ class DateTime extends AbstractValidator
                 $this->getTimeType(),
                 $this->timezone,
                 $this->calendar,
-                $this->pattern
+                $this->pattern ?? ''
             );
 
             $this->formatter->setLenient(false);

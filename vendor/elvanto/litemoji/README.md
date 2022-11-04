@@ -2,23 +2,13 @@
 
 A PHP library simplifying the conversion of unicode, HTML and shortcode emoji.
 
-[![Build Status](https://travis-ci.org/elvanto/litemoji.svg?branch=master)](https://travis-ci.org/elvanto/litemoji)
+![Run Tests](https://github.com/elvanto/litemoji/workflows/Run%20Tests/badge.svg)
 
 ## Installation
 
 ```
 $ composer require elvanto/litemoji
 ```
-
-Or add to `composer.json`:
-
-```
-"require": {
-    "elvanto/litemoji": "^1.0.0"
-}
-```
-
-and then run composer update.
 
 Alternatively you can clone or download the library files.
 
@@ -35,6 +25,10 @@ echo LitEmoji::encodeHtml('Baby you light my :fire:! :smiley:');
 
 echo LitEmoji::encodeUnicode('Baby you light my :fire:! :smiley:');
 // 'Baby you light my 🔥! 😃'
+
+echo LitEmoji::removeEmoji('Baby you light my 🔥! 😃!!!');
+// 'Baby you light my ! !!!'
+
 ```
 
 # Configuration

@@ -1,10 +1,10 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 514:
+/***/ 430:
 /***/ (() => {
 
-﻿/*! RateIt | v1.1.2 / 03/28/2019
+﻿/*! RateIt | v1.1.5 / 03/10/2021
     https://github.com/gjunge/rateit.js | Twitter: @gjunge
 */
 (function ($) {
@@ -26,7 +26,7 @@
         if (this.length === 0) { return this; }
 
 
-        var tp1 = $.type(p1);
+        var tp1 = typeof p1;
         if (tp1 == 'object' || p1 === undefined || p1 === null) {
             options = $.extend({}, $.fn.rateit.defaults, p1); //wants to init new rateit plugin(s).
         }
@@ -94,7 +94,7 @@
 
                 //if readonly now and it wasn't readonly, remove the eventhandlers.
                 if (p1 == 'readonly' && p2 == true && !itemdata('readonly')) {
-                    item.find('.rateit-range').unbind();
+                    item.find('.rateit-range').off();
                     itemdata('wired', false);
                 }
                 //when we receive a null value, reset the score to its min value.
@@ -102,7 +102,7 @@
                     p2 = (p2 == null) ? itemdata('min') : Math.max(itemdata('min'), Math.min(itemdata('max'), p2));
                 }
                 if (itemdata('backingfld')) {
-                    //if we have a backing field, check which fields we should update. 
+                    //if we have a backing field, check which fields we should update.
                     //In case of input[type=range], although we did read its attributes even in browsers that don't support it (using fld.attr())
                     //we only update it in browser that support it (&& fld[0].min only works in supporting browsers), not only does it save us from checking if it is range input type, it also is unnecessary.
                     var fld = $(itemdata('backingfld'));
@@ -181,15 +181,15 @@
                         }
                     }
                     else {
-                        //if it is not a select box, we can get's it's value using the val function. 
+                        //if it is not a select box, we can get's it's value using the val function.
                         //If it is a selectbox, we always get a value (the first one of the list), even if it was not explicity set.
                         itemdata('value', fld.val());
                     }
 
-                   
+
                 }
 
-              
+
 
                 //Create the necessary tags. For ARIA purposes we need to give the items an ID. So we use an internal index to create unique ids
                 var element = item[0].nodeName == 'DIV' ? 'div' : 'span';
@@ -218,10 +218,10 @@
 
             var isfont = itemdata('mode') == 'font';
 
-            
 
 
-            //resize the height of all elements, 
+
+            //resize the height of all elements,
             if (!isfont) {
                 item.find('.rateit-selected, .rateit-hover').height(itemdata('starheight'));
             }
@@ -237,9 +237,9 @@
                 for(var i = 0; i< stars; i++){
                     txt += icon;
                 }
-                
+
                 range.find('> *').text(txt);
-                
+
 
                 itemdata('starwidth', range.width() / (itemdata('max') - itemdata('min')))
             }
@@ -267,10 +267,10 @@
             //setup the reset button
             var resetbtn = item.find('.rateit-reset');
             if (resetbtn.data('wired') !== true) {
-                resetbtn.bind('click', function (e) {
+                resetbtn.on('click', function (e) {
                     e.preventDefault();
 
-                    resetbtn.blur();
+                    resetbtn.trigger('blur');
 
                     var event = $.Event('beforereset');
                     item.trigger(event);
@@ -345,27 +345,27 @@
 
                 //when the mouse goes over the range element, we set the "hover" stars.
                 if (!itemdata('wired')) {
-                    range.bind('touchmove touchend', touchHandler); //bind touch events
-                    range.mousemove(function (e) {
+                    range.on('touchmove touchend', touchHandler); //bind touch events
+                    range.on('mousemove', function (e) {
                         var score = calcRawScore(this, e);
                         setHover(score);
                     });
                     //when the mouse leaves the range, we have to hide the hover stars, and show the current value.
-                    range.mouseleave(function (e) {
+                    range.on('mouseleave', function (e) {
                         range.find('.rateit-hover').hide().width(0).data('width', '');
                         item.trigger('hover', [null]).trigger('over', [null]);
                         range.find('.rateit-selected').show();
                     });
                     //when we click on the range, we have to set the value, hide the hover.
-                    range.mouseup(function (e) {
+                    range.on('mouseup', function (e) {
                         var score = calcRawScore(this, e);
                         var value = (score * itemdata('step')) + itemdata('min');
                         setSelection(value);
-                        range.blur();
+                        range.trigger('blur');
                     });
 
                     //support key nav
-                    range.keyup(function (e) {
+                    range.on('keyup', function (e) {
                         if (e.which == 38 || e.which == (ltr ? 39 : 37)) {
                             setSelection(Math.min(itemdata('value') + itemdata('step'), itemdata('max')));
                         }
@@ -421,7 +421,7 @@
 
 /***/ }),
 
-/***/ 515:
+/***/ 431:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -475,13 +475,14 @@ var __webpack_exports__ = {};
 (() => {
 /**
  * ---------------------------------------------------------------------
+ *
  * GLPI - Gestionnaire Libre de Parc Informatique
- * Copyright (C) 2015-2022 Teclib' and contributors.
  *
  * http://glpi-project.org
  *
- * based on GLPI - Gestionnaire Libre de Parc Informatique
- * Copyright (C) 2003-2014 by the INDEPNET Development Team.
+ * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
  *
@@ -489,24 +490,25 @@ var __webpack_exports__ = {};
  *
  * This file is part of GLPI.
  *
- * GLPI is free software; you can redistribute it and/or modify
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * GLPI is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GLPI. If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
  * ---------------------------------------------------------------------
  */
 
 // RateIt jQuery plugin
-__webpack_require__(514);
-__webpack_require__(515);
+__webpack_require__(430);
+__webpack_require__(431);
 
 })();
 

@@ -1,16 +1,12 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Translator;
 
 use ArrayObject;
 use Laminas\I18n\Exception;
 use Laminas\I18n\Translator\Plural\Rule as PluralRule;
+
+use function array_replace;
 
 /**
  * Text domain.
@@ -34,7 +30,6 @@ class TextDomain extends ArrayObject
     /**
      * Set the plural rule
      *
-     * @param  PluralRule $rule
      * @return $this
      */
     public function setPluralRule(PluralRule $rule)
@@ -65,7 +60,7 @@ class TextDomain extends ArrayObject
      */
     public function hasPluralRule()
     {
-        return ($this->pluralRule !== null);
+        return $this->pluralRule !== null;
     }
 
     /**
@@ -89,7 +84,6 @@ class TextDomain extends ArrayObject
      * merge. We are only validating the number of plural forms though, as the
      * same rule could be made up with different expression.
      *
-     * @param  TextDomain $textDomain
      * @return $this
      * @throws Exception\RuntimeException
      */

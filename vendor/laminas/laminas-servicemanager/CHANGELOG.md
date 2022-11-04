@@ -2,6 +2,288 @@
 
 All notable changes to this project will be documented in this file, in reverse chronological order by release.
 
+## 3.10.0 - 2021-09-18
+
+
+-----
+
+### Release Notes for [3.10.0](https://github.com/laminas/laminas-servicemanager/milestone/19)
+
+Feature release (minor)
+
+### 3.10.0
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **2**
+- Total contributors: **1**
+
+#### Enhancement
+
+ - [106: &#91;Php 7.4&#93; Apply php 7.4 typed property on private property only](https://github.com/laminas/laminas-servicemanager/pull/106) thanks to @samsonasik
+ - [105: &#91;Php 7.4&#93; Apply Php 7.4 Syntax](https://github.com/laminas/laminas-servicemanager/pull/105) thanks to @samsonasik
+
+## 3.9.0 - 2021-09-18
+
+
+-----
+
+### Release Notes for [3.9.0](https://github.com/laminas/laminas-servicemanager/milestone/17)
+
+Feature release (minor)
+
+### 3.9.0
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **1**
+- Total contributors: **1**
+
+#### Enhancement
+
+ - [98: Refined ServiceManager factory, delegator and configuration types, to allow for easier introspection of mis-configuration at type level](https://github.com/laminas/laminas-servicemanager/pull/98) thanks to @boesing
+
+## 3.8.0 - 2021-09-14
+
+
+-----
+
+### Release Notes for [3.8.0](https://github.com/laminas/laminas-servicemanager/milestone/15)
+
+Feature release (minor)
+
+### 3.8.0
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **3**
+- Total contributors: **3**
+
+#### Enhancement
+
+ - [103: Provide PHP 8.1 support](https://github.com/laminas/laminas-servicemanager/pull/103) thanks to @weierophinney
+ - [100: Remove check for `php:&lt;7`, since support was dropped](https://github.com/laminas/laminas-servicemanager/pull/100) thanks to @internalsystemerror
+
+#### Documentation,Enhancement
+
+ - [99: Explicitly declare that factories support `array&lt;mixed&gt;` for construct-time options, instead of just declaring `array`](https://github.com/laminas/laminas-servicemanager/pull/99) thanks to @fezfez
+
+## 3.6.5 - TBD
+
+### Added
+
+- Nothing.
+
+### Changed
+
+- Nothing.
+
+### Deprecated
+
+- Nothing.
+
+### Removed
+
+- Nothing.
+
+### Fixed
+
+- Nothing.
+
+## 3.6.4 - 2021-02-03
+
+
+-----
+
+### Release Notes for [3.6.4](https://github.com/laminas/laminas-servicemanager/milestone/12)
+
+3.6.x bugfix release (patch)
+
+### 3.6.4
+
+- Total issues resolved: **1**
+- Total pull requests resolved: **1**
+- Total contributors: **1**
+
+#### Bug
+
+ - [81: Bugfix: has alias causing endless loop](https://github.com/laminas/laminas-servicemanager/pull/81) thanks to @boesing
+
+## 3.6.3 - 2021-01-25
+
+
+-----
+
+### Release Notes for [3.6.3](https://github.com/laminas/laminas-servicemanager/milestone/11)
+
+3.6.x bugfix release (patch)
+
+### 3.6.3
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **1**
+- Total contributors: **1**
+
+#### Bug
+
+ - [78: Regression in 3.6.x regarding aliased services in combination with non-shared services](https://github.com/laminas/laminas-servicemanager/pull/78) thanks to @boesing
+
+## 3.6.2 - 2021-01-17
+
+
+-----
+
+### Release Notes for [3.6.2](https://github.com/laminas/laminas-servicemanager/milestone/9)
+
+3.6.x bugfix release (patch)
+
+### 3.6.2
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **2**
+- Total contributors: **2**
+
+#### Bug
+
+ - [76: Merge release 3.5.2 into 3.6.x](https://github.com/laminas/laminas-servicemanager/pull/76) thanks to @github-actions[bot]
+ - [74: Fix invokables merging precedence in `3.6.x`](https://github.com/laminas/laminas-servicemanager/pull/74) thanks to @driehle
+
+## 3.6.1 - 2021-01-10
+
+
+-----
+
+### Release Notes for [3.6.1](https://github.com/laminas/laminas-servicemanager/milestone/7)
+
+3.6.x bugfix release (patch)
+
+### 3.6.1
+
+- Total issues resolved: **1**
+- Total pull requests resolved: **1**
+- Total contributors: **2**
+
+#### BC Break,Bug
+
+- [71: Regression fix regarding initializers](https://github.com/laminas/laminas-servicemanager/pull/71) thanks to @boesing and @Grundik
+
+## 3.6.0 - 2021-01-10
+
+### Added
+
+- [#51](https://github.com/laminas/laminas-servicemanager/pull/51) Adds PHP 8.0 support
+
+- [#64](https://github.com/laminas/laminas-servicemanager/pull/64) Backports changes from upcoming 4.0 release and re-adds PHP 7.3 support.
+
+### Changed
+
+- [#40](https://github.com/laminas/laminas-servicemanager/pull/40) modifies the behavior of the `FactoryCreator` to alphabetize import statements.
+
+- [zendframework/zend-servicemanager#221](https://github.com/zendframework/zend-servicemanager/pull/221) provides enormous performance improvements for each of the various mutator methods (`setAlias()`, `setFactory()`, etc.), `has()` lookups, and initial container configuration.
+
+### Removed
+
+- [#50](https://github.com/laminas/laminas-servicemanager/pull/50) Removes PHP support prior 7.4.0
+
+- [zendframework/zend-servicemanager#197](https://github.com/zendframework/zend-servicemanager/pull/197) drops
+  support for PHP versions prior to 7.1.
+
+- [zendframework/zend-servicemanager#193](https://github.com/zendframework/zend-servicemanager/pull/193) drops
+  support for HHVM.
+
+### Fixed
+
+- [zendframework/zend-servicemanager#230](https://github.com/zendframework/zend-servicemanager/pull/230) fixes a
+  problem in detecting cyclic aliases, ensuring they are detected correctly.
+
+
+-----
+
+### Release Notes for [3.6.0](https://github.com/laminas/laminas-servicemanager/milestone/5)
+
+Feature release (minor)
+
+### 3.6.0
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **2**
+- Total contributors: **1**
+
+#### Enhancement
+
+- [64: Backport 4.x](https://github.com/laminas/laminas-servicemanager/pull/64) thanks to @boesing
+- [63: Backport of 4afad5b660b8544bcf279aea09730d4f07f4fac0](https://github.com/laminas/laminas-servicemanager/pull/63) thanks to @boesing
+
+## 3.5.2 - 2021-01-17
+
+
+-----
+
+### Release Notes for [3.5.2](https://github.com/laminas/laminas-servicemanager/milestone/6)
+
+3.5.x bugfix release (patch)
+
+### 3.5.2
+
+- Total issues resolved: **0**
+- Total pull requests resolved: **1**
+- Total contributors: **1**
+
+#### Bug
+
+ - [75: backported testConfigureInvokablesTakePrecedenceOverFactories to 3.5.x](https://github.com/laminas/laminas-servicemanager/pull/75) thanks to @driehle
+
+## 3.5.1 - 2020-12-01
+
+### Release Notes for [3.5.1](https://github.com/laminas/laminas-servicemanager/milestone/4)
+
+This is a full revert of release `3.5.0`.
+
+`3.5.0` contained multiple backwards-incompatible (BC) breakages that were not
+supposed to be released in a minor version, and therefore had to be reverted.
+
+Due to unfortunate branch naming issues when migrating from the old `develop`
+branch, `develop` was renamed `3.5.x`, but contained multiple BC breaks that
+were fundamentally incompatible with the `3.0.0` and newer features.
+
+Due to the quick response time, in order to not break further downstream systems
+that yet have to receive the update, the `3.5.0` release was deleted, so that
+it does not appear in your system if you accidentally run `composer update`.
+
+Thanks to @fabiang for promptly detecting the issue and reporting it
+at https://github.com/laminas/laminas-servicemanager/issues/59
+
+### 3.5.1
+
+- Total issues resolved: **1**
+- Total pull requests resolved: **0**
+- Total contributors: **1**
+
+#### BC Break,Bug
+
+ - [59: `ContainerInterface` reference was changed in a minor release](https://github.com/laminas/laminas-servicemanager/issues/59) thanks to @fabiang
+
+## 3.4.1 - 2020-05-11
+
+### Added
+
+- Nothing.
+
+### Changed
+
+- Nothing.
+
+### Deprecated
+
+- Nothing.
+
+### Removed
+
+- Nothing.
+
+### Fixed
+
+- [#28](https://github.com/laminas/laminas-servicemanager/pull/28) provides updates to the `ConfigAbstractFactory` to ensure it works correctly under PHP 7.4 when the `config` service is represented by an `ArrayObject` or `ArrayAccess` implementation.
+
+- [#35](https://github.com/laminas/laminas-servicemanager/pull/35) updates two exception messagers from the `ConfigAbstractFactory` to be more clear about what caused them.
+
 ## 3.4.0 - 2018-12-22
 
 ### Added
@@ -252,24 +534,6 @@ All notable changes to this project will be documented in this file, in reverse 
   in the delegator factories documentation.
 - [zendframework/zend-servicemanager#98](https://github.com/zendframework/zend-servicemanager/pull/98) Using coveralls ^1.0
   for tracking test code coverage changes.
-
-## 3.0.4 - TBD
-
-### Added
-
-- Nothing.
-
-### Deprecated
-
-- Nothing.
-
-### Removed
-
-- Nothing.
-
-### Fixed
-
-- Nothing.
 
 ## 3.0.3 - 2016-02-02
 

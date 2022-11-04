@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 556:
+/***/ 473:
 /***/ ((module, exports, __webpack_require__) => {
 
 var __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -48,7 +48,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {String} selector
    * @returns {Array}
    */
-  var _filter = (function (nodes, selector) {
+  var filter = (function (nodes, selector) {
       if (!(nodes instanceof NodeList || nodes instanceof HTMLCollection || nodes instanceof Array)) {
           throw new Error('You must provide a nodeList/HTMLCollection/Array of elements to be filtered.');
       }
@@ -59,7 +59,9 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
   });
 
   /* eslint-env browser */
+  /* eslint-disable no-use-before-define */
   var stores = new Map();
+  /* eslint-enable no-use-before-define */
   /**
    * Stores data & configurations per Sortable
    * @param {Object} config
@@ -270,7 +272,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {HTMLElement} element
    * @returns {Object}
    */
-  var _offset = (function (element) {
+  var offset = (function (element) {
       if (!element.parentElement || element.getClientRects().length === 0) {
           throw new Error('target element must be part of the dom');
       }
@@ -289,7 +291,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {number} time to wait before calling function with latest arguments, 0 - no debounce
    * @returns {function} - debounced function
    */
-  var _debounce = (function (func, wait) {
+  var debounce = (function (func, wait) {
       if (wait === void 0) { wait = 0; }
       var timeout;
       return function () {
@@ -310,7 +312,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {HTMLElement} element
    * @returns {number}
    */
-  var _index = (function (element, elementList) {
+  var getIndex = (function (element, elementList) {
       if (!(element instanceof HTMLElement) || !(elementList instanceof NodeList || elementList instanceof HTMLCollection || elementList instanceof Array)) {
           throw new Error('You must provide an element and a list of elements.');
       }
@@ -363,7 +365,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {Function} customSerializer
    * @returns {Array}
    */
-  var _serialize = (function (sortableContainer, customItemSerializer, customContainerSerializer) {
+  var serialize = (function (sortableContainer, customItemSerializer, customContainerSerializer) {
       if (customItemSerializer === void 0) { customItemSerializer = function (serializedItem, sortableContainer) { return serializedItem; }; }
       if (customContainerSerializer === void 0) { customContainerSerializer = function (serializedContainer) { return serializedContainer; }; }
       // check for valid sortableContainer
@@ -378,13 +380,13 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       var options = addData(sortableContainer, 'opts');
       var item = options.items;
       // serialize container
-      var items = _filter(sortableContainer.children, item);
+      var items = filter(sortableContainer.children, item);
       var serializedItems = items.map(function (item) {
           return {
               parent: sortableContainer,
               node: item,
               html: item.outerHTML,
-              index: _index(item, items)
+              index: getIndex(item, items)
           };
       });
       // serialize container
@@ -405,7 +407,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {string|undefined} placeholder a string representing an html element
    * @param {string} placeholderClasses a string representing the classes that should be added to the placeholder
    */
-  var _makePlaceholder = (function (sortableElement, placeholder, placeholderClass) {
+  var makePlaceholder = (function (sortableElement, placeholder, placeholderClass) {
       var _a;
       if (placeholderClass === void 0) { placeholderClass = 'sortable-placeholder'; }
       if (!(sortableElement instanceof HTMLElement)) {
@@ -441,7 +443,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Get height of an element including padding
    * @param {HTMLElement} element an dom element
    */
-  var _getElementHeight = (function (element) {
+  var getElementHeight = (function (element) {
       if (!(element instanceof HTMLElement)) {
           throw new Error('You must provide a valid dom element');
       }
@@ -465,7 +467,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Get width of an element including padding
    * @param {HTMLElement} element an dom element
    */
-  var _getElementWidth = (function (element) {
+  var getElementWidth = (function (element) {
       if (!(element instanceof HTMLElement)) {
           throw new Error('You must provide a valid dom element');
       }
@@ -486,7 +488,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {Array<HTMLElement>} items
    * @param {string} selector
    */
-  var _getHandles = (function (items, selector) {
+  var getHandles = (function (items, selector) {
       if (!(items instanceof Array)) {
           throw new Error('You must provide a Array of HTMLElements to be filtered.');
       }
@@ -551,7 +553,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       // check if setDragImage method is available
       if (event.dataTransfer && event.dataTransfer.setDragImage) {
           // get the elements offset
-          var elementOffset = _offset(draggedElement);
+          var elementOffset = offset(draggedElement);
           // get the dragImage
           var dragImage = customDragImage(draggedElement, elementOffset, event);
           // check if custom function returns correct values
@@ -572,7 +574,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {sortable} destination the container an item is move to
    * @param {sortable} origin the container an item comes from
    */
-  var _listsConnected = (function (destination, origin) {
+  var listsConnected = (function (destination, origin) {
       // check if valid sortable
       if (destination.isSortable === true) {
           var acceptFrom = store(destination).getConfig('acceptFrom');
@@ -628,7 +630,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {number} threshold time limit for throttling
    */
   // must use function to keep this context
-  function _throttle (fn, threshold) {
+  function throttle (fn, threshold) {
       var _this = this;
       if (threshold === void 0) { threshold = 250; }
       // check function
@@ -659,29 +661,28 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * @param {sortable} sortableContainer a valid sortableContainer
    * @param {boolean} enable enable or disable event
    */
-  // export default (sortableContainer: sortable, enable: boolean) => {
   var enableHoverClass = (function (sortableContainer, enable) {
       if (typeof store(sortableContainer).getConfig('hoverClass') === 'string') {
           var hoverClasses_1 = store(sortableContainer).getConfig('hoverClass').split(' ');
           // add class on hover
           if (enable === true) {
-              addEventListener(sortableContainer, 'mousemove', _throttle(function (event) {
+              addEventListener(sortableContainer, 'mousemove', throttle(function (event) {
                   // check of no mouse button was pressed when mousemove started == no drag
                   if (event.buttons === 0) {
-                      _filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
+                      filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
                           var _a, _b;
-                          if (item !== event.target) {
-                              (_a = item.classList).remove.apply(_a, hoverClasses_1);
+                          if (item === event.target || item.contains(event.target)) {
+                              (_a = item.classList).add.apply(_a, hoverClasses_1);
                           }
                           else {
-                              (_b = item.classList).add.apply(_b, hoverClasses_1);
+                              (_b = item.classList).remove.apply(_b, hoverClasses_1);
                           }
                       });
                   }
               }, store(sortableContainer).getConfig('throttleTime')));
               // remove class on leave
               addEventListener(sortableContainer, 'mouseleave', function () {
-                  _filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
+                  filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
                       var _a;
                       (_a = item.classList).remove.apply(_a, hoverClasses_1);
                   });
@@ -720,7 +721,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * remove event handlers from items
    * @param {Array|NodeList} items
    */
-  var _removeItemEvents = function (items) {
+  var removeItemEvents = function (items) {
       removeEventListener(items, 'dragstart');
       removeEventListener(items, 'dragend');
       removeEventListener(items, 'dragover');
@@ -730,7 +731,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       removeEventListener(items, 'mouseleave');
   };
   // Remove container events
-  var _removeContainerEvents = function (originContainer, previousContainer) {
+  var removeContainerEvents = function (originContainer, previousContainer) {
       if (originContainer) {
           removeEventListener(originContainer, 'dragleave');
       }
@@ -739,13 +740,13 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       }
   };
   /**
-   * _getDragging returns the current element to drag or
+   * getDragging returns the current element to drag or
    * a copy of the element.
    * Is Copy Active for sortable
    * @param {HTMLElement} draggedItem - the item that the user drags
    * @param {HTMLElement} sortable a single sortable
    */
-  var _getDragging = function (draggedItem, sortable) {
+  var getDragging = function (draggedItem, sortable) {
       var ditem = draggedItem;
       if (store(sortable).getConfig('copy') === true) {
           ditem = draggedItem.cloneNode(true);
@@ -760,7 +761,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Remove data from sortable
    * @param {HTMLElement} sortable a single sortable
    */
-  var _removeSortableData = function (sortable) {
+  var removeSortableData = function (sortable) {
       removeData(sortable);
       removeAttribute(sortable, 'aria-dropeffect');
   };
@@ -768,7 +769,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Remove data from items
    * @param {Array<HTMLElement>|HTMLElement} items
    */
-  var _removeItemData = function (items) {
+  var removeItemData = function (items) {
       removeAttribute(items, 'aria-grabbed');
       removeAttribute(items, 'aria-copied');
       removeAttribute(items, 'draggable');
@@ -797,7 +798,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    */
   function findDragElement(sortableElement, element) {
       var options = addData(sortableElement, 'opts');
-      var items = _filter(sortableElement.children, options.items);
+      var items = filter(sortableElement.children, options.items);
       var itemlist = items.filter(function (ele) {
           return ele.contains(element) || (ele.shadowRoot && ele.shadowRoot.contains(element));
       });
@@ -807,10 +808,12 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Destroy the sortable
    * @param {HTMLElement} sortableElement a single sortable
    */
-  var _destroySortable = function (sortableElement) {
+  var destroySortable = function (sortableElement) {
       var opts = addData(sortableElement, 'opts') || {};
-      var items = _filter(sortableElement.children, opts.items);
-      var handles = _getHandles(items, opts.handle);
+      var items = filter(sortableElement.children, opts.items);
+      var handles = getHandles(items, opts.handle);
+      // disable adding hover class
+      enableHoverClass(sortableElement, false);
       // remove event handlers & data from sortable
       removeEventListener(sortableElement, 'dragover');
       removeEventListener(sortableElement, 'dragenter');
@@ -818,12 +821,12 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       removeEventListener(sortableElement, 'dragend');
       removeEventListener(sortableElement, 'drop');
       // remove event data from sortable
-      _removeSortableData(sortableElement);
+      removeSortableData(sortableElement);
       // remove event handlers & data from items
       removeEventListener(handles, 'mousedown');
-      _removeItemEvents(items);
-      _removeItemData(items);
-      _removeContainerEvents(originContainer, previousContainer);
+      removeItemEvents(items);
+      removeItemData(items);
+      removeContainerEvents(originContainer, previousContainer);
       // clear sortable flag
       sortableElement.isSortable = false;
   };
@@ -831,13 +834,15 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Enable the sortable
    * @param {HTMLElement} sortableElement a single sortable
    */
-  var _enableSortable = function (sortableElement) {
+  var enableSortable = function (sortableElement) {
       var opts = addData(sortableElement, 'opts');
-      var items = _filter(sortableElement.children, opts.items);
-      var handles = _getHandles(items, opts.handle);
+      var items = filter(sortableElement.children, opts.items);
+      var handles = getHandles(items, opts.handle);
       addAttribute(sortableElement, 'aria-dropeffect', 'move');
       addData(sortableElement, '_disabled', 'false');
       addAttribute(handles, 'draggable', 'true');
+      // enable hover class
+      enableHoverClass(sortableElement, true);
       // @todo: remove this fix
       // IE FIX for ghost
       // can be disabled as it has the side effect that other events
@@ -864,28 +869,29 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
    * Disable the sortable
    * @param {HTMLElement} sortableElement a single sortable
    */
-  var _disableSortable = function (sortableElement) {
+  var disableSortable = function (sortableElement) {
       var opts = addData(sortableElement, 'opts');
-      var items = _filter(sortableElement.children, opts.items);
-      var handles = _getHandles(items, opts.handle);
+      var items = filter(sortableElement.children, opts.items);
+      var handles = getHandles(items, opts.handle);
       addAttribute(sortableElement, 'aria-dropeffect', 'none');
       addData(sortableElement, '_disabled', 'true');
       addAttribute(handles, 'draggable', 'false');
       removeEventListener(handles, 'mousedown');
+      enableHoverClass(sortableElement, false);
   };
   /**
    * Reload the sortable
    * @param {HTMLElement} sortableElement a single sortable
    * @description events need to be removed to not be double bound
    */
-  var _reloadSortable = function (sortableElement) {
+  var reloadSortable = function (sortableElement) {
       var opts = addData(sortableElement, 'opts');
-      var items = _filter(sortableElement.children, opts.items);
-      var handles = _getHandles(items, opts.handle);
+      var items = filter(sortableElement.children, opts.items);
+      var handles = getHandles(items, opts.handle);
       addData(sortableElement, '_disabled', 'false');
       // remove event handlers from items
-      _removeItemEvents(items);
-      _removeContainerEvents(originContainer, previousContainer);
+      removeItemEvents(items);
+      removeContainerEvents(originContainer, previousContainer);
       removeEventListener(handles, 'mousedown');
       // remove event handlers from sortable
       removeEventListener(sortableElement, 'dragover');
@@ -913,7 +919,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       if (/serialize/.test(method)) {
           return sortableElements.map(function (sortableContainer) {
               var opts = addData(sortableContainer, 'opts');
-              return _serialize(sortableContainer, opts.itemSerializer, opts.containerSerializer);
+              return serialize(sortableContainer, opts.itemSerializer, opts.containerSerializer);
           });
       }
       sortableElements.forEach(function (sortableElement) {
@@ -935,9 +941,9 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
           // property to define as sortable
           sortableElement.isSortable = true;
           // reset sortable
-          _reloadSortable(sortableElement);
+          reloadSortable(sortableElement);
           // initialize
-          var listItems = _filter(sortableElement.children, options.items);
+          var listItems = filter(sortableElement.children, options.items);
           // create element if user defined a placeholder element as a string
           var customPlaceholder;
           if (options.placeholder !== null && options.placeholder !== undefined) {
@@ -951,7 +957,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               customPlaceholder = tempContainer.children[0];
           }
           // add placeholder
-          store(sortableElement).placeholder = _makePlaceholder(sortableElement, customPlaceholder, options.placeholderClass);
+          store(sortableElement).placeholder = makePlaceholder(sortableElement, customPlaceholder, options.placeholderClass);
           addData(sortableElement, 'items', options.items);
           if (options.acceptFrom) {
               addData(sortableElement, 'acceptFrom', options.acceptFrom);
@@ -959,11 +965,9 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
           else if (options.connectWith) {
               addData(sortableElement, 'connectWith', options.connectWith);
           }
-          _enableSortable(sortableElement);
+          enableSortable(sortableElement);
           addAttribute(listItems, 'role', 'option');
           addAttribute(listItems, 'aria-grabbed', 'false');
-          // enable hover class
-          enableHoverClass(sortableElement, true);
           /*
            Handle drag events on draggable items
            Handle is set at the sortableElement level as it will bubble up
@@ -982,17 +986,17 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               var sortableContainer = findSortable(target, e);
               var dragItem = findDragElement(sortableContainer, target);
               // grab values
-              originItemsBeforeUpdate = _filter(sortableContainer.children, options.items);
+              originItemsBeforeUpdate = filter(sortableContainer.children, options.items);
               originIndex = originItemsBeforeUpdate.indexOf(dragItem);
-              originElementIndex = _index(dragItem, sortableContainer.children);
+              originElementIndex = getIndex(dragItem, sortableContainer.children);
               originContainer = sortableContainer;
               // add transparent clone or other ghost to cursor
               setDragImage(e, dragItem, options.customDragImage);
               // cache selsection & add attr for dragging
-              draggingHeight = _getElementHeight(dragItem);
-              draggingWidth = _getElementWidth(dragItem);
+              draggingHeight = getElementHeight(dragItem);
+              draggingWidth = getElementWidth(dragItem);
               dragItem.classList.add(options.draggingClass);
-              dragging = _getDragging(dragItem, sortableContainer);
+              dragging = getDragging(dragItem, sortableContainer);
               addAttribute(dragging, 'aria-grabbed', 'true');
               // dispatch sortstart event on each element in group
               sortableContainer.dispatchEvent(new CustomEvent('sortstart', {
@@ -1014,7 +1018,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               var target = getEventTarget(e);
               var sortableContainer = findSortable(target, e);
               if (sortableContainer && sortableContainer !== previousContainer) {
-                  destinationItemsBeforeUpdate = _filter(sortableContainer.children, addData(sortableContainer, 'items'))
+                  destinationItemsBeforeUpdate = filter(sortableContainer.children, addData(sortableContainer, 'items'))
                       .filter(function (item) { return item !== store(sortableElement).placeholder; });
                   if (options.dropTargetContainerClass) {
                       sortableContainer.classList.add(options.dropTargetContainerClass);
@@ -1072,8 +1076,10 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               if (dragging.getAttribute('aria-copied') === 'true' && addData(dragging, 'dropped') !== 'true') {
                   dragging.remove();
               }
-              dragging.style.display = dragging.oldDisplay;
-              delete dragging.oldDisplay;
+              if (dragging.oldDisplay !== undefined) {
+                  dragging.style.display = dragging.oldDisplay;
+                  delete dragging.oldDisplay;
+              }
               var visiblePlaceholder = Array.from(stores.values()).map(function (data) { return data.placeholder; })
                   .filter(function (placeholder) { return placeholder instanceof HTMLElement; })
                   .filter(isInDom)[0];
@@ -1101,7 +1107,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
            * Fires when valid drop target area is hit
            */
           addEventListener(sortableElement, 'drop', function (e) {
-              if (!_listsConnected(sortableElement, dragging.parentElement)) {
+              if (!listsConnected(sortableElement, dragging.parentElement)) {
                   return;
               }
               e.preventDefault();
@@ -1113,12 +1119,21 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               })
                   // filter only HTMLElements
                   .filter(function (placeholder) { return placeholder instanceof HTMLElement; })
-                  // filter only elements in DOM
+                  // only elements in DOM
                   .filter(isInDom)[0];
-              // attach element after placeholder
-              insertAfter(visiblePlaceholder, dragging);
-              // remove placeholder from dom
-              visiblePlaceholder.remove();
+              if (visiblePlaceholder) {
+                  visiblePlaceholder.replaceWith(dragging);
+                  // to avoid flickering restoring element display immediately after replacing placeholder
+                  if (dragging.oldDisplay !== undefined) {
+                      dragging.style.display = dragging.oldDisplay;
+                      delete dragging.oldDisplay;
+                  }
+              }
+              else {
+                  // set the dropped value to 'false' to delete copied dragging at the time of 'dragend'
+                  addData(dragging, 'dropped', 'false');
+                  return;
+              }
               /*
                * Fires Custom Event - 'sortstop'
                */
@@ -1133,14 +1148,14 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
                   }
               }));
               var placeholder = store(sortableElement).placeholder;
-              var originItems = _filter(originContainer.children, options.items)
+              var originItems = filter(originContainer.children, options.items)
                   .filter(function (item) { return item !== placeholder; });
               var destinationContainer = this.isSortable === true ? this : this.parentElement;
-              var destinationItems = _filter(destinationContainer.children, addData(destinationContainer, 'items'))
+              var destinationItems = filter(destinationContainer.children, addData(destinationContainer, 'items'))
                   .filter(function (item) { return item !== placeholder; });
-              var destinationElementIndex = _index(dragging, Array.from(dragging.parentElement.children)
+              var destinationElementIndex = getIndex(dragging, Array.from(dragging.parentElement.children)
                   .filter(function (item) { return item !== placeholder; }));
-              var destinationIndex = _index(dragging, destinationItems);
+              var destinationIndex = getIndex(dragging, destinationItems);
               if (options.dropTargetContainerClass) {
                   destinationContainer.classList.remove(options.dropTargetContainerClass);
               }
@@ -1170,7 +1185,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
                   }));
               }
           });
-          var debouncedDragOverEnter = _debounce(function (sortableElement, element, pageX, pageY) {
+          var debouncedDragOverEnter = debounce(function (sortableElement, element, pageX, pageY) {
               if (!dragging) {
                   return;
               }
@@ -1182,17 +1197,17 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               // if element the draggedItem is dragged onto is within the array of all elements in list
               // (not only items, but also disabled, etc.)
               if (Array.from(sortableElement.children).indexOf(element) > -1) {
-                  var thisHeight = _getElementHeight(element);
-                  var thisWidth = _getElementWidth(element);
-                  var placeholderIndex = _index(store(sortableElement).placeholder, element.parentElement.children);
-                  var thisIndex = _index(element, element.parentElement.children);
+                  var thisHeight = getElementHeight(element);
+                  var thisWidth = getElementWidth(element);
+                  var placeholderIndex = getIndex(store(sortableElement).placeholder, element.parentElement.children);
+                  var thisIndex = getIndex(element, element.parentElement.children);
                   // Check if `element` is bigger than the draggable. If it is, we have to define a dead zone to prevent flickering
                   if (thisHeight > draggingHeight || thisWidth > draggingWidth) {
                       // Dead zone?
                       var deadZoneVertical = thisHeight - draggingHeight;
                       var deadZoneHorizontal = thisWidth - draggingWidth;
-                      var offsetTop = _offset(element).top;
-                      var offsetLeft = _offset(element).left;
+                      var offsetTop = offset(element).top;
+                      var offsetLeft = offset(element).left;
                       if (placeholderIndex < thisIndex &&
                           ((options.orientation === 'vertical' && pageY < offsetTop) ||
                               (options.orientation === 'horizontal' && pageX < offsetLeft))) {
@@ -1215,8 +1230,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
                   // vertical center.
                   var placeAfter = false;
                   try {
-                      var elementMiddleVertical = _offset(element).top + element.offsetHeight / 2;
-                      var elementMiddleHorizontal = _offset(element).left + element.offsetWidth / 2;
+                      var elementMiddleVertical = offset(element).top + element.offsetHeight / 2;
+                      var elementMiddleHorizontal = offset(element).left + element.offsetWidth / 2;
                       placeAfter = (options.orientation === 'vertical' && (pageY >= elementMiddleVertical)) ||
                           (options.orientation === 'horizontal' && (pageX >= elementMiddleHorizontal));
                   }
@@ -1248,7 +1263,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
                       return data.placeholder;
                   });
                   // check if element is not in placeholders
-                  if (placeholders.indexOf(element) === -1 && sortableElement === element && !_filter(element.children, options.items).length) {
+                  if (placeholders.indexOf(element) === -1 && sortableElement === element && !filter(element.children, options.items).length) {
                       placeholders.forEach(function (element) { return element.remove(); });
                       element.appendChild(store(sortableElement).placeholder);
                   }
@@ -1259,11 +1274,11 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               var element = e.target;
               var sortableElement = element.isSortable === true ? element : findSortable(element, e);
               element = findDragElement(sortableElement, element);
-              if (!dragging || !_listsConnected(sortableElement, dragging.parentElement) || addData(sortableElement, '_disabled') === 'true') {
+              if (!dragging || !listsConnected(sortableElement, dragging.parentElement) || addData(sortableElement, '_disabled') === 'true') {
                   return;
               }
               var options = addData(sortableElement, 'opts');
-              if (parseInt(options.maxItems) && _filter(sortableElement.children, addData(sortableElement, 'items')).length >= parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
+              if (parseInt(options.maxItems) && filter(sortableElement.children, addData(sortableElement, 'items')).length > parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
                   return;
               }
               e.preventDefault();
@@ -1277,22 +1292,22 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       return sortableElements;
   }
   sortable.destroy = function (sortableElement) {
-      _destroySortable(sortableElement);
+      destroySortable(sortableElement);
   };
   sortable.enable = function (sortableElement) {
-      _enableSortable(sortableElement);
+      enableSortable(sortableElement);
   };
   sortable.disable = function (sortableElement) {
-      _disableSortable(sortableElement);
+      disableSortable(sortableElement);
   };
   /* START.TESTS_ONLY */
   sortable.__testing = {
       // add internal methods here for testing purposes
-      _data: addData,
-      _removeItemEvents: _removeItemEvents,
-      _removeItemData: _removeItemData,
-      _removeSortableData: _removeSortableData,
-      _removeContainerEvents: _removeContainerEvents
+      data: addData,
+      removeItemEvents: removeItemEvents,
+      removeItemData: removeItemData,
+      removeSortableData: removeSortableData,
+      removeContainerEvents: removeContainerEvents
   };
 
   return sortable;
@@ -1335,13 +1350,14 @@ var __webpack_exports__ = {};
 (() => {
 /**
  * ---------------------------------------------------------------------
+ *
  * GLPI - Gestionnaire Libre de Parc Informatique
- * Copyright (C) 2015-2022 Teclib' and contributors.
  *
  * http://glpi-project.org
  *
- * based on GLPI - Gestionnaire Libre de Parc Informatique
- * Copyright (C) 2003-2014 by the INDEPNET Development Team.
+ * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
  *
@@ -1349,22 +1365,23 @@ var __webpack_exports__ = {};
  *
  * This file is part of GLPI.
  *
- * GLPI is free software; you can redistribute it and/or modify
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * GLPI is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GLPI. If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
  * ---------------------------------------------------------------------
  */
 
-window.sortable = __webpack_require__(556);
+window.sortable = __webpack_require__(473);
 })();
 
 /******/ })()

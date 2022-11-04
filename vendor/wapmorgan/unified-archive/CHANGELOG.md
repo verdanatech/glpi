@@ -1,5 +1,102 @@
 # Change Log
 
+### 1.1.4 - Dec 21, 2021
+Disabled `rar` for SevenZip driver.
+
+### 1.1.3 - May 2, 2021
+
+**Changed format of `$files` in `archiveFiles()` and `addFiles()`**
+```php
+[
+    '/var/www/log.txt',                // will be "/var/www/log.txt"
+    'log2.txt' => '/var/www/log2.txt', // will be "/log2.txt"
+    '/var/www/site',                   // will be "/var/www/site"
+    'site2' => '/var/www/site2',       // will be "/site2"
+]
+```
+
+Old format also works, but there can be a bad case. If you have */var/www/log2.txt* and *log2.txt* (in current directory) and pass following:
+```php
+[
+'/var/www/log2.txt' => 'log2.txt',
+]
+```
+it will archive *log2.txt* as */var/www/log2.txt* in an archive (new behaviour).
+
+**New features**:
+- Added `Formats::canStream()` to check if an archive files can be streamed.
+- Added ability to create archives, encrypted with password (only *zip* (`Zip`, `SevenZip`) and *7z* (`SevenZip`)) - added nullable `$password` argument to:
+  - `UnifiedArchive::archiveFiles($fileOrFiles, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE, $password = null)`
+  - `UnifiedArchive::archiveFile($file, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE, $password = null)`
+  - `UnifiedArchive::archiveDirectory($directory, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE, $password = null)`
+- Added `UnifiedArchive->getMimeType()` to get mime type of archive.
+- Added `UnifiedArchive->getComment()` to get comment of an archive. Available only in `Zip` and `Rar` drivers, others return `null`.
+- Added `UnifiedArchive->setComment(?string $comment)` to set comment. Available only in `Zip`.
+- Added filter in `UnifiedArcihve->getFileNames()`. If works as `fnmatch()` does.
+- Added ability to iterate over archive and access files data as array:
+```php
+$a = \wapmorgan\UnifiedArchive\UnifiedArchive::open('tests/archives/fixtures.7z');
+foreach ($a as $file => $data) {
+    echo $file.PHP_EOL;
+ }
+
+$file_data = $a['filename'];
+```
+
+**Fixed:**
+- Fixed `SevenZip` driver: disabled _tar.gz, tar.bzip2_ support as it isn't supported properly and described which formats driver can create, append, modify and encrypt.
+
+**Methods renamed** (old exist, but marked as deprecated):
+- `UnifiedArchive->getArchiveFormat` -> `UnifiedArchive->getFormat`.
+- `UnifiedArchive->getArchiveSize` -> `UnifiedArchive->getSize`.
+- `UnifiedArchive->countCompressedFilesSize` -> `UnifiedArchive->getCompressedSize`.
+- `UnifiedArchive->countUncompressedFilesSize` -> `UnifiedArchive->getOriginalSize`.
+- `UnifiedArchive->getFileResource` -> `UnifiedArchive->getFileStream`.
+- `UnifiedArchive->isFileExists` -> `UnifiedArchive->hasFile`.
+
+### 1.1.2 - Mar 1, 2021
+Fixed calculation of tar's uncompressed size opened via `TarByPear` driver.
+Fixed working with *tar.xz* archives.
+
+### 1.1.1 - Feb 13, 2021
+Cleaned package.
+
+### 1.1.0 - Feb 13, 2021
+**New features**:
+- Added ability to open archives encrypted with password - added `$password` argument to `UnifiedArchive::open($fileName, $password = null)`. Works only with: zip, rar, 7z.   
+- Added ability to adjust compression level for new archives - added `$compressionLevel` argument (with default `BasicDriver::COMPRESSION_AVERAGE` level) to:
+    - `UnifiedArchive::archiveFiles($fileOrFiles, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE)`
+    - `UnifiedArchive::archiveFile($file, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE)`
+    - `UnifiedArchive::archiveDirectory($file, $archiveName, $compressionLevel = BasicDriver::COMPRESSION_AVERAGE)`
+  Works only with: zip, gzip.
+- Added ability to append the archive with a file from string - added `addFileFromString` method:
+  `UnifiedArchive->addFileFromString(string $inArchiveName, string $content)`.
+- Added tests for format support:
+    * `Formats::canOpen()`
+    * `Formats::canCreate()`
+    * `Formats::canAppend()` - check if file can be added to an archive
+    * `Formats::canUpdate()` - check if archive member can be removed
+    * `Formats::canEncrypt()` - check if encrypted archive can be opened
+
+**Format changes**:
+- Extended *SevenZip* driver: now it supports a lot of formats (7z, zip, rar, iso, tar and so on).
+- Added *AlchemyZippy* driver: it works via command-line programs for zip, tar, tar.gz and tar.bz2.
+
+**Methods renamed:**
+- `UnifiedArchive::canOpenType` -> `Formats::canOpen`
+- `UnifiedArchive::canOpenArchive` -> `UnifiedArchive::canOpen`
+- `UnifiedArchive::canCreateType` -> `Formats::canCreate`
+- `UnifiedArchive->getArchiveType` -> `UnifiedArchive->getArchiveFormat`
+
+Old methods exist, but marked as deprecated.
+
+### 1.0.1 - Nov 28, 2020
+
+- Improved extendable for all classes - used late-static binding everywhere.
+
+Format specific:
+- **gzip**: improved detection of archive by content.
+
 ### 1.0.0 - Jun 13, 2020
 
 Format specific:

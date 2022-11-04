@@ -917,6 +917,7 @@ class RRule implements RRuleInterface
 	/**
 	 * @internal
 	 */
+	#[\ReturnTypeWillChange]
 	public function offsetExists($offset)
 	{
 		return is_numeric($offset) && $offset >= 0 && ! is_float($offset) && $offset < count($this);
@@ -925,6 +926,7 @@ class RRule implements RRuleInterface
 	/**
 	 * @internal
 	 */
+	#[\ReturnTypeWillChange]
 	public function offsetGet($offset)
 	{
 		if (! is_numeric($offset) || $offset < 0 || is_float($offset)) {
@@ -957,6 +959,7 @@ class RRule implements RRuleInterface
 	/**
 	 * @internal
 	 */
+	#[\ReturnTypeWillChange]
 	public function offsetSet($offset, $value)
 	{
 		throw new \LogicException('Setting a Date in a RRule is not supported');
@@ -965,6 +968,7 @@ class RRule implements RRuleInterface
 	/**
 	 * @internal
 	 */
+	#[\ReturnTypeWillChange]
 	public function offsetUnset($offset)
 	{
 		throw new \LogicException('Unsetting a Date in a RRule is not supported');
@@ -980,6 +984,7 @@ class RRule implements RRuleInterface
 	 *
 	 * @return int
 	 */
+	#[\ReturnTypeWillChange]
 	public function count()
 	{
 		if ($this->isInfinite()) {
@@ -1314,7 +1319,7 @@ class RRule implements RRuleInterface
 	 * at year 1 to Jan 1st 10.00 at year 2.
 	 *
 	 * In order to make a "smart jump", we would have to have a way to determine
-	 * the gap between the next occurence arithmetically. I think that would require
+	 * the gap between the next occurrence arithmetically. I think that would require
 	 * to analyze each "BYXXX" rule part that "Limit" the set (see the RFC page 43)
 	 * at the given frequency. For example, a YEARLY frequency doesn't need "smart
 	 * jump" at all; MONTHLY and WEEKLY frequencies only need to check BYMONTH;
@@ -1326,6 +1331,7 @@ class RRule implements RRuleInterface
 	 *
 	 * @return \DateTime|null
 	 */
+	#[\ReturnTypeWillChange]
 	public function getIterator()
 	{
 		$total = 0;
@@ -1350,10 +1356,10 @@ class RRule implements RRuleInterface
 			$dtstart = clone $occurrence; // since DateTime is not immutable, clone to avoid any problem
 			// so we skip the last occurrence of the cache
 			if ($this->freq === self::SECONDLY) {
-				$dtstart->modify('+'.$this->interval.'second');
+				$dtstart = $dtstart->modify('+'.$this->interval.'second');
 			}
 			else {
-				$dtstart->modify('+1second');
+				$dtstart = $dtstart->modify('+1second');
 			}
 		}
 
@@ -1367,7 +1373,7 @@ class RRule implements RRuleInterface
 			// calculation magic at the end of the loop (when incrementing)
 			// to realign on first pass.
 			$tmp = clone $dtstart;
-			$tmp->modify('-'.pymod($dtstart->format('N') - $this->wkst,7).'days');
+			$tmp = $tmp->modify('-'.pymod($dtstart->format('N') - $this->wkst,7).'days');
 			list($year,$month,$day,$hour,$minute,$second) = explode(' ',$tmp->format('Y n j G i s'));
 			unset($tmp);
 		}
@@ -1929,12 +1935,12 @@ class RRule implements RRuleInterface
 	 *
 	 * @return string
 	 */
-	static protected function i18nList(array $array, $and = 'and')
+	static protected function i18nList(array $array, $and = 'and ')
 	{
 		if (count($array) > 1) {
 			$last = array_splice($array, -1);
 			return sprintf(
-				'%s %s %s',
+				'%s %s%s',
 				implode(', ',$array),
 				$and,
 				implode('',$last)
@@ -2246,20 +2252,36 @@ class RRule implements RRuleInterface
 				));
 				$parts['bymonthday'][] = $tmp;
 			}
-			$parts['bymonthday'] = implode(' '.$i18n['and'],$parts['bymonthday']);
+			// because the 'on the Xth day' strings start with the space, and the "and" ends with a space
+			// it's necessary to collapse double spaces into one
+			// this behaviour was introduced in https://github.com/rlanvin/php-rrule/pull/95
+			$parts['bymonthday'] = str_replace('  ',' ',implode(' '.$i18n['and'],$parts['bymonthday']));
 		}
 
 		if (not_empty($this->rule['BYDAY'])) {
 			$parts['byweekday'] = array();
 			if ($this->byweekday) {
 				$tmp = $this->byweekday;
-				foreach ($tmp as & $value) {
-					$value = $i18n['weekdays'][$value];
+
+				$selector = 'weekdays';
+				$days_names = $i18n['weekdays'];
+				$prefix = '';
+				if (!empty($i18n['shorten_weekdays_in_list']) && count($tmp) > 1) {
+					// special case for Hebrew (and possibly other languages)
+					// see https://github.com/rlanvin/php-rrule/pull/95 for the reasoning
+					$selector = 'weekdays_shortened_for_list';
+					$prefix = $i18n['shorten_weekdays_days'];
 				}
+
+				foreach ($tmp as & $value) {
+					$value = $i18n[$selector][$value];
+				}
+
 				$parts['byweekday'][] = strtr(self::i18nSelect($i18n['byweekday'], count($tmp)), array(
-					'%{weekdays}' =>  self::i18nList($tmp, $i18n['and'])
+					'%{weekdays}' =>  $prefix . self::i18nList($tmp, $i18n['and'])
 				));
 			}
+
 			if ($this->byweekday_nth) {
 				$tmp = $this->byweekday_nth;
 				foreach ($tmp as & $value) {

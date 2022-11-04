@@ -3,7 +3,317 @@
 The present file will list all changes made to the project; according to the
 [Keep a Changelog](http://keepachangelog.com/) project.
 
-## [9.5.6] unreleased
+## [10.0.5] unreleased
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### API changes
+
+#### Added
+
+#### Changes
+
+#### Deprecated
+
+#### Removed
+
+## [10.0.4] 2022-11-03
+
+## [10.0.3] 2022-09-14
+
+### API changes
+
+#### Added
+
+- `CommonDBTM::pre_addToDB()` added.
+
+#### Removed
+
+## [10.0.2] 2022-06-28
+
+## [10.0.1] 2022-06-02
+
+### Changed
+- PDF export library has been changed back from `mPDF` to `TCPDF`.
+
+### Removed
+- Gantt feature has been moved into the `gantt` plugin.
+
+### API changes
+
+#### Added
+- `plugin_xxx_activate()` and `plugin_xxx_deactivate` hooks support.
+
+#### Changes
+- `Glpi\Api\Api::initEndpoint()` visibility changed to `protected`.
+
+#### Removed
+- `GlpiGantt` javascript helper and `dhtmlx-gantt` library.
+- `Glpi\Gantt` namespace and all corresponding classes.
+- `Project::getDataToDisplayOnGantt()`
+- `Project::showGantt()`
+- `ProjectTask::getDataToDisplayOnGantt()`
+- `ProjectTask::getDataToDisplayOnGanttForProject()`
+
+## [10.0.0] 2022-04-20
+
+### Added
+- Added UUID to all other itemtypes that are related to Operating Systems (Phones, Printers, etc)
+- Added a button to the General > System configuration tab to copy the system information
+
+### Changed
+- APCu and WinCache are not anymore use by GLPI, use `php bin/console cache:configure` command to configure cache system.
+- PDF export library has been changed from `TCPDF` to `mPDF`.
+- The search engine and search results page now support sorting by multiple fields.
+- The search result lists now refresh/update without triggering a full page reload.
+- Replaced user-facing cases of master/slave usage replaced with main/replica.
+
+### Deprecated
+- Usage of XML-RPC API is deprecated.
+- The database "slaves" property in the status checker (/status.php and glpi:system:status) is deprecated. Use "replicas" instead,
+- The database "master" property in the status checker (/status.php and glpi:system:status) is deprecated. Use "main" instead,
+
+### Removed
+- Autocomplete feature on text fields.
+- Usage of alternative DB connection encoding (`DB::$dbenc` property).
+- Deprecated `scripts/ldap_mass_sync.php` has been removed in favor of `glpi:ldap:synchronize_users` command available using `bin/console`
+- Deprecated `scripts/compute_dictionary.php` has been removed in favor of `glpi:rules:replay_dictionnary_rules` command available using `bin/console`
+- Deprecated `scripts/softcat_mass_compute.php` has been removed in favor of `glpi:rules:process_software_category_rules` command available using `bin/console`
+
+### API changes
+
+#### Added
+- Added `DBMysql::setSavepoint()` to create savepoints within a transaction.
+- Added `CommonDBTM::showForm()` to have a generic showForm for asset (based on a twig template).
+
+#### Changes
+- MySQL warnings are now logged in SQL errors log.
+- `Guzzle` library has been upgraded to version 7.4.
+- `Symfony\Console` library has been upgraded to version 5.4.
+- `CommonGLPI` constructor signature has been declared in an interface (`CommonGLPIInterface`).
+- `DBmysqlIterator` class compliancy with `Iterator` has been fixed (i.e. `DBmysqlIterator::next()` does not return current row anymore).
+- `Domain` class inheritance changed from `CommonDropdown` to `CommonDBTM`.
+- `showForm()` method of all classes inheriting `CommonDBTM` have been changed to match `CommonDBTM::showForm()` signature.
+- Format of `Message-Id` header sent in Tickets notifications changed to match format used by other items.
+- Added `DB::truncate()` to replace raw SQL queries
+- Impact context `positions` field type changed from `TEXT` to `MEDIUMTEXT`
+- Field `date` of KnowbaseItem has been renamed to `date_creation`.
+- Field `date_creation` of KnowbaseItem_Revision has been renamed to `date`.
+- Field `date_creation` of NetworkPortConnectionLog has been renamed to `date`.
+- Field `date` of Notepad has been renamed to `date_creation`.
+- Field `date_mod` of ObjectLock has been renamed to `date`.
+- Field `date` of ProjectTask has been renamed to `date_creation`.
+- Table `glpi_netpoints` has been renamed to `glpi_sockets`.
+- `GLPI_FORCE_EMPTY_SQL_MODE` constant has been removed in favor of `GLPI_DISABLE_ONLY_FULL_GROUP_BY_SQL_MODE` usage.
+- `CommonDBTM::clone()`, `CommonDBTM::prepareInputForClone()` and `CommonDBTM::post_clone()` has been removed. Clonable objects must now use `Glpi\Features\Clonable` trait.
+- `CommonDBTM::notificationqueueonaction` property has been removed in favor of `CommonDBTM::deduplicate_queued_notifications` property.
+- `CommonDropdown::displaySpecificTypeField()` has a new `$options` parameter.
+- `DBMysql::rollBack` supports a `name` parameter for rolling back to a savepoint.
+- `Knowbase::getJstreeCategoryList()` as been replaced by `Knowbase::getTreeCategoryList()`.
+- `NetworkPortInstantiation::showNetpointField()` has been renamed to `NetworkPortInstantiation::showSocketField()`.
+- `NotificationSettingConfig::showForm()` renamed to `NotificationSettingConfig::showConfigForm()`.
+- `RuleMatchedLog::showForm()` renamed to `RuleMatchedLog::showItemForm()`.
+- `Search::addOrderBy()` signature changed.
+- `TicketSatisfaction::showForm()` renamed to `TicketSatisfaction::showSatisfactionForm()`.
+- `Transfer::transferDropdownNetpoint()` has been renamed to `Transfer::transferDropdownSocket()`.
+
+#### Deprecated
+- Usage of `MyISAM` engine in database, in favor of `InnoDB` engine.
+- Usage of `utf8mb3` charset/collation in database in favor of `utf8mb4` charset/collation.
+- Usage of `datetime` field type in database, in favor of `timestamp` field type.
+- Handling of encoded/escaped value in `autoName()`
+- `Netpoint` has been deprecated and replaced by `Socket`
+- `CommonDropdown::displayHeader()`, use `CommonDropdown::displayCentralHeader()` instead and make sure to override properly `first_level_menu`, `second_level_menu` and `third_level_menu`.
+- `GLPI::getLogLevel()`
+- `Html::clean()`
+- `MailCollector::listEncodings()`
+- `RuleImportComputer` class
+- `RuleImportComputerCollection` class
+- `SLM::setTicketCalendar()`
+- `Toolbox::clean_cross_side_scripting_deep()`
+- `Toolbox::endsWith()`
+- `Toolbox::filesizeDirectory()`
+- `Toolbox::getHtmlToDisplay()`
+- `Toolbox::logError()`
+- `Toolbox::logNotice()`
+- `Toolbox::logWarning()`
+- `Toolbox::sodiumDecrypt()`
+- `Toolbox::sodiumEncrypt()`
+- `Toolbox::startsWith()`
+- `Toolbox::unclean_cross_side_scripting_deep()`
+
+#### Removed
+- `jQueryUI` has been removed in favor of `twbs/bootstrap`. This implies removal of following widgets: `$.accordion`, `$.autocomplete`,
+  `$.button`, `$.dialog`, `$.draggable`, `$.droppable`, `$.progressbar`, `$.resizable`, `$.selectable`, `$.sortable`, `$.tabs`, `$.tooltip`.
+- Usage of `$order` parameter in `getAllDataFromTable()` (`DbUtils::getAllDataFromTable()`)
+- Usage of `table` parameter in requests made to `ajax/comments.php`
+- Usage of `GLPI_FORCE_EMPTY_SQL_MODE` constant
+- Usage of `GLPI_PREVER` constant
+- Support of `doc_types`, `helpdesk_types` and `netport_types` keys in `Plugin::registerClass()`
+- `$CFG_GLPI['layout_excluded_pages']` entry
+- `$CFG_GLPI['transfers_id_auto']` entry
+- `$CFG_GLPI['use_ajax_autocompletion']` entry
+- `$DEBUG_AUTOLOAD` global variable
+- `$LOADED_PLUGINS` global variable
+- `$PHP_LOG_HANDLER` global variable
+- `$SQL_LOG_HANDLER` global variable
+- `CommonDBTM::notificationqueueonaction` property
+- `NotificationTarget::html_tags` property
+- `getAllDatasFromTable()`
+- `getRealQueryForTreeItem()`
+- `Ajax::createFixedModalWindow()`
+- `Ajax::createSlidePanel()`
+- `Calendar_Holiday::cloneCalendar()`
+- `Calendar::duplicate()`
+- `CalendarSegment::cloneCalendar()`
+- `Change::getCommonLeftJoin()`
+- `Change::getCommonSelect()`
+- `Change::showAnalysisForm()`
+- `Change::showPlanForm()`
+- `CommonDBTM::clone()`
+- `CommonDBTM::getRawName()`
+- `CommonDBTM::prepareInputForClone()`
+- `CommonDBTM::post_clone()`
+- `CommonDBTM::showDates()`
+- `CommonGLPI::isLayoutExcludedPage()`
+- `CommonGLPI::isLayoutWithMain()`
+- `CommonGLPI::showPrimaryForm()`
+- `CommonITILObject::displayHiddenItemsIdInput()`
+- `CommonITILObject::filterTimeline()`
+- `CommonITILObject::getActorIcon()`
+- `CommonITILObject::getSplittedSubmitButtonHtml()`
+- `CommonITILObject::showActorsPartForm()`
+- `CommonITILObject::showFormHeader()`
+- `CommonITILObject::showGroupsAssociated()`
+- `CommonITILObject::showSupplierAddFormOnCreate()`
+- `CommonITILObject::showSuppliersAssociated()`
+- `CommonITILObject::showTimeline()`
+- `CommonITILObject::showTimelineForm()`
+- `CommonITILObject::showTimelineHeader()`
+- `CommonITILObject::showUsersAssociated()`
+- `Computer_Item::cloneComputer()`
+- `Computer_Item::cloneItem()`
+- `Computer_SoftwareLicense` class
+- `Computer_SoftwareVersion` class
+- `ComputerAntivirus::cloneComputer()`
+- `Contract::cloneItem()`
+- `Contract_Item::cloneItem()`
+- `ContractCost::cloneContract()`
+- `Config::agreeDevMessage()`
+- `Config::checkWriteAccessToDirs()`
+- `Config::displayCheckExtensions()`
+- `Config::getCache()`
+- `DBMysql::affected_rows()`
+- `DBMysql::areTimezonesAvailable()`
+- `DBMysql::data_seek()`
+- `DBMysql::fetch_array()`
+- `DBMysql::fetch_assoc()`
+- `DBMysql::fetch_object()`
+- `DBMysql::fetch_row()`
+- `DBMysql::field_name()`
+- `DBMysql::free_result()`
+- `DBmysql::getTableSchema()`
+- `DBMysql::insert_id()`
+- `DBMysql::isMySQLStrictMode()`
+- `DBMysql::list_fields()`
+- `DBMysql::notTzMigrated()`
+- `DBMysql::num_fields()`
+- `DbUtils::getRealQueryForTreeItem()`
+- `Dropdown::getDropdownNetpoint()`
+- `DCBreadcrumb::showDcBreadcrumb()`
+- `Document_Item::cloneItem()`
+- `Entity::showSelector()`
+- `Glpi\Marketplace\Api\Plugins::getNewPlugins()`
+- `Glpi\Marketplace\Api\Plugins::getPopularPlugins()`
+- `Glpi\Marketplace\Api\Plugins::getTopPlugins()`
+- `Glpi\Marketplace\Api\Plugins::getTrendingPlugins()`
+- `Glpi\Marketplace\Api\Plugins::getUpdatedPlugins()`
+- `Html::autocompletionTextField()`
+- `Html::displayImpersonateBanner()`
+- `Html::displayMainMenu()`
+- `Html::displayMenuAll()`
+- `Html::displayTopMenu()`
+- `Html::fileForRichText()`
+- `Html::generateImageName()`
+- `Html::imageGallery()`
+- `Html::jsDisable()`
+- `Html::jsEnable()`
+- `Html::nl2br_deep()`
+- `Html::replaceImagesByGallery()`
+- `Html::resume_name()`
+- `Html::setSimpleTextContent()`
+- `Html::setRichTextContent()`
+- `Html::showProfileSelecter()`
+- `Html::weblink_extract()`
+- `Infocom::cloneItem()`
+- `Itil_Project::cloneItilProject()`
+- `ITILFollowup::showApprobationForm()`
+- `ITILTemplate::getBeginHiddenFieldText()`
+- `ITILTemplate::getBeginHiddenFieldValue()`
+- `ITILTemplate::getEndHiddenFieldText()`
+- `ITILTemplate::getEndHiddenFieldValue()`
+- `Item_Devices::cloneItem()`
+- `Item_Disk::cloneItem()`
+- `Item_OperatingSystem::cloneItem()`
+- `Item_SoftwareLicense::cloneComputer()`
+- `Item_SoftwareLicense::cloneItem()`
+- `Item_SoftwareVersion::cloneComputer()`
+- `Item_SoftwareVersion::cloneItem()`
+- `Item_SoftwareVersion::showForComputer()`
+- `Item_SoftwareVersion::updateDatasForComputer()`
+- `KnowbaseItem_Item::cloneItem()`
+- `LevelAgreement::showForTicket()`
+- `NetworkPort::cloneItem()`
+- `Notepad::cloneItem()`
+- `NotificationTargetTicket::isAuthorMailingActivatedForHelpdesk()`
+- `Plugin::getGlpiPrever()`
+- `Plugin::isGlpiPrever()`
+- `Plugin::setLoaded()`
+- `Plugin::setUnloaded()`
+- `Plugin::setUnloadedByName()`
+- `Problem::getCommonLeftJoin()`
+- `Problem::getCommonSelect()`
+- `Problem::showAnalysisForm()`
+- `ProjectCost::cloneProject()`
+- `ProjectTeam::cloneProjectTask()`
+- `ProjectTask::cloneProjectTeam()`
+- `Reservation::displayReservationDay()`
+- `Reservation::displayReservationsForAnItem()`
+- `Search::isDeletedSwitch()`
+- `Ticket::getCommonLeftJoin()`
+- `Ticket::getCommonSelect()`
+- `Ticket::getTicketTemplateToUse()`
+- `Ticket::showDocumentAddButton()`
+- `Ticket_Ticket::displayLinkedTicketsTo()`
+- `TicketTemplate::getFromDBWithDatas()`
+- `Toolbox::canUseImapPop()`
+- `Toolbox::checkSELinux()`
+- `Toolbox::commonCheckForUseGLPI()`
+- `Toolbox::convertImageToTag()`
+- `Toolbox::decrypt()`
+- `Toolbox::doubleEncodeEmails()`
+- `Toolbox::encrypt()`
+- `Toolbox::getGlpiSecKey()`
+- `Toolbox::removeHtmlSpecialChars()`
+- `Toolbox::sanitize()`
+- `Toolbox::throwError()`
+- `Toolbox::unclean_html_cross_side_scripting_deep()`
+- `Toolbox::useCache()`
+- `Toolbox::userErrorHandlerDebug()`
+- `Toolbox::userErrorHandlerNormal()`
+- `Transfer::transferComputerSoftwares()`
+- `Update::declareOldItems()`
+- `User::showPersonalInformation()`
+
+## [9.5.7] 2022-01-27
+
+## [9.5.6] 2021-09-15
 
 ### Changed
 
@@ -179,7 +489,7 @@ Requests done using jQuery are automatically including this header, from the mom
 - `ProjectTeam::cloneProjectTask()`
 - `ProjectTask::cloneProjectTeam()`
 - Usage of `GLPIKEY` constant
-- `Toolbox::encrypt()` and `Toolbox::decrypt()` because they use the old encryption aglogithm
+- `Toolbox::encrypt()` and `Toolbox::decrypt()` because they use the old encryption algorithm
 
 #### Removed
 
@@ -629,7 +939,7 @@ new whole window
 - `RuleDictionnarySoftwareCollection::versionExists()` signature has changed
 - `NotificationTemplate::getDataToSend()` signature has changed
 - `QueuedMail` has been renamed to `QueuedNotification`
-- `CommonDBTM::mailqueueonaction()` has been renamed to `CommonDBTM::notificationqueueonaction()`
+- `CommonDBTM::mailqueueonaction` has been renamed to `CommonDBTM::notificationqueueonaction`
 - `NotificationTarget::getSender()` no longer takes any parameters (was not used)
 - `TableExists()` has been moved to `DBMysql::tableExists()`
 - `FieldExists()` has been moved to `DBMysql::fieldExists()`

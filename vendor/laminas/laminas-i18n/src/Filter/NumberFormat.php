@@ -1,14 +1,12 @@
 <?php
 
-/**
- * @see       https://github.com/laminas/laminas-i18n for the canonical source repository
- * @copyright https://github.com/laminas/laminas-i18n/blob/master/COPYRIGHT.md
- * @license   https://github.com/laminas/laminas-i18n/blob/master/LICENSE.md New BSD License
- */
-
 namespace Laminas\I18n\Filter;
 
 use Laminas\Stdlib\ErrorHandler;
+
+use function is_float;
+use function is_int;
+use function is_scalar;
 
 class NumberFormat extends NumberParse
 {
@@ -16,6 +14,7 @@ class NumberFormat extends NumberParse
      * Defined by Laminas\Filter\FilterInterface
      *
      * @see    \Laminas\Filter\FilterInterface::filter()
+     *
      * @param  mixed $value
      * @return mixed
      */
