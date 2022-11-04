@@ -334,7 +334,7 @@ class NotificationEventMailing extends NotificationEventAbstract
                     );
                 }
 
-                $mmail->Body    = GLPIMailer::normalizeBreaks($current->fields['body_html']);
+                $mmail->Body    = GLPIMailer::normalizeBreaks(htmlspecialchars_decode(html_entity_decode($current->fields['body_html'])));
                 $mmail->AltBody = GLPIMailer::normalizeBreaks($current->fields['body_text']);
             }
 
