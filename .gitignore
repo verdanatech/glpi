@@ -2,8 +2,5 @@ plugins/*
 install/*
 files/*
 public/*
-vendor/*
 config/*
 marketplace/*
-index.php
-index.php.bk
