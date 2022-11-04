@@ -1092,7 +1092,7 @@ abstract class CommonITILValidation  extends CommonDBChild {
          'unit'               => '%',
          'min'                => 0,
          'max'                => 100,
-         'step'               => 50
+         'step'               => 1
       ];
 
       $tab[] = [
