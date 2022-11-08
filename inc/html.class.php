@@ -3921,7 +3921,7 @@ JS;
 
                menubar: false,
                toolbar: 'styleselect | bold italic | forecolor backcolor | bullist numlist outdent indent | table link image | code fullscreen',
-
+               contextmenu:false,
                // Content settings
                entity_encoding: 'raw',
                invalid_elements: 'applet,canvas,embed,form,object',
@@ -3972,7 +3972,7 @@ JS;
                      });
                   }
 
-                  editor.on('SaveContent', function (contentEvent) {
+                  editor.on('PostProcess', function (contentEvent) {
                      contentEvent.content = contentEvent.content.replace(/\\r?\\n/g, '');
                   });
                   editor.on('Change', function (e) {
