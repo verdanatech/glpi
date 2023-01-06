@@ -2626,4 +2626,76 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
     {
         return "ti ti-layout-kanban";
     }
+    function post_clone($source, $history)
+    {
+        $logCreateTask = array();
+
+        $objProjetTask = new ProjectTask();
+        $findProjetTask = $objProjetTask->find([
+            'projects_id'      => $source->fields['id'],
+            'projecttasks_id'  => 0
+        ]);
+
+        $findProjetTaskWithAncestors = $objProjetTask->find([
+            'projects_id'      => $source->fields['id'],
+            'NOT'              => [
+                'projecttasks_id' => 0
+            ]
+        ]);
+
+        foreach ($findProjetTask as $currentTask) {
+            $oldID = $currentTask['id'];
+
+            $input = $objProjetTask->prepareInputForClone($currentTask);
+
+            if (isset($input['id'])) {
+                $input['_oldID'] =  $input['id'];
+                unset($input['id']);
+            }
+            unset($input['date_creation']);
+            unset($input['date_mod']);
+
+            if (isset($input['template_name'])) {
+                unset($input['template_name']);
+            }
+            if (isset($input['is_template'])) {
+                unset($input['is_template']);
+            }
+
+            $input['clone']             = true;
+            $input['projects_id'] = $source->fields['newProjectCreate'];
+
+            if ($newID = $objProjetTask->add($input)) {
+                $logCreateTask[$oldID] = $newID;
+            }
+        }
+
+        foreach ($findProjetTaskWithAncestors as $currentTask) {
+
+            $input = $objProjetTask->prepareInputForClone($currentTask);
+
+            if (isset($input['id'])) {
+                $input['_oldID'] =  $input['id'];
+                unset($input['id']);
+            }
+
+            unset($input['date_creation']);
+            unset($input['date_mod']);
+
+            if (isset($input['template_name'])) {
+                unset($input['template_name']);
+            }
+            if (isset($input['is_template'])) {
+                unset($input['is_template']);
+            }
+
+            $input['clone'] = true;
+            $oldID = $currentTask['projecttasks_id'];
+            $input['projecttasks_id'] = $logCreateTask[$oldID];
+            $input['projects_id']     = $source->fields['newProjectCreate'];
+            $objProjetTask->add($input);
+        }
+
+        return true;
+    }
 }

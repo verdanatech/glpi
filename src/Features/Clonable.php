@@ -219,7 +219,12 @@ trait Clonable
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
 
-        if ($newID !== false) {
+        if (get_class($new_item) == 'Project' && $newID !== false) {
+            $this->fields['newProjectCreate'] = $newID;
+            $new_item->post_clone($this, $history);
+        }
+
+        if ($newID !== false  && get_class($new_item) != 'Project') {
             $new_item->cloneRelations($this, $history);
             $new_item->post_clone($this, $history);
         }
@@ -254,10 +259,12 @@ trait Clonable
             }
 
             // Try to find an available name
-            do {
-                $copy_name = $this->computeCloneName($current_name, ++$copy_index);
-            } while (countElementsInTable($table, [$name_field => $copy_name]) > 0);
-
+            $copy_name = $current_name;
+            if (!array_key_exists('projects_id', $input)) {
+                do {
+                    $copy_name = $this->computeCloneName($current_name, ++$copy_index);
+                } while (countElementsInTable($table, [$name_field => $copy_name]) > 0);
+            }
             // Update index cache
             $this->last_clone_index = $copy_index;
         }
