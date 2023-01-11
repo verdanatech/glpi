@@ -428,6 +428,6 @@ class Peripheral extends CommonDBTM
 
     public static function getIcon()
     {
-        return "fab fa-usb";
+        return "fa-fw ti ti-usb";
     }
 }
