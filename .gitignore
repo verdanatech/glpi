@@ -1,10 +1,10 @@
 plugins/*
-install/*
+# install/*
 pics/*
 files/*
 public/*
 vendor/*
 config/*
-marketplace/*
+# marketplace/*
 index.php
 index.php.bk

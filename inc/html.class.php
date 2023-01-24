@@ -31,6 +31,7 @@
  */
 
 use Glpi\Cache\SimpleCache;
+use Glpi\Toolbox\URL;
 use ScssPhp\ScssPhp\Compiler;
 
 if (!defined('GLPI_ROOT')) {
@@ -3913,7 +3914,7 @@ JS;
                skin_url: '{$skin_url}',
                content_css: '{$content_css}',
 
-               min_height: '150px',
+               min_height: 150,
                resize: true,
 
                // disable path indicator in bottom bar
@@ -3921,7 +3922,8 @@ JS;
 
                menubar: false,
                toolbar: 'styleselect | bold italic | forecolor backcolor | bullist numlist outdent indent | table link image | code fullscreen',
-               contextmenu:false,
+               contextmenu: false,
+
                // Content settings
                entity_encoding: 'raw',
                invalid_elements: 'applet,canvas,embed,form,object',
@@ -6973,7 +6975,7 @@ JAVASCRIPT;
       }
 
       echo "<li id='help_link'>".
-           "<a href='".$url_help_link."' target='_blank' title=\"".
+           "<a href='".URL::sanitizeURL($url_help_link)."' target='_blank' title=\"".
                             __s('Help')."\" class='fa fa-question'>".
            "<span class='sr-only'>" . __('Help') . "</span>";
       echo "</a></li>";

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * ---------------------------------------------------------------------
  * GLPI - Gestionnaire Libre de Parc Informatique
@@ -43,9 +42,9 @@ if (!empty($tz)) {
    date_default_timezone_set(@date_default_timezone_get());
 }
 
-include_once(GLPI_ROOT . "/inc/autoload.function.php");
+include_once (GLPI_ROOT . "/inc/autoload.function.php");
 
-(function () {
+(function() {
    // Define GLPI_* constants that can be customized by admin.
    //
    // Use a self-invoking anonymous function to:
@@ -54,8 +53,8 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
 
    $constants = [
       // Constants related to system paths
-      'GLPI_CONFIG_DIR'      => GLPI_ROOT . '/../../config', // Path for configuration files (db, security key, ...)
-      'GLPI_VAR_DIR'         => GLPI_ROOT . '/../../files',  // Path for all files
+      'GLPI_CONFIG_DIR'      => GLPI_ROOT . '/config', // Path for configuration files (db, security key, ...)
+      'GLPI_VAR_DIR'         => GLPI_ROOT . '/files',  // Path for all files
       'GLPI_MARKETPLACE_DIR' => GLPI_ROOT . '/marketplace', // Path for marketplace plugins
       'GLPI_DOC_DIR'         => '{GLPI_VAR_DIR}', // Path for documents storage
       'GLPI_CACHE_DIR'       => '{GLPI_VAR_DIR}/_cache', // Path for cache
@@ -79,11 +78,11 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
       'GLPI_USE_IDOR_CHECK'            => '1',
       'GLPI_IDOR_EXPIRES'              => '7200',
       'GLPI_ALLOW_IFRAME_IN_RICH_TEXT' => false,
-      'GLPI_SERVERSIDE_URL_ALLOWLIST'  => [
-         // allowlist (regex format) of URL that can be fetched from server side (used for RSS feeds and external calendars, among others)
-         // URL will be considered as safe as long as it matches at least one entry of the allowlist
-         '/^(https?|feed):\/\/[^@:]+(\/.*)?$/', // only accept http/https/feed protocols, and reject presence of @ (username) and : (protocol) in host part of URL
-      ],
+       'GLPI_SERVERSIDE_URL_ALLOWLIST'  => [
+          // allowlist (regex format) of URL that can be fetched from server side (used for RSS feeds and external calendars, among others)
+          // URL will be considered as safe as long as it matches at least one entry of the allowlist
+          '/^(https?|feed):\/\/[^@:]+(\/.*)?$/', // only accept http/https/feed protocols, and reject presence of @ (username) and : (protocol) in host part of URL
+       ],
 
       // Constants related to GLPI Project / GLPI Network external services
       'GLPI_TELEMETRY_URI'                => 'https://telemetry.glpi-project.org', // Telemetry project URL
@@ -114,13 +113,13 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
    }
 
    // Define constants values from local configuration file
-   if (file_exists(GLPI_ROOT . '/config/local_define.php') && !defined('TU_USER')) {
-      require_once GLPI_ROOT . '/config/local_define.php';
+   if (file_exists(GLPI_ROOT. '/config/local_define.php') && !defined('TU_USER')) {
+      require_once GLPI_ROOT. '/config/local_define.php';
    }
 
    // Define constants values from downstream distribution file
    if (file_exists(GLPI_ROOT . '/inc/downstream.php')) {
-      include_once(GLPI_ROOT . '/inc/downstream.php');
+      include_once (GLPI_ROOT . '/inc/downstream.php');
    }
 
    // Define constants values from defaults
@@ -162,4 +161,4 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
 
 define('GLPI_I18N_DIR', GLPI_ROOT . "/locales");
 
-include_once(GLPI_ROOT . "/inc/define.php");
+include_once (GLPI_ROOT . "/inc/define.php");
