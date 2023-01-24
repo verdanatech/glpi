@@ -1,5 +1,5 @@
 plugins/*
-install/*
+# install/*
 files/*
 public/*
 config/*
