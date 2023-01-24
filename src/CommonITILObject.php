@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -445,6 +445,7 @@ abstract class CommonITILObject extends CommonDBTM
             'canupdate'               => $canupdate,
             'canpriority'             => $canupdate,
             'canassign'               => $canupdate,
+            'has_pending_reason'      => PendingReason_Item::getForItem($this) !== false,
         ]);
 
         return true;
@@ -1258,6 +1259,24 @@ abstract class CommonITILObject extends CommonDBTM
 
 
     /**
+     * Count active ITIL Objects having given user as observer.
+     *
+     * @param int $users_id
+     *
+     * @return int
+     */
+    final public function countActiveObjectsForObserverUser(int $user_id): int
+    {
+        $linkclass = new $this->userlinkclass();
+        return $this->countActiveObjectsFor(
+            $linkclass,
+            $user_id,
+            CommonITILActor::OBSERVER
+        );
+    }
+
+
+    /**
      * Count active ITIL Objects assigned to a user
      *
      * @since 0.83
@@ -1273,6 +1292,42 @@ abstract class CommonITILObject extends CommonDBTM
             $linkclass,
             $users_id,
             CommonITILActor::ASSIGN
+        );
+    }
+
+
+    /**
+     * Count active ITIL Objects having given group as requester.
+     *
+     * @param int $group_id
+     *
+     * @return int
+     */
+    final public function countActiveObjectsForRequesterGroup(int $group_id): int
+    {
+        $linkclass = new $this->grouplinkclass();
+        return $this->countActiveObjectsFor(
+            $linkclass,
+            $group_id,
+            CommonITILActor::REQUESTER
+        );
+    }
+
+
+    /**
+     * Count active ITIL Objects having given group as observer.
+     *
+     * @param int $group_id
+     *
+     * @return int
+     */
+    final public function countActiveObjectsForObserverGroup(int $group_id): int
+    {
+        $linkclass = new $this->grouplinkclass();
+        return $this->countActiveObjectsFor(
+            $linkclass,
+            $group_id,
+            CommonITILActor::OBSERVER
         );
     }
 
@@ -3914,6 +3969,8 @@ abstract class CommonITILObject extends CommonDBTM
             ]
         ];
 
+        $tab = array_merge($tab, Project::rawSearchOptionsToAdd(static::class));
+
         return $tab;
     }
 
@@ -4292,7 +4349,7 @@ abstract class CommonITILObject extends CommonDBTM
             case 'time_to_own':
                 return 'IF(' . $DB->quoteName($table . '.' . $type) . ' IS NOT NULL
             AND ' . $DB->quoteName($table . '.status') . ' <> ' . self::WAITING . '
-            AND ((' . $DB->quoteName($table . '.takeintoaccountdate') . ' IS NOT NULL AND 
+            AND ((' . $DB->quoteName($table . '.takeintoaccountdate') . ' IS NOT NULL AND
                  ' . $DB->quoteName($table . '.takeintoaccountdate') . ' > ' . $DB->quoteName($table . '.' . $type) . ')
                  OR (' . $DB->quoteName($table . '.takeintoaccountdate') . ' IS NULL AND
                  ' . $DB->quoteName($table . '.takeintoaccount_delay_stat') . '
@@ -6443,7 +6500,8 @@ abstract class CommonITILObject extends CommonDBTM
                     }
                 }
                 break;
-            case 'Solution':
+            case 'Solution': // FIXME Remove it in GLPI 10.1, it may be still used in some edge cases in GLPI 10.0
+            case ITILSolution::class:
                 $pos = self::TIMELINE_RIGHT;
                 break;
         }
@@ -6491,6 +6549,7 @@ abstract class CommonITILObject extends CommonDBTM
             'class'         => 'ITILFollowup',
             'icon'          => 'ti ti-message-circle',
             'label'         => _x('button', 'Answer'),
+            'short_label'   => _x('button', 'Answer'),
             'template'      => 'components/itilobject/timeline/form_followup.html.twig',
             'item'          => $fup,
             'hide_in_menu'  => !$canadd_fup
@@ -6500,6 +6559,7 @@ abstract class CommonITILObject extends CommonDBTM
             'class'         => $task_class,
             'icon'          => 'ti ti-checkbox',
             'label'         => _x('button', 'Create a task'),
+            'short_label'   => _x('button', 'Task'),
             'template'      => 'components/itilobject/timeline/form_task.html.twig',
             'item'          => $task,
             'hide_in_menu'  => !$canadd_task
@@ -6509,6 +6569,7 @@ abstract class CommonITILObject extends CommonDBTM
             'class'         => 'ITILSolution',
             'icon'          => 'ti ti-check',
             'label'         => _x('button', 'Add a solution'),
+            'short_label'   => _x('button', 'Solution'),
             'template'      => 'components/itilobject/timeline/form_solution.html.twig',
             'item'          => new ITILSolution(),
             'hide_in_menu'  => !$canadd_solution
@@ -6518,6 +6579,7 @@ abstract class CommonITILObject extends CommonDBTM
             'class'         => Document_Item::class,
             'icon'          => Document_Item::getIcon(),
             'label'         => _x('button', 'Add a document'),
+            'short_label'   => _x('button', 'Document'),
             'template'      => 'components/itilobject/timeline/form_document_item.html.twig',
             'item'          => new Document_Item(),
             'hide_in_menu'  => !$canadd_document
@@ -6528,6 +6590,7 @@ abstract class CommonITILObject extends CommonDBTM
                 'class'         => $validation::getType(),
                 'icon'          => 'ti ti-thumb-up',
                 'label'         => _x('button', 'Ask for validation'),
+                'short_label'   => _x('button', 'Validation'),
                 'template'      => 'components/itilobject/timeline/form_validation.html.twig',
                 'item'          => $validation,
                 'hide_in_menu'  => !$canadd_validation
@@ -6707,7 +6770,7 @@ abstract class CommonITILObject extends CommonDBTM
         ]);
         foreach ($solution_items as $solution_item) {
             $timeline["ITILSolution_" . $solution_item['id'] ] = [
-                'type'     => 'Solution',
+                'type'     => ITILSolution::class,
                 'itiltype' => 'Solution',
                 'item'     => [
                     'id'                 => $solution_item['id'],
@@ -7724,11 +7787,15 @@ abstract class CommonITILObject extends CommonDBTM
         }
 
         $solution = new ITILSolution();
-        $solution->add([
+        $input = [
             '_solutiontemplates_id' => $this->input['_solutiontemplates_id'],
-            'itemtype'              => static::getType(),
-            'items_id'              => $this->fields['id'],
-        ]);
+            'itemtype'              => $this->getType(),
+            'items_id'              => $this->getID(),
+        ];
+        if (isset($this->input['_do_not_compute_status'])) {
+            $input['_do_not_compute_status'] = $this->input['_do_not_compute_status'];
+        }
+        $solution->add($input);
     }
 
     /**
@@ -8499,6 +8566,7 @@ abstract class CommonITILObject extends CommonDBTM
             $data = [
                 'id'      => $temp_item->fields['id'],
                 'name'    => $temp_item->fields['name'],
+                'category' => $temp_item->fields['itilcategories_id'],
                 'content' => $temp_item->fields['content'],
                 'status'  => $temp_item->fields['status'],
             ];
@@ -8708,6 +8776,7 @@ abstract class CommonITILObject extends CommonDBTM
             } else {
                 $card['_metadata']['content'] = '';
             }
+            $card['_metadata']['category'] = $item['category'];
             $card['_metadata'] = Plugin::doHookFunction(Hooks::KANBAN_ITEM_METADATA, [
                 'itemtype' => $itemtype,
                 'items_id' => $item['id'],
@@ -8716,17 +8785,69 @@ abstract class CommonITILObject extends CommonDBTM
             $columns[$item[$column_field]]['items'][] = $card;
         }
 
-       // If no specific columns were asked for, drop empty columns.
-       // If specific columns were asked for, such as when loading a user's Kanban view, we must preserve them.
-       // We always preserve the 'No Status' column.
+        $category_ids = [];
         foreach ($columns as $column_id => $column) {
             if (
                 $column_id !== 0 && !in_array($column_id, $column_ids) &&
                 (!isset($column['items']) || !count($column['items']))
             ) {
+                // If no specific columns were asked for, drop empty columns.
+                // If specific columns were asked for, such as when loading a user's Kanban view, we must preserve them.
+                // We always preserve the 'No Status' column.
                 unset($columns[$column_id]);
+            } else if (isset($column['items'])) {
+                foreach ($column['items'] as $item) {
+                    if (isset($item['_metadata']['category'])) {
+                        $category_ids[] = $item['_metadata']['category'];
+                    }
+                }
             }
         }
+        $category_ids = array_filter(array_unique($category_ids), static function ($id) {
+            return $id > 0;
+        });
+
+        $categories = [];
+        if (!empty($category_ids)) {
+            global $DB;
+
+            $cat_table = ITILCategory::getTable();
+            $trans_table = DropdownTranslation::getTable();
+            $name_select = new QueryExpression('IFNULL(' . $DB::quoteName("$trans_table.value") . ',' . $DB::quoteName("$cat_table.name") . ') AS ' . $DB::quoteName('name'));
+            $it = $DB->request([
+                'SELECT' => ["$cat_table.id", $name_select],
+                'FROM' => $cat_table,
+                'LEFT JOIN' => [
+                    $trans_table => [
+                        'ON' => [
+                            $trans_table => 'items_id',
+                            $cat_table => 'id',
+                            [
+                                'AND' => [
+                                    $trans_table . '.itemtype' => ITILCategory::getType(),
+                                    $trans_table . '.field' => 'name',
+                                    $trans_table . '.language' => $_SESSION['glpilanguage']
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'WHERE' => ["$cat_table.id" => $category_ids]
+            ]);
+            foreach ($it as $row) {
+                $categories[$row['id']] = $row['name'];
+            }
+            // Add uncategorized category
+            $categories[0] = '';
+        }
+
+        // Replace category ids with category names in items metadata
+        foreach ($columns as &$column) {
+            foreach ($column['items'] as &$item) {
+                $item['_metadata']['category'] = $categories[$item['_metadata']['category']] ?? '';
+            }
+        }
+
         return $columns;
     }
 
@@ -8799,6 +8920,10 @@ abstract class CommonITILObject extends CommonDBTM
                 'type' => [
                     'description' => _x('filters', 'The type of the item'),
                     'supported_prefixes' => ['!']
+                ],
+                'category' => [
+                    'description' => _x('filters', 'The category of the item'),
+                    'supported_prefixes' => ['!', '#']
                 ],
                 'content' => [
                     'description' => _x('filters', 'The content of the item'),
@@ -9135,23 +9260,20 @@ abstract class CommonITILObject extends CommonDBTM
                     }
 
                     if ($actor_itemtype !== Group::class) {
-                        if (
-                            !array_key_exists($notif_key, $input)
-                            || !is_array($input[$notif_key])
-                            || (
-                                !array_key_exists('use_notification', $input[$notif_key])
-                                && !array_key_exists('alternative_email', $input[$notif_key])
-                            )
-                        ) {
+                        if (!array_key_exists($notif_key, $input) || !is_array($input[$notif_key])) {
                             $input[$notif_key] = [
                                 'use_notification'  => [],
                                 'alternative_email' => [],
                             ];
-                        } else {
-                            foreach (['use_notification', 'alternative_email'] as $param_key) {
-                                if (!is_array($input[$notif_key][$param_key])) {
-                                    $input[$notif_key][$param_key] = !empty($input[$notif_key][$param_key]) ? [$input[$notif_key][$param_key]] : [];
-                                }
+                        }
+                        foreach (['use_notification', 'alternative_email'] as $param_key) {
+                            if (
+                                !array_key_exists($param_key, $input[$notif_key])
+                                || $input[$notif_key][$param_key] === ''
+                            ) {
+                                $input[$notif_key][$param_key] = [];
+                            } elseif (!is_array($input[$notif_key][$param_key])) {
+                                $input[$notif_key][$param_key] = [$input[$notif_key][$param_key]];
                             }
                         }
                     }
@@ -9217,6 +9339,12 @@ abstract class CommonITILObject extends CommonDBTM
             unset($input['_actors']);
         }
 
+        return $input;
+    }
+
+    public function prepareInputForClone($input)
+    {
+        unset($input['actiontime']);
         return $input;
     }
 }

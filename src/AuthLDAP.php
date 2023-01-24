@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1912,10 +1912,15 @@ class AuthLDAP extends CommonDBTM
                              continue;
                         }
 
-                        $user_infos[$uid]["timestamp"] = self::ldapStamp2UnixStamp(
-                            $info[$ligne]['modifytimestamp'][0],
-                            $config_ldap->fields['time_offset']
-                        );
+                        if (isset($info[$ligne]['modifytimestamp'])) {
+                            $user_infos[$uid]["timestamp"] = self::ldapStamp2UnixStamp(
+                                $info[$ligne]['modifytimestamp'][0],
+                                $config_ldap->fields['time_offset']
+                            );
+                        } else {
+                            $user_infos[$uid]["timestamp"] = '';
+                        }
+
                         $user_infos[$uid]["user_dn"] = $info[$ligne]['dn'];
                         $user_infos[$uid][$field_for_sync] = $uid;
                         if ($config_ldap->isSyncFieldEnabled()) {
@@ -1927,10 +1932,14 @@ class AuthLDAP extends CommonDBTM
                              $ldap_users[$uid] = $uid;
                         } else {
                            //If ldap synchronisation
-                            $ldap_users[$uid] = self::ldapStamp2UnixStamp(
-                                $info[$ligne]['modifytimestamp'][0],
-                                $config_ldap->fields['time_offset']
-                            );
+                            if (isset($info[$ligne]['modifytimestamp'])) {
+                                $ldap_users[$uid] = self::ldapStamp2UnixStamp(
+                                    $info[$ligne]['modifytimestamp'][0],
+                                    $config_ldap->fields['time_offset']
+                                );
+                            } else {
+                                $ldap_users[$uid] = '';
+                            }
                             $user_infos[$uid]["name"] = $info[$ligne][$login_field][0];
                         }
                     }

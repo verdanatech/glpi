@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @copyright 2010-2022 by the FusionInventory Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
@@ -89,6 +89,7 @@ class VirtualMachine extends InventoryAsset
                     $val->$dest = $val->$origin;
                 }
             }
+            $val->is_deleted = 0;
 
             if (!property_exists($vm_val, 'autoupdatesystems_id')) {
                 $vm_val->autoupdatesystems_id = AutoUpdateSystem::NATIVE_INVENTORY;
@@ -213,6 +214,7 @@ class VirtualMachine extends InventoryAsset
     {
         $value = $this->data;
         $computerVirtualmachine = new ComputerVirtualMachine();
+        $computer = new Computer();
 
         $db_vms = $this->getExisting();
 
@@ -247,6 +249,17 @@ class VirtualMachine extends InventoryAsset
         if ((!$this->main_asset || !$this->main_asset->isPartial()) && count($db_vms) != 0) {
            // Delete virtual machines links in DB
             foreach ($db_vms as $idtmp => $data) {
+                if (isset($data['uuid']) && $data['uuid'] != '') {
+                    $vm = new \stdClass();
+                    $vm->uuid = $data['uuid'];
+                    $computers_vm_id = $this->getExistingVMAsComputer($vm);
+                    if ($computers_vm_id) {
+                        $computer->getFromDB($computers_vm_id);
+                        if ($computer->fields['is_dynamic'] == 1) {
+                            $computer->delete(['id' => $computers_vm_id], false);
+                        }
+                    }
+                }
                 $computerVirtualmachine->delete(['id' => $idtmp], true);
             }
         }
@@ -281,6 +294,7 @@ class VirtualMachine extends InventoryAsset
             }
             // Define location of physical computer (host)
             $vm->locations_id = $this->item->fields['locations_id'];
+            $vm->autoupdatesystems_id = $this->item->fields['autoupdatesystems_id'];
             $vm->is_dynamic = 1;
 
             if ($this->conf->vm_type) {
@@ -288,20 +302,7 @@ class VirtualMachine extends InventoryAsset
             }
 
             if (property_exists($vm, 'uuid') && $vm->uuid != '') {
-                $iterator = $DB->request([
-                    'SELECT' => 'id',
-                    'FROM'   => 'glpi_computers',
-                    'WHERE'  => [
-                        'RAW' => [
-                            'LOWER(uuid)'  => ComputerVirtualMachine::getUUIDRestrictCriteria($vm->uuid)
-                        ]
-                    ],
-                    'LIMIT'  => 1
-                ]);
-                $computers_vm_id = 0;
-                foreach ($iterator as $data) {
-                     $computers_vm_id = $data['id'];
-                }
+                $computers_vm_id = $this->getExistingVMAsComputer($vm);
                 if ($computers_vm_id == 0) {
                     //call rules on current collected data to find item
                     //a callback on rulepassed() will be done if one is found.
@@ -356,6 +357,29 @@ class VirtualMachine extends InventoryAsset
                 }
             }
         }
+    }
+
+    public function getExistingVMAsComputer(\stdClass $vm): int
+    {
+        global $DB;
+
+        $computers_vm_id = 0;
+        $iterator = $DB->request([
+            'SELECT' => 'id',
+            'FROM'   => 'glpi_computers',
+            'WHERE'  => [
+                'RAW' => [
+                    'LOWER(uuid)'  => ComputerVirtualMachine::getUUIDRestrictCriteria($vm->uuid)
+                ]
+            ],
+            'LIMIT'  => 1
+        ]);
+
+        foreach ($iterator as $data) {
+            $computers_vm_id = $data['id'];
+        }
+
+        return $computers_vm_id;
     }
 
     public function checkConf(Conf $conf): bool

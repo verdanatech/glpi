@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -132,7 +132,7 @@ if (isset($_REQUEST['forcetab'])) {
 }
 // Manage tabs
 if (isset($_REQUEST['glpi_tab']) && isset($_REQUEST['itemtype'])) {
-    Session::setActiveTab($_REQUEST['itemtype'], $_REQUEST['glpi_tab']);
+    Session::setActiveTab($_REQUEST['itemtype'], Sanitizer::unsanitize($_REQUEST['glpi_tab']));
 }
 // Override list-limit if choosen
 if (isset($_REQUEST['glpilist_limit'])) {

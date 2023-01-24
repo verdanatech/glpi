@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -78,6 +78,11 @@ class NotificationTargetController extends NotificationTarget
             ];
         }
 
+        $this->data['##marketplace.url##'] = $this->formatURL(
+            $options['additionnaloption']['usertype'],
+            '/front/marketplace.php'
+        );
+
         $this->getTags();
         foreach ($this->tag_descriptions[NotificationTarget::TAG_LANGUAGE] as $tag => $values) {
             if (!isset($this->data[$tag])) {
@@ -122,7 +127,8 @@ class NotificationTargetController extends NotificationTarget
             'plugin.name'        => __('Plugin name'),
             'plugin.key'         => __('Plugin directory'),
             'plugin.version'     => __('Plugin new version number'),
-            'plugin.old_version' => __('Plugin old version number')
+            'plugin.old_version' => __('Plugin old version number'),
+            'marketplace.url'    => __('URL of GLPI marketplace'),
         ];
 
         foreach ($tags as $tag => $label) {

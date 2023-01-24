@@ -5,7 +5,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -706,7 +706,7 @@ function _eltRealSize(_elt) {
     return _s;
 }
 
-var initMap = function(parent_elt, map_id, height, initial_view = {position: [43.6112422, 3.8767337], zoom: 6}) {
+var initMap = function(parent_elt, map_id, height, initial_view = {position: [0, 0], zoom: 1}) {
     // default parameters
     map_id = (typeof map_id !== 'undefined') ? map_id : 'map';
     height = (typeof height !== 'undefined') ? height : '200px';
@@ -1472,3 +1472,91 @@ $(document.body).on('shown.bs.tab', 'a[data-bs-toggle="tab"]', (e) => {
         }
     }
 });
+
+/**
+ * Converts a disclosable password field to a normal text field
+ * @param {string} item The ID of the field to be shown
+ */
+function showDisclosablePasswordField(item) {
+    $("#" + item).prop("type", "text");
+}
+
+/**
+ * Converts a normal text field to a password field
+ * @param {string} item The ID of the field to be hidden
+ */
+function hideDisclosablePasswordField(item) {
+    $("#" + item).prop("type", "password");
+}
+
+/**
+ * Copies the password from a disclosable password field to the clipboard
+ * @param {string} item The ID of the field to be copied
+ */
+function copyDisclosablePasswordFieldToClipboard(item) {
+    showDisclosablePasswordField(item);
+    $("#" + item).select();
+    try {
+        document.execCommand("copy");
+    } catch (e) {
+        alert("Copy to clipboard failed'");
+    }
+    hideDisclosablePasswordField(item);
+}
+
+/**
+ * Convert an HTML table with static content to a basic sortable table
+ * @param element_id The ID of the table to be converted
+ */
+function initSortableTable(element_id) {
+    const element = $(`#${element_id}`);
+    const sort_table = (column_index) => {
+        const current_sort = element.data('sort');
+        element.data('sort', column_index);
+        const current_order = element.data('order');
+        const new_order = current_sort === column_index && current_order === 'asc' ? 'desc' : 'asc';
+        element.data('order', new_order);
+        const sortable_header = element.find('thead').first();
+        const col = sortable_header.find('th').eq(column_index);
+        // Remove all sort icon classes
+        sortable_header.find('th i[class*="fa-sort"]').removeClass('fa-sort fa-sort-asc fa-sort-desc');
+
+        const sort_icon = col.find('i');
+        if (sort_icon.length === 0) {
+            // Add sort icon
+            col.eq(0).append(`<i class="fas fa-sort-${new_order}"></i>`);
+        } else {
+            sort_icon.addClass(new_order === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc');
+        }
+
+        const rows = element.find('tbody tr');
+        const sorted_rows = rows.sort((a, b) => {
+            let a_value = $(a).find('td').eq(column_index).text();
+            let b_value = $(b).find('td').eq(column_index).text();
+            // if the values are numberic, cast them to numbers to sort them correctly
+            if (!isNaN(a_value) && !isNaN(b_value)) {
+                a_value = Number(a_value);
+                b_value = Number(b_value);
+            }
+
+            if (a_value === b_value) {
+                return 0;
+            }
+            if (new_order === 'asc') {
+                return a_value < b_value ? -1 : 1;
+            }
+            return a_value > b_value ? -1 : 1;
+        });
+        element.find('tbody').html(sorted_rows);
+    };
+
+    // Make all th in thead appear clickable and bold
+    element.find('thead th').attr('role', 'button');
+    element.find('thead th').addClass('fw-bold');
+
+    element.find('thead th').each((index, header) => {
+        $(header).on('click', () => {
+            sort_table(index);
+        });
+    });
+}

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -157,6 +157,33 @@ abstract class AbstractRequest
         } else {
             //defaults to XML; whose validity is checked later.
             $this->setMode(self::XML_MODE);
+        }
+    }
+
+    /**
+     * Display module name
+     *
+     * @param string $internalModule
+     * @return string readable method name
+     */
+    public static function getModuleName(?string $internalModule): string
+    {
+        switch ($internalModule) {
+            case self::INVENT_QUERY:
+            case self::INVENT_ACTION:
+                return __("Inventory");
+                break;
+            case self::OLD_SNMP_QUERY:
+            case self::SNMP_QUERY:
+            case self::NETINV_ACTION:
+                return __("Network inventory (SNMP)");
+                break;
+            case self::NETDISCOVERY_ACTION:
+                return __("Network discovery (SNMP)");
+                break;
+            default:
+                return $internalModule ?? '';
+                break;
         }
     }
 
@@ -667,5 +694,25 @@ abstract class AbstractRequest
     public function getDeviceID(): string
     {
         return $this->deviceid;
+    }
+
+    /**
+     * Handle GLPI framework messages
+     *
+     * @return void
+     */
+    public function handleMessages(): void
+    {
+        if (count($_SESSION['MESSAGE_AFTER_REDIRECT'])) {
+            $messages = $_SESSION['MESSAGE_AFTER_REDIRECT'];
+            $_SESSION['MESSAGE_AFTER_REDIRECT'] = [];
+            foreach ($messages as $code => $all_messages) {
+                if ($code != INFO) {
+                    foreach ($all_messages as $message) {
+                        $this->addError($message, 500);
+                    }
+                }
+            }
+        }
     }
 }

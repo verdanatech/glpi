@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -69,11 +69,13 @@
          };
          this_obj.html('<i class="fas fa-3x fa-spinner fa-spin ms-auto"></i>')
             .load('{{ path('/ajax/central.php') }}', params, function(response, status, xhr) {
+               const parent = this_obj.closest('.grid-item').parent();
+
                if (status === 'error' || !response) {
-                   window.msnry.remove(this_obj.closest('.grid-item'));
+                  window['msnry_' + parent.prop('id')].remove(this_obj.closest('.grid-item'));
                }
 
-               window.msnry.layout();
+               window['msnry_' + parent.prop('id')].layout();
             });
       });
    });

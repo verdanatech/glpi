@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -32,6 +32,8 @@
  *
  * ---------------------------------------------------------------------
  */
+
+use Glpi\Application\View\TemplateRenderer;
 
 /**
  * Change_Ticket Class
@@ -267,29 +269,20 @@ class Change_Ticket extends CommonDBRelation
         }
 
         if ($canedit) {
-            echo "<div class='firstbloc'>";
-            echo "<form name='changeticket_form$rand' id='changeticket_form$rand' method='post'
-                action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
-
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_2'><th colspan='2'>" . __('Add a ticket') . "</th></tr>";
-
-            echo "<tr class='tab_bg_2'><td>";
-            echo "<input type='hidden' name='changes_id' value='$ID'>";
-            Ticket::dropdown([
-                'used'        => $used,
-                'entity'      => $change->getEntityID(),
-                'entity_sons' => $change->isRecursive(),
-                'displaywith' => ['id'],
-                'condition'   => Ticket::getOpenCriteria()
+            echo TemplateRenderer::getInstance()->render('components/form/link_existing_or_new.html.twig', [
+                'rand' => $rand,
+                'link_itemtype' => __CLASS__,
+                'source_itemtype' => Change::class,
+                'source_items_id' => $ID,
+                'target_itemtype' => Ticket::class,
+                'dropdown_options' => [
+                    'entity'      => $change->getEntityID(),
+                    'entity_sons' => $change->isRecursive(),
+                    'used'        => $used,
+                    'displaywith' => ['id']
+                ],
+                'create_link' => false
             ]);
-            echo "</td><td class='center'>";
-            echo "<input type='submit' name='add' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
-            echo "</td></tr>";
-
-            echo "</table>";
-            Html::closeForm();
-            echo "</div>";
         }
 
         echo "<div class='spaced'>";
@@ -402,31 +395,20 @@ class Change_Ticket extends CommonDBRelation
         }
 
         if ($canedit) {
-            echo "<div class='firstbloc'>";
-            echo "<form name='changeticket_form$rand' id='changeticket_form$rand' method='post'
-               action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
-
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_2'><th colspan='3'>" . __('Add a change') . "</th></tr>";
-            echo "<tr class='tab_bg_2'><td>";
-            echo "<input type='hidden' name='tickets_id' value='$ID'>";
-            Change::dropdown([
-                'used'      => $used,
-                'entity'    => $ticket->getEntityID(),
-                'displaywith' => ['id'],
-                'condition' => Change::getOpenCriteria(),
+            echo TemplateRenderer::getInstance()->render('components/form/link_existing_or_new.html.twig', [
+                'rand' => $rand,
+                'link_itemtype' => __CLASS__,
+                'source_itemtype' => Ticket::class,
+                'source_items_id' => $ID,
+                'target_itemtype' => Change::class,
+                'dropdown_options' => [
+                    'entity'      => $ticket->getEntityID(),
+                    'entity_sons' => $ticket->isRecursive(),
+                    'used'        => $used,
+                    'displaywith' => ['id']
+                ],
+                'create_link' => Session::haveRight(Change::$rightname, CREATE)
             ]);
-            echo "</td><td class='center'>";
-            echo "<input type='submit' name='add' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
-            echo "</td><td>";
-            if (Session::haveRight('change', CREATE)) {
-                echo "<a href='" . Toolbox::getItemTypeFormURL('Change') . "?tickets_id=$ID'>";
-                echo __('Create a change from this ticket');
-                echo "</a>";
-            }
-            echo "</td></tr></table>";
-            Html::closeForm();
-            echo "</div>";
         }
 
         echo "<div class='spaced'>";

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -37,9 +37,9 @@
 // Need to be the very fist step before any include
 if (
     version_compare(PHP_VERSION, '7.4.0', '<') ||
-    version_compare(PHP_VERSION, '8.2.0', '>=')
+    version_compare(PHP_VERSION, '8.3.0', '>=')
 ) {
-    die('PHP 7.4.0 - 8.2.0 (exclusive) required');
+    die('PHP 7.4.0 - 8.3.0 (exclusive) required');
 }
 
 use Glpi\Application\View\TemplateRenderer;

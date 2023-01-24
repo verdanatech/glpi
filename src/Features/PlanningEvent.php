@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1039,7 +1039,7 @@ trait PlanningEvent
                 'table'         => static::getTable(),
                 'field'         => 'users_id_guests',
                 'name'          => __('Guests'),
-                'datatype'      => 'text',
+                'datatype'      => 'specific',
             ];
         }
 
@@ -1075,5 +1075,29 @@ trait PlanningEvent
         }
 
         return $tab;
+    }
+
+    public static function getSpecificValueToDisplay($field, $values, array $options = [])
+    {
+
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        switch ($field) {
+            case 'users_id_guests':
+                $users = [];
+                if (empty($values[$field])) {
+                    return '';
+                }
+                foreach (json_decode($values[$field], true) as $user_id) {
+                    $users[] = sprintf(
+                        '<a href="%s">%s</a>',
+                        User::getFormURLWithID($user_id),
+                        getUserName($user_id, 1)
+                    );
+                }
+                return implode(', ', $users);
+        }
+        return parent::getSpecificValueToDisplay($field, $values, $options);
     }
 }

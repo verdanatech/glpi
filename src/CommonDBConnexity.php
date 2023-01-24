@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -313,7 +313,11 @@ abstract class CommonDBConnexity extends CommonDBTM
                 || !$this->can($this->getID(), PURGE)
             ) {
                 Session::addMessageAfterRedirect(
-                    __('Cannot update item: not enough right on the parent(s) item(s)'),
+                    sprintf(
+                        __('Cannot update item %s #%s: not enough right on the parent(s) item(s)'),
+                        $new_item->getTypeName(),
+                        $new_item->getID()
+                    ),
                     INFO,
                     true
                 );

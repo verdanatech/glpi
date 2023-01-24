@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -161,6 +161,7 @@ class Search
 
         if (
             $itemtype == "Ticket"
+            && Session::getCurrentInterface() === 'central'
             && $default = Glpi\Dashboard\Grid::getDefaultDashboardForMenu('mini_ticket', true)
         ) {
             $dashboard = new Glpi\Dashboard\Grid($default, 33, 2);
@@ -554,7 +555,7 @@ class Search
                 }
             }
         }
-        if (!$CFG_GLPI['allow_search_view']) {
+        if (!$CFG_GLPI['allow_search_view'] && !array_key_exists('globalsearch', $p)) {
             foreach ($p['criteria'] as $val) {
                 if (isset($val['field']) && $val['field'] == 'view') {
                     Html::displayRightError();
@@ -691,6 +692,7 @@ class Search
 
         $data['sql']['count']  = [];
         $data['sql']['search'] = '';
+        $data['sql']['raw']    = [];
 
         $searchopt        = self::getOptions($data['itemtype']);
 
@@ -1105,7 +1107,7 @@ class Search
                         $tmpquery = str_replace("`glpi_softwares`.`serial`", "''", $tmpquery);
                         $tmpquery = str_replace("`glpi_softwares`.`otherserial`", "''", $tmpquery);
                     }
-                     $QUERY .= $tmpquery;
+                    $QUERY .= $tmpquery;
                 }
             }
             if (empty($QUERY)) {
@@ -1115,6 +1117,15 @@ class Search
             $QUERY .= str_replace($CFG_GLPI["union_search_type"][$data['itemtype']] . ".", "", $ORDER) .
                    $LIMIT;
         } else {
+            $data['sql']['raw'] = [
+                'SELECT' => $SELECT,
+                'FROM' => $FROM,
+                'WHERE' => $WHERE,
+                'GROUPBY' => $GROUPBY,
+                'HAVING' => $HAVING,
+                'ORDER' => $ORDER,
+                'LIMIT' => $LIMIT
+            ];
             $QUERY = $SELECT .
                   $FROM .
                   $WHERE .
@@ -2518,6 +2529,7 @@ class Search
         $p['mainform']     = true;
         $p['prefix_crit']  = '';
         $p['addhidden']    = [];
+        $p['showaction']   = true;
         $p['actionname']   = 'search';
         $p['actionvalue']  = _sx('button', 'Search');
 
@@ -2530,7 +2542,7 @@ class Search
         $rand_criteria = mt_rand();
         $main_block_class = '';
         $card_class = 'search-form card card-sm mb-4';
-        if ($p['mainform']) {
+        if ($p['mainform'] && $p['showaction']) {
             echo "<form name='searchform$normalized_itemtype' class='search-form-container' method='get' action='" . $p['target'] . "'>";
         } else {
             $main_block_class = "sub_criteria";
@@ -2592,11 +2604,13 @@ class Search
         $json_p = json_encode($p);
 
         if ($p['mainform']) {
-           // Display submit button
-            echo "<button class='btn btn-sm btn-primary me-1' type='submit' name='" . $p['actionname'] . "'>
-               <i class='ti ti-list-search'></i>
-               <span class='d-none d-sm-block'>" . $p['actionvalue'] . "</span>
-            </button>";
+            if ($p['showaction']) {
+                // Display submit button
+                echo "<button class='btn btn-sm btn-primary me-1' type='submit' name='" . $p['actionname'] . "'>
+                <i class='ti ti-list-search'></i>
+                <span class='d-none d-sm-block'>" . $p['actionvalue'] . "</span>
+                </button>";
+            }
             if ($p['showbookmark'] || $p['showreset']) {
                 if ($p['showbookmark']) {
                     SavedSearch::showSaveButton(
@@ -2716,7 +2730,7 @@ JAVASCRIPT;
 
         echo "</div>"; // #searchcriteria
         echo "</div>"; // .card
-        if ($p['mainform']) {
+        if ($p['mainform'] && $p['showaction']) {
             Html::closeForm();
         }
     }
@@ -4512,6 +4526,10 @@ JAVASCRIPT;
 
                 break;
 
+            case 'PlanningExternalEvent':
+                $condition .= PlanningExternalEvent::addVisibilityRestrict();
+                break;
+
             default:
                // Plugin can override core definition for its type
                 if ($plug = isPluginItemType($itemtype)) {
@@ -4685,7 +4703,7 @@ JAVASCRIPT;
            // case "glpi_users_validation.name" :
 
             case "glpi_users.name":
-                if ($val == 'myself') {
+                if ($val === 'myself') {
                     switch ($searchtype) {
                         case 'equals':
                             return " $link (`$table`.`id` =  " . $DB->quoteValue($_SESSION['glpiID']) . ") ";
@@ -7189,7 +7207,12 @@ JAVASCRIPT;
                             }
                             $count_display++;
 
-                            $plaintext = RichText::getTextFromHtml($data[$ID][$k]['name'], false, true, $html_output);
+                            $plaintext = '';
+                            if (isset($so['htmltext']) && $so['htmltext']) {
+                                $plaintext = RichText::getTextFromHtml($data[$ID][$k]['name'], false, true, $html_output);
+                            } else {
+                                $plaintext = nl2br($data[$ID][$k]['name']);
+                            }
 
                             if ($html_output && (Toolbox::strlen($plaintext) > $CFG_GLPI['cut'])) {
                                 $rand = mt_rand();
@@ -8342,7 +8365,7 @@ HTML;
                    // Use a regex to keep only the link, there may be other content
                    // after that we don't need (script, tooltips, ...)
                     if (preg_match('/<a.*<\/a>/', $value, $matches)) {
-                        $out = html_entity_decode(strip_tags($matches[0]));
+                        $out = Sanitizer::decodeHtmlSpecialChars(strip_tags($matches[0]));
                     }
                 }
                 break;

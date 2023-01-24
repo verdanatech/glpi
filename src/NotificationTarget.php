@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -133,6 +133,8 @@ class NotificationTarget extends CommonDBChild
         unset($this->data);
         Plugin::doHook(Hooks::ITEM_ADD_TARGETS, $this);
         asort($this->notification_targets);
+
+        $this->registerGlobalTags();
     }
 
 
@@ -1327,19 +1329,45 @@ class NotificationTarget extends CommonDBChild
      **/
     public function &getForTemplate($event, $options)
     {
-        global $CFG_GLPI;
-
         $this->data = [];
-        $this->addTagToList(['tag'   => 'glpi.url',
-            'value' => $CFG_GLPI['root_doc'],
-            'label' => __('URL of the application')
-        ]);
 
         $this->addDataForTemplate($event, $options);
+
+        // Add global tags data, use `+` operator to preserve overriden values
+        $this->data += $this->getGlobalTagsData();
 
         Plugin::doHook(Hooks::ITEM_GET_DATA, $this);
 
         return $this->data;
+    }
+
+    /**
+     * Register global tags.
+     *
+     * @return void
+     */
+    private function registerGlobalTags(): void
+    {
+        $this->addTagToList([
+            'tag'   => 'glpi.url',
+            'value' => true,
+            'label' => __('URL of the application'),
+            'lang'  => false,
+        ]);
+    }
+
+    /**
+     * Define global tags data.
+     *
+     * @return array
+     */
+    private function getGlobalTagsData(): array
+    {
+        global $CFG_GLPI;
+
+        return [
+            '##glpi.url##' => $CFG_GLPI['url_base'],
+        ];
     }
 
 

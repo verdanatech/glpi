@@ -5,7 +5,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -32,64 +32,11 @@
  */
 
 .debug-panel {
-    background: $light;
-    bottom: 0;
-    display: none;
     font-size: $font-size-sm;
-    padding: 0;
-    position: sticky;
     z-index: 9999;
+    display: none;
 
     .card-body {
         height: 300px;
-        overflow: auto;
-
-        .tab-content {
-            .tab-pane {
-                table {
-                    width: 100%;
-
-                    th,
-                    td {
-                        padding: 0.25em;
-                    }
-
-                    td {
-                        vertical-align: top;
-
-                        a {
-                            // expand link
-                            color: $link-hover-color;
-                            font-weight: bold;
-                        }
-                    }
-
-                    &.array-debug td {
-                        &:nth-child(1),
-                        &:nth-child(2) {
-                            white-space: nowrap;
-                        }
-
-                        &:nth-child(3) {
-                            width: 100%;
-                            word-break: break-all;
-                        }
-                    }
-
-                    &.sql-debug td {
-                        &:nth-child(1),
-                        &:nth-child(3) {
-                            white-space: nowrap;
-                        }
-
-                        &:nth-child(2),
-                        &:nth-child(4) {
-                            width: 100%;
-                            word-break: break-all;
-                        }
-                    }
-                }
-            }
-        }
     }
 }

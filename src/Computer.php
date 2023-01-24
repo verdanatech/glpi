@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -195,9 +195,14 @@ class Computer extends CommonDBTM
         }
 
         if (count($changes)) {
+            //propage is_dynamic value if needed to prevent locked fields
+            if (isset($this->input['is_dynamic'])) {
+                $changes['is_dynamic'] = $this->input['is_dynamic'];
+            }
+
             $update_done = false;
 
-           // Propagates the changes to linked items
+            // Propagates the changes to linked items
             foreach ($CFG_GLPI['directconnect_types'] as $type) {
                 $items_result = $DB->request(
                     [

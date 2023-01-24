@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -492,6 +492,18 @@ class Rule extends CommonDBTM
             if (RuleDictionnaryDropdown::canCreate()) {
                 $menu['dictionnary']['options']['os_arch']['links']['add']
                               = '/front/ruledictionnaryoperatingsystemarchitecture.form.php';
+            }
+
+            $menu['dictionnary']['options']['os_edition']['title']
+            = OperatingSystemEdition::getTypeName(1);
+            $menu['dictionnary']['options']['os_edition']['page']
+                        = '/front/ruledictionnaryoperatingsystemedition.php';
+            $menu['dictionnary']['options']['os_edition']['links']['search']
+                        = '/front/ruledictionnaryoperatingsystemedition.php';
+
+            if (RuleDictionnaryDropdown::canCreate()) {
+                $menu['dictionnary']['options']['os_edition']['links']['add']
+                        = '/front/ruledictionnaryoperatingsystemedition.form.php';
             }
 
             $menu['dictionnary']['options']['printer']['title']
@@ -1974,9 +1986,21 @@ class Rule extends CommonDBTM
      * @param $last               is it the last rule ? (false by default)
      * @param $display_entities   display entities / make it read only display (false by default)
      * @param $active_condition   active condition used (default 0)
+     * @param $display_criterias  display rule criterias (false by default)
+     * @param $display_actions    display rule actions(false by default)
      **/
-    public function showMinimalForm($target, $first = false, $last = false, $display_entities = false, $active_condition = 0)
-    {
+    public function showMinimalForm(
+        $target,
+        $first = false,
+        $last = false,
+        $display_entities = false,
+        $active_condition = 0
+        // FIXME Uncomment this in GLPI 10.1
+        // bool $display_criterias = false,
+        // bool $display_actions = false
+    ) {
+        $display_criterias = func_get_args()[5] ?? false;
+        $display_actions = func_get_args()[6] ?? false;
         $canedit = (self::canUpdate() && !$display_entities);
         echo "<tr class='tab_bg_1' data-rule-id='" . $this->fields['id'] . "'>";
 
@@ -2000,6 +2024,28 @@ class Rule extends CommonDBTM
         echo "<td>" . $this->fields["description"] . "</td>";
         if ($this->useConditions()) {
             echo "<td>" . $this->getConditionName($this->fields["condition"]) . "</td>";
+        }
+        if (
+            $display_criterias
+            && ($RuleCriterias = getItemForItemtype($this->rulecriteriaclass))
+        ) {
+            echo "<td>";
+            foreach ($RuleCriterias->getRuleCriterias($this->fields['id']) as $RuleCriteria) {
+                $to_display = $this->getMinimalCriteria($RuleCriteria->fields);
+                echo "<span class='glpi-badge mb-1'>" . implode('<i class="fas fa-caret-right mx-1"></i>', $to_display) . '</span><br />';
+            }
+            echo "</td>";
+        }
+        if (
+            $display_actions
+            && ($RuleAction = getItemForItemtype($this->ruleactionclass))
+        ) {
+            echo "<td>";
+            foreach ($RuleAction->getRuleActions($this->fields['id']) as $RuleAction) {
+                $to_display = $this->getMinimalAction($RuleAction->fields);
+                echo "<span class='glpi-badge mb-1'>" . implode('<i class="fas fa-caret-right mx-1"></i>', $to_display) . '</span><br />';
+            }
+            echo "</td>";
         }
 
         $output = sprintf(
@@ -2260,6 +2306,18 @@ class Rule extends CommonDBTM
      **/
     public function getMinimalCriteriaText($fields, $addtotd = '')
     {
+        $to_display = $this->getMinimalCriteria($fields);
+        $text  = "<td $addtotd>" . $to_display['criterion'] . "</td>";
+        $text .= "<td $addtotd>" . $to_display['condition'] . "</td>";
+        $text .= "<td $addtotd>" . $to_display['pattern'] . "</td>";
+        return $text;
+    }
+
+    /**
+     * @param $fields
+     **/
+    private function getMinimalCriteria(array $fields): array
+    {
         $criterion = $this->getCriteriaName($fields["criteria"]);
         $condition = RuleCriteria::getConditionByID($fields["condition"], get_class($this), $fields["criteria"]);
         $pattern   = $this->getCriteriaDisplayPattern($fields["criteria"], $fields["condition"], $fields["pattern"]);
@@ -2268,18 +2326,30 @@ class Rule extends CommonDBTM
         // but some data may have been build from translation or from some plugin code and may be not sanitized.
         // First, extract the verbatim value (i.e. with non encoded specia chars), then encode special chars to
         // ensure HTML validity (and to prevent XSS).
-        $text  = "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($criterion)) . "</td>";
-        $text .= "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($condition)) . "</td>";
-        $text .= "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($pattern)) . "</td>";
-        return $text;
+        return [
+            'criterion' => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($criterion)),
+            'condition' => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($condition)),
+            'pattern'   => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($pattern)),
+        ];
     }
-
 
     /**
      * @param $fields
      * @param $addtotd   (default '')
      **/
     public function getMinimalActionText($fields, $addtotd = '')
+    {
+        $to_display = $this->getMinimalAction($fields);
+        $text  = "<td $addtotd>" . $to_display['field'] . "</td>";
+        $text .= "<td $addtotd>" . $to_display['type'] . "</td>";
+        $text .= "<td $addtotd>" . $to_display['value'] . "</td>";
+        return $text;
+    }
+
+    /**
+     * @param $fields
+     **/
+    private function getMinimalAction(array $fields): array
     {
         $field = $this->getActionName($fields["field"]);
         $type  = RuleAction::getActionByID($fields["action_type"]);
@@ -2291,12 +2361,12 @@ class Rule extends CommonDBTM
         // but some data may have been build from translation or from some plugin code and may be not sanitized.
         // First, extract the verbatim value (i.e. with non encoded specia chars), then encode special chars to
         // ensure HTML validity (and to prevent XSS).
-        $text  = "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($field)) . "</td>";
-        $text .= "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($type)) . "</td>";
-        $text .= "<td $addtotd>" . Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($value)) . "</td>";
-        return $text;
+        return [
+            'field' => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($field)),
+            'type'  => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($type)),
+            'value' => Sanitizer::encodeHtmlSpecialChars(Sanitizer::getVerbatimValue($value)),
+        ];
     }
-
 
     /**
      * Return a value associated with a pattern associated to a criteria to display it
@@ -3482,5 +3552,164 @@ class Rule extends CommonDBTM
         $input = Toolbox::addslashes_deep($input);
 
         return $input;
+    }
+
+    /**
+     * Create rules (initialisation).
+     *
+     * @param boolean $reset        Whether to reset before adding new rules, defaults to true
+     * @param boolean $with_plugins Use plugins rules or not
+     * @param boolean $check        Check if rule exists before creating
+     *
+     * @return boolean
+     *
+     * @FIXME Make it final in GLPI 10.1.
+     * @FIXME Remove $reset, $with_plugins and $check parameters in GLPI 10.1, they are actually not used or have no effect where they are used.
+     */
+    public static function initRules($reset = true, $with_plugins = true, $check = false): bool
+    {
+        $self = new static();
+
+        if (!$self->hasDefaultRules()) {
+            return false;
+        }
+
+        if ($reset === true) {
+            $rules = $self->find(['sub_type' => static::class]);
+            foreach ($rules as $data) {
+                $delete = $self->delete($data);
+                if (!$delete) {
+                    return false; // Do not continue if reset failed
+                }
+            }
+
+            $check = false; // Nothing to check
+        }
+
+        $xml = simplexml_load_file(self::getDefaultRulesFilePath());
+        if ($xml === false) {
+            return false;
+        }
+
+        $ranking_increment = 0;
+        if ($reset === false) {
+            global $DB;
+            $ranking_increment = $DB->request([
+                'SELECT' => ['MAX' => 'ranking AS rank'],
+                'FROM'   => static::getTable(),
+                'WHERE'  => ['sub_type' => static::class]
+            ])->current()['rank'];
+        }
+
+        $has_errors = false;
+        foreach ($xml->xpath('/rules/rule') as $rulexml) {
+            if ((string)$rulexml->sub_type !== self::getType()) {
+                trigger_error(sprintf('Unexpected rule type for rule `%s`.', (string)$rulexml->uuid), E_USER_WARNING);
+                $has_errors = true;
+                continue;
+            }
+            if ((string)$rulexml->entities_id !== 'Root entity') {
+                trigger_error(sprintf('Unexpected entity value for rule `%s`.', (string)$rulexml->uuid), E_USER_WARNING);
+                $has_errors = true;
+                continue;
+            }
+
+            $rule = new static();
+
+            if ($check === true && $rule->getFromDBByCrit(['uuid' => (string)$rulexml->uuid])) {
+                // Rule already exists, ignore it.
+                continue;
+            }
+
+            $rule_input = [
+                'entities_id'  => 0, // Always add default rules to root entity
+                'sub_type'     => self::getType(),
+                'ranking'      => (int)$rulexml->ranking + $ranking_increment,
+                'name'         => (string)$rulexml->name,
+                'description'  => (string)$rulexml->description,
+                'match'        => (string)$rulexml->match,
+                'is_active'    => (int)$rulexml->is_active,
+                'comment'      => (string)$rulexml->comment,
+                'is_recursive' => (int)$rulexml->is_recursive,
+                'uuid'         => (string)$rulexml->uuid,
+                'condition'    => (string)$rulexml->condition,
+            ];
+
+            $rule_id = $rule->add(Sanitizer::sanitize($rule_input));
+            if ($rule_id === false) {
+                trigger_error(
+                    sprintf('Unable to create rule `%s`.', (string)$rulexml->uuid),
+                    E_USER_WARNING
+                );
+                $has_errors = true;
+                continue;
+            }
+
+            foreach ($rulexml->xpath('./rulecriteria') as $criteriaxml) {
+                $criteria_input = [
+                    'rules_id'  => $rule_id,
+                    'criteria'  => (string)$criteriaxml->criteria,
+                    'condition' => (string)$criteriaxml->condition,
+                    'pattern'   => (string)$criteriaxml->pattern,
+                ];
+
+                $criteria = new RuleCriteria();
+                $criteria_id = $criteria->add(Sanitizer::sanitize($criteria_input));
+                if ($criteria_id === false) {
+                    trigger_error(
+                        sprintf('Unable to create criteria for rule `%s`.', (string)$rulexml->uuid),
+                        E_USER_WARNING
+                    );
+                    $has_errors = true;
+                    continue;
+                }
+            }
+
+            foreach ($rulexml->xpath('./ruleaction') as $actionxml) {
+                $action_input = [
+                    'rules_id'    => $rule_id,
+                    'action_type' => (string)$actionxml->action_type,
+                    'field'       => (string)$actionxml->field,
+                    'value'       => (string)$actionxml->value,
+                ];
+
+                $action = new RuleAction();
+                $action_id = $action->add(Sanitizer::sanitize($action_input));
+                if ($action_id === false) {
+                    trigger_error(
+                        sprintf('Unable to create action for rule `%s`.', (string)$rulexml->uuid),
+                        E_USER_WARNING
+                    );
+                    $has_errors = true;
+                    continue;
+                }
+            }
+        }
+
+        return !$has_errors;
+    }
+
+    /**
+     * Check wether default rules exists.
+     *
+     * @return bool
+     */
+    final public static function hasDefaultRules(): bool
+    {
+        return file_exists(static::getDefaultRulesFilePath());
+    }
+
+    /**
+     * Returns default rules file path.
+     *
+     * @return string
+     */
+    private static function getDefaultRulesFilePath(): string
+    {
+        return sprintf(
+            '%s/resources/Rules/%s.xml',
+            GLPI_ROOT,
+            static::class
+        );
     }
 }

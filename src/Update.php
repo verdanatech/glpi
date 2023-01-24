@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -33,6 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Rules\RulesManager;
 use Glpi\System\Diagnostic\DatabaseSchemaIntegrityChecker;
 use Glpi\Toolbox\VersionParser;
 
@@ -52,15 +53,24 @@ class Update
     private $language;
 
     /**
+     * Directory containing migrations.
+     *
+     * @var string
+     */
+    private $migrations_directory;
+
+    /**
      * Constructor
      *
      * @param object $DB   Database instance
      * @param array  $args Command line arguments; default to empty array
+     * @param string $migrations_directory
      */
-    public function __construct($DB, $args = [])
+    public function __construct($DB, $args = [], string $migrations_directory = GLPI_ROOT . '/install/migrations/')
     {
         $this->DB = $DB;
         $this->args = $args;
+        $this->migrations_directory = $migrations_directory;
     }
 
     /**
@@ -163,11 +173,9 @@ class Update
     {
         global $DB;
 
-        $normalized_nersion = VersionParser::getNormalizedVersion(GLPI_VERSION, false);
-
         $checker = new DatabaseSchemaIntegrityChecker($DB, false, true, true, true, true, true);
         $differences = $checker->checkCompleteSchema(
-            sprintf('%s/install/mysql/glpi-%s-empty.sql', GLPI_ROOT, $normalized_nersion),
+            sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT),
             true
         );
 
@@ -175,7 +183,10 @@ class Update
             $this->migration->displayError(
                 __('The database schema is not consistent with the current GLPI version.')
                 . "\n"
-                . __('It is recommended to run the "php bin/console glpi:database:check_schema_integrity" command to see the differences.')
+                . sprintf(
+                    __('It is recommended to run the "%s" command to see the differences.'),
+                    'php bin/console database:check_schema_integrity'
+                )
             );
         }
     }
@@ -258,16 +269,20 @@ class Update
             $function();
         }
 
+        // Initalize rules
+        $this->migration->displayTitle(__('Initializing rules...'));
+        RulesManager::initializeRules();
+
         if (($myisam_count = $DB->getMyIsamTables()->count()) > 0) {
             $message = sprintf(__('%d tables are using the deprecated MyISAM storage engine.'), $myisam_count)
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:myisam_to_innodb');
+                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:myisam_to_innodb');
             $this->migration->displayError($message);
         }
         if (($datetime_count = $DB->getTzIncompatibleTables()->count()) > 0) {
             $message = sprintf(__('%1$s columns are using the deprecated datetime storage field type.'), $datetime_count)
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:timestamps');
+                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:timestamps');
             $this->migration->displayError($message);
         }
         /*
@@ -280,7 +295,7 @@ class Update
         if ($DB->use_utf8mb4 && ($non_utf8mb4_count = $DB->getNonUtf8mb4Tables(true)->count()) > 0) {
             $message = sprintf(__('%1$s tables are using the deprecated utf8mb3 storage charset.'), $non_utf8mb4_count)
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:utf8mb4');
+                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:utf8mb4');
             $this->migration->displayError($message);
         }
         /*
@@ -293,7 +308,7 @@ class Update
         if (!$DB->allow_signed_keys && ($signed_keys_col_count = $DB->getSignedKeysColumns(true)->count()) > 0) {
             $message = sprintf(__('%d primary or foreign keys columns are using signed integers.'), $signed_keys_col_count)
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:unsigned_keys');
+                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:unsigned_keys');
             $this->migration->displayError($message);
         }
 
@@ -329,7 +344,13 @@ class Update
        //generate security key if missing, and update db
         $glpikey = new GLPIKey();
         if (!$glpikey->keyExists() && !$glpikey->generate()) {
-            $this->migration->displayWarning(__('Unable to create security key file! You have to run "php bin/console glpi:security:change_key" command to manually create this file.'), true);
+            $this->migration->displayWarning(
+                sprintf(
+                    __('Unable to create security key file! You have to run the "%s" command to manually create this file.'),
+                    'php bin/console security:change_key'
+                ),
+                true
+            );
         }
 
         // Check if schema has differences from the expected one but do not block the upgrade
@@ -392,7 +413,7 @@ class Update
         $current_version = VersionParser::getNormalizedVersion($current_version);
 
         $pattern = '/^update_(?<source_version>\d+\.\d+\.(?:\d+|x))_to_(?<target_version>\d+\.\d+\.(?:\d+|x))\.php$/';
-        $migration_iterator = new DirectoryIterator(GLPI_ROOT . '/install/migrations/');
+        $migration_iterator = new DirectoryIterator($this->migrations_directory);
         foreach ($migration_iterator as $file) {
             $versions_matches = [];
             if ($file->isDir() || $file->isDot() || preg_match($pattern, $file->getFilename(), $versions_matches) !== 1) {
@@ -407,7 +428,7 @@ class Update
                 $force_migration = true;
             }
             if (version_compare($versions_matches['target_version'], $current_version, '>') || $force_migration) {
-                $migrations[$file->getRealPath()] = preg_replace(
+                $migrations[$file->getPathname()] = preg_replace(
                     '/^update_(\d+)\.(\d+)\.(\d+|x)_to_(\d+)\.(\d+)\.(\d+|x)\.php$/',
                     'update$1$2$3to$4$5$6',
                     $file->getBasename()

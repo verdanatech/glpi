@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -37,6 +37,8 @@
  * @since 9.2
  */
 
+use Glpi\Toolbox\Sanitizer;
+
 $AJAX_INCLUDE = 1;
 
 include('../inc/includes.php');
@@ -50,15 +52,15 @@ if (isset($_POST['projecttasktemplates_id']) && ($_POST['projecttasktemplates_id
     $template->getFromDB($_POST['projecttasktemplates_id']);
 
     if (DropdownTranslation::isDropdownTranslationActive()) {
-        $template->fields['content'] = DropdownTranslation::getTranslatedValue(
+        $template->fields['description'] = DropdownTranslation::getTranslatedValue(
             $template->getID(),
             $template->getType(),
-            'content',
+            'description',
             $_SESSION['glpilanguage'],
-            $template->fields['content']
+            $template->fields['description']
         );
     }
 
-    $template->fields = array_map('html_entity_decode', $template->fields);
+    $template->fields = Sanitizer::decodeHtmlSpecialCharsRecursive($template->fields);
     echo json_encode($template->fields);
 }

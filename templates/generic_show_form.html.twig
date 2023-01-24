@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -74,6 +74,16 @@
                            item,
                            __('First name'),
                            withtemplate,
+                           field_options
+                        ) }}
+                     {% endif %}
+
+                     {% if item.isField('template_name') and withtemplate == 1 and no_header %}
+                        {{ fields.autoNameField(
+                           'template_name',
+                           item,
+                           __('Template name'),
+                           0,
                            field_options
                         ) }}
                      {% endif %}
@@ -178,7 +188,7 @@
                            type_itemtype,
                            type_fk,
                            item.fields[type_fk],
-                           _n('Type', 'Types', 1),
+                           type_itemtype|itemtype_name,
                            field_options
                         ) }}
                      {% endif %}

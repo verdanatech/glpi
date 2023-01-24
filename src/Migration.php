@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -918,84 +918,95 @@ class Migration
      *
      * @param array $toadd items to add : itemtype => array of values
      * @param array $todel items to del : itemtype => array of values
+     * @param bool $only_default : add the display pref only on global view
      *
      * @return void
      **/
-    public function updateDisplayPrefs($toadd = [], $todel = [])
+    public function updateDisplayPrefs($toadd = [], $todel = [], bool $only_default = false)
     {
         global $DB;
 
-       //TRANS: %s is the table or item to migrate
+        //TRANS: %s is the table or item to migrate
         $this->displayMessage(sprintf(__('Data migration - %s'), 'glpi_displaypreferences'));
-        if (count($toadd)) {
-            foreach ($toadd as $type => $tab) {
-                $iterator = $DB->request([
-                    'SELECT'          => 'users_id',
-                    'DISTINCT'        => true,
-                    'FROM'            => 'glpi_displaypreferences',
-                    'WHERE'           => ['itemtype' => $type]
-                ]);
+        foreach ($toadd as $itemtype => $searchoptions_ids) {
+            $criteria = [
+                'SELECT'   => 'users_id',
+                'DISTINCT' => true,
+                'FROM'     => 'glpi_displaypreferences',
+                'WHERE'    => ['itemtype' => $itemtype]
+            ];
+            if ($only_default) {
+                $criteria['WHERE']['users_id'] = 0;
+            }
 
-                if (count($iterator) > 0) {
-                    foreach ($iterator as $data) {
-                        $query = "SELECT MAX(`rank`)
-                              FROM `glpi_displaypreferences`
-                              WHERE `users_id` = '" . $data['users_id'] . "'
-                                    AND `itemtype` = '$type'";
-                        $result = $DB->query($query);
-                        $rank   = $DB->result($result, 0, 0);
-                        $rank++;
+            $iterator = $DB->request($criteria);
 
-                        foreach ($tab as $newval) {
-                             $query = "SELECT *
-                                 FROM `glpi_displaypreferences`
-                                 WHERE `users_id` = '" . $data['users_id'] . "'
-                                       AND `num` = '$newval'
-                                       AND `itemtype` = '$type'";
-                            if ($result2 = $DB->query($query)) {
-                                if ($DB->numrows($result2) == 0) {
-                                       $DB->insert(
-                                           'glpi_displaypreferences',
-                                           [
-                                               'itemtype'  => $type,
-                                               'num'       => $newval,
-                                               'rank'      => $rank++,
-                                               'users_id'  => $data['users_id']
-                                           ]
-                                       );
-                                }
-                            }
-                        }
-                    }
-                } else { // Add for default user
-                    $rank = 1;
-                    foreach ($tab as $newval) {
-                        $DB->insert(
+            if (count($iterator) > 0) {
+                // There are already existing display preferences for this itemtype.
+                // Add new search options with an higher rank.
+                foreach ($iterator as $data) {
+                    $max_rank = $DB->request([
+                        'SELECT' => ['MAX' => 'rank AS max_rank'],
+                        'FROM'   => 'glpi_displaypreferences',
+                        'WHERE'  => [
+                            'users_id' => $data['users_id'],
+                            'itemtype' => $itemtype,
+                        ]
+                    ])->current()['max_rank'];
+
+                    $rank = $max_rank + 1;
+
+                    foreach ($searchoptions_ids as $searchoption_id) {
+                        $exists = countElementsInTable(
                             'glpi_displaypreferences',
                             [
-                                'itemtype'  => $type,
-                                'num'       => $newval,
-                                'rank'      => $rank++,
-                                'users_id'  => 0
+                                'users_id' => $data['users_id'],
+                                'itemtype' => $itemtype,
+                                'num'      => $searchoption_id,
                             ]
-                        );
+                        ) > 0;
+
+                        if (!$exists) {
+                            $DB->insert(
+                                'glpi_displaypreferences',
+                                [
+                                    'itemtype'  => $itemtype,
+                                    'num'       => $searchoption_id,
+                                    'rank'      => $rank++,
+                                    'users_id'  => $data['users_id']
+                                ]
+                            );
+                        }
                     }
+                }
+            } else {
+                // There are not yet any display preference for this itemtype.
+                // Add new search options with a rank starting to 1.
+                $rank = 1;
+                foreach ($searchoptions_ids as $searchoption_id) {
+                    $DB->insert(
+                        'glpi_displaypreferences',
+                        [
+                            'itemtype'  => $itemtype,
+                            'num'       => $searchoption_id,
+                            'rank'      => $rank++,
+                            'users_id'  => 0
+                        ]
+                    );
                 }
             }
         }
 
-        if (count($todel)) {
-           // delete display preferences
-            foreach ($todel as $type => $tab) {
-                if (count($tab)) {
-                    $DB->delete(
-                        'glpi_displaypreferences',
-                        [
-                            'itemtype'  => $type,
-                            'num'       => $tab
-                        ]
-                    );
-                }
+        // delete display preferences
+        foreach ($todel as $itemtype => $searchoptions_ids) {
+            if (count($searchoptions_ids) > 0) {
+                $DB->delete(
+                    'glpi_displaypreferences',
+                    [
+                        'itemtype'  => $itemtype,
+                        'num'       => $searchoptions_ids
+                    ]
+                );
             }
         }
     }
@@ -1005,7 +1016,7 @@ class Migration
      *
      * @param string $type    Either self::PRE_QUERY or self::POST_QUERY
      * @param string $query   Query to execute
-     * @param string $message Mesage to display on error, defaults to null
+     * @param string $message Message to display on error, defaults to null
      *
      * @return Migration
      */
@@ -1591,7 +1602,35 @@ class Migration
                 $old_search_opt = $p['old'];
                 $new_search_opt = $p['new'];
 
-               // Update display preferences
+                // Remove duplicates (a display preference exists for both old key and new key for a same user).
+                // Removes existing SO using new ID as they are probably corresponding to an ID that existed before and
+                // was not cleaned correctly.
+                $duplicates_iterator = $DB->request([
+                    'SELECT'     => ['new.id'],
+                    'FROM'       => DisplayPreference::getTable() . ' AS new',
+                    'INNER JOIN' => [
+                        DisplayPreference::getTable() . ' AS old' => [
+                            'ON' => [
+                                'new' => 'itemtype',
+                                'old' => 'itemtype',
+                                [
+                                    'AND' => [
+                                        'new.users_id' => new QueryExpression($DB->quoteName('old.users_id')),
+                                        'new.itemtype' => $itemtype,
+                                        'new.num'      => $new_search_opt,
+                                        'old.num'      => $old_search_opt,
+                                    ],
+                                ],
+                            ]
+                        ]
+                    ]
+                ]);
+                if ($duplicates_iterator->count() > 0) {
+                    $ids = array_column(iterator_to_array($duplicates_iterator), 'id');
+                    $DB->deleteOrDie(DisplayPreference::getTable(), ['id' => $ids]);
+                }
+
+                // Update display preferences
                 $DB->updateOrDie(DisplayPreference::getTable(), [
                     'num' => $new_search_opt
                 ], [

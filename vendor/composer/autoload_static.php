@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit65fed94925510513db9a9a974588ab71
+class ComposerStaticInitef615b4517eca093b91c12408f512fb8
 {
     public static $files = array (
         '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
@@ -485,9 +485,10 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'Glpi\\Console\\Database\\CheckSchemaIntegrityCommand' => __DIR__ . '/../..' . '/src/Console/Database/CheckSchemaIntegrityCommand.php',
         'Glpi\\Console\\Database\\ConfigureCommand' => __DIR__ . '/../..' . '/src/Console/Database/ConfigureCommand.php',
         'Glpi\\Console\\Database\\EnableTimezonesCommand' => __DIR__ . '/../..' . '/src/Console/Database/EnableTimezonesCommand.php',
-        'Glpi\\Console\\Database\\FixHtmlEncodingCommand' => __DIR__ . '/../..' . '/src/Console/Database/FixHtmlEncodingCommand.php',
         'Glpi\\Console\\Database\\InstallCommand' => __DIR__ . '/../..' . '/src/Console/Database/InstallCommand.php',
         'Glpi\\Console\\Database\\UpdateCommand' => __DIR__ . '/../..' . '/src/Console/Database/UpdateCommand.php',
+        'Glpi\\Console\\Diagnostic\\CheckDocumentsIntegrityCommand' => __DIR__ . '/../..' . '/src/Console/Diagnostic/CheckDocumentsIntegrityCommand.php',
+        'Glpi\\Console\\Diagnostic\\CheckHtmlEncodingCommand' => __DIR__ . '/../..' . '/src/Console/Diagnostic/CheckHtmlEncodingCommand.php',
         'Glpi\\Console\\Exception\\EarlyExitException' => __DIR__ . '/../..' . '/src/Console/Exception/EarlyExitException.php',
         'Glpi\\Console\\Ldap\\SynchronizeUsersCommand' => __DIR__ . '/../..' . '/src/Console/Ldap/SynchronizeUsersCommand.php',
         'Glpi\\Console\\Maintenance\\DisableMaintenanceModeCommand' => __DIR__ . '/../..' . '/src/Console/Maintenance/DisableMaintenanceModeCommand.php',
@@ -610,6 +611,7 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'Glpi\\Inventory\\Asset\\Simcard' => __DIR__ . '/../..' . '/src/Inventory/Asset/Simcard.php',
         'Glpi\\Inventory\\Asset\\Software' => __DIR__ . '/../..' . '/src/Inventory/Asset/Software.php',
         'Glpi\\Inventory\\Asset\\SoundCard' => __DIR__ . '/../..' . '/src/Inventory/Asset/SoundCard.php',
+        'Glpi\\Inventory\\Asset\\Unmanaged' => __DIR__ . '/../..' . '/src/Inventory/Asset/Unmanaged.php',
         'Glpi\\Inventory\\Asset\\VirtualMachine' => __DIR__ . '/../..' . '/src/Inventory/Asset/VirtualMachine.php',
         'Glpi\\Inventory\\Asset\\Volume' => __DIR__ . '/../..' . '/src/Inventory/Asset/Volume.php',
         'Glpi\\Inventory\\Conf' => __DIR__ . '/../..' . '/src/Inventory/Conf.php',
@@ -624,6 +626,7 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'Glpi\\Plugin\\Hooks' => __DIR__ . '/../..' . '/src/Plugin/Hooks.php',
         'Glpi\\RichText\\RichText' => __DIR__ . '/../..' . '/src/RichText/RichText.php',
         'Glpi\\RichText\\UserMention' => __DIR__ . '/../..' . '/src/RichText/UserMention.php',
+        'Glpi\\Rules\\RulesManager' => __DIR__ . '/../..' . '/src/Rules/RulesManager.php',
         'Glpi\\Socket' => __DIR__ . '/../..' . '/src/Socket.php',
         'Glpi\\SocketModel' => __DIR__ . '/../..' . '/src/SocketModel.php',
         'Glpi\\Stat\\Data\\Graph\\StatDataSatisfaction' => __DIR__ . '/../..' . '/src/Stat/Data/Graph/StatDataSatisfaction.php',
@@ -674,6 +677,7 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'Glpi\\System\\Variables' => __DIR__ . '/../..' . '/src/System/Variables.php',
         'Glpi\\Team\\Team' => __DIR__ . '/../..' . '/src/Team/Team.php',
         'Glpi\\Toolbox\\DataExport' => __DIR__ . '/../..' . '/src/Toolbox/DataExport.php',
+        'Glpi\\Toolbox\\DatabaseSchema' => __DIR__ . '/../..' . '/src/Toolbox/DatabaseSchema.php',
         'Glpi\\Toolbox\\FrontEnd' => __DIR__ . '/../..' . '/src/Toolbox/FrontEnd.php',
         'Glpi\\Toolbox\\MarkdownBuilder' => __DIR__ . '/../..' . '/src/Toolbox/MarkdownBuilder.php',
         'Glpi\\Toolbox\\Sanitizer' => __DIR__ . '/../..' . '/src/Toolbox/Sanitizer.php',
@@ -1938,6 +1942,7 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'SimplePie_gzdecode' => __DIR__ . '/..' . '/simplepie/simplepie/library/SimplePie/gzdecode.php',
         'Stringable' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Stringable.php',
         'Swaggest\\JsonDiff\\Exception' => __DIR__ . '/..' . '/swaggest/json-diff/src/Exception.php',
+        'Swaggest\\JsonDiff\\InvalidFieldTypeException' => __DIR__ . '/..' . '/swaggest/json-diff/src/InvalidFieldTypeException.php',
         'Swaggest\\JsonDiff\\JsonDiff' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonDiff.php',
         'Swaggest\\JsonDiff\\JsonHash' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonHash.php',
         'Swaggest\\JsonDiff\\JsonMergePatch' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonMergePatch.php',
@@ -1952,8 +1957,13 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
         'Swaggest\\JsonDiff\\JsonPatch\\Replace' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonPatch/Replace.php',
         'Swaggest\\JsonDiff\\JsonPatch\\Test' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonPatch/Test.php',
         'Swaggest\\JsonDiff\\JsonPointer' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonPointer.php',
+        'Swaggest\\JsonDiff\\JsonPointerException' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonPointerException.php',
         'Swaggest\\JsonDiff\\JsonValueReplace' => __DIR__ . '/..' . '/swaggest/json-diff/src/JsonValueReplace.php',
+        'Swaggest\\JsonDiff\\MissingFieldException' => __DIR__ . '/..' . '/swaggest/json-diff/src/MissingFieldException.php',
         'Swaggest\\JsonDiff\\ModifiedPathDiff' => __DIR__ . '/..' . '/swaggest/json-diff/src/ModifiedPathDiff.php',
+        'Swaggest\\JsonDiff\\PatchTestOperationFailedException' => __DIR__ . '/..' . '/swaggest/json-diff/src/PatchTestOperationFailedException.php',
+        'Swaggest\\JsonDiff\\PathException' => __DIR__ . '/..' . '/swaggest/json-diff/src/PathException.php',
+        'Swaggest\\JsonDiff\\UnknownOperationException' => __DIR__ . '/..' . '/swaggest/json-diff/src/UnknownOperationException.php',
         'Swaggest\\JsonSchema\\Constraint\\Constraint' => __DIR__ . '/..' . '/swaggest/json-schema/src/Constraint/Constraint.php',
         'Swaggest\\JsonSchema\\Constraint\\Content' => __DIR__ . '/..' . '/swaggest/json-schema/src/Constraint/Content.php',
         'Swaggest\\JsonSchema\\Constraint\\Format' => __DIR__ . '/..' . '/swaggest/json-schema/src/Constraint/Format.php',
@@ -2516,10 +2526,10 @@ class ComposerStaticInit65fed94925510513db9a9a974588ab71
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit65fed94925510513db9a9a974588ab71::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit65fed94925510513db9a9a974588ab71::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit65fed94925510513db9a9a974588ab71::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInit65fed94925510513db9a9a974588ab71::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitef615b4517eca093b91c12408f512fb8::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitef615b4517eca093b91c12408f512fb8::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitef615b4517eca093b91c12408f512fb8::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInitef615b4517eca093b91c12408f512fb8::$classMap;
 
         }, null, ClassLoader::class);
     }

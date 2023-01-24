@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -45,7 +45,7 @@ class ConfigureCommand extends AbstractConfigureCommand
 
         parent::configure();
 
-        $this->setName('glpi:database:configure');
+        $this->setName('database:configure');
         $this->setAliases(['db:configure']);
         $this->setDescription('Define database configuration');
     }

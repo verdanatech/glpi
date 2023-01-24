@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -259,7 +259,7 @@ foreach ($useless_keys as $table => $keys) {
     }
 }
 
-// Add missing keys (based on glpi:tools:check_database_keys detection)
+// Add missing keys (based on tools:check_database_keys detection)
 $missing_keys = [
     'glpi_apiclients' => [
         'entities_id',

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -253,7 +253,7 @@ class ITILFollowup extends CommonDBChild
 
         $this->updateParentStatus($this->input['_job'], $this->input);
 
-        $donotif = !isset($this->input['_disablenotif']) && !isset($parentitem->input['_disablenotif']) && $CFG_GLPI["use_notifications"];
+        $donotif = !isset($this->input['_disablenotif']) && $CFG_GLPI["use_notifications"];
 
         if ($donotif) {
             $options = ['followup_id' => $this->fields["id"],
@@ -552,7 +552,8 @@ class ITILFollowup extends CommonDBChild
             'table'              => $this->getTable(),
             'field'              => 'content',
             'name'               => __('Description'),
-            'datatype'           => 'text'
+            'datatype'           => 'text',
+            'htmltext'           => true,
         ];
 
         $tab[] = [
@@ -743,8 +744,9 @@ class ITILFollowup extends CommonDBChild
         }
 
         TemplateRenderer::getInstance()->display('components/itilobject/timeline/form_followup.html.twig', [
-            'item'      => $options['parent'],
-            'subitem'   => $this
+            'item'               => $options['parent'],
+            'subitem'            => $this,
+            'has_pending_reason' => PendingReason_Item::getForItem($options['parent']) !== false,
         ]);
 
         return true;

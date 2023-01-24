@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -36,6 +36,7 @@
 use Glpi\Console\Application;
 use Glpi\Event;
 use Glpi\Mail\Protocol\ProtocolInterface;
+use Glpi\Rules\RulesManager;
 use Glpi\Toolbox\Sanitizer;
 use Glpi\Toolbox\VersionParser;
 use Laminas\Mail\Storage\AbstractStorage;
@@ -1030,28 +1031,24 @@ class Toolbox
         if (empty($img_height)) {
             $img_height = $img_infos[1];
         }
-        if (empty($new_width)) {
-            $new_width  = $img_infos[0];
-        }
-        if (empty($new_height)) {
-            $new_height = $img_infos[1];
+
+        if (
+            empty($max_size)
+            && (
+                !empty($new_width)
+                || !empty($new_height)
+            )
+        ) {
+            $max_size = ($new_width > $new_height ? $new_width : $new_height);
         }
 
-       // Image max size is 500 pixels : is set to 0 no resize
-        if ($max_size > 0) {
-            if (
-                ($img_width > $max_size)
-                || ($img_height > $max_size)
-            ) {
-                $source_aspect_ratio = $img_width / $img_height;
-                if ($source_aspect_ratio < 1) {
-                    $new_width  = ceil($max_size * $source_aspect_ratio);
-                    $new_height = $max_size;
-                } else {
-                    $new_width  = $max_size;
-                    $new_height = ceil($max_size / $source_aspect_ratio);
-                }
-            }
+        $source_aspect_ratio = $img_width / $img_height;
+        if ($source_aspect_ratio < 1) {
+            $new_width  = ceil($max_size * $source_aspect_ratio);
+            $new_height = $max_size;
+        } else {
+            $new_width  = $max_size;
+            $new_height = ceil($max_size / $source_aspect_ratio);
         }
 
         $img_type = $img_infos[2];
@@ -2345,8 +2342,7 @@ class Toolbox
        // Set global $DB as it is used in "Config::setConfigurationValues()" just after schema creation
         $DB = $database;
 
-        $normalized_nersion = VersionParser::getNormalizedVersion(GLPI_VERSION, false);
-        if (!$DB->runFile(sprintf('%s/install/mysql/glpi-%s-empty.sql', GLPI_ROOT, $normalized_nersion))) {
+        if (!$DB->runFile(sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT))) {
             echo "Errors occurred inserting default database";
         } else {
            //dataset
@@ -2394,8 +2390,8 @@ class Toolbox
                 }
             }
 
-           //rules
-            RuleImportAsset::initRules();
+            // Initalize rules
+            RulesManager::initializeRules();
 
            // update default language
             Config::setConfigurationValues(
@@ -2677,7 +2673,7 @@ class Toolbox
      *
      * @return string                the $content_text param after parsing
      **/
-    public static function convertTagToImage($content_text, CommonDBTM $item, $doc_data = [])
+    public static function convertTagToImage($content_text, CommonDBTM $item, $doc_data = [], bool $add_link = true)
     {
         global $CFG_GLPI;
 
@@ -2758,7 +2754,7 @@ class Toolbox
                                 $id,
                                 $width,
                                 $height,
-                                true,
+                                $add_link,
                                 $object_url_param
                             );
                             if (empty($new_image)) {
@@ -3665,11 +3661,11 @@ HTML;
             'to'  => 2,
             'tio' => 2,
         ];
-        $exp = $supported_sizes[strtolower($matches[2]) ?? null];
-        if ($exp === null) {
-            // Unkown format, keep the string as it is
-            return $size;
+        if (count($matches) >= 3 && isset($supported_sizes[strtolower($matches[2])])) {
+            // Known format
+            $size = $matches[1];
+            $size *= pow(1024, $supported_sizes[strtolower($matches[2])]);
         }
-        return $matches[1] * pow(1024, $exp);
+        return $size;
     }
 }

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -130,6 +130,8 @@ class Hooks
     const HANDLE_DEPLOY_TASK       = 'handle_deploy_task';
     const HANDLE_WAKEONLAN_TASK    = 'handle_wakeonlan_task';
     const HANDLE_REMOTEINV_TASK    = 'handle_remoteinventory_task';
+
+    const STALE_AGENT_CONFIG = 'stale_agent_config';
 
    // Debug / Development hooks
     const DEBUG_TABS = 'debug_tabs';

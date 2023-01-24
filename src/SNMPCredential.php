@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -180,12 +180,24 @@ class SNMPCredential extends CommonDBTM
     protected function prepareInputs(array $input): array
     {
         $key = new GLPIKey();
-        if (isset($input['auth_passphrase'])) {
+        // Handle setting passwords
+        if (isset($input['auth_passphrase']) && !empty($input['auth_passphrase'])) {
             $input['auth_passphrase'] = $key->encrypt($input['auth_passphrase']);
+        } else {
+            unset($input['auth_passphrase']);
+        }
+        if (isset($input['priv_passphrase']) && !empty($input['priv_passphrase'])) {
+            $input['priv_passphrase'] = $key->encrypt($input['priv_passphrase']);
+        } else {
+            unset($input['priv_passphrase']);
         }
 
-        if (isset($input['priv_passphrase'])) {
-            $input['priv_passphrase'] = $key->encrypt($input['priv_passphrase']);
+        // Handle unsetting passwords
+        if (isset($input['_blank_auth_passphrase'])) {
+            $input['auth_passphrase'] = 'NULL';
+        }
+        if (isset($input['_blank_priv_passphrase'])) {
+            $input['priv_passphrase'] = 'NULL';
         }
 
         return $input;

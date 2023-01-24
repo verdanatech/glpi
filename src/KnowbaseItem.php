@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1530,14 +1530,16 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
             ];
         }
 
+        $criteria['LEFT JOIN'][KnowbaseItem_KnowbaseItemCategory::getTable()] = [
+            'FKEY' => [
+                KnowbaseItem_KnowbaseItemCategory::getTable() => KnowbaseItem::getForeignKeyField(),
+                KnowbaseItem::getTable() => 'id',
+            ],
+        ];
         if ($params['knowbaseitemcategories_id'] > 0) {
-            $criteria['LEFT JOIN'][KnowbaseItem_KnowbaseItemCategory::getTable()] = [
-                'FKEY' => [
-                    KnowbaseItem_KnowbaseItemCategory::getTable() => KnowbaseItem::getForeignKeyField(),
-                    KnowbaseItem::getTable() => 'id',
-                ],
-            ];
             $criteria['WHERE'][KnowbaseItem_KnowbaseItemCategory::getTableField('knowbaseitemcategories_id')] = $params['knowbaseitemcategories_id'];
+        } else {
+            $criteria['WHERE'][KnowbaseItem_KnowbaseItemCategory::getTableField('knowbaseitemcategories_id')] = null;
         }
 
         if (
@@ -2324,7 +2326,9 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
         } else {
             $answer = $this->fields["answer"];
         }
-        $answer = RichText::getEnhancedHtml($answer);
+        $answer = RichText::getEnhancedHtml($answer, [
+            'text_maxsize' => 0 // Show all text without read more button
+        ]);
 
         $callback = function ($matches) {
           //1 => tag name, 2 => existing attributes, 3 => title contents

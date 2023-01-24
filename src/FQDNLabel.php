@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -93,8 +93,7 @@ abstract class FQDNLabel extends CommonDBChild
             $fqdn_regex = "/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$/";
             if (!preg_match($fqdn_regex, $label, $regs)) {
                //check also Internationalized domain name
-                $punycode = new TrueBV\Punycode();
-                $idn = $punycode->encode($label);
+                $idn = idn_to_ascii($label);
                 if (!preg_match($fqdn_regex, $idn, $regs)) {
                     return false;
                 }
@@ -145,7 +144,11 @@ abstract class FQDNLabel extends CommonDBChild
                         // By ordering on the netmask, we ensure that the first element is the nearest one (ie:
                         // the last should be 0.0.0.0/0.0.0.0 of x.y.z.a/255.255.255.255 regarding the interested element
                         $ipnetworks_ids = IPNetwork::searchNetworksContainingIP($value, $input['entities_id']);
-                        $input['ipnetworks_id'] = reset($ipnetworks_ids);
+                        if (count($ipnetworks_ids)) {
+                            $input['ipnetworks_id'] = reset($ipnetworks_ids);
+                        } else {
+                            unset($input['ipnetworks_id']);
+                        }
                     }
                 }
             }

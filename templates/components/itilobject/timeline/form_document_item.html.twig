@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -44,7 +44,7 @@
          {% if entry_i['filename'] %}
             {% set docpath = path('front/document.send.php?docid=' ~ entry_i['id'] ~ "&" ~ fk ~ "=" ~ item.fields["id"]) %}
             <div class="col text-truncate">
-               <a href="{{ docpath }}" target="_blank">
+               <a href="{{ docpath }}" target="_blank" title="{{ filename }}">
                   <img src="{{ filename|document_icon }}" alt="{{ __('File extension') }}" />
                   {{ name }}
                </a>

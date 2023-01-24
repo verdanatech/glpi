@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -2000,6 +2000,7 @@ class User extends CommonDBTM
        //Only retrive cn and member attributes from groups
         $attrs = ['dn'];
 
+        $group_condition = Sanitizer::unsanitize($group_condition);
         if (!$use_dn) {
             $filter = "(& $group_condition (|($group_member_field=$user_dn)
                                           ($group_member_field=$login_field=$user_dn)))";
@@ -2008,7 +2009,6 @@ class User extends CommonDBTM
         }
 
        //Perform the search
-        $filter = Sanitizer::unsanitize($filter);
         $sr     = ldap_search($ds, $ldap_base_dn, $filter, $attrs);
 
        //Get the result of the search as an array
@@ -2174,8 +2174,12 @@ class User extends CommonDBTM
         if (!$DB->isSlave()) {
            //Instanciate the affectation's rule
             $rule = new RuleRightCollection();
-            $groups = Group_User::getUserGroups($this->fields['id']);
-            $groups_id = array_column($groups, 'id');
+
+            $groups_id = [];
+            if (!$this->isNewItem()) {
+                $groups = Group_User::getUserGroups($this->fields['id']);
+                $groups_id = array_column($groups, 'id');
+            }
 
             $this->fields = $rule->processAllRules($groups_id, Toolbox::stripslashes_deep($this->fields), [
                 'type'   => Auth::EXTERNAL,
@@ -2514,7 +2518,7 @@ HTML;
                // Display a warning but only if user is more or less an admin
                 echo __('Timezone usage has not been activated.')
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to activate it.'), 'glpi:database:enable_timezones');
+                . sprintf(__('Run the "%1$s" command to activate it.'), 'php bin/console database:enable_timezones');
             }
             echo "</td></tr>";
         }
@@ -3005,7 +3009,7 @@ HTML;
                    // Display a warning but only if user is more or less an admin
                     echo __('Timezone usage has not been activated.')
                     . ' '
-                    . sprintf(__('Run the "php bin/console %1$s" command to activate it.'), 'glpi:database:enable_timezones');
+                    . sprintf(__('Run the "%1$s" command to activate it.'), 'php bin/console database:enable_timezones');
                 }
                 echo "</td>";
                 if (
@@ -4419,7 +4423,7 @@ HTML;
        // Check default value for dropdown : need to be a numeric (or null)
         if (
             isset($p['value'])
-            && ((strlen($p['value']) == 0) || !is_numeric($p['value']) && $p['value'] != 'myself')
+            && ((strlen($p['value']) == 0) || !is_numeric($p['value']) && $p['value'] !== 'myself')
         ) {
             $p['value'] = 0;
         }
@@ -5057,7 +5061,6 @@ HTML;
             'is_deleted_ldap' => 1,
         ];
         $myuser = new self();
-        $myuser->getFromDB($users_id);
 
         switch ($CFG_GLPI['user_deleted_ldap']) {
            //DO nothing
@@ -5489,7 +5492,7 @@ HTML;
         // Check that the configuration allow this user to change his password
         if ($this->fields["authtype"] !== Auth::DB_GLPI && Auth::useAuthExt()) {
             trigger_error(
-                __("The authentication method configuration doesn't allow the user '$email' to change his password."),
+                __("The authentication method configuration doesn't allow the user '$email' to change their password."),
                 E_USER_WARNING
             );
 

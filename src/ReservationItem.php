@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -635,8 +635,8 @@ class ReservationItem extends CommonDBChild
                         'glpi_reservationitems' => 'id',
                         'glpi_reservations'     => 'reservationitems_id', [
                             'AND' => [
-                                'glpi_reservations.end'    => ['>=', $begin],
-                                'glpi_reservations.begin'  => ['<=', $end]
+                                'glpi_reservations.end'    => ['>', $begin],
+                                'glpi_reservations.begin'  => ['<', $end]
                             ]
                         ]
                     ]
@@ -891,9 +891,10 @@ class ReservationItem extends CommonDBChild
      **/
     public function getRights($interface = 'central')
     {
-
         if ($interface == 'central') {
             $values = parent::getRights();
+        } else {
+            $values = [READ => __('Read')];
         }
         $values[self::RESERVEANITEM] = __('Make a reservation');
 

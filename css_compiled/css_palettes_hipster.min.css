@@ -6,7 +6,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,7 +38,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -70,7 +70,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -22893,7 +22893,7 @@ Antialiasing
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -22925,7 +22925,7 @@ Antialiasing
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -22957,7 +22957,7 @@ Antialiasing
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -23077,7 +23077,7 @@ table td.active, table td.tab_bg_4 {
 table.deleted-results > :not(caption) > * > * {
   box-shadow: none;
 }
-.entity-badge {
+.glpi-badge {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -23146,7 +23146,7 @@ body, body input {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -23178,7 +23178,7 @@ body, body input {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -23237,7 +23237,7 @@ body, body input {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -23885,7 +23885,7 @@ body, body input {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -23979,7 +23979,7 @@ body, body input {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24105,7 +24105,7 @@ which broke styles of btn-group > .btn-check
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24223,7 +24223,7 @@ which broke styles of btn-group > .btn-check
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24249,44 +24249,12 @@ which broke styles of btn-group > .btn-check
  * ---------------------------------------------------------------------
  */
 .debug-panel {
-  background: #fafbfc;
-  bottom: 0;
-  display: none;
   font-size: 0.765625rem;
-  padding: 0;
-  position: sticky;
   z-index: 9999;
+  display: none;
 }
 .debug-panel .card-body {
   height: 300px;
-  overflow: auto;
-}
-.debug-panel .card-body .tab-content .tab-pane table {
-  width: 100%;
-}
-.debug-panel .card-body .tab-content .tab-pane table th, .debug-panel .card-body .tab-content .tab-pane table td {
-  padding: 0.25em;
-}
-.debug-panel .card-body .tab-content .tab-pane table td {
-  vertical-align: top;
-}
-.debug-panel .card-body .tab-content .tab-pane table td a {
-  color: #5e836f;
-  font-weight: bold;
-}
-.debug-panel .card-body .tab-content .tab-pane table.array-debug td:nth-child(1), .debug-panel .card-body .tab-content .tab-pane table.array-debug td:nth-child(2) {
-  white-space: nowrap;
-}
-.debug-panel .card-body .tab-content .tab-pane table.array-debug td:nth-child(3) {
-  width: 100%;
-  word-break: break-all;
-}
-.debug-panel .card-body .tab-content .tab-pane table.sql-debug td:nth-child(1), .debug-panel .card-body .tab-content .tab-pane table.sql-debug td:nth-child(3) {
-  white-space: nowrap;
-}
-.debug-panel .card-body .tab-content .tab-pane table.sql-debug td:nth-child(2), .debug-panel .card-body .tab-content .tab-pane table.sql-debug td:nth-child(4) {
-  width: 100%;
-  word-break: break-all;
 }
 /*!
  * ---------------------------------------------------------------------
@@ -24295,7 +24263,7 @@ which broke styles of btn-group > .btn-check
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24352,7 +24320,7 @@ which broke styles of btn-group > .btn-check
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24508,7 +24476,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24563,7 +24531,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24599,7 +24567,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -24630,7 +24598,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
 .sidebar, .topbar {
   background-color: #d6665a;
   color: #ffd2ca;
-  z-index: 1030;
+  z-index: 1031;
 }
 .sidebar .btn-ghost-secondary, .topbar .btn-ghost-secondary {
   color: rgba(255, 210, 202, 0.8);
@@ -24816,7 +24784,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25196,7 +25164,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25263,7 +25231,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25350,7 +25318,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25434,7 +25402,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25488,7 +25456,7 @@ body .flatpickr-time input:hover, body .flatpickr-time .flatpickr-am-pm:hover, b
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -25972,7 +25940,7 @@ div#viewgraph .rack_side_block .pdu_list td {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -26006,6 +25974,10 @@ body.mce-content-body [data-user-mention="true"] {
 }
 #page .tox .tox-statusbar {
   border-top: transparent;
+}
+.tox.tox-tinymce {
+  border: 1px solid #d9dbde;
+  border-radius: 4px;
 }
 .rich_text_container thead, .rich_text_container tbody, .rich_text_container tfoot, .rich_text_container tr, .rich_text_container td, .rich_text_container th {
   border-width: inherit;
@@ -26041,7 +26013,7 @@ body.mce-content-body [data-user-mention="true"] {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -26089,7 +26061,7 @@ body.mce-content-body [data-user-mention="true"] {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -26231,7 +26203,7 @@ body.horizontal-layout .secondary-bar {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -26278,7 +26250,7 @@ body.horizontal-layout .secondary-bar {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -26364,7 +26336,7 @@ div.search-input span.search-input-tag-input:last-of-type {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27205,7 +27177,7 @@ div.search-input span.search-input-tag-input:last-of-type {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27270,7 +27242,7 @@ div.search-input span.search-input-tag-input:last-of-type {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27319,6 +27291,10 @@ div.search-input span.search-input-tag-input:last-of-type {
   background-color: #9fd6ed;
   color: #27363b;
 }
+.itil-footer .action-validation {
+  background-color: #e2f2e3;
+  color: #155210;
+}
 .itil-footer .action-document {
   background-color: #80cead;
   color: #21352c;
@@ -27347,7 +27323,7 @@ div.search-input span.search-input-tag-input:last-of-type {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27482,7 +27458,7 @@ div.search-input span.search-input-tag-input:last-of-type {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27528,7 +27504,7 @@ div.search-input span.search-input-tag-input:last-of-type {
   color: inherit;
 }
 .timeline-item .timeline-header .timeline-item-buttons .is-private {
-  color: rgba(43, 43, 43, 0.7);
+  color: rgba(43, 43, 43, 0.8);
 }
 .timeline-item .todo-list-state {
   display: inline-block !important;
@@ -27666,15 +27642,6 @@ div.search-input span.search-input-tag-input:last-of-type {
   border-color: #90c2d8;
   border-left: 1em transparent solid;
 }
-.timeline-item.ITILSolution .timeline-content.waiting {
-  border-left-color: #dd9d27;
-}
-.timeline-item.ITILSolution .timeline-content.accepted {
-  border-left-color: #348f34;
-}
-.timeline-item.ITILSolution .timeline-content.refused {
-  border-left: 1em #e25050 solid;
-}
 .timeline-item.ITILSolution .timeline-content .solimg {
   position: absolute;
   color: rgba(66, 91, 100, 0.1);
@@ -27691,6 +27658,15 @@ div.search-input span.search-input-tag-input:last-of-type {
 }
 .timeline-item.ITILSolution .timeline-content.t-right::after {
   border-color: #9fd6ed transparent transparent #9fd6ed;
+}
+.timeline-item.ITILValidation .timeline-content.waiting, .timeline-item.ITILSolution .timeline-content.waiting {
+  border-left-color: #dd9d27;
+}
+.timeline-item.ITILValidation .timeline-content.accepted, .timeline-item.ITILSolution .timeline-content.accepted {
+  border-left: 1em #348f34 solid;
+}
+.timeline-item.ITILValidation .timeline-content.refused, .timeline-item.ITILSolution .timeline-content.refused {
+  border-left: 1em #e25050 solid;
 }
 .timeline-item.Document_Item .timeline-content {
   border: 0;
@@ -27918,7 +27894,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -27959,7 +27935,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28087,7 +28063,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28143,7 +28119,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28178,7 +28154,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28215,7 +28191,7 @@ ul.legacy-timeline-actions li i {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28414,7 +28390,7 @@ table.search-results thead th[data-searchopt-id]:not([data-searchopt-id=""]):not
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -28526,7 +28502,7 @@ input.submit:focus:not([disabled]):not(.disabled), .vsubmit:focus:not([disabled]
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -29424,7 +29400,7 @@ input.submit:focus:not([disabled]):not(.disabled), .vsubmit:focus:not([disabled]
   cursor: pointer;
 }
 #page .copy_to_clipboard_wrapper:after, .qtip .copy_to_clipboard_wrapper:after, .modal .modal-body .copy_to_clipboard_wrapper:after {
-  font-family: "Font Awesome 5 Free";
+  font-family: "Font Awesome 6 Free";
   position: relative;
   left: -15px;
   top: 1px;
@@ -29753,7 +29729,7 @@ div.banner-need-update {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -29785,7 +29761,7 @@ div.banner-need-update {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -30134,7 +30110,7 @@ div.banner-need-update {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -30640,7 +30616,7 @@ i.fa-impact-manipulation {
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *

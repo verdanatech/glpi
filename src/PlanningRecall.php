@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -431,6 +431,11 @@ class PlanningRecall extends CommonDBChild
                 $itemToNotify = $pr->getItem();
                 if ($itemToNotify instanceof \CommonITILTask) {
                     $linkedItem = $itemToNotify->getItem();
+                    // No recall, if the parent item is in a closed status
+                    if (in_array($linkedItem->fields['status'], array_merge($linkedItem->getSolvedStatusArray(), $linkedItem->getClosedStatusArray()))) {
+                        $pr->delete($data);
+                        continue;
+                    }
                     if ($linkedItem && $linkedItem->isEntityAssign()) {
                         $options['entities_id'] = $linkedItem->getEntityID();
                     }

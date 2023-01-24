@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -62,8 +62,8 @@ class Sanitizer
     {
         if (is_array($value)) {
             return array_map(
-                function ($val) {
-                    return self::sanitize($val);
+                function ($val) use ($db_escape) {
+                    return self::sanitize($val, $db_escape);
                 },
                 $value
             );
@@ -74,7 +74,7 @@ class Sanitizer
         }
 
         if (self::isNsClassOrCallableIdentifier($value)) {
-            // Do not sanitize values that corresponds to an existing namespaced class, to prevent prevent having to unsanitize
+            // Do not sanitize values that corresponds to an existing namespaced class, to prevent having to unsanitize
             // every usage of `itemtype` to correctly handle namespaces.
             return $value;
         }

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @copyright 2010-2022 by the FusionInventory Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
@@ -52,6 +52,7 @@ use DeviceSoundCard;
 use Dropdown;
 use Glpi\Agent\Communication\AbstractRequest;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Plugin\Hooks;
 use Glpi\Toolbox\Sanitizer;
 use Html;
 use Monitor;
@@ -71,6 +72,7 @@ use wapmorgan\UnifiedArchive\UnifiedArchive;
  * @property int $import_process
  * @property int $import_vm
  * @property int $import_monitor_on_partial_sn
+ * @property int $import_unmanaged
  * @property int $component_processor
  * @property int $component_memory
  * @property int $component_harddrive
@@ -84,6 +86,7 @@ use wapmorgan\UnifiedArchive\UnifiedArchive;
  * @property int $component_battery
  * @property int $component_simcard
  * @property int $states_id_default
+ * @property int $entities_id_default
  * @property int $location
  * @property int $group
  * @property int $vm_type
@@ -100,47 +103,12 @@ use wapmorgan\UnifiedArchive\UnifiedArchive;
 class Conf extends CommonGLPI
 {
     private $currents = [];
-    public static $defaults = [
-        'enabled_inventory'              => 0,
-        'import_software'                => 1,
-        'import_volume'                  => 1,
-        'import_antivirus'               => 1,
-        'import_registry'                => 1,
-        'import_process'                 => 1,
-        'import_vm'                      => 1,
-        'import_monitor_on_partial_sn'   => 0,
-        'component_processor'            => 1,
-        'component_memory'               => 1,
-        'component_harddrive'            => 1,
-        'component_networkcard'          => 1,
-        'component_graphiccard'          => 1,
-        'component_soundcard'            => 1,
-        'component_drive'                => 1,
-        'component_networkdrive'         => 1,
-        'component_networkcardvirtual'   => 1,
-        'component_control'              => 1,
-        'component_battery'              => 1,
-        'component_simcard'              => 1,
-        'states_id_default'              => 0,
-        'location'                       => 0,
-        'group'                          => 0,
-        'vm_type'                        => 0,
-        'vm_components'                  => 0,
-        'vm_as_computer'                 => 0,
-        'component_removablemedia'       => 1,
-        'component_powersupply'          => 1,
-        'inventory_frequency'            => AbstractRequest::DEFAULT_FREQUENCY,
-        'import_monitor'                 => 1,
-        'import_printer'                 => 1,
-        'import_peripheral'              => 1,
-        'stale_agents_delay'             => 0,
-        'stale_agents_action'            => 0,
-        'stale_agents_status'            => 0,
-    ];
 
     public const STALE_AGENT_ACTION_CLEAN = 0;
 
     public const STALE_AGENT_ACTION_STATUS = 1;
+
+    public const STALE_AGENT_ACTION_TRASHBIN = 2;
 
     public static $rightname = 'inventory';
 
@@ -287,6 +255,7 @@ class Conf extends CommonGLPI
         return [
             self::STALE_AGENT_ACTION_CLEAN  => __('Clean agents'),
             self::STALE_AGENT_ACTION_STATUS => __('Change the status'),
+            self::STALE_AGENT_ACTION_TRASHBIN => __('Put asset in trashbin'),
         ];
     }
 
@@ -341,7 +310,7 @@ class Conf extends CommonGLPI
      **/
     public function showConfigForm()
     {
-        global $CFG_GLPI;
+        global $CFG_GLPI, $PLUGIN_HOOKS;
 
         $config = \Config::getConfigurationValues('inventory');
         $canedit = \Config::canUpdate();
@@ -464,6 +433,25 @@ class Conf extends CommonGLPI
 
         echo "<tr class='tab_bg_1'>";
         echo "<td>";
+        echo "<label for='import_unmanaged'>";
+        echo \Unmanaged::getTypeName(Session::getPluralNumber());
+        echo "</label>";
+        echo "</td>";
+        echo "<td>";
+        Html::showCheckbox([
+            'name'      => 'import_unmanaged',
+            'id'        => 'import_unmanaged',
+            'checked'   => $config['import_unmanaged'] ?? 1
+        ]);
+        echo "</td>";
+
+        echo "</td>";
+        echo "<td>";
+        echo "</td>";
+        echo "</tr>";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td>";
         echo "<label for='dropdown_states_id_default$rand'>";
         echo __('Default status');
         echo "</label>";
@@ -498,6 +486,25 @@ class Conf extends CommonGLPI
         echo "</tr>";
 
         echo "<tr class='tab_bg_1'>";
+
+        echo "<td>";
+        echo "<label for='dropdown_entities_id_id_default$rand'>";
+        echo __('Default entity');
+        echo "</label>";
+        echo "</td>";
+        echo "<td>";
+
+        \Dropdown::show(
+            'Entity',
+            [
+                'name'   => 'entities_id_default',
+                'id'     => 'entities_id_default',
+                'value'  => $config['entities_id_default'] ?? 0,
+                'rand' => $rand
+            ]
+        );
+        echo "</td>";
+
         echo "<td>";
         echo "<label for='import_monitor_on_partial_sn'>";
         echo __('Import monitor on serial partial match');
@@ -839,12 +846,17 @@ class Conf extends CommonGLPI
         echo "<td>" . _n('Action', 'Actions', 1) . "</td>";
         echo "<td width='20%'>";
         //action
+        $action = self::getDefaults()['stale_agents_action'];
+        if (isset($config['stale_agents_action'])) {
+            $action = $config['stale_agents_action'];
+        }
         $rand = Dropdown::showFromArray(
             'stale_agents_action',
             self::getStaleAgentActions(),
             [
-                'value' => $config['stale_agents_action'] ?? self::STALE_AGENT_ACTION_CLEAN,
+                'values' => importArrayFromDB($action),
                 'on_change' => 'changestatus();',
+                'multiple' => true
             ]
         );
         //if action == action_status => show blocation else hide blocaction
@@ -883,6 +895,49 @@ class Conf extends CommonGLPI
         echo "</td>";
         echo "</tr>";
 
+        $plugin_actions = $PLUGIN_HOOKS[Hooks::STALE_AGENT_CONFIG] ?? [];
+        $odd = true;
+        $in_row = true;
+        /**
+         * @var string $plugin
+         * @phpstan-var array{label: string, item_action: boolean, render_callback: callable, action_callback: callable}[] $actions
+         */
+        foreach ($plugin_actions as $plugin => $actions) {
+            if (is_array($actions) && \Plugin::isPluginActive($plugin)) {
+                foreach ($actions as $action) {
+                    if (!is_callable($action['render_callback'] ?? null)) {
+                        trigger_error(
+                            sprintf('Invalid plugin "%s" render callback for "%s" hook.', $plugin, Hooks::STALE_AGENT_CONFIG),
+                            E_USER_WARNING
+                        );
+                        continue;
+                    }
+
+                    if ($odd) {
+                        echo "<tr class='tab_bg_1'>";
+                    }
+                    $field = $action['render_callback']($config);
+                    if (!empty($field)) {
+                        echo "<td>";
+                        echo $action['label'] ?? '';
+                        echo "</td>";
+                        echo "<td width='20%'>";
+                        echo $field;
+                        echo "</td>";
+
+                        if (!$odd) {
+                            echo "</tr>";
+                            $in_row = false;
+                        }
+                        $odd = !$odd;
+                    }
+                }
+            }
+        }
+        if ($in_row) {
+            echo "</tr>";
+        }
+
         if ($canedit) {
             echo "<tr class='tab_bg_2'>";
             echo "<td colspan='7' class='center'>";
@@ -908,10 +963,14 @@ class Conf extends CommonGLPI
             return false;
         }
 
-        $defaults = self::$defaults;
+        $defaults = self::getDefaults();
         unset($values['_glpi_csrf_token']);
 
-        $unknown = array_diff_key($values, $defaults);
+        $ext_configs = array_filter($values, static function ($k, $v) {
+            return str_starts_with($v, '_');
+        }, ARRAY_FILTER_USE_BOTH);
+
+        $unknown = array_diff_key($values, $defaults, $ext_configs);
         if (count($unknown)) {
             $msg = sprintf(
                 __('Some properties are not known: %1$s'),
@@ -927,7 +986,11 @@ class Conf extends CommonGLPI
         $to_process = [];
         foreach ($defaults as $prop => $default_value) {
             $to_process[$prop] = $values[$prop] ?? $default_value;
+            if ($prop == 'stale_agents_action') {
+                $to_process[$prop] = exportArrayToDB($to_process[$prop]);
+            }
         }
+        $to_process = array_merge($to_process, $ext_configs);
         \Config::setConfigurationValues('inventory', $to_process);
         $this->currents = $to_process;
         return true;
@@ -946,7 +1009,7 @@ class Conf extends CommonGLPI
             $config = \Config::getConfigurationValues('inventory');
             $this->currents = $config;
         }
-        if (in_array($name, array_keys(self::$defaults))) {
+        if (in_array($name, array_keys(self::getDefaults()))) {
             return $this->currents[$name];
         } else if ($name == 'fields') {
            //no fields here
@@ -998,5 +1061,48 @@ class Conf extends CommonGLPI
             $items_id,
             $ext
         );
+    }
+
+    public static function getDefaults(): array
+    {
+        return [
+            'enabled_inventory'              => 0,
+            'import_software'                => 1,
+            'import_volume'                  => 1,
+            'import_antivirus'               => 1,
+            'import_registry'                => 1,
+            'import_process'                 => 1,
+            'import_vm'                      => 1,
+            'import_monitor_on_partial_sn'   => 0,
+            'import_unmanaged'               => 1,
+            'component_processor'            => 1,
+            'component_memory'               => 1,
+            'component_harddrive'            => 1,
+            'component_networkcard'          => 1,
+            'component_graphiccard'          => 1,
+            'component_soundcard'            => 1,
+            'component_drive'                => 1,
+            'component_networkdrive'         => 1,
+            'component_networkcardvirtual'   => 1,
+            'component_control'              => 1,
+            'component_battery'              => 1,
+            'component_simcard'              => 1,
+            'states_id_default'              => 0,
+            'entities_id_default'            => 0,
+            'location'                       => 0,
+            'group'                          => 0,
+            'vm_type'                        => 0,
+            'vm_components'                  => 0,
+            'vm_as_computer'                 => 0,
+            'component_removablemedia'       => 1,
+            'component_powersupply'          => 1,
+            'inventory_frequency'            => AbstractRequest::DEFAULT_FREQUENCY,
+            'import_monitor'                 => 1,
+            'import_printer'                 => 1,
+            'import_peripheral'              => 1,
+            'stale_agents_delay'             => 0,
+            'stale_agents_action'            => exportArrayToDB([0]),
+            'stale_agents_status'            => 0,
+        ];
     }
 }

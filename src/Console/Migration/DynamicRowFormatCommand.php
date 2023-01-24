@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -36,7 +36,6 @@
 namespace Glpi\Console\Migration;
 
 use Glpi\Console\AbstractCommand;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -62,7 +61,7 @@ class DynamicRowFormatCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:migration:dynamic_row_format');
+        $this->setName('migration:dynamic_row_format');
         $this->setDescription(__('Convert database tables to "Dynamic" row format (required for "utf8mb4" character support).'));
     }
 
@@ -86,7 +85,7 @@ class DynamicRowFormatCommand extends AbstractCommand
         if (($myisam_count = $this->db->getMyIsamTables()->count()) > 0) {
             $msg = sprintf(__('%d tables are using the deprecated MyISAM storage engine.'), $myisam_count)
             . ' '
-            . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:myisam_to_innodb');
+            . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:myisam_to_innodb');
             throw new \Glpi\Console\Exception\EarlyExitException('<error>' . $msg . '</error>', self::ERROR_INNODB_REQUIRED);
         }
     }
@@ -119,6 +118,7 @@ class DynamicRowFormatCommand extends AbstractCommand
             )
         );
 
+        $this->warnAboutExecutionTime();
         $this->askForConfirmation();
 
         $tables = [];
@@ -127,31 +127,29 @@ class DynamicRowFormatCommand extends AbstractCommand
         }
         sort($tables);
 
-        $progress_bar = new ProgressBar($this->output);
         $errors = false;
 
-        foreach ($progress_bar->iterate($tables) as $table) {
-            $this->writelnOutputWithProgressBar(
-                sprintf(__('Migrating table "%s"...'), $table),
-                $progress_bar,
-                OutputInterface::VERBOSITY_VERY_VERBOSE
-            );
+        $progress_message = function (string $table) {
+            return sprintf(__('Migrating table "%s"...'), $table);
+        };
 
-            $result = $this->db->query(
-                sprintf('ALTER TABLE `%s` ROW_FORMAT = DYNAMIC', $table)
-            );
+        foreach ($this->iterate($tables, $progress_message) as $table) {
+            $result = $this->db->query(sprintf('ALTER TABLE %s ROW_FORMAT = DYNAMIC', $this->db->quoteName($table)));
 
             if (!$result) {
-                $this->writelnOutputWithProgressBar(
-                    sprintf(__('<error>Error migrating table "%s".</error>'), $table),
-                    $progress_bar,
+                $message = sprintf(
+                    __('Migration of table "%s" failed with message "(%s) %s".'),
+                    $table,
+                    $this->db->errno(),
+                    $this->db->error()
+                );
+                $this->outputMessage(
+                    '<error>' . $message . '</error>',
                     OutputInterface::VERBOSITY_QUIET
                 );
-                 $errors = true;
+                $errors = true;
             }
         }
-
-        $this->output->write(PHP_EOL);
 
         if ($errors) {
             throw new \Glpi\Console\Exception\EarlyExitException(

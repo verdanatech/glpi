@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,7 +38,6 @@ namespace Glpi\Console\Migration;
 use DBConnection;
 use Glpi\Console\AbstractCommand;
 use Glpi\System\Requirement\DbTimezones;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -62,7 +61,7 @@ class TimestampsCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:migration:timestamps');
+        $this->setName('migration:timestamps');
         $this->setDescription(__('Convert "datetime" fields to "timestamp" to use timezones.'));
     }
 
@@ -85,11 +84,20 @@ class TimestampsCommand extends AbstractCommand
         if ($tbl_iterator->count() === 0) {
             $output->writeln('<info>' . __('No migration needed.') . '</info>');
         } else {
+            $this->warnAboutExecutionTime();
             $this->askForConfirmation();
 
-            $progress_bar = new ProgressBar($output);
+            $tables = [];
+            foreach ($tbl_iterator as $table_data) {
+                $tables[] = $table_data['TABLE_NAME'];
+            }
+            sort($tables);
 
-            foreach ($progress_bar->iterate($tbl_iterator) as $table) {
+            $progress_message = function (string $table) {
+                return sprintf(__('Migrating table "%s"...'), $table);
+            };
+
+            foreach ($this->iterate($tables, $progress_message) as $table) {
                 $tablealter = ''; // init by default
 
                // get accurate info from information_schema to perform correct alter
@@ -104,7 +112,7 @@ class TimestampsCommand extends AbstractCommand
                     'FROM'   => 'information_schema.columns',
                     'WHERE'  => [
                         'table_schema' => $this->db->dbdefault,
-                        'table_name'   => $table['TABLE_NAME'],
+                        'table_name'   => $table,
                         'data_type'    => 'datetime'
                     ]
                 ]);
@@ -119,7 +127,7 @@ class TimestampsCommand extends AbstractCommand
 
                     // Fix invalid zero dates
                     $this->db->update(
-                        $table['TABLE_NAME'],
+                        $table,
                         [
                             $column['COLUMN_NAME'] => $nullable ? null : '1970-01-01 00:00:01'
                         ],
@@ -172,31 +180,23 @@ class TimestampsCommand extends AbstractCommand
                 $tablealter =  rtrim($tablealter, ",");
 
                // apply alter to table
-                $query = "ALTER TABLE " . $this->db->quoteName($table['TABLE_NAME']) . " " . $tablealter . ";\n";
-                $this->writelnOutputWithProgressBar(
-                    '<comment>' . sprintf(__('Running %s'), $query) . '</comment>',
-                    $progress_bar,
-                    OutputInterface::VERBOSITY_VERBOSE
-                );
+                $query = "ALTER TABLE " . $this->db->quoteName($table) . " " . $tablealter . ";\n";
 
                 $result = $this->db->query($query);
                 if (false === $result) {
-                     $message = sprintf(
-                         __('Update of `%s` failed with message "(%s) %s".'),
-                         $table['TABLE_NAME'],
-                         $this->db->errno(),
-                         $this->db->error()
-                     );
-                     $this->writelnOutputWithProgressBar(
-                         '<error>' . $message . '</error>',
-                         $progress_bar,
-                         OutputInterface::VERBOSITY_QUIET
-                     );
-                     $errors = true;
+                    $message = sprintf(
+                        __('Migration of table "%s" failed with message "(%s) %s".'),
+                        $table,
+                        $this->db->errno(),
+                        $this->db->error()
+                    );
+                    $this->outputMessage(
+                        '<error>' . $message . '</error>',
+                        OutputInterface::VERBOSITY_QUIET
+                    );
+                    $errors = true;
                 }
             }
-
-            $this->output->write(PHP_EOL);
         }
 
         $properties_to_update = [
@@ -218,8 +218,8 @@ class TimestampsCommand extends AbstractCommand
                 );
             }
             $message = sprintf(
-                __('Fix them and run the "php bin/console %1$s" command to enable timezones.'),
-                'glpi:database:enable_timezones'
+                __('Fix them and run the "%1$s" command to enable timezones.'),
+                'php bin/console database:enable_timezones'
             );
             $output->writeln('<error>' . $message . '</error>', OutputInterface::VERBOSITY_QUIET);
         }

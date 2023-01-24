@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -36,13 +36,9 @@
 use Glpi\SocketModel;
 
 // Current version of GLPI
-define('GLPI_VERSION', '10.0.5');
+define('GLPI_VERSION', '10.0.6');
 
-$schema_file = sprintf(
-    '%s/install/mysql/glpi-%s-empty.sql',
-    GLPI_ROOT,
-    preg_replace('/^(\d+\.\d+\.\d+)(-.+)?$/', '$1', GLPI_VERSION) // strip stability suffix
-);
+$schema_file = sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT);
 define(
     "GLPI_SCHEMA_VERSION",
     GLPI_VERSION . (is_readable($schema_file) ? '@' . sha1_file($schema_file) : '')
@@ -54,7 +50,7 @@ if (!defined('GLPI_MARKETPLACE_PRERELEASES')) {
 
 define('GLPI_MIN_PHP', '7.4.0'); // Must also be changed in top of index.php
 define('GLPI_MAX_PHP', '8.3.0'); // (Exclusive) Must also be changed in top of index.php
-define('GLPI_YEAR', '2022');
+define('GLPI_YEAR', '2023');
 
 //Define a global recipient address for email notifications
 //define('GLPI_FORCE_MAIL', 'me@localhost');
@@ -197,12 +193,12 @@ $CFG_GLPI["state_types"]                  = ['Computer', 'Monitor', 'NetworkEqui
     'Peripheral', 'Phone', 'Printer', 'SoftwareLicense',
     'Certificate', 'Enclosure', 'PDU', 'Line',
     'Rack', 'SoftwareVersion', 'Cluster', 'Contract',
-    'Appliance', 'DatabaseInstance', 'Cable'
+    'Appliance', 'DatabaseInstance', 'Cable', 'Unmanaged', 'PassiveDCEquipment'
 ];
 
 $CFG_GLPI["asset_types"]                  = ['Computer', 'Monitor', 'NetworkEquipment',
     'Peripheral', 'Phone', 'Printer', 'SoftwareLicense',
-    'Certificate'
+    'Certificate', 'Unmanaged', 'Appliance'
 ];
 
 $CFG_GLPI["project_asset_types"]          = ['Computer', 'Monitor', 'NetworkEquipment',
@@ -470,7 +466,7 @@ $CFG_GLPI['user_pref_field'] = ['backcreated', 'csv_delimiter', 'date_format',
     'highcontrast_css', 'default_dashboard_central', 'default_dashboard_assets',
     'default_dashboard_helpdesk', 'default_dashboard_mini_ticket', 'default_central_tab',
     'fold_menu', 'fold_search', 'savedsearches_pinned', 'richtext_layout', 'timeline_order',
-    'itil_layout'
+    'itil_layout', 'timeline_action_btn_layout', 'timeline_date_format'
 ];
 
 $CFG_GLPI['lock_lockable_objects'] = ['Budget',  'Change', 'Contact', 'Contract', 'Document',
@@ -540,34 +536,30 @@ $CFG_GLPI['databaseinstance_types'] = ['Computer'];
 
 $CFG_GLPI['agent_types'] = ['Computer', 'Phone'];
 
-$dashboard_libs = [
-    'dashboard', 'gridstack',
-    'charts', 'clipboard', 'sortable'
-];
-
 $reservations_libs = ['fullcalendar', 'reservations'];
 
 $CFG_GLPI['javascript'] = [
     'central'   => [
-        'central' => array_merge([
+        'central' => [
             'fullcalendar',
             'planning',
             'masonry',
             'tinymce',
-        ], $dashboard_libs)
+            'dashboard',
+        ]
     ],
     'assets'    => [
-        'dashboard'   => $dashboard_libs,
+        'dashboard'   => ['dashboard'],
         'rack'        => ['gridstack', 'rack'],
-        'printer'     => $dashboard_libs,
+        'printer'     => ['dashboard'],
         'cable'       => ['cable'],
         'socket'      => ['cable'],
-        'networkport' => $dashboard_libs,
+        'networkport' => ['dashboard'],
     ],
     'helpdesk'  => [
-        'dashboard' => $dashboard_libs,
+        'dashboard' => ['dashboard'],
         'planning'  => ['clipboard', 'fullcalendar', 'tinymce', 'planning'],
-        'ticket'    => array_merge(['rateit', 'tinymce', 'kanban'], $dashboard_libs),
+        'ticket'    => ['rateit', 'tinymce', 'kanban', 'dashboard'],
         'problem'   => ['tinymce', 'kanban', 'sortable'],
         'change'    => ['tinymce', 'kanban', 'sortable'],
         'stat'      => ['charts']

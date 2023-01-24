@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -37,6 +37,7 @@ namespace Glpi\Dashboard;
 
 use Change;
 use CommonDBTM;
+use CommonDBVisible;
 use CommonITILActor;
 use CommonITILObject;
 use CommonITILValidation;
@@ -905,8 +906,10 @@ class Provider
                 'SELECT' => "$i_table.*",
                 'FROM'   => $i_table
             ],
-            self::getFiltersCriteria($i_table, $params['apply_filters'])
+            self::getFiltersCriteria($i_table, $params['apply_filters']),
+            $item instanceof CommonDBVisible ? $item::getVisibilityCriteria() : []
         );
+
         $iterator = $DB->request($criteria);
 
         $data = [];
@@ -1760,7 +1763,7 @@ class Provider
             isset($apply_filters['user_tech'])
             && (
                 (int) $apply_filters['user_tech'] > 0
-                || $apply_filters['user_tech'] == 'myself'
+                || $apply_filters['user_tech'] === 'myself'
             )
         ) {
             if ($DB->fieldExists($table, 'users_id_tech')) {
@@ -1768,7 +1771,7 @@ class Provider
                     'link'       => 'AND',
                     'field'      => self::getSearchOptionID($table, 'users_id_tech', 'glpi_users'),// tech
                     'searchtype' => 'equals',
-                    'value'      =>  $apply_filters['user_tech'] == 'myself' ? (int) Session::getLoginUserID() : (int) $apply_filters['user_tech']
+                    'value'      =>  $apply_filters['user_tech'] === 'myself' ? (int) Session::getLoginUserID() : (int) $apply_filters['user_tech']
                 ];
             } elseif (
                 in_array($table, [
@@ -1957,7 +1960,7 @@ class Provider
             $users_id = null;
             if ((int) $apply_filters['user_tech'] > 0) {
                 $users_id = (int) $apply_filters['user_tech'];
-            } else if ($apply_filters['user_tech'] == 'myself') {
+            } else if ($apply_filters['user_tech'] === 'myself') {
                 $users_id = $_SESSION['glpiID'];
             }
 

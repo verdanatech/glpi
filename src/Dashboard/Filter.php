@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -119,7 +119,7 @@ class Filter extends \CommonDBChild
          // don't trigger when only the first date is selected
          var nb_dates = selectedDates.length;
          if (nb_dates == 0 || nb_dates == 2) {
-            Dashboard.saveFilter('{$fieldname}', selectedDates);
+            Dashboard.getActiveDashboard().saveFilter('{$fieldname}', selectedDates);
             $(instance.input).closest("fieldset").addClass("filled");
          }
       };
@@ -220,7 +220,7 @@ JAVASCRIPT;
          var dom_elem    = $('#dropdown_{$fieldname}{$rand}');
          var selected    = dom_elem.find(':selected').val();
 
-         Dashboard.saveFilter('{$fieldname}', selected);
+         Dashboard.getActiveDashboard().saveFilter('{$fieldname}', selected);
 
          $(dom_elem).closest("fieldset").toggleClass("filled", selected !== null)
       };

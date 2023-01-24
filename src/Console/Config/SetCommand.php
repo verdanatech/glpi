@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -57,8 +57,7 @@ class SetCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:config:set');
-        $this->setAliases(['config:set']);
+        $this->setName('config:set');
         $this->setDescription(__('Set configuration value'));
         $this->addArgument('key', InputArgument::REQUIRED, 'Configuration key');
         $this->addArgument('value', InputArgument::REQUIRED, 'Configuration value (ommit argument to be prompted for value)');

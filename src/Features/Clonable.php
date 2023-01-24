@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -116,9 +116,12 @@ trait Clonable
 
             $override_input[$classname::getItemField($this->getType())] = $this->getID();
 
-           // Force entity / recursivity based on cloned parent, with fallback on session values
+            // Force entity / recursivity based on cloned parent, with fallback on session values
             $override_input['entities_id'] = $this->isEntityAssign() ? $this->getEntityID() : Session::getActiveEntity();
             $override_input['is_recursive'] = $this->maybeRecursive() ? $this->isRecursive() : Session::getIsActiveEntityRecursive();
+
+            $cloned = []; // Link between old and new ID
+            $relation_newitems = [];
 
             $relation_items = $classname::getItemsAssociatedTo($this->getType(), $source->getID());
             /** @var CommonDBTM $relation_item */
@@ -127,7 +130,22 @@ trait Clonable
                     // Force-set name to avoid adding a "(copy)" suffix to the cloned item
                     $override_input['name'] = $relation_item->fields['name'];
                 }
-                $relation_item->clone($override_input, $history);
+                $origin_id = $relation_item->getID();
+                $itemtype = $relation_item->getType();
+                $cloned[$itemtype][$origin_id] = $relation_item->clone($override_input, $history);
+                $relation_item->getFromDB($cloned[$itemtype][$origin_id]);
+                $relation_newitems[] = $relation_item;
+            }
+            // Update relations between cloned items
+            foreach ($relation_newitems as $relation_newitem) {
+                $itemtype = $relation_newitem->getType();
+                $foreignkey = getForeignKeyFieldForItemType($itemtype);
+                if ($relation_newitem->isField($foreignkey) && isset($cloned[$itemtype][$relation_newitem->fields[$foreignkey]])) {
+                    $relation_newitem->update([
+                        'id' => $relation_newitem->getID(),
+                        $foreignkey => $cloned[$itemtype][$relation_newitem->fields[$foreignkey]]
+                    ]);
+                }
             }
         }
     }
@@ -219,12 +237,7 @@ trait Clonable
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
 
-        if (get_class($new_item) == 'Project' && $newID !== false) {
-            $this->fields['newProjectCreate'] = $newID;
-            $new_item->post_clone($this, $history);
-        }
-
-        if ($newID !== false  && get_class($new_item) != 'Project') {
+        if ($newID !== false) {
             $new_item->cloneRelations($this, $history);
             $new_item->post_clone($this, $history);
         }

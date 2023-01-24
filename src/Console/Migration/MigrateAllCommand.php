@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -46,18 +46,18 @@ class MigrateAllCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:migration:migrate_all');
+        $this->setName('migration:migrate_all');
         $this->setDescription(__('Execute all recommended optional migrations.'));
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $commands = [
-            'glpi:migration:myisam_to_innodb',
-            'glpi:migration:dynamic_row_format',
-            'glpi:migration:timestamps',
-            'glpi:migration:utf8mb4',
-            'glpi:migration:unsigned_keys',
+            'migration:myisam_to_innodb',
+            'migration:dynamic_row_format',
+            'migration:timestamps',
+            'migration:utf8mb4',
+            'migration:unsigned_keys',
         ];
 
         $options = [];

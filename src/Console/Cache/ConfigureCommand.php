@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -71,8 +71,7 @@ class ConfigureCommand extends AbstractCommand
     protected function configure()
     {
 
-        $this->setName('glpi:cache:configure');
-        $this->setAliases(['cache:configure']);
+        $this->setName('cache:configure');
         $this->setDescription('Define cache configuration');
 
         $this->addOption(

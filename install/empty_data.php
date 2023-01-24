@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -345,8 +345,11 @@ $empty_data_builder = new class
             // Default size corresponds to the 'upload_max_filesize' directive in Mio (rounded down) or 1 Mio if 'upload_max_filesize' is too low.
             'document_max_size' => max(1, floor(Toolbox::return_bytes_from_ini_vars(ini_get('upload_max_filesize')) / 1024 / 1024)),
             'planning_work_days' => exportArrayToDB([0, 1, 2, 3, 4, 5, 6]),
-            'system_user' => 6,
+            'system_user' => self::USER_SYSTEM,
             'support_legacy_data' => 0, // New installation should not support legacy data
+            'initialized_rules_collections' => '[]',
+            'timeline_action_btn_layout' => 0,
+            'timeline_date_format' => 0,
         ];
 
         $tables['glpi_configs'] = [];
@@ -358,7 +361,7 @@ $empty_data_builder = new class
             ];
         }
 
-        foreach (\Glpi\Inventory\Conf::$defaults as $name => $value) {
+        foreach (\Glpi\Inventory\Conf::getDefaults() as $name => $value) {
             $tables['glpi_configs'][] = [
                 'context' => 'inventory',
                 'name' => $name,
@@ -1603,27 +1606,27 @@ $empty_data_builder = new class
                 'num' => '5',
                 'rank' => '3',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '16',
                 'rank' => '1',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '7',
                 'rank' => '2',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '20',
                 'rank' => '3',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '21',
                 'rank' => '4',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '22',
                 'rank' => '5',
             ], [
-                'itemtype' => 'QueueMail',
+                'itemtype' => 'QueuedNotification',
                 'num' => '15',
                 'rank' => '6',
             ], [
@@ -1796,7 +1799,7 @@ $empty_data_builder = new class
         $ADDTODISPLAYPREF['Lockedfield'] = [3, 13, 5];
         $ADDTODISPLAYPREF['Unmanaged'] = [2, 4, 3, 5, 7, 10, 18, 14, 15, 9];
         $ADDTODISPLAYPREF['NetworkPortType'] = [10, 11, 12];
-        $ADDTODISPLAYPREF['NetworkPort'] = [3, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40];
+        $ADDTODISPLAYPREF['NetworkPort'] = [3, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40, 6];
         $ADDTODISPLAYPREF['USBVendor'] = [10, 11];
         $ADDTODISPLAYPREF['PCIVendor'] = [10, 11];
         $ADDTODISPLAYPREF['Agent'] = [2, 4, 10, 8, 11, 6, 15];
@@ -4888,11 +4891,14 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
 
 ##FOREACHplugins##
 ##plugin.name## :##plugin.old_version## -&gt; ##plugin.version##
-##ENDFOREACHplugins##',
+##ENDFOREACHplugins##
+
+##lang.marketplace.url## : ##marketplace.url##',
                 'content_html' => '&lt;p&gt;##lang.plugins_updates_available##&lt;/p&gt;
 &lt;ul&gt;##FOREACHplugins##
 &lt;li&gt;##plugin.name## :##plugin.old_version## -&gt; ##plugin.version##&lt;/li&gt;
-##ENDFOREACHplugins##&lt;/ul&gt;'
+##ENDFOREACHplugins##&lt;/ul&gt;
+&lt;p&gt;##lang.marketplace.url## : &lt;a title="##lang.marketplace.url##" href="##marketplace.url##" target="_blank" rel="noopener"&gt;##marketplace.url##&lt;/a&gt;&lt;/p&gt;'
             ],
         ];
 
@@ -5671,7 +5677,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'cable_management',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | DELETE | PURGE,
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'statistic',
@@ -6552,7 +6558,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'cable_management',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | DELETE | PURGE,
             ], [
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'statistic',
@@ -6835,7 +6841,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'cable_management',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | DELETE | PURGE,
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'statistic',
@@ -8144,188 +8150,6 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ],
         ];
 
-        $tables['glpi_ruleactions'] = [
-            [
-                'id' => '6',
-                'rules_id' => '6',
-                'action_type' => 'fromitem',
-                'field' => 'locations_id',
-                'value' => '1',
-            ], [
-                'id' => '2',
-                'rules_id' => '2',
-                'action_type' => 'assign',
-                'field' => 'entities_id',
-                'value' => '0',
-            ], [
-                'id' => '3',
-                'rules_id' => '3',
-                'action_type' => 'assign',
-                'field' => 'entities_id',
-                'value' => '0',
-            ], [
-                'id' => '4',
-                'rules_id' => '4',
-                'action_type' => 'assign',
-                'field' => '_refuse_email_no_response',
-                'value' => '1',
-            ], [
-                'id' => '5',
-                'rules_id' => '5',
-                'action_type' => 'assign',
-                'field' => '_refuse_email_no_response',
-                'value' => '1',
-            ], [
-                'id' => '7',
-                'rules_id' => '7',
-                'action_type' => 'fromuser',
-                'field' => 'locations_id',
-                'value' => '1',
-            ], [
-                'id' => '8',
-                'rules_id' => '8',
-                'action_type' => 'assign',
-                'field' => '_import_category',
-                'value' => '1',
-            ], [
-                'id' => '9',
-                'rules_id' => '9',
-                'action_type' => 'regex_result',
-                'field' => '_affect_user_by_regex',
-                'value' => '#0',
-            ], [
-                'id' => '10',
-                'rules_id' => '10',
-                'action_type' => 'regex_result',
-                'field' => '_affect_user_by_regex',
-                'value' => '#0',
-            ], [
-                'id' => '11',
-                'rules_id' => '11',
-                'action_type' => 'regex_result',
-                'field' => '_affect_user_by_regex',
-                'value' => '#0',
-            ],
-        ];
-
-        $tables['glpi_rulecriterias'] = [
-            [
-                'id' => 9,
-                'rules_id' => 6,
-                'criteria' => 'locations_id',
-                'condition' => 9,
-                'pattern' => 1,
-            ], [
-                'id' => 2,
-                'rules_id' => 2,
-                'criteria' => 'TYPE',
-                'condition' => 0,
-                'pattern' => Auth::LDAP,
-            ], [
-                'id' => 3,
-                'rules_id' => 2,
-                'criteria' => 'TYPE',
-                'condition' => 0,
-                'pattern' => Auth::MAIL,
-            ], [
-                'id' => 5,
-                'rules_id' => 3,
-                'criteria' => 'subject',
-                'condition' => 6,
-                'pattern' => '/.*/',
-            ], [
-                'id' => 6,
-                'rules_id' => 4,
-                'criteria' => 'x-auto-response-suppress',
-                'condition' => 6,
-                'pattern' => '/\\S+/',
-            ], [
-                'id' => 7,
-                'rules_id' => 5,
-                'criteria' => 'auto-submitted',
-                'condition' => '6',
-                'pattern' => '/^(?!.*no).+$/i',
-            ], [
-                'id' => 10,
-                'rules_id' => 6,
-                'criteria' => 'items_locations',
-                'condition' => 8,
-                'pattern' => 1,
-            ], [
-                'id' => 11,
-                'rules_id' => 7,
-                'criteria' => 'locations_id',
-                'condition' => 9,
-                'pattern' => 1,
-            ], [
-                'id' => 12,
-                'rules_id' => 7,
-                'criteria' => '_locations_id_of_requester',
-                'condition' => 8,
-                'pattern' => 1,
-            ], [
-                'id' => 13,
-                'rules_id' => 8,
-                'criteria' => 'name',
-                'condition' => 0,
-                'pattern' => '*',
-            ], [
-                'id' => 14,
-                'rules_id' => 9,
-                'criteria' => '_itemtype',
-                'condition' => 0,
-                'pattern' => 'Computer',
-            ], [
-                'id' => 15,
-                'rules_id' => 9,
-                'criteria' => '_auto',
-                'condition' => 0,
-                'pattern' => 1,
-            ], [
-                'id' => 16,
-                'rules_id' => 9,
-                'criteria' => 'contact',
-                'condition' => 6,
-                'pattern' => '/(.*)@/',
-            ], [
-                'id' => 17,
-                'rules_id' => 10,
-                'criteria' => '_itemtype',
-                'condition' => 0,
-                'pattern' => 'Computer',
-            ], [
-                'id' => 18,
-                'rules_id' => 10,
-                'criteria' => '_auto',
-                'condition' => 0,
-                'pattern' => 1,
-            ], [
-                'id' => 19,
-                'rules_id' => 10,
-                'criteria' => 'contact',
-                'condition' => 6,
-                'pattern' => '/(.*)[,|\\/]/',
-            ], [
-                'id' => 20,
-                'rules_id' => 11,
-                'criteria' => '_itemtype',
-                'condition' => 0,
-                'pattern' => 'Computer',
-            ], [
-                'id' => 21,
-                'rules_id' => 11,
-                'criteria' => '_auto',
-                'condition' => 0,
-                'pattern' => 1,
-            ], [
-                'id' => 22,
-                'rules_id' => 11,
-                'criteria' => 'contact',
-                'condition' => 6,
-                'pattern' => '/(.*)/',
-            ],
-        ];
-
         $tables['glpi_rulerightparameters'] = [
             [
                 'id' => 1,
@@ -8379,120 +8203,6 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'id' => '14',
                 'name' => '(LDAP) MemberOf',
                 'value' => 'memberof',
-            ],
-        ];
-
-        $tables['glpi_rules'] = [
-            [
-                'id' => '2',
-                'sub_type' => 'RuleRight',
-                'ranking' => '1',
-                'name' => 'Root',
-                'description' => '',
-                'match' => 'OR',
-                'is_active' => '1',
-                'is_recursive' => 0,
-                'uuid' => '500717c8-2bd6e957-53a12b5fd35745.02608131',
-                'condition' => 0,
-            ], [
-                'id' => '3',
-                'sub_type' => 'RuleMailCollector',
-                'ranking' => '3',
-                'name' => 'Root',
-                'description' => '',
-                'match' => 'OR',
-                'is_active' => '1',
-                'is_recursive' => '0',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd36404.54713349',
-                'condition' => '0',
-            ], [
-                'id' => '4',
-                'sub_type' => 'RuleMailCollector',
-                'ranking' => '1',
-                'name' => 'X-Auto-Response-Suppress',
-                'description' => 'Exclude Auto-Reply emails using X-Auto-Response-Suppress header',
-                'match' => 'AND',
-                'is_active' => '0',
-                'is_recursive' => '1',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd36d97.94503423',
-                'condition' => '0',
-            ], [
-                'id' => '5',
-                'sub_type' => 'RuleMailCollector',
-                'ranking' => '2',
-                'name' => 'Auto-Reply Auto-Submitted',
-                'description' => 'Exclude Auto-Reply emails using Auto-Submitted header',
-                'match' => 'OR',
-                'is_active' => '1',
-                'is_recursive' => '1',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd376c2.87642651',
-                'condition' => '0',
-            ], [
-                'id' => '6',
-                'sub_type' => 'RuleTicket',
-                'ranking' => '1',
-                'name' => 'Ticket location from item',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '0',
-                'is_recursive' => '1',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd37f94.10365341',
-                'condition' => '1',
-            ], [
-                'id' => '7',
-                'sub_type' => 'RuleTicket',
-                'ranking' => '2',
-                'name' => 'Ticket location from user',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '0',
-                'is_recursive' => '1',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd38869.86002585',
-                'condition' => '1',
-            ], [
-                'id' => '8',
-                'sub_type' => 'RuleSoftwareCategory',
-                'ranking' => '1',
-                'name' => 'Import category from inventory tool',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '0',
-                'is_recursive' => '1',
-                'uuid' => '500717c8-2bd6e957-53a12b5fd38869.86003425',
-                'condition' => '1',
-            ], [
-                'id' => '9',
-                'sub_type' => 'RuleAsset',
-                'ranking' => '1',
-                'name' => 'Domain user assignation',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '1',
-                'is_recursive' => '1',
-                'uuid' => 'fbeb1115-7a37b143-5a3a6fc1afdc17.92779763',
-                'condition' => '3',
-            ], [
-                'id' => '10',
-                'sub_type' => 'RuleAsset',
-                'ranking' => '2',
-                'name' => 'Multiple users: assign to the first',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '1',
-                'is_recursive' => '1',
-                'uuid' => 'fbeb1115-7a37b143-5a3a6fc1b03762.88595154',
-                'condition' => '3',
-            ], [
-                'id' => '11',
-                'sub_type' => 'RuleAsset',
-                'ranking' => '3',
-                'name' => 'One user assignation',
-                'description' => '',
-                'match' => 'AND',
-                'is_active' => '1',
-                'is_recursive' => '1',
-                'uuid' => 'fbeb1115-7a37b143-5a3a6fc1b073e1.16257440',
-                'condition' => '3',
             ],
         ];
 
@@ -8622,6 +8332,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'keep_disk' => 1,
                 'keep_certificate' => 1,
                 'clean_certificate' => 1,
+                'lock_updated_fields' => 0,
             ],
         ];
 

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -249,27 +249,66 @@ class Ticket extends CommonITILObject
      **/
     public function canViewItem()
     {
-
         if (!Session::haveAccessToEntity($this->getEntityID())) {
             return false;
         }
-        return (Session::haveRight(self::$rightname, self::READALL)
-              || (Session::haveRight(self::$rightname, self::READMY)
-                  && (($this->fields["users_id_recipient"] === Session::getLoginUserID())
-                      || $this->isUser(CommonITILActor::REQUESTER, Session::getLoginUserID())
-                      || $this->isUser(CommonITILActor::OBSERVER, Session::getLoginUserID())))
-              || (Session::haveRight(self::$rightname, self::READGROUP)
-                  && isset($_SESSION["glpigroups"])
-                  && ($this->haveAGroup(CommonITILActor::REQUESTER, $_SESSION["glpigroups"])
-                      || $this->haveAGroup(CommonITILActor::OBSERVER, $_SESSION["glpigroups"])))
-              || (Session::haveRight(self::$rightname, self::READASSIGN)
-                  && ($this->isUser(CommonITILActor::ASSIGN, Session::getLoginUserID())
-                      || (isset($_SESSION["glpigroups"])
-                          && $this->haveAGroup(CommonITILActor::ASSIGN, $_SESSION["glpigroups"]))
-                      || (Session::haveRight(self::$rightname, self::ASSIGN)
-                          && ($this->fields["status"] == self::INCOMING))))
-              || (Session::haveRightsOr('ticketvalidation', TicketValidation::getValidateRights())
-                  && TicketValidation::canValidate($this->fields["id"])));
+
+        // Can see all tickets
+        if (Session::haveRight(self::$rightname, self::READALL)) {
+            return true;
+        }
+
+        // Can see my tickets
+        if (
+            Session::haveRight(self::$rightname, self::READMY)
+            && (
+                $this->fields["users_id_recipient"] === Session::getLoginUserID()
+                || $this->isUser(CommonITILActor::REQUESTER, Session::getLoginUserID())
+                || $this->isUser(CommonITILActor::OBSERVER, Session::getLoginUserID())
+            )
+        ) {
+            return true;
+        }
+
+        // Can see my groups tickets
+        if (
+            Session::haveRight(self::$rightname, self::READGROUP)
+            && isset($_SESSION["glpigroups"])
+            && (
+                $this->haveAGroup(CommonITILActor::REQUESTER, $_SESSION["glpigroups"])
+                || $this->haveAGroup(CommonITILActor::OBSERVER, $_SESSION["glpigroups"])
+            )
+        ) {
+            return true;
+        }
+
+        // Can see assigned tickets
+        if (
+            Session::haveRight(self::$rightname, self::READASSIGN)
+            && (
+                $this->isUser(CommonITILActor::ASSIGN, Session::getLoginUserID())
+                || (
+                    isset($_SESSION["glpigroups"])
+                    && $this->haveAGroup(CommonITILActor::ASSIGN, $_SESSION["glpigroups"])
+                )
+                || (
+                    Session::haveRight(self::$rightname, self::ASSIGN)
+                    && ($this->fields["status"] == self::INCOMING)
+                )
+            )
+        ) {
+            return true;
+        }
+
+        // Can validate tickets
+        if (
+            Session::haveRightsOr('ticketvalidation', TicketValidation::getValidateRights())
+            && TicketValidation::canValidate($this->fields["id"])
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
 
@@ -1685,7 +1724,6 @@ class Ticket extends CommonITILObject
            // Read again ticket to be sure that all data are up to date
             $this->getFromDB($this->fields['id']);
             NotificationEvent::raiseEvent($mailtype, $this);
-            $this->input['_disablenotif'] = true;
         }
 
        // inquest created immediatly if delay = O
@@ -4354,6 +4392,7 @@ JAVASCRIPT;
             'canassigntome'      => $canassigntome,
             'load_kb_sol'        => $options['load_kb_sol'] ?? 0,
             'userentities'       => $userentities,
+            'has_pending_reason' => PendingReason_Item::getForItem($this) !== false,
         ]);
 
         return true;

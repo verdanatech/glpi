@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1485,7 +1485,7 @@ class DBmysql
      * @param string  $table   Table name
      * @param array   $params  Query parameters ([:field name => field value)
      * @param array   $where   WHERE clause
-     * @param boolean $onlyone Do the update only one one element, defaults to true
+     * @param boolean $onlyone Do the update only one element, defaults to true
      *
      * @return mysqli_result|boolean Query result handler
      */
@@ -1959,7 +1959,7 @@ class DBmysql
     /**
      * Executes a prepared statement
      *
-     * @param mysqli_stmt $stmt STatement to execute
+     * @param mysqli_stmt $stmt Statement to execute
      *
      * @return void
      */

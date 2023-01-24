@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -205,6 +205,9 @@ class Document_Item extends CommonDBRelation
     }
 
 
+    /**
+     * @TODO Remove `_do_update_ticket` handling in GLPI 10.1, it is not used anymore.
+     */
     public function post_addItem()
     {
 
@@ -465,7 +468,7 @@ class Document_Item extends CommonDBRelation
                     } else if ($item instanceof Item_Devices) {
                         $linkname = $data["itemtype"];
                     } else {
-                        $linkname = $data["name"];
+                        $linkname = $data[$item::getNameField()];
                     }
                     if (
                         $_SESSION["glpiis_ids_visible"]

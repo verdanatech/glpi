@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -55,13 +55,23 @@ if (isset($_POST["action"])) {
 } else if (isset($_POST["reinit"]) || isset($_GET['reinit'])) {
    //reinitialize current rules
     $ruleclass = $rulecollection->getRuleClass();
-    if ($ruleclass::initRules($reset = true, $with_plugins = true)) {
+    if ($ruleclass::initRules()) {
         Session::addMessageAfterRedirect(
             sprintf(
             //TRANS: first parameter is the rule type name
                 __('%1$s has been reset.'),
                 $rulecollection->getTitle()
             )
+        );
+    } else {
+        Session::addMessageAfterRedirect(
+            sprintf(
+                //TRANS: first parameter is the rule type name
+                __('%1$s reset failed.'),
+                $rulecollection->getTitle()
+            ),
+            false,
+            ERROR
         );
     }
     Html::back();
@@ -147,5 +157,8 @@ Html::header(
     $rulecollection->menu_option
 );
 
-$rulecollection->display();
+$rulecollection->display([
+    'display_criterias' => true,
+    'display_actions'   => true,
+]);
 Html::footer();

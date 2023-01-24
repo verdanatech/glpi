@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -150,13 +150,11 @@ class Knowbase extends CommonGLPI
 
         $rand        = mt_rand();
         $ajax_url    = $CFG_GLPI["root_doc"] . "/ajax/knowbase.php";
-        $loading_txt = addslashes(__('Loading...'));
-        $start       = isset($_REQUEST['start'])
-                        ? $_REQUEST['start']
-                        : 0;
+        $loading_txt = __s('Loading...');
+        $start       = (int)($_REQUEST['start'] ?? 0);
 
         $category_list = json_encode(self::getTreeCategoryList());
-        $no_cat_found  = __("No category found");
+        $no_cat_found  = __s("No category found");
 
         $JS = <<<JAVASCRIPT
          $(function() {
@@ -335,7 +333,7 @@ JAVASCRIPT;
         )->current();
         $categories[] = [
             'id'          => 0,
-            'name'        => __('Root category'),
+            'name'        => __s('Root category'),
             'items_count' => $root_items_count['cpt'],
         ];
 
@@ -353,7 +351,7 @@ JAVASCRIPT;
             ];
 
             if ($category['items_count'] > 0) {
-                $node['title'] .= ' <span class="badge bg-azure-lt" title="' . __('This category contains articles') . '">'
+                $node['title'] .= ' <span class="badge bg-azure-lt" title="' . __s('This category contains articles') . '">'
                 . $category['items_count']
                 . '</span>';
             }

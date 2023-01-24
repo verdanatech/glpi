@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @copyright 2010-2022 by the FusionInventory Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
@@ -92,7 +92,6 @@ class Software extends InventoryAsset
 
         $with_manufacturer = [];
         $without_manufacturer = [];
-        $mids = []; //keep trace of handled ids
 
         foreach ($this->data as $k => &$val) {
             foreach ($mapping as $origin => $dest) {
@@ -103,9 +102,7 @@ class Software extends InventoryAsset
 
             if (
                 !property_exists($val, 'name')
-                || ($val->name == ''
-                || str_starts_with(Toolbox::slugify($val->name), 'nok_')
-                )
+                || $val->name == ''
             ) {
                 if (property_exists($val, 'guid') && $val->guid != '') {
                     $val->name = $val->guid;
@@ -146,47 +143,55 @@ class Software extends InventoryAsset
                     $val->version = $res_rule["version"];
                 }
 
-                //If the software categorie has been modified or set by the rules engine
+                //If the software category has been modified or set by the rules engine
                 if (isset($res_rule["softwarecategories_id"])) {
-                    $val->softwarecategories_id = $res_rule["softwarecategories_id"];
+                    $sckey = 'softwarecategories_id' . $res_rule["softwarecategories_id"];
+                    $this->known_links[$sckey] = $res_rule["softwarecategories_id"];
+                    $sc = new \SoftwareCategory();
+                    $sc->getFromDB($res_rule["softwarecategories_id"]);
+                    $val->softwarecategories_id = $sc->fields['name'];
                 } else if (
                     property_exists($val, '_system_category')
                     && $val->_system_category != ''
                     && $val->_system_category != '0'
                 ) {
-                    if (!isset($mids[$val->_system_category])) {
+                    $val->softwarecategories_id = $val->_system_category;
+                    $sckey = 'softwarecategories_id' . $val->_system_category;
+                    if (!isset($this->known_links[$sckey])) {
                         $new_value = Dropdown::importExternal(
                             'SoftwareCategory',
                             addslashes($val->_system_category),
                             $this->entities_id
                         );
-                        $mids[$val->_system_category] = $new_value;
+                        $this->known_links[$sckey] = $new_value;
                     }
-                    $val->softwarecategories_id = $mids[$val->_system_category];
                 } else {
                     $val->softwarecategories_id = 0;
                 }
 
                 //If the manufacturer has been modified or set by the rules engine
                 if (isset($res_rule["manufacturer"])) {
-                    $val->manufacturers_id = Dropdown::import(
+                    $mkey = 'manufacturers_id' . $res_rule['manufacturer'];
+                    $mid = Dropdown::import(
                         'Manufacturer',
                         ['name' => $res_rule['manufacturer']]
                     );
+                    $this->known_links[$mkey] = $mid;
+                    $val->manufacturers_id = $res_rule['manufacturer'];
                 } else if (
                     property_exists($val, 'manufacturers_id')
                     && $val->manufacturers_id != ''
                     && $val->manufacturers_id != '0'
                 ) {
-                    if (!isset($mids[$val->manufacturers_id])) {
+                    $mkey = 'manufacturers_id' . $val->manufacturers_id;
+                    if (!isset($this->known_links[$mkey])) {
                         $new_value = Dropdown::importExternal(
                             'Manufacturer',
                             addslashes($val->manufacturers_id),
                             $this->entities_id
                         );
-                        $mids[$val->manufacturers_id] = $new_value;
+                        $this->known_links[$mkey] = $new_value;
                     }
-                    $val->manufacturers_id = $mids[$val->manufacturers_id];
                 } else {
                     $val->manufacturers_id = 0;
                 }
@@ -288,11 +293,11 @@ class Software extends InventoryAsset
                 'glpi_softwareversions.id AS versionid',
                 'glpi_softwareversions.name AS version',
                 'glpi_softwareversions.arch',
-                'glpi_softwares.manufacturers_id',
                 'glpi_softwares.entities_id',
-                'glpi_softwares.softwarecategories_id',
+                'glpi_softwarecategories.name AS softwarecategories_id',
                 'glpi_softwares.is_recursive',
                 'glpi_softwareversions.operatingsystems_id',
+                'glpi_manufacturers.name AS manufacturers_id'
             ],
             'FROM'      => 'glpi_items_softwareversions',
             'LEFT JOIN' => [
@@ -307,6 +312,18 @@ class Software extends InventoryAsset
                         'glpi_softwareversions' => 'softwares_id',
                         'glpi_softwares'        => 'id'
                     ]
+                ],
+                'glpi_softwarecategories' => [
+                    'ON' => [
+                        'glpi_softwares' => 'softwarecategories_id',
+                        'glpi_softwarecategories' => 'id'
+                    ]
+                ],
+                'glpi_manufacturers' => [
+                    'ON' => [
+                        'glpi_softwares' => 'manufacturers_id',
+                        'glpi_manufacturers' => 'id'
+                    ]
                 ]
             ],
             'WHERE'     => [
@@ -319,6 +336,9 @@ class Software extends InventoryAsset
         foreach ($iterator as $data) {
             $item_soft_v_id = $data['item_soft_version_id'];
             unset($data['item_soft_version_id']);
+            if ($data['manufacturers_id'] == null) {
+                $data['manufacturers_id'] = 0;
+            }
             $key_w_version = $this->getFullCompareKey((object)$data);
             $key_wo_version = $this->getFullCompareKey((object)$data, false);
             $db_software[$key_w_version] = $item_soft_v_id;
@@ -355,14 +375,15 @@ class Software extends InventoryAsset
 
             //update softwarecategories if needed
             //reconciles the software without the version (no needed here)
+            $sckey = 'softwarecategories_id' . ($val->softwarecategories_id ?? 0);
             if (
                 isset($db_software_data[$key_wo_version])
-                && $db_software_data[$key_wo_version]['softwarecategories'] != $val->softwarecategories_id
+                && $db_software_data[$key_wo_version]['softwarecategories'] != ($this->known_links[$sckey] ?? 0)
             ) {
                 $software_to_update = new GSoftware();
                 $software_to_update->update([
                     "id" => $db_software_data[$key_wo_version]['softid'],
-                    "softwarecategories_id" => $val->softwarecategories_id
+                    "softwarecategories_id" => ($this->known_links[$sckey] ?? 0)
                 ], 0);
             }
 
@@ -447,7 +468,7 @@ class Software extends InventoryAsset
      */
     protected function getSoftwareKey($name, $manufacturers_id): string
     {
-        return $this->getCompareKey([Toolbox::slugify($name), $manufacturers_id]);
+        return $this->getCompareKey([sha1($name), $manufacturers_id]);
     }
 
     /**
@@ -478,7 +499,7 @@ class Software extends InventoryAsset
     protected function getFullCompareKey(\stdClass $val, bool $with_version = true): string
     {
         return $this->getCompareKey([
-            Toolbox::slugify($val->name),
+            sha1($val->name),
             $with_version ? strtolower($val->version) : '',
             strtolower($val->arch ?? ''),
             $val->manufacturers_id,
@@ -498,7 +519,7 @@ class Software extends InventoryAsset
     protected function getSimpleCompareKey(\stdClass $val): string
     {
         return $this->getCompareKey([
-            Toolbox::slugify($val->name),
+            sha1($val->name),
             strtolower($val->version),
             strtolower($val->arch ?? ''),
             $val->entities_id ?? 0,
@@ -557,9 +578,10 @@ class Software extends InventoryAsset
                 continue;
             }
 
+            $mkey = 'manufacturers_id' . $val->manufacturers_id;
             $input = Sanitizer::encodeHtmlSpecialCharsRecursive([
                 'name'             => $val->name,
-                'manufacturers_id' => $val->manufacturers_id,
+                'manufacturers_id' => $this->known_links[$mkey] ?? 0
             ]);
 
             $stmt->bind_param(
@@ -785,6 +807,11 @@ class Software extends InventoryAsset
         foreach (array_keys($input) as $column) {
             if (!isset($known_fields[$column])) {
                 unset($input[$column]);
+            } else {
+                $key = $column . $input[$column];
+                if (isset($this->known_links[$key])) {
+                    $input[$column] = $this->known_links[$key];
+                }
             }
         }
         ksort($input);
@@ -910,7 +937,7 @@ class Software extends InventoryAsset
             \Log::history(
                 $this->item->fields['id'],
                 $this->item->getType(),
-                [0, '', sprintf('%1$s - %2$s', $software_name, $version_name)],
+                [0, sprintf(__('%1$s - %2$s'), $software_name, $version_name), ''],
                 'Software',
                 \Log::HISTORY_DELETE_SUBITEM
             );
@@ -919,7 +946,7 @@ class Software extends InventoryAsset
             \Log::history(
                 $softwares_id,
                 'Software',
-                [0, '', sprintf(__('%1$s - %2$s'), $version_name, $asset_name)],
+                [0, sprintf(__('%1$s - %2$s'), $version_name, $asset_name), ''],
                 'Item_SoftwareVersion',
                 \Log::HISTORY_DELETE_SUBITEM
             );
@@ -928,7 +955,7 @@ class Software extends InventoryAsset
             \Log::history(
                 $versions_id,
                 'SoftwareVersion',
-                [0, '', $asset_name], // we just need the computer name in software version historical
+                [0, $asset_name, ''], // we just need the computer name in software version historical
                 'Item_SoftwareVersion',
                 \Log::HISTORY_DELETE_SUBITEM
             );

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -74,7 +74,7 @@ if (isset($_POST["add"])) {
         //TRANS: %s is the user login, %2$s is the version id
         sprintf(__('%1$s purges the version %2$s'), $_SESSION["glpiname"], $_POST["id"])
     );
-    $version->redirectToList();
+    Html::redirect(Software::getFormURLWithID($version->fields['softwares_id']));
 } else if (isset($_POST["update"])) {
     $version->check($_POST['id'], UPDATE);
 

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1680,8 +1680,10 @@ class MailCollector extends CommonDBTM
             $contents = $this->getDecodedContent($part);
             if (file_put_contents($path . $filename, $contents)) {
                 $this->files[$filename] = $filename;
-               // If embeded image, we add a tag
-                if (preg_match('@image/.+@', $content_type)) {
+
+                // If embeded image, we add a tag
+                $mime = Toolbox::getMime($path . $filename);
+                if (preg_match('@image/.+@', $mime)) {
                     end($this->files);
                     $tag = Rule::getUuid();
                     $this->tags[$filename]  = $tag;
@@ -1767,6 +1769,17 @@ class MailCollector extends CommonDBTM
                     '',
                     $content
                 );
+
+                // Strip IE/Outlook conditional code.
+                // Strip commented conditional code (`<!--[if lte mso 9]>...<![endif]-->`) contents that
+                // is not supposed to be visible outside Outlook/IE context.
+                $content = preg_replace('/<!--\[if\s+[^\]]+\]>.*?<!\[endif\]-->/s', '', $content);
+                // Preserve uncommented conditional code (`<![if !supportLists]>...<![endif]>`) contents that
+                // is supposed to be visible outside Outlook/IE context.
+                $content = preg_replace('/<!\[if\s+[^\]]+\]>(.*?)<!\[endif\]>/s', '$1', $content);
+
+                // Strip namespaced tags.
+                $content = preg_replace('/<\w+:\w+>.*?<\/\w+:\w+>/s', '', $content);
 
                 // do not check for text part if we found html one.
                 break;

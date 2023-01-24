@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -47,8 +47,7 @@ class ReplayDictionnaryRulesCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:rules:replay_dictionnary_rules');
-        $this->setAliases(['rules:replay_dictionnary_rules']);
+        $this->setName('rules:replay_dictionnary_rules');
         $this->setDescription(__('Replay dictionnary rules on existing items'));
 
         $this->addOption(

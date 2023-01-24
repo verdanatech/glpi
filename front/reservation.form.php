@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -125,7 +125,7 @@ if (isset($_POST["update"])) {
             $input['reservationitems_id'] = $reservationitems_id;
             $input['comment']             = $_POST['comment'];
 
-            if (count($dates_to_add)) {
+            if (count($dates_to_add) > 1) {
                 $input['group'] = $rr->getUniqueGroupFor($reservationitems_id);
             }
             foreach ($dates_to_add as $begin => $end) {

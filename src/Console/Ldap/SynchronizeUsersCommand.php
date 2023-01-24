@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -50,6 +50,7 @@ class SynchronizeUsersCommand extends AbstractCommand
      * Error code returned if LDAP connection failed.
      *
      * @var integer
+     * @FIXME Remove in GLPI 10.1.
      */
     const ERROR_LDAP_CONNECTION_FAILED = 1;
 
@@ -57,6 +58,7 @@ class SynchronizeUsersCommand extends AbstractCommand
      * Error code returned if LDAP limit exceeded.
      *
      * @var integer
+     * @FIXME Remove in GLPI 10.1.
      */
     const ERROR_LDAP_LIMIT_EXCEEDED = 2;
 
@@ -67,7 +69,7 @@ class SynchronizeUsersCommand extends AbstractCommand
 
         parent::configure();
 
-        $this->setName('glpi:ldap:synchronize_users');
+        $this->setName('ldap:synchronize_users');
         $this->setAliases(['ldap:sync']);
         $this->setDescription(__('Synchronize users against LDAP server information'));
 
@@ -179,6 +181,8 @@ class SynchronizeUsersCommand extends AbstractCommand
         $ldap_filter = $input->getOption('ldap-filter');
         $begin_date  = $input->getOption('begin-date');
         $end_date    = $input->getOption('end-date');
+
+        $ldap_server_error = false;
 
         $actions = [];
         if ($only_create) {
@@ -294,24 +298,24 @@ class SynchronizeUsersCommand extends AbstractCommand
                 );
 
                 if (false === $users) {
+                    $ldap_server_error = true;
+
                     if ($limitexceeded) {
                         $message = sprintf(
                             __('LDAP server "%s" size limit exceeded.'),
                             $server_id
                         );
-                        $code = self::ERROR_LDAP_LIMIT_EXCEEDED;
                     } else {
                         $message = sprintf(
                             __('Error while contacting the LDAP server "%s".'),
                             $server_id
                         );
-                        $code = self::ERROR_LDAP_CONNECTION_FAILED;
                     }
                     $output->writeln(
                         '<error>' . $message . '</error>',
                         OutputInterface::VERBOSITY_QUIET
                     );
-                     return $code;
+                    continue;
                 }
 
                  $action_message = '';
@@ -426,7 +430,10 @@ class SynchronizeUsersCommand extends AbstractCommand
             }
         }
 
-        return 0; // Success
+        if ($ldap_server_error) {
+            return self::FAILURE; // At least one LDAP server had an error
+        }
+        return self::SUCCESS; // Success
     }
 
     /**

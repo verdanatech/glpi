@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,7 +38,6 @@ namespace Glpi\Console\Migration;
 use DBConnection;
 use Glpi\Console\AbstractCommand;
 use Glpi\System\Requirement\DbConfiguration;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -83,7 +82,7 @@ class Utf8mb4Command extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:migration:utf8mb4');
+        $this->setName('migration:utf8mb4');
         $this->setDescription(__('Convert database character set from "utf8" to "utf8mb4".'));
     }
 
@@ -116,7 +115,7 @@ class Utf8mb4Command extends AbstractCommand
         if (($myisam_count = $this->db->getMyIsamTables()->count()) > 0) {
             $msg = sprintf(__('%d tables are using the deprecated MyISAM storage engine.'), $myisam_count)
             . ' '
-            . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:myisam_to_innodb');
+            . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:myisam_to_innodb');
             throw new \Glpi\Console\Exception\EarlyExitException('<error>' . $msg . '</error>', self::ERROR_INNODB_REQUIRED);
         }
 
@@ -124,7 +123,7 @@ class Utf8mb4Command extends AbstractCommand
         if ($this->db->listTables('glpi\_%', ['row_format' => ['COMPACT', 'REDUNDANT']])->count() > 0) {
             $msg = sprintf(__('%d tables are still using Compact or Redundant row format.'), $myisam_count)
             . ' '
-            . sprintf(__('Run the "php bin/console %1$s" command to migrate them.'), 'glpi:migration:dynamic_row_format');
+            . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:dynamic_row_format');
             throw new \Glpi\Console\Exception\EarlyExitException('<error>' . $msg . '</error>', self::ERROR_DYNAMIC_ROW_FORMAT_REQUIRED);
         }
     }
@@ -159,35 +158,29 @@ class Utf8mb4Command extends AbstractCommand
                 )
             );
 
+            $this->warnAboutExecutionTime();
             $this->askForConfirmation();
 
-           // Early update property to prevent warnings related to bad collation detection.
+            // Early update property to prevent warnings related to bad collation detection.
             $this->db->use_utf8mb4 = true;
 
-            $progress_bar = new ProgressBar($this->output);
+            $progress_message = function (string $table) {
+                return sprintf(__('Migrating table "%s"...'), $table);
+            };
 
-            foreach ($progress_bar->iterate($tables) as $table) {
-                $this->writelnOutputWithProgressBar(
-                    sprintf(__('Migrating table "%s"...'), $table),
-                    $progress_bar,
-                    OutputInterface::VERBOSITY_VERY_VERBOSE
-                );
-
+            foreach ($this->iterate($tables, $progress_message) as $table) {
                 $result = $this->db->query(
-                    sprintf('ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $table)
+                    sprintf('ALTER TABLE %s CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $this->db->quoteName($table))
                 );
 
                 if (!$result) {
-                    $this->writelnOutputWithProgressBar(
+                    $this->outputMessage(
                         sprintf(__('<error>Error migrating table "%s".</error>'), $table),
-                        $progress_bar,
                         OutputInterface::VERBOSITY_QUIET
                     );
                     $errors = true;
                 }
             }
-
-            $this->output->write(PHP_EOL);
         }
 
         if (!DBConnection::updateConfigProperty(DBConnection::PROPERTY_USE_UTF8MB4, true)) {

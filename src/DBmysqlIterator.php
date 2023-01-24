@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -291,7 +291,7 @@ class DBmysqlIterator implements SeekableIterator, Countable
             } else {
                /*
                 * TODO filter with if ($where || !empty($crit)) {
-                * but not usefull for now, as we CANNOT write somthing like "SELECT NOW()"
+                * but not usefull for now, as we CANNOT write something like "SELECT NOW()"
                 */
                 trigger_error("Missing table name", E_USER_ERROR);
             }

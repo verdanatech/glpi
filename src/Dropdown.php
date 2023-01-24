@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -177,7 +177,8 @@ class Dropdown
         }
 
         if ($params['readonly']) {
-            return '<span class="form-control" readonly>'
+            return '<span class="form-control" readonly'
+                . ($params['width'] ? 'style="width: ' . $params["width"] . '"' : '') . '>'
                 . ($params['multiple'] ? implode(', ', $names) : $name)
                 . '</span>';
         }
@@ -2127,7 +2128,7 @@ JAVASCRIPT;
                     $to_display[] = $elements[$value];
                 }
             }
-            $output .= '<span class="form-control" readonly>' . implode(', ', $to_display) . '</span>';
+            $output .= '<span class="form-control" readonly style="width: ' . $param["width"] . '">' . implode(', ', $to_display) . '</span>';
         } else {
             $output  .= "<select name='$field_name' id='$field_id'";
 
@@ -2670,8 +2671,18 @@ JAVASCRIPT;
             $toadd = [];
         }
 
-        if (isset($post['condition']) && ($post['condition'] != '')) {
-            $where = array_merge($where, $post['condition']);
+        $ljoin = [];
+
+        if (isset($post['condition']) && !empty($post['condition'])) {
+            if (isset($post['condition']['LEFT JOIN'])) {
+                $ljoin = $post['condition']['LEFT JOIN'];
+                unset($post['condition']['LEFT JOIN']);
+            }
+            if (isset($post['condition']['WHERE'])) {
+                $where = array_merge($where, $post['condition']['WHERE']);
+            } else {
+                $where = array_merge($where, $post['condition']);
+            }
         }
 
         $one_item = -1;
@@ -2774,7 +2785,6 @@ JAVASCRIPT;
             }
 
             $addselect = [];
-            $ljoin = [];
             if (Session::haveTranslations($post['itemtype'], 'completename')) {
                 $addselect[] = "namet.value AS transcompletename";
                 $ljoin['glpi_dropdowntranslations AS namet'] = [
@@ -2830,12 +2840,13 @@ JAVASCRIPT;
             }
 
             $criteria = [
-                'SELECT' => array_merge(["$table.*"], $addselect),
-                'FROM'   => $table,
-                'WHERE'  => $where,
-                'ORDER'  => $order,
-                'START'  => $start,
-                'LIMIT'  => $limit
+                'SELECT'   => array_merge(["$table.*"], $addselect),
+                'DISTINCT' => true,
+                'FROM'     => $table,
+                'WHERE'    => $where,
+                'ORDER'    => $order,
+                'START'    => $start,
+                'LIMIT'    => $limit
             ];
             if (count($ljoin)) {
                 $criteria['LEFT JOIN'] = $ljoin;
@@ -3116,7 +3127,7 @@ JAVASCRIPT;
                 $where[] = ['OR' => $orwhere];
             }
             $addselect = [];
-            $ljoin = [];
+
             if (Session::haveTranslations($post['itemtype'], $field)) {
                 $addselect[] = "namet.value AS transname";
                 $ljoin['glpi_dropdowntranslations AS namet'] = [
@@ -3245,9 +3256,10 @@ JAVASCRIPT;
             $criteria = array_merge(
                 $criteria,
                 [
-                    'WHERE'  => $where,
-                    'START'  => $start,
-                    'LIMIT'  => $limit
+                    'DISTINCT' => true,
+                    'WHERE'    => $where,
+                    'START'    => $start,
+                    'LIMIT'    => $limit
                 ]
             );
 
@@ -3895,27 +3907,33 @@ JAVASCRIPT;
             $post['page_limit'] = $CFG_GLPI['dropdown_max'];
         }
 
-        $entity_restrict = -1;
-        if (isset($post['entity_restrict'])) {
-            $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
-        }
+        if (isset($post['_one_id']) && $post['_one_id'] > 0) {
+            $user = new User();
+            $user->getFromDB($post['_one_id']);
+            $result = [$user->fields];
+        } else {
+            $entity_restrict = -1;
+            if (isset($post['entity_restrict'])) {
+                $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
+            }
 
-        $start  = intval(($post['page'] - 1) * $post['page_limit']);
-        $searchText = (isset($post['searchText']) ? $post['searchText'] : null);
-        $inactive_deleted = isset($post['inactive_deleted']) ? $post['inactive_deleted'] : 0;
-        $with_no_right = isset($post['with_no_right']) ? $post['with_no_right'] : 0;
-        $result = User::getSqlSearchResult(
-            false,
-            $post['right'],
-            $entity_restrict,
-            $post['value'],
-            $used,
-            $searchText,
-            $start,
-            (int)$post['page_limit'],
-            $inactive_deleted,
-            $with_no_right
-        );
+            $start  = intval(($post['page'] - 1) * $post['page_limit']);
+            $searchText = (isset($post['searchText']) ? $post['searchText'] : null);
+            $inactive_deleted = isset($post['inactive_deleted']) ? $post['inactive_deleted'] : 0;
+            $with_no_right = isset($post['with_no_right']) ? $post['with_no_right'] : 0;
+            $result = User::getSqlSearchResult(
+                false,
+                $post['right'],
+                $entity_restrict,
+                $post['value'],
+                $used,
+                $searchText,
+                $start,
+                (int)$post['page_limit'],
+                $inactive_deleted,
+                $with_no_right
+            );
+        }
 
         $users = [];
 

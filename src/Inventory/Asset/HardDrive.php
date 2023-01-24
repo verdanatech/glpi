@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -58,6 +58,10 @@ class HardDrive extends Device
 
             if ((!property_exists($val, 'model') || $val->model == '') && property_exists($val, 'name')) {
                 $val->designation = $val->name;
+            }
+
+            if (!isset($val->capacity) || $val->capacity == '') {
+                $val->capacity = 0;
             }
 
             $val->is_dynamic = 1;

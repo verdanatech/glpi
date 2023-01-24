@@ -1,3 +1,5 @@
+<?php
+
 /**
  * ---------------------------------------------------------------------
  *
@@ -5,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -31,18 +33,16 @@
  * ---------------------------------------------------------------------
  */
 
-module.exports = {
-    "presets": ["@babel/env"],
-    "plugins": [
-        "@babel/plugin-transform-runtime"
-    ],
-    "env": {
-        "test": {
-            "presets": ["@babel/env"],
-            "plugins": [
-                "@babel/plugin-proposal-class-properties",
-                "@babel/plugin-transform-modules-commonjs"
-            ]
-        }
+class RuleDictionnaryOperatingSystemEditionCollection extends RuleDictionnaryDropdownCollection
+{
+    public $item_table  = "glpi_operatingsystemeditions";
+    public $menu_option = "os_edition";
+
+    /**
+     * @see RuleCollection::getTitle()
+     **/
+    public function getTitle()
+    {
+        return __('Dictionnary of operating system editions');
     }
-};
+}

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -100,7 +100,7 @@ function update94xto950()
     if (!$DB->fieldExists('glpi_users', 'timezone')) {
         $migration->addField("glpi_users", "timezone", "varchar(50) DEFAULT NULL");
     }
-    $migration->displayWarning("DATETIME fields must be converted to TIMESTAMP for timezones to work. Run bin/console glpi:migration:timestamps");
+    $migration->displayWarning("DATETIME fields must be converted to TIMESTAMP for timezones to work. Run bin/console migration:timestamps");
 
    // Add a config entry for app timezone setting
     $migration->addConfig(['timezone' => null]);

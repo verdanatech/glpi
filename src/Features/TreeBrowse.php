@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -35,6 +35,7 @@
 
 namespace Glpi\Features;
 
+use CommonDBTM;
 use CommonITILObject;
 use CommonTreeDropdown;
 use DB;
@@ -60,20 +61,14 @@ trait TreeBrowse
         global $CFG_GLPI;
 
         $ajax_url    = $CFG_GLPI["root_doc"] . "/ajax/treebrowse.php";
-        $loading_txt = addslashes(__('Loading...'));
-        $start       = isset($params['start'])
-                            ? $params['start']
-                            : 0;
-        $browse      = isset($params['browse'])
-                            ? $params['browse']
-                            : 0;
-        $is_deleted  = isset($params['is_deleted'])
-                            ? $params['is_deleted']
-                            : 0;
+        $loading_txt = __s('Loading...');
+        $start       = (int)($_REQUEST['start'] ?? 0);
+        $browse      = (int)($_REQUEST['browse'] ?? 0);
+        $is_deleted  = (int)($_REQUEST['is_deleted'] ?? 0);
         $criteria    = json_encode($params['criteria']);
 
         $category_list = json_encode(self::getTreeCategoryList($itemtype, $params));
-        $no_cat_found  = __("No category found");
+        $no_cat_found  = __s("No category found");
 
         $JS = <<<JAVASCRIPT
         var loadingindicator  = $("<div class='loadingindicator'>$loading_txt</div>");
@@ -153,7 +148,7 @@ JAVASCRIPT;
 JAVASCRIPT;
             echo "<div id='tree_browse'>
             <div class='browser_tree d-flex flex-column'>
-                <input type='text' class='browser_tree_search' placeholder='" . __("Search…") . "' id='browser_tree_search'>
+                <input type='text' class='browser_tree_search' placeholder='" . __s("Search…") . "' id='browser_tree_search'>
                 <div id='tree_category' class='browser-tree-container'></div>
             </div>
             <div id='items_list' class='browser_items'></div>
@@ -165,7 +160,7 @@ JAVASCRIPT;
     /**
      * Get list of document categories in fancytree format.
      *
-     * @param string $itemtype
+     * @param class-string<CommonDBTM> $itemtype
      * @param array $params
      *
      * @return array
@@ -174,29 +169,34 @@ JAVASCRIPT;
     {
         global $DB;
 
+        /** @var class-string<CommonDBTM> $cat_itemtype */
         $cat_itemtype = static::getCategoryItemType($itemtype);
         $cat_item     = new $cat_itemtype();
 
         $params['export_all'] = true;
         $data = Search::prepareDatasForSearch($itemtype, $params);
         Search::constructSQL($data);
-        $ids = [0];
-        foreach ($DB->query($data['sql']['search']) as $row) {
-            $ids[] = $row['id'];
-        }
+        // This query is used to get the IDs of all results matching the search criteria
+        $sql = $data['sql']['search'];
+        // We can remove all the SELECT fields and replace it with just the ID field
+        $raw_select = $data['sql']['raw']['SELECT'];
+        $replacement_select = 'SELECT DISTINCT ' . $itemtype::getTableField('id');
+        $sql = preg_replace('/^' . preg_quote($raw_select, '/') . '/', $replacement_select, $sql, 1);
+        // Remove GROUP BY and ORDER BY clauses
+        $sql = str_replace([$data['sql']['raw']['GROUPBY'], $data['sql']['raw']['ORDER']], '', $sql);
+
+        $id_criteria = new QueryExpression($itemtype::getTableField('id') . ' IN ( SELECT * FROM (' . $sql . ') AS id_criteria )');
 
         $cat_table = $cat_itemtype::getTable();
         $cat_fk    = $cat_itemtype::getForeignKeyField();
 
         $items_subquery = new QuerySubQuery(
             [
-                'SELECT' => ['COUNT DISTINCT' => $itemtype::getTableField('id') . ' as cpt'],
+                'SELECT' => ['COUNT DISTINCT' => $itemtype::getTableField('id') . ' AS cpt'],
                 'FROM'   => $itemtype::getTable(),
                 'WHERE'  => [
-                    $itemtype::getTableField($cat_fk) => new QueryExpression(
-                        $DB->quoteName($cat_itemtype::getTableField('id'))
-                    ),
-                    $itemtype::getTableField('id') => $ids,
+                    $itemtype::getTableField($cat_fk) => new QueryExpression($DB::quoteName($cat_itemtype::getTableField('id'))),
+                    $id_criteria
                 ]
             ],
             'items_count'
@@ -244,14 +244,14 @@ JAVASCRIPT;
                 'FROM'   => $itemtype::getTable(),
                 'WHERE'  => [
                     $itemtype::getTableField($cat_fk) => 0,
-                    $itemtype::getTableField('id') => $ids,
+                    $id_criteria,
                 ]
             ]
         )->current();
         if ($no_cat_count['cpt'] > 0) {
             $categories[] = [
                 'id'          => -1,
-                'name'        => __('Without Category'),
+                'name'        => __s('Without Category'),
                 'items_count' => $no_cat_count['cpt'],
                 $cat_fk       => 0,
             ];
@@ -271,7 +271,7 @@ JAVASCRIPT;
             ];
 
             if ($category['items_count'] > 0) {
-                $node['title'] .= ' <span class="badge bg-azure-lt" title="' . __('This category contains ') . $itemtype::getTypeName() . '">'
+                $node['title'] .= ' <span class="badge bg-azure-lt" title="' . __s('This category contains ') . $itemtype::getTypeName() . '">'
                 . $category['items_count']
                 . '</span>';
             }

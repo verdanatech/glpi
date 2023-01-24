@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -51,6 +51,7 @@ class PhpExtension extends AbstractExtension
             new TwigFunction('php_config', [$this, 'phpConfig']),
             new TwigFunction('call', [$this, 'call']),
             new TwigFunction('get_static', [$this, 'getStatic']),
+            new TwigFunction('get_class', 'get_class'),
         ];
     }
 
@@ -59,6 +60,8 @@ class PhpExtension extends AbstractExtension
         return [
             new TwigTest('instanceof', [$this, 'isInstanceOf']),
             new TwigTest('usingtrait', [$this, 'isUsingTrait']),
+            new TwigTest('array', 'is_array'),
+            new TwigTest('object', 'is_object'),
         ];
     }
 

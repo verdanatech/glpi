@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -459,6 +459,14 @@ class Notification extends CommonDBTM
             'table'              => $this->getTable(),
             'field'              => 'is_recursive',
             'name'               => __('Child entities'),
+            'datatype'           => 'bool'
+        ];
+
+        $tab[] = [
+            'id'                 => '87',
+            'table'              => $this->getTable(),
+            'field'              => 'allow_response',
+            'name'               => __('Allow response'),
             'datatype'           => 'bool'
         ];
 

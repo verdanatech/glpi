@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -60,6 +60,7 @@ class ItemtypeExtension extends AbstractExtension
             new TwigFilter('itemtype_icon', [$this, 'getItemtypeIcon']),
             new TwigFilter('itemtype_name', [$this, 'getItemtypeName']),
             new TwigFilter('itemtype_search_path', [$this, 'getItemtypeSearchPath']),
+            new TwigFilter('itemtype_foreign_key', [$this, 'getItemtypeForeignKey']),
         ];
     }
 
@@ -264,5 +265,13 @@ class ItemtypeExtension extends AbstractExtension
 
         $instance = $id !== null ? $item::getById($id) : null;
         return $instance ?: null;
+    }
+
+    public function getItemtypeForeignKey(string $itemtype): ?string
+    {
+        if (is_a($itemtype, CommonDBTM::class, true)) {
+            return $itemtype::getForeignKeyField();
+        }
+        return null;
     }
 }

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -122,7 +122,7 @@ class GLPIKey
     public function get(): ?string
     {
         if (!file_exists($this->keyfile)) {
-            trigger_error('You must create a security key, see glpi:security:change_key command.', E_USER_WARNING);
+            trigger_error('You must create a security key, see security:change_key command.', E_USER_WARNING);
             return null;
         }
         if (!is_readable($this->keyfile) || ($key = file_get_contents($this->keyfile)) === false) {

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -41,7 +41,7 @@ use Glpi\Toolbox\Sanitizer;
  * @var array $ADDTODISPLAYPREF
  */
 
-$migration->addConfig(\Glpi\Inventory\Conf::$defaults, 'inventory');
+$migration->addConfig(\Glpi\Inventory\Conf::getDefaults(), 'inventory');
 
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
@@ -156,12 +156,6 @@ if (!$DB->tableExists('glpi_rulematchedlogs')) {
 } else {
     $migration->addKey('glpi_rulematchedlogs', 'agents_id');
     $migration->addKey('glpi_rulematchedlogs', 'rules_id');
-}
-
-
-if (countElementsInTable(Rule::getTable(), ['sub_type' => 'RuleImportAsset']) === 0) {
-    //default rules.
-    RuleImportAsset::initRules(false, false, true);
 }
 
 //locked fields

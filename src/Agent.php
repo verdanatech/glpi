@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @copyright 2010-2022 by the FusionInventory Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
@@ -37,6 +37,7 @@
 use Glpi\Application\ErrorHandler;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Inventory\Conf;
+use Glpi\Plugin\Hooks;
 use Glpi\Toolbox\Sanitizer;
 use GuzzleHttp\Client as Guzzle_Client;
 use GuzzleHttp\Psr7\Response;
@@ -333,6 +334,7 @@ class Agent extends CommonDBTM
 
         $ong = [];
         $this->addDefaultFormTab($ong);
+        $this->addStandardTab('RuleMatchedLog', $ong, $options);
         $this->addStandardTab('Log', $ong, $options);
 
         return $ong;
@@ -685,7 +687,7 @@ class Agent extends CommonDBTM
                 'connect_timeout' => self::TIMEOUT,
             ];
 
-           // add proxy string if configured in glpi
+            // add proxy string if configured in glpi
             if (!empty($CFG_GLPI["proxy_name"])) {
                 $proxy_creds      = !empty($CFG_GLPI["proxy_user"])
                 ? $CFG_GLPI["proxy_user"] . ":" . (new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]) . "@"
@@ -694,14 +696,17 @@ class Agent extends CommonDBTM
                 $options['proxy'] = $proxy_string;
             }
 
-           // init guzzle client with base options
+            // init guzzle client with base options
             $httpClient = new Guzzle_Client($options);
             try {
                 $response = $httpClient->request('GET', $endpoint, []);
                 self::$found_address = $address;
                 break;
+            } catch (\GuzzleHttp\Exception\RequestException $e) {
+                // got an error response, we don't need to try other addresses
+                break;
             } catch (Exception $e) {
-                //many addresses will be incorrect
+                // many addresses will be incorrect
             }
         }
 
@@ -720,16 +725,16 @@ class Agent extends CommonDBTM
      */
     public function requestStatus()
     {
-       //must return json
+        // must return json
         try {
             $response = $this->requestAgent('status');
             return $this->handleAgentResponse($response, self::ACTION_STATUS);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             ErrorHandler::getInstance()->handleException($e);
-           //not authorized
+            // not authorized
             return ['answer' => __('Not allowed')];
         } catch (Exception $e) {
-           //no response
+            // no response
             return ['answer' => __('Unknown')];
         }
     }
@@ -741,16 +746,16 @@ class Agent extends CommonDBTM
      */
     public function requestInventory()
     {
-       //must return json
+        // must return json
         try {
             $this->requestAgent('now');
             return $this->handleAgentResponse(new Response(), self::ACTION_INVENTORY);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             ErrorHandler::getInstance()->handleException($e);
-           //not authorized
+            // not authorized
             return ['answer' => __('Not allowed')];
         } catch (Exception $e) {
-           //no response
+            // no response
             return ['answer' => __('Unknown')];
         }
     }
@@ -796,59 +801,120 @@ class Agent extends CommonDBTM
      * Cron task: clean and do other defined actions when agent not have been contacted
      * the server since xx days
      *
-     * @global object $DB
+     * @global object $DB, $PLUGIN_HOOKS
      * @param object $task
-     * @return boolean
+     * @return int
+     *
      * @copyright 2010-2022 by the FusionInventory Development Team.
      */
     public static function cronCleanoldagents($task = null)
     {
-        global $DB;
+        global $DB, $PLUGIN_HOOKS;
 
         $config = \Config::getConfigurationValues('inventory');
 
         $retention_time = $config['stale_agents_delay'] ?? 0;
         if ($retention_time <= 0) {
-            return true;
+            return 0;
         }
 
+        $total  = 0;
+        $errors = 0;
+
         $iterator = $DB->request([
+            'SELECT' => ['id'],
             'FROM' => self::getTable(),
             'WHERE' => [
                 'last_contact' => ['<', new QueryExpression("date_add(now(), interval -" . $retention_time . " day)")]
             ]
         ]);
 
-        $cron_status = false;
-        if (count($iterator)) {
-            $action = (int)($config['stale_agents_action'] ?? Conf::STALE_AGENT_ACTION_CLEAN);
-            if ($action === Conf::STALE_AGENT_ACTION_CLEAN) {
-                //delete agents
-                $agent = new self();
-                foreach ($iterator as $data) {
-                    $agent->delete($data);
-                    $task->addVolume(1);
-                    $cron_status = true;
-                }
-            } elseif ($action === Conf::STALE_AGENT_ACTION_STATUS && isset($config['stale_agents_status'])) {
-                //change status of agents linked assets
-                foreach ($iterator as $data) {
-                    $itemtype = $data['itemtype'];
-                    if (is_subclass_of($itemtype, CommonDBTM::class)) {
-                        $item = new $itemtype();
-                        if ($item->getFromDB($data['items_id'])) {
-                            $item->update([
-                                'id' => $data['items_id'],
-                                'states_id' => $config['stale_agents_status'],
-                                'is_dynamic' => 1
-                            ]);
+        foreach ($iterator as $data) {
+            $agent = new self();
+            if (!$agent->getFromDB($data['id'])) {
+                $errors++;
+                continue;
+            }
+
+            $item = is_a($agent->fields['itemtype'], CommonDBTM::class, true) ? new $agent->fields['itemtype']() : null;
+            if (
+                $item !== null
+                && (
+                    $item->getFromDB($agent->fields['items_id']) === false
+                    || $item->fields['is_dynamic'] != 1
+                )
+            ) {
+                $item = null;
+            }
+
+            $actions = importArrayFromDB($config['stale_agents_action']);
+            foreach ($actions as $action) {
+                switch ($action) {
+                    case Conf::STALE_AGENT_ACTION_CLEAN:
+                        //delete agents
+                        if ($agent->delete($data)) {
                             $task->addVolume(1);
-                            $cron_status = true;
+                            $total++;
+                        } else {
+                            $errors++;
+                        }
+                        break;
+                    case Conf::STALE_AGENT_ACTION_STATUS:
+                        if (isset($config['stale_agents_status']) && $item !== null) {
+                            //change status of agents linked assets
+                            $input = [
+                                'id'        => $item->fields['id'],
+                                'states_id' => $config['stale_agents_status']
+                            ];
+                            if ($item->update($input)) {
+                                $task->addVolume(1);
+                                $total++;
+                            } else {
+                                $errors++;
+                            }
+                        }
+                        break;
+                    case Conf::STALE_AGENT_ACTION_TRASHBIN:
+                        //put linked assets in trashbin
+                        if ($item !== null) {
+                            if ($item->delete(['id' => $item->fields['id']])) {
+                                $task->addVolume(1);
+                                $total++;
+                            } else {
+                                $errors++;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            $plugin_actions = $PLUGIN_HOOKS[Hooks::STALE_AGENT_CONFIG] ?? [];
+            /**
+             * @var string $plugin
+             * @phpstan-var array{label: string, item_action: boolean, render_callback: callable, action_callback: callable}[] $actions
+             */
+            foreach ($plugin_actions as $plugin => $actions) {
+                if (is_array($actions) && Plugin::isPluginActive($plugin)) {
+                    foreach ($actions as $action) {
+                        if (!is_callable($action['action_callback'] ?? null)) {
+                            trigger_error(
+                                sprintf('Invalid plugin "%s" action callback for "%s" hook.', $plugin, Hooks::STALE_AGENT_CONFIG),
+                                E_USER_WARNING
+                            );
+                            continue;
+                        }
+                        // Run the action
+                        if ($action['action_callback']($agent, $config, $item)) {
+                            $task->addVolume(1);
+                            $total++;
+                        } else {
+                            $errors++;
                         }
                     }
                 }
             }
         }
-        return $cron_status;
+
+        return $errors > 0 ? -1 : ($total > 0 ? 1 : 0);
     }
 }

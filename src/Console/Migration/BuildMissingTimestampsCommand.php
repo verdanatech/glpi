@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -47,7 +47,7 @@ class BuildMissingTimestampsCommand extends AbstractCommand
     {
         parent::configure();
 
-        $this->setName('glpi:migration:build_missing_timestamps');
+        $this->setName('migration:build_missing_timestamps');
         $this->setDescription(__('Set missing `date_creation` and `date_mod` values using log entries.'));
         $this->setHidden(true); // Hide this command as it is when migrating from really old GLPI version
     }

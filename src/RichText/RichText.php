@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -198,7 +198,7 @@ final class RichText
             'table',
             'ul',
         ];
-        return preg_match('/<(' . implode('|', $html_tags) . ')(\s+[^>]*)?>/', $content) === 1;
+        return preg_match('/<(' . implode('|', $html_tags) . ')(\s+[^>]*)?>/i', $content) === 1;
     }
 
     /**
@@ -250,6 +250,8 @@ final class RichText
 
         if ($enhanced_html) {
             // URLs have to be transformed into <a> tags.
+            global $autolink_options;
+            $autolink_options['strip_protocols'] = false;
             $content = autolink($content, false, ' target="_blank"');
         }
 
@@ -293,7 +295,7 @@ final class RichText
             $content = self::replaceImagesByGallery($content);
         }
 
-        if ($content_size > $p['text_maxsize']) {
+        if ($p['text_maxsize'] > 0 && $content_size > $p['text_maxsize']) {
             $content = <<<HTML
 <div class="long_text">$content
     <p class='read_more'>
@@ -475,9 +477,9 @@ HTML;
         }
         $out .= "</div>";
 
-       // Decode images urls
+        // Unsanitize images urls
         $imgs = array_map(function ($img) {
-            $img['src'] = html_entity_decode($img['src']);
+            $img['src'] = Sanitizer::decodeHtmlSpecialChars($img['src']);
             return $img;
         }, $imgs);
 

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -114,12 +114,6 @@ class Reservation extends CommonDBChild
      **/
     public function prepareInputForUpdate($input)
     {
-
-        $item = 0;
-        if (isset($input['_item'])) {
-            $item = $_POST['_item'];
-        }
-
        // Save fields
         $oldfields             = $this->fields;
        // Needed for test already planned
@@ -130,13 +124,7 @@ class Reservation extends CommonDBChild
             $this->fields["end"] = $input["end"];
         }
 
-        if (!$this->test_valid_date()) {
-            $this->displayError("date", $item);
-            return false;
-        }
-
-        if ($this->is_reserved()) {
-            $this->displayError("is_res", $item);
+        if (!$this->isReservationInputValid($input)) {
             return false;
         }
 
@@ -184,17 +172,41 @@ class Reservation extends CommonDBChild
         $this->fields["begin"]               = $input["begin"];
         $this->fields["end"]                 = $input["end"];
 
-        if (!$this->test_valid_date()) {
-            $this->displayError("date", $input["reservationitems_id"]);
-            return false;
-        }
-
-        if ($this->is_reserved()) {
-            $this->displayError("is_res", $input["reservationitems_id"]);
+        if (!$this->isReservationInputValid($input)) {
             return false;
         }
 
         return parent::prepareInputForAdd($input);
+    }
+
+    /**
+     * Check reservation input.
+     *
+     * @param array $input
+     *
+     * @return bool
+     */
+    private function isReservationInputValid(array $input): bool
+    {
+        if (!$this->test_valid_date()) {
+            Session::addMessageAfterRedirect(
+                __('Error in entering dates. The starting date is later than the ending date'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        if ($this->is_reserved()) {
+            Session::addMessageAfterRedirect(
+                __('The required item is already reserved for this timeframe'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -293,6 +305,8 @@ class Reservation extends CommonDBChild
      * @param $ID     ID of the item
      *
      * @return void
+     *
+     * @FIXME Deprecate/remove this method in GLPI 10.1.
      **/
     public function displayError($type, $ID)
     {
@@ -369,7 +383,7 @@ class Reservation extends CommonDBChild
             return false;
         }
 
-        return Session::haveAccessToEntity($item->getEntityID());
+        return Session::haveAccessToEntity($item->getEntityID(), $item->isRecursive());
     }
 
 
@@ -488,9 +502,9 @@ JAVASCRIPT;
         $res_table   = static::getTable();
         $res_i_table = ReservationItem::getTable();
 
-        $canedit_admin = Session::getCurrentInterface() == "central"
-                       && Session::haveRight("reservation", READ);
-        $can_reserve   = Session::haveRight("reservation", ReservationItem::RESERVEANITEM);
+        $can_read    = Session::haveRight("reservation", READ);
+        $can_edit    = Session::getCurrentInterface() == "central" && Session::haveRight("reservation", UPDATE);
+        $can_reserve = Session::haveRight("reservation", ReservationItem::RESERVEANITEM);
 
         $user = new User();
 
@@ -535,29 +549,29 @@ JAVASCRIPT;
             if (!$item->getFromDB($data['items_id'])) {
                 continue;
             }
+            if (!Session::haveAccessToEntity($item->getEntityID(), $item->isRecursive())) {
+                continue;
+            }
 
             $my_item = $data['users_id'] === Session::getLoginUserID();
 
-            if ($canedit_admin || $my_item) {
+            if ($can_read || $my_item) {
                 $user->getFromDB($data['users_id']);
-                $username = $user->getFriendlyName();
+                $data['comment'] .= '<br />' . sprintf(__("Reserved by %s"), $user->getFriendlyName());
             }
 
             $name = $item->getName([
                 'complete' => true,
             ]);
 
-            $editable = $canedit_admin || ($can_reserve && $my_item);
+            $editable = $can_edit || ($can_reserve && $my_item);
 
             $events[] = [
                 'id'          => $data['id'],
                 'resourceId'  => $data['itemtype'] . "-" . $data['items_id'],
                 'start'       => $data['begin'],
                 'end'         => $data['end'],
-                'comment'     => $data['comment'] .
-                             $canedit_admin || $my_item
-                              ? "\n" . sprintf(__("Reserved by %s"), $username)
-                              : "",
+                'comment'     => $can_read || $my_item ? $data['comment'] : '',
                 'title'       => $params['reservationitems_id'] ? "" : $name,
                 'icon'        => $item->getIcon(),
                 'description' => $item->getTypeName(),

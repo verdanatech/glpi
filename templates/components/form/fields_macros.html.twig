@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -74,7 +74,11 @@
    {% if item.isTemplate() %} {# TODO exluded types #}
       {% set tplmark = item.getAutofillMark(name, {'withtemplate': withtemplate}, tpl_value) %}
    {% endif %}
-   {% set value = call('autoName', [item.fields[name]|verbatim_value, name, (withtemplate == 2), item.getType(), item.fields['entities_id']]) %}
+   {% if item.fields[name] is defined and item.fields[name] is not null %}
+      {% set value = call('autoName', [item.fields[name]|verbatim_value, name, (withtemplate == 2), item.getType(), item.fields['entities_id']]) %}
+   {% else %}
+      {% set value = null %}
+   {% endif %}
    {% set label = __('%1$s%2$s')|format(label, tplmark) %}
 
    {{ _self.textField(name, value, label, options) }}
@@ -89,9 +93,9 @@
 
    {% set field %}
       <input type="{{ options.type }}" id="%id%"
-             class="form-control"
+             class="form-control {{ options.input_addclass }}"
              name="{{ name }}" value="{{ value|verbatim_value }}"
-             {{ options.maxlenght ? 'maxlenght=' ~ options.maxlenght : '' }}
+             {{ options.maxlength ? 'maxlength=' ~ options.maxlength : '' }}
              {{ options.readonly ? 'readonly' : '' }}
              {{ options.disabled ? 'disabled' : '' }}
              {{ options.multiple ? 'multiple' : '' }} {# Only for emailField #}
@@ -165,7 +169,7 @@
 
    {% set field %}
       <input type="number" id="%id%"
-             class="form-control"
+             class="form-control {{ options.input_addclass }}"
              name="{{ name }}" value="{{ value }}"
          {{ options.readonly ? 'readonly' : '' }}
          {{ options.disabled ? 'disabled' : '' }}
@@ -181,7 +185,7 @@
 {% macro readOnlyField(name, value, label = '', options = {}) %}
    {% set options = options|merge({'readonly': true}) %}
    {% set value %}
-      <span class="form-control" readonly>
+      <span class="form-control {{ options.input_addclass }}" readonly>
          {% if value|length == 0 %}
             &nbsp;
          {% else %}
@@ -211,7 +215,7 @@
 
    {% set field %}
       {# 100% width is here to prevent width issues with tinymce #}
-      <textarea class="form-control" id="{{ id }}" name="{{ name }}" rows="3"
+      <textarea class="form-control {{ options.input_addclass }}" id="{{ id }}" name="{{ name }}" rows="3"
                 style="width: 100%;"
                 {{ options.disabled ? 'disabled' : '' }}
                 {{ options.readonly ? 'readonly' : '' }}
@@ -278,6 +282,9 @@
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
 
+   {% if value == 'NULL' %}
+      {% set value = null %}
+   {% endif %}
    {% if options.checkIsExpired %}
       {% if value|date('Y-m-d H:i:s') < "now"|date('Y-m-d H:i:s') %}
          {% set class = 'warn' %}
@@ -293,7 +300,7 @@
    <div class="input-group flex-grow-1 flatpickr" id="{{ options.id }}">
       {# .rounded-start added to prevent issue with bootstrap .input-group #}
       {# the first element is an input[type=hidden] added by flatpickr and so we don't have border-radius on the start #}
-      <input type="text" class="form-control rounded-start ps-2 {{ class }}" data-input
+      <input type="text" class="form-control rounded-start ps-2 {{ options.input_addclass }} {{ class }}" data-input
              name="{{ name }}" value="{{ value|verbatim_value }}"
              {{ options.required ? 'required' : '' }}
              {{ options.readonly ? 'readonly' : '' }}
@@ -374,7 +381,7 @@
 {% macro colorField(name, value, label = '', options = {}) %}
    {% set field %}
       <input id="%id%"
-             class="form-control"
+             class="form-control {{ options.input_addclass }}"
              name="{{ name }}" value="{{ value|verbatim_value }}"
          {{ options.readonly ? 'readonly' : '' }}
          {{ options.disabled ? 'disabled' : '' }}
@@ -400,15 +407,41 @@
 {% endmacro %}
 
 {% macro passwordField(name, value, label = '', options = {}) %}
-   {% set options = {'autocomplete': 'new-password'}|merge(options) %}
+   {% set options = {
+      'autocomplete': 'new-password',
+      'is_disclosable': false,
+      'rand': options.rand ?? random()
+   }|merge(options) %}
+   {% set options = {
+      'id': options.id is defined ? options.id : name ~ random(),
+      'clearable': options.clearable is defined ? options.clearable : not options.is_disclosable,
+   }|merge(options) %}
+
    {% set field %}
-      <input type="password" id="%id%"
-             class="form-control"
+      <input type="password" id="{{ options.id }}"
+             class="form-control {{ options.input_addclass }}"
              name="{{ name }}"
+             value="{{ options.is_disclosable ? value : '' }}"
          {{ options.readonly ? 'readonly' : '' }}
          {{ options.disabled ? 'disabled' : '' }}
          {{ options.required ? 'required' : '' }} />
    {% endset %}
+   {% set btn_group %}
+      &nbsp;<i class="far fa-eye pointer disclose" onmousedown="showDisclosablePasswordField('{{ options.id }}')"
+               onmouseup="hideDisclosablePasswordField('{{ options.id }}')"
+               onmouseout="hideDisclosablePasswordField('{{ options.id }}')"></i>
+      &nbsp;<i class="fa fa-paste pointer disclose" onclick="copyDisclosablePasswordFieldToClipboard('{{ options.id }}')"></i>
+   {% endset %}
+   {% if options.is_disclosable %}
+      {% set label = label ~ btn_group %}
+   {% endif %}
+   {% if options.clearable %}
+      {% set clear_chk %}
+         <input type="checkbox" name="_blank_{{ name }}" id="_blank_{{ name }}">&nbsp;<label for="_blank_{{ name }}">{{ __('Clear') }}</label>
+      {% endset %}
+      {% set field = field ~ clear_chk %}
+   {% endif %}
+
    {{ _self.field(name, field, label, options) }}
 {% endmacro %}
 
@@ -426,7 +459,7 @@
    {% set field %}
       {% if options.simple %}
         <input type="file" id="%id%"
-               class="form-control"
+               class="form-control {{ options.input_addclass }}"
                name="{{ name }}"
                {{ options.mulitple ? 'multiple' : '' }}
                {{ options.readonly ? 'readonly' : '' }}
@@ -493,9 +526,14 @@
 {% endmacro %}
 
 {% macro hiddenField(name, value, label = '', options = {}) %}
+   {% if options.no_label %}
+      {% set options = {
+         mb: 'mb-0'
+      }|merge(options) %}
+   {% endif %}
    {% set field %}
       <input type="hidden" id="%id%"
-             class="form-control"
+             class="form-control {{ options.input_addclass }}"
              name="{{ name }}" value="{{ value|verbatim_value }}"
          {{ options.readonly ? 'readonly' : '' }}
          {{ options.disabled ? 'disabled' : '' }}
@@ -505,7 +543,10 @@
 {% endmacro %}
 
 {% macro dropdownNumberField(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
 
    {% if options.disabled %}
       {% set options = options|merge({specific_tags: {'disabled': 'disabled'}}) %}
@@ -517,8 +558,7 @@
    {% set field %}
       {% do call('Dropdown::showNumber', [name, {
          'value': value,
-         'rand': rand,
-         'width': '100%',
+         'rand': rand
       }|merge(options)]) %}
    {% endset %}
 
@@ -526,7 +566,10 @@
 {% endmacro %}
 
 {% macro dropdownArrayField(name, value, elements, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
 
    {% if options.disabled %}
       {% set options = options|merge({specific_tags: {'disabled': 'disabled'}}) %}
@@ -540,7 +583,6 @@
       {% do call('Dropdown::showFromArray', [name, elements, {
          'value': value|verbatim_value,
          'rand': rand,
-         'width': '100%',
       }|merge(options)]) %}
    {% endset %}
 
@@ -548,7 +590,10 @@
 {% endmacro %}
 
 {% macro dropdownTimestampField(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
@@ -561,7 +606,6 @@
       {% do call('Dropdown::showTimestamp', [name, {
          'value': value,
          'rand': rand,
-         'width': '100%',
       }|merge(options)]) %}
    {% endset %}
 
@@ -569,7 +613,10 @@
 {% endmacro %}
 
 {% macro dropdownYesNo(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
@@ -581,7 +628,6 @@
    {% set field %}
       {% do call('Dropdown::showYesNo', [name, value, -1, {
          'rand': rand,
-         'width': '100%',
       }|merge(options)]) %}
    {% endset %}
 
@@ -589,7 +635,10 @@
 {% endmacro %}
 
 {% macro dropdownItemTypes(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
@@ -603,7 +652,6 @@
    {% set field %}
       {% do call('Dropdown::showItemTypes', [name, types, {
          'rand': rand,
-         'width': '100%',
          'value': value
       }|merge(options)]) %}
    {% endset %}
@@ -623,7 +671,10 @@
 {% endmacro %}
 
 {% macro dropdownIcons(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
@@ -635,7 +686,6 @@
    {% set field %}
       {% do call('Dropdown::dropdownIcons', [name, value, constant('GLPI_ROOT') ~ '/pics/icones', {
          'rand': rand,
-         'width': '100%',
       }|merge(options)]) %}
    {% endset %}
 
@@ -643,7 +693,10 @@
 {% endmacro %}
 
 {% macro dropdownHoursField(name, value, label = '', options = {}) %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'required': true}|merge(options) %}
    {% endif %}
@@ -655,7 +708,6 @@
    {% set field %}
       {% do call('Dropdown::showHours', [name, {
          'rand': rand,
-         'width': '100%',
          'value': value
       }|merge(options)]) %}
    {% endset %}
@@ -672,7 +724,10 @@
       {# Multiple values will be set, input need to be an array #}
       {% set name = "#{name}[]" %}
    {% endif %}
-   {% set options = {'rand': random()}|merge(options) %}
+    {% set options = {
+        'rand': random(),
+        'width': '100%',
+    }|merge(options) %}
    {% if options.fields_template.isMandatoryField(name) %}
       {% set options = {'specific_tags': {'required': true}}|merge(options) %}
    {% endif %}
@@ -686,7 +741,6 @@
          'name': name,
          'value': value,
          'rand': rand,
-         'width': '100%',
       }|merge(options)) }}
    {% endset %}
 

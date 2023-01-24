@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -56,8 +56,7 @@ class CompileScssCommand extends Command
     {
         parent::configure();
 
-        $this->setName('glpi:build:compile_scss');
-        $this->setAliases(['build:compile_scss']);
+        $this->setName('build:compile_scss');
         $this->setDescription('Compile SCSS file.');
 
         $this->addOption(

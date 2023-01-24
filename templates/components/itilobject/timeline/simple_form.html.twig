@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -56,7 +56,7 @@
             recipient,
             __('By'),
             field_options|merge({
-                maxlenght: 255,
+                maxlength: 255,
                 entity: item.fields['entities_id'],
                 right: 'all',
             })
@@ -68,7 +68,7 @@
          item.fields['name'],
          __('Title'),
          field_options|merge({
-             maxlenght: 255,
+             maxlength: 255,
          })
       ) }}
 

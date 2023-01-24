@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -44,6 +44,8 @@ class SoftwareVersion extends CommonDBChild
    // From CommonDBChild
     public static $itemtype  = 'Software';
     public static $items_id  = 'softwares_id';
+
+    protected $displaylist = false;
 
 
     public static function getTypeName($nb = 0)

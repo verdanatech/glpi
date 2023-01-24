@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -379,13 +379,17 @@ class APIRest extends API
                 }
 
                // Load namespace for deprecated
-                if (Toolbox::isAPIDeprecated($itemtype)) {
-                     $itemtype = "Glpi\Api\Deprecated\\$itemtype";
+                $deprecated = Toolbox::isAPIDeprecated($itemtype);
+                if ($deprecated) {
+                    $itemtype = "Glpi\Api\Deprecated\\$itemtype";
                 }
 
                // Get case sensitive itemtype name
-                $rc = new \ReflectionClass($itemtype);
-                $itemtype = $rc->getShortName();
+                $itemtype = (new \ReflectionClass($itemtype))->getName();
+                if ($deprecated) {
+                    // Remove deprecated namespace
+                    $itemtype = str_replace("Glpi\Api\Deprecated\\", "", $itemtype);
+                }
                 return $itemtype;
             }
             $this->returnError(

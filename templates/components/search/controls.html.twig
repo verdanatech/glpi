@@ -5,7 +5,7 @@
  #
  # http://glpi-project.org
  #
- # @copyright 2015-2022 Teclib' and contributors.
+ # @copyright 2015-2023 Teclib' and contributors.
  # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
@@ -101,7 +101,12 @@
                <i id="export_dropdown_icon" class="ti fa-lg ti-file-download"></i>
             </span>
          </button>
-      {% set exporthref = path('/front/report.dynamic.php') ~ '?item_type=' ~ itemtype ~ '&start=' ~ start ~ '&' ~ posthref %}
+      {% set exporthref = path('/front/report.dynamic.php') ~ "?" ~ {
+        'item_type': itemtype,
+        'sort': sort,
+        'order': order,
+        'start': start,
+      }|url_encode ~ posthref %}
       <ul class="dropdown-menu" aria-labelledby="dropdown-export">
          <li><a class="dropdown-item" href="{{ exporthref ~ '&display_type=' ~ constant('Search::PDF_OUTPUT_LANDSCAPE') }}">
             <i class="far fa-lg fa-file-pdf"></i>

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2022 Teclib' and contributors.
+ * @copyright 2015-2023 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -40,6 +40,7 @@ use Glpi\Console\AbstractCommand;
 use Glpi\Console\Command\ForceNoPluginsOptionCommandInterface;
 use Glpi\Console\Traits\TelemetryActivationTrait;
 use Glpi\System\Diagnostic\DatabaseSchemaIntegrityChecker;
+use Glpi\Toolbox\DatabaseSchema;
 use Glpi\Toolbox\VersionParser;
 use Migration;
 use Session;
@@ -87,7 +88,7 @@ class UpdateCommand extends AbstractCommand implements ForceNoPluginsOptionComma
     {
         parent::configure();
 
-        $this->setName('glpi:database:update');
+        $this->setName('database:update');
         $this->setAliases(['db:update']);
         $this->setDescription(__('Update database schema to new version'));
 
@@ -162,7 +163,11 @@ class UpdateCommand extends AbstractCommand implements ForceNoPluginsOptionComma
         $informations->addRow([__('Database name'), $this->db->dbdefault, '']);
         $informations->addRow([__('Database user'), $this->db->dbuser, '']);
         $informations->addRow([__('GLPI version'), $current_version, GLPI_VERSION]);
-        $informations->addRow([__('GLPI database version'), $current_db_version, GLPI_SCHEMA_VERSION]);
+        $informations->addRow([
+            __('GLPI database version'),
+            $this->getPrettyDbVersion($current_db_version),
+            $this->getPrettyDbVersion(GLPI_SCHEMA_VERSION),
+        ]);
         $informations->render();
 
         if (Update::isDbUpToDate() && !$force) {
@@ -256,7 +261,7 @@ class UpdateCommand extends AbstractCommand implements ForceNoPluginsOptionComma
             $install_version_nohash = preg_replace('/@.+$/', '', $installed_version);
             $error = sprintf(__('The database schema is not consistent with the installed GLPI version (%s).'), $install_version_nohash)
                 . ' '
-                . sprintf(__('Run the "php bin/console %1$s" command to view found differences.'), 'glpi:database:check_schema_integrity');
+                . sprintf(__('Run the "%1$s" command to view found differences.'), 'php bin/console database:check_schema_integrity');
         }
 
         if ($error !== null) {
@@ -274,5 +279,40 @@ class UpdateCommand extends AbstractCommand implements ForceNoPluginsOptionComma
         } else {
             $this->output->writeln('<info>' . __('Database schema is OK.') . '</info>');
         }
+    }
+
+    /**
+     * Get DB version to display.
+     *
+     * @param string $raw_version
+     *
+     * @return string
+     */
+    private function getPrettyDbVersion(string $raw_version): string
+    {
+        $version_matches = [];
+        if (preg_match('/^(?<version>.+)@(?<hash>.+)$/', $raw_version, $version_matches) !== 1) {
+            // Version does not match expected pattern. It either contains no hash, either has an unexpected format.
+            // Preserve raw version string for debug purpose.
+            return $raw_version;
+        }
+
+        $version_cleaned = $version_matches['version'];
+        $version_hash    = $version_matches['hash'];
+
+        if (!VersionParser::isStableRelease($version_cleaned)) {
+            // Not a stable version. Keep hash for debug purpose.
+            return $raw_version;
+        }
+
+        $schema_path = DatabaseSchema::getEmptySchemaPath($version_cleaned);
+        if ($schema_path === null || $version_hash !== sha1_file($schema_path)) {
+            // Version hash does not match schema file sha1. Installation was probably made from a specific commit
+            // or a nightly build.
+            // Keep hash for debug purpose.
+            return $raw_version;
+        }
+
+        return $version_cleaned;
     }
 }
