@@ -123,7 +123,7 @@ class TicketSatisfaction extends CommonDBTM
 
            // Set default satisfaction to 3 if not set
             if (is_null($this->fields["satisfaction"])) {
-                $this->fields["satisfaction"] = 3;
+                $this->fields["satisfaction"] = 5;
             }
             echo "<tr class='tab_bg_2'>";
             echo "<td>" . __('Satisfaction with the resolution of the ticket') . "</td>";
