@@ -1732,8 +1732,8 @@ HTML;
         $plugin = new Plugin();
 
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-            $image = PluginSkinsConfig::getImage("menu");
-            $image_collapsed = PluginSkinsConfig::getImage("collapsed-menu");
+            $image = PluginSkinsConfig::returnImgMenus("menu");
+            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
             $skins = true;
         } else {
             $skins = false;
