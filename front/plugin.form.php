@@ -47,6 +47,7 @@ $plugin = new Plugin();
 $id     = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
 $action = $id > 0 && isset($_POST['action']) ? $_POST['action'] : null;
 
+# Implements log
 $plugin_informations = current($plugin->find(["id" => $id]));
 Log::history($id, 'Plugins', ['0','',$action]);
 Event::log(0, 'system', 1, 'Plugins', sprintf(__('%s %s plugin %s'), $_SESSION["glpiname"], $action, $plugin_informations['directory']));
