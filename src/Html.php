@@ -1732,13 +1732,25 @@ HTML;
         $menu_active     = $menu[$sector]['content'][$active_item]['title'] ?? "";
 
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
-
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+            $image = PluginSkinsConfig::returnImgMenus("menu");
+            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+            $image_collapsed  = null;
+        }
         $tpl_vars = [
             'menu'        => $menu,
             'sector'      => $sector,
             'item'        => $item,
             'option'      => $option,
             'menu_active' => $menu_active,
+            'plugin_skins'  => $skins,
+            'image'      => $image,
+            'image_collapsed'      => $image_collapsed,
         ];
         $tpl_vars += self::getPageHeaderTplVars();
 
@@ -1986,6 +1998,18 @@ HTML;
 
         $menu = self::generateHelpMenu();
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
+       
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+            $image = PluginSkinsConfig::returnImgMenus('menu');
+            $image_collapsed = PluginSkinsConfig::returnImgMenus('collapsed-menu');
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+            $image_collapsed = null;
+        }
+
 
         $tmp_active_item = explode("/", $item);
         $active_item     = array_pop($tmp_active_item);
@@ -1996,6 +2020,9 @@ HTML;
             'item'        => $item,
             'option'      => $option,
             'menu_active' => $menu_active,
+            'plugin_skins'  => $skins,
+            'image'      => $image,
+            'image_collapsed'      => $image_collapsed,
         ];
         $tpl_vars += self::getPageHeaderTplVars();
 
