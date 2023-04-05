@@ -1,0 +1,54 @@
+version: 2
+
+updates:
+  # Keep Github Actions dependencies up-to-date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+
+  # Update development dependencies on current release branch (10.0/bugfixes).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "development"
+    open-pull-requests-limit: 100
+    target-branch: "10.0/bugfixes"
+    versioning-strategy: "increase"
+    rebase-strategy: "disabled"
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "development"
+    open-pull-requests-limit: 100
+    target-branch: "10.0/bugfixes"
+    versioning-strategy: "increase"
+    rebase-strategy: "disabled"
+
+
+  # Update production dependencies on future release branch (main).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "production"
+    open-pull-requests-limit: 100
+    target-branch: "main"
+    versioning-strategy: "increase"
+    rebase-strategy: "disabled"
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "production"
+    open-pull-requests-limit: 100
+    target-branch: "main"
+    versioning-strategy: "increase"
+    rebase-strategy: "disabled"
