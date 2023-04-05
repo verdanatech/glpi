@@ -7,18 +7,9 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
-        'atoum/atoum' => array(
-            'pretty_version' => '4.1',
-            'version' => '4.1.0.0',
-            'reference' => 'e866f3d4ad683c35757cd73fc6da3e3d5e563667',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../atoum/atoum',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'blueimp/jquery-file-upload' => array(
             'pretty_version' => 'v10.32.0',
             'version' => '10.32.0.0',
@@ -79,15 +70,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'friendsoftwig/twigcs' => array(
-            'pretty_version' => 'v6.1.0',
-            'version' => '6.1.0.0',
-            'reference' => '3c36d606c4f19db0dd2a01b735ec7a8151b7f182',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../friendsoftwig/twigcs',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'glpi-project/inventory_format' => array(
             'pretty_version' => '1.1.30',
             'version' => '1.1.30.0',
@@ -97,15 +79,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'glpi-project/tools' => array(
-            'pretty_version' => '0.6.2',
-            'version' => '0.6.2.0',
-            'reference' => 'fba8a0d6aebea6668561c96ad41a8b8eec506636',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../glpi-project/tools',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'glpi/glpi' => array(
             'pretty_version' => '1.0.0+no-version-set',
             'version' => '1.0.0.0',
@@ -114,12 +87,6 @@
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'grogy/php-parallel-lint' => array(
-            'dev_requirement' => true,
-            'replaced' => array(
-                0 => '*',
-            ),
         ),
         'guzzlehttp/guzzle' => array(
             'pretty_version' => '7.5.0',
@@ -174,12 +141,6 @@
             'install_path' => __DIR__ . '/../iamcal/lib_autolink',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'jakub-onderka/php-parallel-lint' => array(
-            'dev_requirement' => true,
-            'replaced' => array(
-                0 => '*',
-            ),
         ),
         'laminas/laminas-i18n' => array(
             'pretty_version' => '2.15.0',
@@ -271,21 +232,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'mageekguy/atoum' => array(
-            'dev_requirement' => true,
-            'replaced' => array(
-                0 => '*',
-            ),
-        ),
-        'maglnet/composer-require-checker' => array(
-            'pretty_version' => '3.8.0',
-            'version' => '3.8.0.0',
-            'reference' => '537138b833ab0f9ad72b667a72bece2a765e88ab',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../maglnet/composer-require-checker',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'mexitek/phpcolors' => array(
             'pretty_version' => 'v1.0.4',
             'version' => '1.0.4.0',
@@ -304,15 +250,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'mikey179/vfsstream' => array(
-            'pretty_version' => 'v1.6.11',
-            'version' => '1.6.11.0',
-            'reference' => '17d16a85e6c26ce1f3e2fa9ceeacdc2855db1e9f',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../mikey179/vfsstream',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'monolog/monolog' => array(
             'pretty_version' => '2.8.0',
             'version' => '2.8.0.0',
@@ -321,15 +258,6 @@
             'install_path' => __DIR__ . '/../monolog/monolog',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'nikic/php-parser' => array(
-            'pretty_version' => 'v4.13.2',
-            'version' => '4.13.2.0',
-            'reference' => '210577fe3cf7badcc5814d99455df46564f3c077',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../nikic/php-parser',
-            'aliases' => array(),
-            'dev_requirement' => true,
         ),
         'paragonie/random_compat' => array(
             'dev_requirement' => false,
@@ -352,27 +280,6 @@
                 0 => '2.8.2',
             ),
         ),
-        'php-http/async-client-implementation' => array(
-            'dev_requirement' => true,
-            'provided' => array(
-                0 => '*',
-            ),
-        ),
-        'php-http/client-implementation' => array(
-            'dev_requirement' => true,
-            'provided' => array(
-                0 => '*',
-            ),
-        ),
-        'php-parallel-lint/php-parallel-lint' => array(
-            'pretty_version' => 'v1.3.2',
-            'version' => '1.3.2.0',
-            'reference' => '6483c9832e71973ed29cf71bd6b3f4fde438a9de',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../php-parallel-lint/php-parallel-lint',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'phplang/scope-exit' => array(
             'pretty_version' => '1.0.0',
             'version' => '1.0.0.0',
@@ -390,33 +297,6 @@
             'install_path' => __DIR__ . '/../phpmailer/phpmailer',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'phpstan/extension-installer' => array(
-            'pretty_version' => '1.2.0',
-            'version' => '1.2.0.0',
-            'reference' => 'f06dbb052ddc394e7896fcd1cfcd533f9f6ace40',
-            'type' => 'composer-plugin',
-            'install_path' => __DIR__ . '/../phpstan/extension-installer',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'phpstan/phpstan' => array(
-            'pretty_version' => '1.10.10',
-            'version' => '1.10.10.0',
-            'reference' => 'f1e22c9b17a879987f8743d81533250a5fff47f9',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../phpstan/phpstan',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'phpstan/phpstan-deprecation-rules' => array(
-            'pretty_version' => '1.1.3',
-            'version' => '1.1.3.0',
-            'reference' => 'a22b36b955a2e9a3d39fe533b6c1bb5359f9c319',
-            'type' => 'phpstan-extension',
-            'install_path' => __DIR__ . '/../phpstan/phpstan-deprecation-rules',
-            'aliases' => array(),
-            'dev_requirement' => true,
         ),
         'psr/cache' => array(
             'pretty_version' => '1.0.1',
@@ -505,8 +385,8 @@
         'psr/log-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0|2.0',
-                1 => '1.0.0 || 2.0.0 || 3.0.0',
+                0 => '1.0.0 || 2.0.0 || 3.0.0',
+                1 => '1.0|2.0',
             ),
         ),
         'psr/simple-cache' => array(
@@ -656,15 +536,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'squizlabs/php_codesniffer' => array(
-            'pretty_version' => '3.7.2',
-            'version' => '3.7.2.0',
-            'reference' => 'ed8e00df0a83aa96acf703f8c2979ff33341f879',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../squizlabs/php_codesniffer',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
         'swaggest/json-diff' => array(
             'pretty_version' => 'v3.10.4',
             'version' => '3.10.4.0',
@@ -682,15 +553,6 @@
             'install_path' => __DIR__ . '/../swaggest/json-schema',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'symfony/browser-kit' => array(
-            'pretty_version' => 'v5.4.21',
-            'version' => '5.4.21.0',
-            'reference' => 'a866ca7e396f15d7efb6d74a8a7d364d4e05b704',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/browser-kit',
-            'aliases' => array(),
-            'dev_requirement' => true,
         ),
         'symfony/cache' => array(
             'pretty_version' => 'v5.4.11',
@@ -751,57 +613,6 @@
             'install_path' => __DIR__ . '/../symfony/dom-crawler',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'symfony/filesystem' => array(
-            'pretty_version' => 'v5.4.19',
-            'version' => '5.4.19.0',
-            'reference' => '648bfaca6a494f3e22378123bcee2894045dc9d8',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/filesystem',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'symfony/finder' => array(
-            'pretty_version' => 'v5.4.19',
-            'version' => '5.4.19.0',
-            'reference' => '6071aebf810ad13fe8200c224f36103abb37cf1f',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/finder',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'symfony/http-client' => array(
-            'pretty_version' => 'v5.4.22',
-            'version' => '5.4.22.0',
-            'reference' => '4cd1b7e7ee846c8b22cb47cbc435344af9b2a8bf',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/http-client',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'symfony/http-client-contracts' => array(
-            'pretty_version' => 'v2.5.2',
-            'version' => '2.5.2.0',
-            'reference' => 'ba6a9f0e8f3edd190520ee3b9a958596b6ca2e70',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/http-client-contracts',
-            'aliases' => array(),
-            'dev_requirement' => true,
-        ),
-        'symfony/http-client-implementation' => array(
-            'dev_requirement' => true,
-            'provided' => array(
-                0 => '2.4',
-            ),
-        ),
-        'symfony/mime' => array(
-            'pretty_version' => 'v5.4.21',
-            'version' => '5.4.21.0',
-            'reference' => 'ef57d9fb9cdd5e6b2ffc567d109865d10b6920cd',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/mime',
-            'aliases' => array(),
-            'dev_requirement' => true,
         ),
         'symfony/polyfill-ctype' => array(
             'pretty_version' => 'v1.27.0',
@@ -997,15 +808,6 @@
             'install_path' => __DIR__ . '/../webmozart/assert',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'webmozart/glob' => array(
-            'pretty_version' => '4.5.0',
-            'version' => '4.5.0.0',
-            'reference' => '287cba1544a235310439d59594dffabb2f8f6c07',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../webmozart/glob',
-            'aliases' => array(),
-            'dev_requirement' => true,
         ),
     ),
 );
