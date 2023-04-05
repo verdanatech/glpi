@@ -1,0 +1,10 @@
+plugins/*
+# install/*
+pics/*
+files/*
+public/*
+vendor/*
+config/*
+# marketplace/*
+index.php
+index.php.bk
