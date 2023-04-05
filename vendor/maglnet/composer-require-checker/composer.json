@@ -1,0 +1,69 @@
+{
+    "name": "maglnet/composer-require-checker",
+    "type": "library",
+    "description": "CLI tool to analyze composer dependencies and verify that no unknown symbols are used in the sources of a package",
+    "keywords": [
+        "composer",
+        "dependency",
+        "cli",
+        "analysis",
+        "requirements",
+        "imports",
+        "require"
+    ],
+    "homepage": "https://github.com/maglnet/ComposerRequireChecker",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Marco Pivetta",
+            "email": "ocramius@gmail.com",
+            "homepage": "http://ocramius.github.io/"
+        },
+        {
+            "name": "Matthias Glaub",
+            "email": "magl@magl.net",
+            "homepage": "http://magl.net"
+        }
+    ],
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "ext-json": "*",
+        "ext-phar": "*",
+        "composer-runtime-api": "^2.0.0",
+        "nikic/php-parser": "^4.13.0",
+        "symfony/console": "^5.4.0",
+        "webmozart/assert": "^1.9.1",
+        "webmozart/glob": "^4.4.0"
+    },
+    "require-dev": {
+        "ext-zend-opcache": "*",
+        "doctrine/coding-standard": "^9.0.0",
+        "mikey179/vfsstream": "^1.6.10",
+        "phing/phing": "^2.17.0",
+        "phpstan/phpstan": "^1.2.0",
+        "phpunit/phpunit": "^9.5.10",
+        "vimeo/psalm": "^4.14.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "2.1-dev"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "ComposerRequireChecker\\": "src/ComposerRequireChecker"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ComposerRequireCheckerTest\\": "test/ComposerRequireCheckerTest"
+        }
+    },
+    "bin": [
+        "bin/composer-require-checker"
+    ]
+}

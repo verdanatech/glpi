@@ -1,0 +1,51 @@
+# https://help.github.com/en/categories/automating-your-workflow-with-github-actions
+
+name: "Building Require-Checker phar for release"
+
+on:
+  release:
+    types: [published]
+
+jobs:
+    build:
+        name: "Building Require-Checker phar"
+
+        runs-on: "ubuntu-latest"
+
+        steps:
+            - name: "Checkout"
+              uses: "actions/checkout@v2"
+
+            - name: "Install PHP"
+              uses: "shivammathur/setup-php@v2"
+              with:
+                  coverage: "none"
+                  php-version: "7.4"
+                  ini-values: memory_limit=-1, phar.readonly=0
+
+            - name: "Import GPG Key"
+              run: echo "$PRIVATE_KEY" | gpg --import
+              env:
+                PRIVATE_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
+
+            - name: "Install dependencies for build environment"
+              run: "composer install --no-interaction --no-progress --no-suggest"
+
+            - name: "Build and sign phar file via phing"
+              run: "vendor/bin/phing phar-build phar-sign"
+
+            - name: "Upload phar file artifact"
+              uses: actions/upload-artifact@v2
+              with:
+                  name: composer-require-checker.phar
+                  path: |
+                    build/composer-require-checker.phar
+                    build/composer-require-checker.phar.asc
+
+            - name: Upload PHAR to release
+              uses: svenstaro/upload-release-action@v2
+              with:
+                repo_token: ${{ secrets.GITHUB_TOKEN }}
+                file: build/composer-require-checker.phar*
+                file_glob: true
+                tag: ${{ github.ref }}

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="./vendor/autoload.php"
+    cacheResultFile="build/.phpunit.result.cache"
+    colors="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    verbose="true"
+    stopOnFailure="false"
+    processIsolation="false"
+    backupGlobals="false"
+>
+    <testsuite name="ComposerRequireChecker tests">
+        <directory>./test/ComposerRequireCheckerTest</directory>
+    </testsuite>
+    <filter>
+        <whitelist addUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">./src</directory>
+        </whitelist>
+    </filter>
+</phpunit>

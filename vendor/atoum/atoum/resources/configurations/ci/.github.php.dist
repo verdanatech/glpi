@@ -1,0 +1,37 @@
+<?php
+
+use
+    atoum\atoum,
+    atoum\atoum\reports,
+    atoum\atoum\writers\std
+;
+
+$script->addDefaultReport();
+
+if (file_exists(__DIR__ . '/vendor/autoload.php') === true)
+{
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
+$sources = 'classes';
+$token = getenv('COVERALLS_REPO_TOKEN') ?: null;
+$coverallsReport = new reports\asynchronous\coveralls($sources, $token);
+
+$defaultFinder = $coverallsReport->getBranchFinder();
+$coverallsReport
+    ->setBranchFinder(function() use ($defaultFinder) {
+        if (($branch = getenv('GITHUB_REF')) === false)
+        {
+            $branch = $defaultFinder();
+        }
+
+        return $branch;
+    })
+    ->setServiceName(getenv('CI') ? 'github-actions' : null)
+    ->setServiceJobId(getenv('GITHUB_RUN_NUMBER') ?: null)
+    ->addDefaultWriter()
+;
+
+$runner->addReport($coverallsReport);
+
+$script->testIt();

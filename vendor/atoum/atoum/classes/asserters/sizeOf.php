@@ -1,0 +1,11 @@
+<?php
+
+namespace atoum\atoum\asserters;
+
+class sizeOf extends integer
+{
+    public function setWith($value)
+    {
+        return parent::setWith(count($value));
+    }
+}

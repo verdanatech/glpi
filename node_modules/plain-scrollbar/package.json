@@ -1,0 +1,17 @@
+{
+  "name": "plain-scrollbar",
+  "description": "a simple custom scrollbar",
+  "author": "Kay Schewe <www.kayschewe.de>",
+  "homepage": "https://github.com/ewya/PlainScrollbar",
+  "license": "MIT",
+  "dependencies": {
+  },
+  "main": "plain-scrollbar.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ewya/PlainScrollbar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ewya/PlainScrollbar/issues"
+  }
+}
