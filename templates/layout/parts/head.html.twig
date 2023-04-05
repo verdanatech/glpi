@@ -35,7 +35,16 @@
 <html lang="{{ lang }}" {% if high_contrast %}data-high-contrast="1"{% endif %}>
 <head>
    <title>{{ title }} - GLPI</title>
-
+ 
+   <!-- Google tag (gtag.js) -->
+   <script async src="https://www.googletagmanager.com/gtag/js?id=G-R31QJQ9801"></script>
+   <script>
+   window.dataLayer = window.dataLayer || [];
+   function gtag(){dataLayer.push(arguments);}
+   gtag('js', new Date());
+   gtag('config', 'G-R31QJQ9801');
+   </script>
+   
    <meta charset="utf-8" />
 
    {# prevent IE to turn into compatible mode... #}
