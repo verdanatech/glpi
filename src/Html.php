@@ -873,7 +873,7 @@ class Html
     public static function displayErrorAndDie($message, $minimal = false)
     {
         global $HEADER_LOADED;
-
+        global $CFG_GLPI;
         if (!$HEADER_LOADED) {
             if ($minimal || !Session::getCurrentInterface()) {
                 self::nullHeader(__('Access denied'), '');
@@ -887,6 +887,11 @@ class Html
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
             $image =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image)) {
+                $image = $CFG_GLPI['url_base'] . $image;
+            } else {
+                $image = null;
+            }
             $skins = true;
         } else {
             $skins = false;
@@ -1328,7 +1333,12 @@ HTML;
         }
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-            $image = PluginSkinsConfig::getImage('favicon');
+            $image =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image)) {
+                $image = $CFG_GLPI['url_base'] . $image;
+            } else {
+                $image = null;
+            }
             $skins = true;
         } else {
             $skins = false;
@@ -1760,7 +1770,12 @@ HTML;
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
             $image = PluginSkinsConfig::returnImgMenus("menu");
             $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
-            $image_skins = PluginSkinsConfig::getImage("favicon");
+            $image_skins =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image_skins)) {
+                $image_skins = $CFG_GLPI['url_base'] . $image_skins;
+            } else {
+                $image_skins = null;
+            }
             $skins = true;
         } else {
             $skins = false;

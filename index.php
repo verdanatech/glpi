@@ -127,13 +127,17 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     }
     $plugin = new Plugin();
     if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-        $image = $CFG_GLPI['url_base'] . PluginSkinsConfig::getImage('favicon');
+        $image =  PluginSkinsConfig::getImage('favicon');
+        if (!empty($image)) {
+            $image = $CFG_GLPI['url_base'] . $image;
+        } else {
+            $image = null;
+        }
         $skins = true;
     } else {
         $skins = false;
         $image = null;
     }
-
 
     // redirect to ticket
     if ($redirect !== '') {
