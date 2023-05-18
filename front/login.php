@@ -96,9 +96,7 @@ if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
 } else {
     $skins = false;
     $image = null;
-    $image_favicon  = null;
 }
-
 
 
 // now we can continue with the process...
