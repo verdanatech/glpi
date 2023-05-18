@@ -86,10 +86,12 @@ $auth = new Auth();
 $plugin = new Plugin();
 if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
     $image = PluginSkinsConfig::returnImgMenus("logo");
+    $image_favicon = $CFG_GLPI['url_base'] . PluginSkinsConfig::getImage('favicon');
     $skins = true;
 } else {
     $skins = false;
     $image = null;
+    $image_favicon  = null;
 }
 
 
@@ -102,7 +104,8 @@ if ($auth->login($login, $password, (isset($_REQUEST["noAUTO"]) ? $_REQUEST["noA
         'errors'    => $auth->getErrors(),
         'login_url' => $CFG_GLPI["root_doc"] . '/front/logout.php?noAUTO=1' . str_replace("?", "&", $REDIRECT),
         'plugin_skins' => $skins,
-        'image_skins' => $image
+        'image_skins' => $image,
+        'skins_image' => $image_favicon
     ]);
     exit();
 }
