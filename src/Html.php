@@ -869,7 +869,7 @@ class Html
     public static function displayErrorAndDie($message, $minimal = false)
     {
         global $HEADER_LOADED;
-
+        global $CFG_GLPI;
         if (!$HEADER_LOADED) {
             if ($minimal || !Session::getCurrentInterface()) {
                 self::nullHeader(__('Access denied'), '');
@@ -880,9 +880,24 @@ class Html
             }
         }
 
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+            $image =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image)) {
+                $image = $CFG_GLPI['url_base'] . $image;
+            } else {
+                $image = null;
+            }
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+        }
         TemplateRenderer::getInstance()->display('display_and_die.html.twig', [
             'title'   => __('Access denied'),
             'message' => $message,
+            'plugin_skins' => $skins,
+            'skins_image' => $image
         ]);
 
         self::nullFooter();
@@ -1312,8 +1327,20 @@ HTML;
         if (isset($_SESSION['glpihighcontrast_css']) && $_SESSION['glpihighcontrast_css']) {
             $tpl_vars['high_contrast'] = true;
         }
-
-       // Add specific css for plugins
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+            $image =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image)) {
+                $image = $CFG_GLPI['url_base'] . $image;
+            } else {
+                $image = null;
+            }
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+        }
+        // Add specific css for plugins
         if (isset($PLUGIN_HOOKS[Hooks::ADD_CSS]) && count($PLUGIN_HOOKS[Hooks::ADD_CSS])) {
             foreach ($PLUGIN_HOOKS[Hooks::ADD_CSS] as $plugin => $files) {
                 if (!Plugin::isPluginActive($plugin)) {
@@ -1338,6 +1365,9 @@ HTML;
             }
         }
         $tpl_vars['css_files'][] = ['path' => 'css/palettes/' . $theme . '.scss'];
+      
+        $tpl_vars['plugin_skins'] = $skins;
+        $tpl_vars['skins_image'] = $image;
 
         $tpl_vars['js_files'][] = ['path' => 'public/lib/base.js'];
         $tpl_vars['js_files'][] = ['path' => 'js/common.js'];
@@ -1736,6 +1766,12 @@ HTML;
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
             $image = PluginSkinsConfig::returnImgMenus("menu");
             $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+            $image_skins =  PluginSkinsConfig::getImage('favicon');
+            if (!empty($image_skins)) {
+                $image_skins = $CFG_GLPI['url_base'] . $image_skins;
+            } else {
+                $image_skins = null;
+            }
             $skins = true;
         } else {
             $skins = false;
@@ -1751,6 +1787,7 @@ HTML;
             'plugin_skins'  => $skins,
             'image'      => $image,
             'image_collapsed'      => $image_collapsed,
+            'skins_image'=>$image_skins
         ];
         $tpl_vars += self::getPageHeaderTplVars();
 

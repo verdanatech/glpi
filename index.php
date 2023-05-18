@@ -125,6 +125,20 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
                 break;
         }
     }
+    $plugin = new Plugin();
+    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        $image =  PluginSkinsConfig::getImage('favicon');
+        if (!empty($image)) {
+            $image = $CFG_GLPI['url_base'] . $image;
+        } else {
+            $image = null;
+        }
+        $skins = true;
+    } else {
+        $skins = false;
+        $image = null;
+    }
+
 
     // redirect to ticket
     if ($redirect !== '') {
@@ -132,6 +146,8 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     }
 
     TemplateRenderer::getInstance()->display('pages/login.html.twig', [
+        'plugin_skins'        => $skins,
+        'skins_image'         => $image,
         'card_bg_width'       => true,
         'lang'                => $CFG_GLPI["languages"][$_SESSION['glpilanguage']][3],
         'title'               => __('Authentication'),
