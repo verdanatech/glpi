@@ -125,15 +125,6 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
                 break;
         }
     }
-    $plugin = new Plugin();
-    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-        $image = $CFG_GLPI['url_base'] . PluginSkinsConfig::getImage('favicon');
-        $skins = true;
-    } else {
-        $skins = false;
-        $image = null;
-    }
-
 
     // redirect to ticket
     if ($redirect !== '') {
@@ -141,8 +132,6 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     }
 
     TemplateRenderer::getInstance()->display('pages/login.html.twig', [
-        'plugin_skins'        => $skins,
-        'skins_image'         => $image,
         'card_bg_width'       => true,
         'lang'                => $CFG_GLPI["languages"][$_SESSION['glpilanguage']][3],
         'title'               => __('Authentication'),
@@ -153,11 +142,11 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
         'pwdfield'            => ($_SESSION['pwdfield'] = uniqid('fieldb')),
         'rmbfield'            => ($_SESSION['rmbfield'] = uniqid('fieldc')),
         'show_lost_password'  => $CFG_GLPI["notifications_mailing"]
-            && countElementsInTable('glpi_notifications', [
-                'itemtype'  => 'User',
-                'event'     => 'passwordforget',
-                'is_active' => 1
-            ]),
+                              && countElementsInTable('glpi_notifications', [
+                                  'itemtype'  => 'User',
+                                  'event'     => 'passwordforget',
+                                  'is_active' => 1
+                              ]),
         'languages_dropdown'  => Dropdown::showLanguages('language', [
             'display'             => false,
             'display_emptychoice' => true,
@@ -165,8 +154,8 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
             'width'               => '100%'
         ]),
         'right_panel'         => strlen($CFG_GLPI['text_login']) > 0
-            || count($PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN] ?? []) > 0
-            || $CFG_GLPI["use_public_faq"],
+                               || count($PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN] ?? []) > 0
+                               || $CFG_GLPI["use_public_faq"],
         'auth_dropdown_login' => Auth::dropdownLogin(false),
         'copyright_message'   => Html::getCopyrightMessage(false),
         'errors'              => $errors
