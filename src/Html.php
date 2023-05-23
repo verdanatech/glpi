@@ -1359,12 +1359,7 @@ HTML;
 
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-            $image =  PluginSkinsConfig::getImage('favicon');
-            if (!empty($image)) {
-                $image = $CFG_GLPI['url_base'] . $image;
-            } else {
-                $image = null;
-            }
+            $image =  PluginSkinsConfig::returnImgMenus('favicon');
             $skins = true;
         } else {
             $skins = false;
