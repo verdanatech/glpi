@@ -1783,6 +1783,7 @@ HTML;
             $skins = false;
             $image = null;
             $image_collapsed  = null;
+            $image_skins = null;
         }
         $tpl_vars = [
             'menu'        => $menu,
