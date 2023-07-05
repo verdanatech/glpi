@@ -131,10 +131,21 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
         Toolbox::manageRedirect($redirect);
     }
 
+    $plugin = new Plugin();
+    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        $image =  PluginSkinsConfig::returnImgMenus('favicon');
+        $skins = true;
+    } else {
+        $skins = false;
+        $image = null;
+    }
+    
     // Random number for html id/label
     $rand = mt_rand();
 
     TemplateRenderer::getInstance()->display('pages/login.html.twig', [
+        'plugin_skins'        => $skins,
+        'skins_image'         => $image,
         'rand'                => $rand,
         'card_bg_width'       => true,
         'lang'                => $CFG_GLPI["languages"][$_SESSION['glpilanguage']][3],
