@@ -61,7 +61,13 @@
          <div class="container-tight py-6" {% if style is not null %}style="{{ style }}"{% endif %}>
             <div class="text-center">
                <div class="col-md">
-                  <span class="glpi-logo mb-4" title="GLPI"></span>
+                      {% if plugin_skins == true and image_skins %}
+            <div class"mb-8">
+               <span> <img style=" width: 200px; height: 110px" src="{{image_skins}}" title="GLPI"></span>
+            </div>
+               {% else  %}
+                 <span class="glpi-logo mb-4" title="GLPI"></span>
+               {% endif %}
                </div>
             </div>
             <div class="card card-md">
