@@ -132,7 +132,7 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     }
 
     $plugin = new Plugin();
-    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.4.0','>=')) {
         $image =  PluginSkinsConfig::returnImgMenus('favicon');
         $skins = true;
     } else {

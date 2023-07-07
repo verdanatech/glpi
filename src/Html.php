@@ -819,7 +819,7 @@ class Html
         }
 
         $plugin = new Plugin();
-        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.4.0','>=')) {
             $image =  PluginSkinsConfig::returnImgMenus('favicon');
             $skins = true;
         } else {
@@ -1289,7 +1289,7 @@ HTML;
 
 
         $plugin = new Plugin();
-        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
             $image =  PluginSkinsConfig::returnImgMenus('favicon');
             $skins = true;
         } else {
@@ -1707,7 +1707,7 @@ HTML;
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
 
         $plugin = new Plugin();
-        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
             $image = PluginSkinsConfig::returnImgMenus("menu");
             $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
             $image_skins = PluginSkinsConfig::returnImgMenus("favicon");
@@ -1963,7 +1963,7 @@ HTML;
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
 
         $plugin = new Plugin();
-        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
             $image = PluginSkinsConfig::returnImgMenus("menu");
             $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
             $skins = true;
