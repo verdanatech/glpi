@@ -8744,6 +8744,7 @@ HTML;
 
                 $PDF_TABLE .= '</table>';
                 $pdf->writeHTML($PDF_TABLE, true, false, true);
+                ob_end_clean();
                 $pdf->Output('glpi.pdf', 'I');
                 break;
 
