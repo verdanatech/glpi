@@ -5478,6 +5478,26 @@ JAVASCRIPT;
                 $options['criteria'][0]['value']      = $item->getID();
                 $options['criteria'][0]['link']       = 'AND';
                 break;
+            case 'PluginFormcreatorFormAnswer':
+                $restrict['glpi_items_tickets.items_id'] = $item->getID();
+                $restrict['glpi_items_tickets.itemtype'] = $item->getType();   
+                $restrict['glpi_ticketvalidations.users_id_validate'] =    Session::getLoginUserID();            
+                if (!Session::haveRight(self::$rightname, self::READALL)) {
+                    $or = [
+                        'glpi_tickets.users_id_recipient'   => Session::getLoginUserID(),
+                        [
+                            'OR' => [
+                                'glpi_tickets_users.tickets_id'  => new \QueryExpression('glpi_tickets.id'),
+                                'glpi_tickets_users.users_id'    => Session::getLoginUserID()
+                            ]
+                        ]
+                    ];
+                    if (count($_SESSION['glpigroups'])) {
+                        $or['glpi_groups_tickets.groups_id'] = $_SESSION['glpigroups'];
+                    }
+                    $restrict[] = ['OR' => $or];
+                }
+                break;      
 
             default:
                 $restrict['glpi_items_tickets.items_id'] = $item->getID();
@@ -5617,7 +5637,7 @@ JAVASCRIPT;
                 }
             }
         }
-
+      
         if (
             count($restrict)
             && Session::haveRight(self::$rightname, self::READALL)
