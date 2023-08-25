@@ -4188,6 +4188,11 @@ JAVASCRIPT;
                 'more' => true,
             ];
         }
+        if ($return['count'] <  $CFG_GLPI['dropdown_max']) {
+            $return['pagination'] = [
+                'more' => false,
+            ];
+        }
 
         return ($json === true)
          ? json_encode($return)
