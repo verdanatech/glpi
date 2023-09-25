@@ -7755,11 +7755,13 @@ abstract class CommonITILObject extends CommonDBTM
         if (self::getType() == 'Change') {
             $gtable = 'glpi_changes_groups';
             $itable = 'glpi_changes_items';
+            $vtable = 'glpi_changevalidations';
         }
         $utable = static::getTable() . '_users';
         $stable = static::getTable() . '_suppliers';
         if (self::getType() == 'Ticket') {
             $stable = 'glpi_suppliers_tickets';
+            $vtable = 'glpi_ticketvalidations';
         }
         $table = static::getTable();
         $criteria = [
@@ -7795,6 +7797,12 @@ abstract class CommonITILObject extends CommonDBTM
                     ]
                 ],
                 $itable  => [
+                    'ON' => [
+                        $table   => 'id',
+                        $itable  => $fk
+                    ]
+                    ],
+                $vtable  => [
                     'ON' => [
                         $table   => 'id',
                         $itable  => $fk
