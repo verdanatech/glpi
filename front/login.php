@@ -86,6 +86,16 @@ if (isset($_POST['redirect']) && (strlen($_POST['redirect']) > 0)) {
 
 $auth = new Auth();
 
+$plugin = new Plugin();
+if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+    $image = PluginSkinsConfig::returnImgMenus("logo");
+    $image_favicon = PluginSkinsConfig::returnImgMenus('favicon');
+    $skins = true;
+} else {
+    $skins = false;
+    $image = null;
+    $image_favicon = null;
+}
 
 // now we can continue with the process...
 if ($auth->login($login, $password, (isset($_REQUEST["noAUTO"]) ? $_REQUEST["noAUTO"] : false), $remember, $login_auth)) {
@@ -95,6 +105,9 @@ if ($auth->login($login, $password, (isset($_REQUEST["noAUTO"]) ? $_REQUEST["noA
     TemplateRenderer::getInstance()->display('pages/login_error.html.twig', [
         'errors'    => $auth->getErrors(),
         'login_url' => $CFG_GLPI["root_doc"] . '/front/logout.php?noAUTO=1' . str_replace("?", "&", $REDIRECT),
+        'plugin_skins' => $skins,
+        'image_skins' => $image,
+        'skins_image' => $image_favicon
     ]);
     exit();
 }
