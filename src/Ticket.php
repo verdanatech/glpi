@@ -5434,28 +5434,29 @@ JAVASCRIPT;
                 $options['criteria'][0]['value']      = $item->getID();
                 $options['criteria'][0]['link']       = 'AND';
                 break;
-                case 'PluginFormcreatorFormAnswer':
-                    $restrict['glpi_items_tickets.items_id'] = $item->getID();
-                    $restrict['glpi_items_tickets.itemtype'] = $item->getType();   
-                    $restrict['glpi_ticketvalidations.users_id_validate'] =    Session::getLoginUserID();            
-                    if (!Session::haveRight(self::$rightname, self::READALL)) {
-                        $or = [
-                            'glpi_tickets.users_id_recipient'   => Session::getLoginUserID(),
-                            [
-                                'OR' => [
-                                    'glpi_tickets_users.tickets_id'  => new \QueryExpression('glpi_tickets.id'),
-                                    'glpi_tickets_users.users_id'    => Session::getLoginUserID()
-                                ]
-                            ]
-                        ];
-                        if (count($_SESSION['glpigroups'])) {
-                            $or['glpi_groups_tickets.groups_id'] = $_SESSION['glpigroups'];
-                        }
-                        $restrict[] = ['OR' => $or];
-                    }
-                    break;      
-
             default:
+            if ($item->getType() === 'PluginFormcreatorFormAnswer' && self::getValidations($item->getID())) {
+                $restrict['glpi_items_tickets.items_id'] = $item->getID();
+                $restrict['glpi_items_tickets.itemtype'] = $item->getType();
+                $restrict['glpi_ticketvalidations.users_id_validate'] =    Session::getLoginUserID();
+                if (!Session::haveRight(self::$rightname, self::READALL)) {
+
+                    $or = [
+                        'glpi_tickets.users_id_recipient'   => Session::getLoginUserID(),
+                        [
+                            'OR' => [
+                                'glpi_tickets_users.tickets_id'  => new \QueryExpression('glpi_tickets.id'),
+                                'glpi_tickets_users.users_id'    => Session::getLoginUserID()
+                            ]
+                        ]
+                    ];
+                    if (count($_SESSION['glpigroups'])) {
+                        $or['glpi_groups_tickets.groups_id'] = $_SESSION['glpigroups'];
+                    }
+                    $restrict[] = ['OR' => $or];
+                }
+                break;
+            }
                 $restrict['glpi_items_tickets.items_id'] = $item->getID();
                 $restrict['glpi_items_tickets.itemtype'] = $item->getType();
 
@@ -7028,5 +7029,28 @@ JAVASCRIPT;
     public static function getContentTemplatesParametersClass(): string
     {
         return TicketParameters::class;
+    }
+    public static function getValidations($id)
+    {
+        $user_id = Session::getLoginUserID();
+        global $DB;
+        $query = $DB->query("SELECT 
+    *
+FROM
+    glpi_plugin_formcreator_formanswers AS fa
+        LEFT JOIN
+    glpi_items_tickets AS it ON (fa.id = it.items_id)
+        INNER JOIN
+    glpi_ticketvalidations AS tv ON (it.tickets_id = tv.tickets_id)
+WHERE
+    items_id = {$id}
+		AND tv.users_id_validate = {$user_id}
+        AND itemtype = 'PluginFormcreatorFormAnswer'");
+
+        if ($query->num_rows > 0) {
+            return true;
+        }
+
+        return false;
     }
 }
