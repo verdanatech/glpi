@@ -828,11 +828,22 @@ class Html
                 self::helpHeader(__('Access denied'), '');
             }
         }
+       
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.4.0', '>=')) {
+            $image =  PluginSkinsConfig::returnImgMenus('favicon');
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+        }
 
         TemplateRenderer::getInstance()->display('display_and_die.html.twig', [
             'title'   => __('Access denied'),
             'message' => $message,
             'link'    => Html::getBackUrl(),
+            'plugin_skins' => $skins,
+            'skins_image' => $image
         ]);
 
         self::nullFooter();
@@ -1291,6 +1302,16 @@ HTML;
                 }
             }
         }
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
+            $image =  PluginSkinsConfig::returnImgMenus('favicon');
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+        }
+        $tpl_vars['plugin_skins'] = $skins;
+        $tpl_vars['skins_image'] = $image;
         $tpl_vars['css_files'][] = ['path' => 'css/palettes/' . $theme . '.scss'];
 
         $tpl_vars['js_files'][] = ['path' => 'public/lib/base.js'];
@@ -1707,12 +1728,25 @@ HTML;
 
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
 
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
+            $image = PluginSkinsConfig::returnImgMenus("menu");
+            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+            $image_collapsed  = null;
+        }
         $tpl_vars = [
             'menu'        => $menu,
             'sector'      => $sector,
             'item'        => $item,
             'option'      => $option,
             'menu_active' => $menu_active,
+            'plugin_skins'  => $skins,
+            'image'      => $image,
+            'image_collapsed'      => $image_collapsed
         ];
         $tpl_vars += self::getPageHeaderTplVars();
 
@@ -1955,6 +1989,17 @@ HTML;
         $menu = self::generateHelpMenu();
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
 
+        $plugin = new Plugin();
+        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
+            $image = PluginSkinsConfig::returnImgMenus("menu");
+            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+            $skins = true;
+        } else {
+            $skins = false;
+            $image = null;
+            $image_collapsed  = null;
+        }
+
         $tmp_active_item = explode("/", $item);
         $active_item     = array_pop($tmp_active_item);
         $menu_active     = $menu[$sector]['content'][$active_item]['title'] ?? "";
@@ -1964,6 +2009,9 @@ HTML;
             'item'        => $item,
             'option'      => $option,
             'menu_active' => $menu_active,
+            'plugin_skins'  => $skins,
+            'image'      => $image,
+            'image_collapsed'      => $image_collapsed,
         ];
         $tpl_vars += self::getPageHeaderTplVars();
 
