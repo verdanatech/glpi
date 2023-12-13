@@ -7846,6 +7846,11 @@ abstract class CommonITILObject extends CommonDBTM
                         $table   => 'id',
                         $itable  => $fk
                     ]
+                    ],    $vtable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $vtable  => $fk
+                        ]
                 ]
             ],
             'ORDERBY'            => "$table.date_mod DESC"
