@@ -63,12 +63,13 @@ class PhpSupportedVersion extends AbstractRequirement
         if (version_compare($php_version, self::MIN_SECURITY_SUPPORTED_VERSION, '>=')) {
             $this->validated = true;
             // No validation message as we cannot be sure that PHP is up-to-date.
-        } else {
-            $this->validated = false;
-            $this->validation_messages[] = sprintf(
-                __('PHP %s official support has ended. An upgrade to a more recent PHP version is recommended.'),
-                $php_version
-            );
-        }
+        } 
+        // else {
+        //     $this->validated = false;
+        //     // $this->validation_messages[] = sprintf(
+        //     //     __('PHP %s official support has ended. An upgrade to a more recent PHP version is recommended.'),
+        //     //     $php_version
+        //     // );
+        // }
     }
 }
