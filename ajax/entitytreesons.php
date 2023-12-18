@@ -63,7 +63,7 @@ $ckey = 'entity_selector'
 $entitiestree = $GLPI_CACHE->get($ckey);
 
 /* calculates the tree to save it in the cache if it is not already there */
-if ($entitiestree === null) {
+// if ($entitiestree === null) {
     $entitiestree = [];
     foreach ($_SESSION['glpiactiveprofile']['entities'] as $default_entity) {
         $default_entity_id = $default_entity['id'];
@@ -99,7 +99,7 @@ if ($entitiestree === null) {
     }
 
     $GLPI_CACHE->set($ckey, $entitiestree);
-}
+// }
 
 /* scans the tree to select the active entity */
 $select_tree = static function (&$entities) use (&$select_tree, $ancestors) {
