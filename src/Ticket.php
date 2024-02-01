@@ -445,8 +445,8 @@ class Ticket extends CommonITILObject
                 $data["slalevels_id_ttr"] = SlaLevel::getFirstSlaLevel($slas_id);
             }
            // Compute time_to_resolve
-            $data['sla_waiting_duration'] = $this->fields['sla_waiting_duration'] ?? 0;
-            $data[$dateField]             = $sla->computeDate($date, $data['sla_waiting_duration']);
+           $data['sla_waiting_duration'] =  0;
+           $data[$dateField]             = $sla->computeDate($date, $data['sla_waiting_duration']);
         } else {
             $data["slalevels_id_ttr"]     = 0;
             $data[$slaField]              = 0;
@@ -454,6 +454,7 @@ class Ticket extends CommonITILObject
         }
         return $data;
     }
+
 
     /**
      * Get Datas to be added for OLA add
@@ -489,9 +490,9 @@ class Ticket extends CommonITILObject
             } elseif ($ola->fields['type'] == SLM::TTO) {
                 $data['ola_tto_begin_date'] = $date;
             }
-           // Compute time_to_own
-            $data['ola_waiting_duration'] = $this->fields['ola_waiting_duration'] ?? 0;
-            $data[$dateField]             = $ola->computeDate($date, $data['ola_waiting_duration']);
+           // Compute time_to_resolve
+           $data['ola_waiting_duration'] =  0;
+           $data[$dateField]             = $ola->computeDate($date, $data['ola_waiting_duration']);
         } else {
             $data["olalevels_id_ttr"]     = 0;
             $data[$olaField]              = 0;
@@ -499,6 +500,7 @@ class Ticket extends CommonITILObject
         }
         return $data;
     }
+
 
 
     /**
