@@ -32,39 +32,53 @@
  #}
 
 <!DOCTYPE html>
-<html lang="{{ lang }}" {% if high_contrast %}data-high-contrast="1"{% endif %}
-      {{ glpi_request_id is defined ? 'data-glpi-request-id=' ~ glpi_request_id : '' }}>
-<head>
-   <title>{{ title }} - GLPI</title>
+<html lang="{{ lang }}" {% if high_contrast %} data-high-contrast="1" {% endif %} {{ glpi_request_id is defined ? 'data-glpi-request-id=' ~ glpi_request_id : '' }}>
+	<head>
+		<title>{{ title }}
+			- GLPI</title>
 
-   <meta charset="utf-8" />
+		 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R31QJQ9801"></script>
+		 <script>
+				   window.dataLayer = window.dataLayer || [];
+				   function gtag(){dataLayer.push(arguments);}
+				   gtag('js', new Date());
+				   gtag('config', 'G-R31QJQ9801');
+		 </script>
+		<meta
+		charset="utf-8"/>
 
-   {# prevent IE to turn into compatible mode... #}
-   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		{# prevent IE to turn into compatible mode... #}
+		<meta
+		http-equiv="X-UA-Compatible" content="IE=edge"/>
 
-   {# auto desktop / mobile viewport #}
-   <meta name="viewport" content="width=device-width, initial-scale=1" />
+		{# auto desktop / mobile viewport #}
+		<meta
+		name="viewport" content="width=device-width, initial-scale=1"/>
 
-   {# prevent robots to index GLPI instances #}
-   <meta name="robots" content="noindex, nofollow" />
+		{# prevent robots to index GLPI instances #}
+		<meta name="robots" content="noindex, nofollow"/>
 
-   <meta property="glpi:csrf_token" content="{{ csrf_token(true) }}" />
+		<meta property="glpi:csrf_token" content="{{ csrf_token(true) }}"/>
 
-   {% for css_file in css_files %}
-      <link rel="stylesheet" type="text/css" href="{{ css_path(css_file.path, css_file.options ?? []) }}" />
-   {% endfor %}
+		{% for css_file in css_files %}
+			<link rel="stylesheet" type="text/css" href="{{ css_path(css_file.path, css_file.options ?? []) }}"/>
+		{% endfor %}
 
-   {{ custom_css() }}
+		{{ custom_css() }}
 
-   <link rel="shortcut icon" type="images/x-icon" href="{{ asset_path('/pics/favicon.ico') }}" />
+		{% if  plugin_skins == true and skins_image %}
+			<link rel="shortcut icon" type="images/x-icon" href="{{ skins_image }}"/>
+		{% else  %}
+			<link rel="shortcut icon" type="images/x-icon" href="{{ asset_path('/pics/favicon.ico') }}"/>
+		{% endif %}
+		{% for js_file in js_files %}
+			 <script type="text/javascript" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>
+		{% endfor %}
 
-   {% for js_file in js_files %}
-      <script type="text/javascript" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>
-   {% endfor %}
+		{% for js_file in js_modules %}
+			 <script type="module" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>
+		{% endfor %}
 
-   {% for js_file in js_modules %}
-      <script type="module" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>
-   {% endfor %}
-
-   {{ locales_js() }}
-</head>
+		{{ locales_js() }}
+	</head>
+</html>
