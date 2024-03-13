@@ -48,16 +48,16 @@ if (!empty($tz)) {
 include_once(GLPI_ROOT . "/inc/autoload.function.php");
 
 (function () {
-   // Define GLPI_* constants that can be customized by admin.
-   //
-   // Use a self-invoking anonymous function to:
-   // - prevent any global variables/functions definition from `local_define.php` and `downstream.php` files;
-   // - prevent any global variables definition from current function logic.
+    // Define GLPI_* constants that can be customized by admin.
+    //
+    // Use a self-invoking anonymous function to:
+    // - prevent any global variables/functions definition from `local_define.php` and `downstream.php` files;
+    // - prevent any global variables definition from current function logic.
 
     $constants = [
-      // Constants related to system paths
-        'GLPI_CONFIG_DIR'      => GLPI_ROOT . '/config', // Path for configuration files (db, security key, ...)
-        'GLPI_VAR_DIR'         => GLPI_ROOT . '/files',  // Path for all files
+        // Constants related to system paths
+        'GLPI_CONFIG_DIR'      => GLPI_ROOT . '/../../config', // Path for configuration files (db, security key, ...)
+        'GLPI_VAR_DIR'         => GLPI_ROOT . '/../../files',  // Path for all files
         'GLPI_MARKETPLACE_DIR' => GLPI_ROOT . '/marketplace', // Path for marketplace plugins
         'GLPI_DOC_DIR'         => '{GLPI_VAR_DIR}', // Path for documents storage
         'GLPI_CACHE_DIR'       => '{GLPI_VAR_DIR}/_cache', // Path for cache
@@ -75,7 +75,7 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
         'GLPI_UPLOAD_DIR'      => '{GLPI_VAR_DIR}/_uploads', // Path for upload storage
         "GLPI_INVENTORY_DIR"   => '{GLPI_VAR_DIR}/_inventories', //Path for inventories
 
-      // Security constants
+        // Security constants
         'GLPI_USE_CSRF_CHECK'            => '1',
         'GLPI_CSRF_EXPIRES'              => '7200',
         'GLPI_CSRF_MAX_TOKENS'           => '100',
@@ -88,7 +88,7 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
             '/^(https?|feed):\/\/[^@:]+(\/.*)?$/', // only accept http/https/feed protocols, and reject presence of @ (username) and : (protocol) in host part of URL
         ],
 
-      // Constants related to GLPI Project / GLPI Network external services
+        // Constants related to GLPI Project / GLPI Network external services
         'GLPI_TELEMETRY_URI'                => 'https://telemetry.glpi-project.org', // Telemetry project URL
         'GLPI_INSTALL_MODE'                 => is_dir(GLPI_ROOT . '/.git') ? 'GIT' : 'TARBALL', // Install mode for telemetry
         'GLPI_NETWORK_MAIL'                 => 'glpi@teclib.com',
@@ -99,10 +99,10 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
         'GLPI_MARKETPLACE_MANUAL_DOWNLOADS' => true, // propose manual download link of plugins which cannot be installed/updated by marketplace
         'GLPI_USER_AGENT_EXTRA_COMMENTS'    => '', // Extra comment to add to GLPI User-Agent
 
-      // SQL compatibility
+        // SQL compatibility
         'GLPI_DISABLE_ONLY_FULL_GROUP_BY_SQL_MODE' => '1', // '1' to disable ONLY_FULL_GROUP_BY 'sql_mode'
 
-      // Other constants
+        // Other constants
         'GLPI_AJAX_DASHBOARD'         => '1', // 1 for "multi ajax mode" 0 for "single ajax mode" (see Glpi\Dashboard\Grid::getCards)
         'GLPI_CALDAV_IMPORT_STATE'    => 0, // external events created from a caldav client will take this state by default (0 = Planning::INFO)
         'GLPI_DEMO_MODE'              => '0',
@@ -110,27 +110,27 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
         'GLPI_TEXT_MAXSIZE'           => '4000' // character threshold for displaying read more button
     ];
 
-   // Define constants values based on server env variables (i.e. defined using apache SetEnv directive)
+    // Define constants values based on server env variables (i.e. defined using apache SetEnv directive)
     foreach (array_keys($constants) as $name) {
         if (!defined($name) && ($value = getenv($name)) !== false) {
             define($name, $value);
         }
     }
 
-   // Define constants values from local configuration file
+    // Define constants values from local configuration file
     if (file_exists(GLPI_ROOT . '/config/local_define.php') && !defined('TU_USER')) {
         require_once GLPI_ROOT . '/config/local_define.php';
     }
 
-   // Define constants values from downstream distribution file
+    // Define constants values from downstream distribution file
     if (file_exists(GLPI_ROOT . '/inc/downstream.php')) {
         include_once(GLPI_ROOT . '/inc/downstream.php');
     }
 
-   // Define constants values from defaults
-   // 1. First, define constants that does not inherit from another one.
-   // 2. Second, define constants that inherits from another one.
-   // This logic is quiet simple and is not made to handle chain inheritance.
+    // Define constants values from defaults
+    // 1. First, define constants that does not inherit from another one.
+    // 2. Second, define constants that inherits from another one.
+    // This logic is quiet simple and is not made to handle chain inheritance.
     $inherit_pattern = '/\{(?<name>GLPI_[\w]+)\}/';
     foreach ($constants as $key => $value) {
         if (!defined($key) && (!is_string($value) || !preg_match($inherit_pattern, $value))) {
@@ -139,7 +139,7 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
     }
     foreach ($constants as $key => $value) {
         if (!defined($key)) {
-           // Replace {GLPI_*} by value of corresponding constant
+            // Replace {GLPI_*} by value of corresponding constant
             $value = preg_replace_callback(
                 '/\{(?<name>GLPI_[\w]+)\}/',
                 function ($matches) {
@@ -152,8 +152,8 @@ include_once(GLPI_ROOT . "/inc/autoload.function.php");
         }
     }
 
-   // Where to load plugins.
-   // Order in this array is important (priority to first found).
+    // Where to load plugins.
+    // Order in this array is important (priority to first found).
     if (!defined('PLUGINS_DIRECTORIES')) {
         define('PLUGINS_DIRECTORIES', [
             GLPI_MARKETPLACE_DIR,
