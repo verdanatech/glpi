@@ -91,9 +91,11 @@ $auth = new Auth();
 
 $plugin = new Plugin();
 if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-    $image = PluginSkinsConfig::returnImgMenus("logo");
-    $image_favicon = PluginSkinsConfig::returnImgMenus('favicon');
-    $skins = true;
+    if (class_exists('PluginSkinsConfig')) {
+        $image = PluginSkinsConfig::returnImgMenus("logo");
+        $image_favicon = PluginSkinsConfig::returnImgMenus('favicon');
+        $skins = true;
+    }
 } else {
     $skins = false;
     $image = null;

@@ -834,8 +834,10 @@ class Html
         }
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.4.0', '>=')) {
-            $image =  PluginSkinsConfig::returnImgMenus('favicon');
-            $skins = true;
+            if (class_exists('PluginSkinsConfig')) {
+                $image =  PluginSkinsConfig::returnImgMenus('favicon');
+                $skins = true;
+            }
         } else {
             $skins = false;
             $image = null;
@@ -1314,8 +1316,10 @@ HTML;
         }
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.2.0', '>=')) {
-            $image =  PluginSkinsConfig::returnImgMenus('favicon');
-            $skins = true;
+            if (class_exists('PluginSkinsConfig')) {
+                $image =  PluginSkinsConfig::returnImgMenus('favicon');
+                $skins = true;
+            }
         } else {
             $skins = false;
             $image = null;
@@ -1739,9 +1743,11 @@ HTML;
         $menu = Plugin::doHookFunction("redefine_menus", $menu);
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-            $image = PluginSkinsConfig::returnImgMenus("menu");
-            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
-            $skins = true;
+            if (class_exists('PluginSkinsConfig')) {
+                $image = PluginSkinsConfig::returnImgMenus("menu");
+                $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+                $skins = true;
+            }
         } else {
             $skins = false;
             $image = null;
@@ -2001,9 +2007,11 @@ HTML;
 
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.2.0', '>=')) {
-            $image = PluginSkinsConfig::returnImgMenus("menu");
-            $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
-            $skins = true;
+            if (class_exists('PluginSkinsConfig')) {
+                $image = PluginSkinsConfig::returnImgMenus("menu");
+                $image_collapsed = PluginSkinsConfig::returnImgMenus("collapsed-menu");
+                $skins = true;
+            }
         } else {
             $skins = false;
             $image = null;

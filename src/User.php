@@ -5561,8 +5561,10 @@ HTML;
     {
         $plugin = new Plugin();
         if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.2.0', '>=')) {
-            $image = PluginSkinsConfig::returnImgMenus("logo");
-            $skins = true;
+            if (class_exists('PluginSkinsConfig')) {
+                $image = PluginSkinsConfig::returnImgMenus("logo");
+                $skins = true;
+            }
         } else {
             $skins = false;
             $image = null;

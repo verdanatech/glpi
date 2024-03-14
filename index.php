@@ -135,8 +135,10 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     $rand = mt_rand();
     $plugin = new Plugin();
     if ($plugin->isInstalled('skins') && $plugin->isActivated('skins')) {
-        $image =  PluginSkinsConfig::returnImgMenus('favicon');
-        $skins = true;
+        if (class_exists('PluginSkinsConfig')) {
+            $image =  PluginSkinsConfig::returnImgMenus('favicon');
+            $skins = true;
+        }
     } else {
         $skins = false;
         $image = null;
