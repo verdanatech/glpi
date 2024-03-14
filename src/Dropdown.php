@@ -202,7 +202,7 @@ class Dropdown
                 $params['entity'] = getSonsOf('glpi_entities', $params['entity']);
             }
         }
-        // $params['entity'] = Session::getMatchingActiveEntities($params['entity']);
+        $params['entity'] = Session::getMatchingActiveEntities($params['entity']);
 
         $field_id = Html::cleanId("dropdown_" . $params['name'] . $params['rand']);
 
@@ -2648,7 +2648,7 @@ JAVASCRIPT;
                     $entities[] = (int)$value;
                 }
             }
-            // $post["entity_restrict"] = Session::getMatchingActiveEntities($entities);
+            $post["entity_restrict"] = Session::getMatchingActiveEntities($entities);
         }
 
         // Security
@@ -3524,7 +3524,7 @@ JAVASCRIPT;
         }
 
         if (isset($post['entity_restrict'])) {
-            // $post['entity_restrict'] = Session::getMatchingActiveEntities($post['entity_restrict']);
+            $post['entity_restrict'] = Session::getMatchingActiveEntities($post['entity_restrict']);
         }
 
         $fromitem->checkGlobal(UPDATE);
@@ -3797,7 +3797,7 @@ JAVASCRIPT;
 
         if ($item->isEntityAssign()) {
             if (isset($post["entity_restrict"]) && ($post["entity_restrict"] >= 0)) {
-                // $entity = Session::getMatchingActiveEntities($post['entity_restrict']);
+                $entity = Session::getMatchingActiveEntities($post['entity_restrict']);
             } else {
                 $entity = '';
             }
@@ -4037,7 +4037,7 @@ JAVASCRIPT;
             $entity_restrict = -1;
             if (isset($post['entity_restrict'])) {
                 $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
-                // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+                $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
             }
 
             $start  = intval(($post['page'] - 1) * $post['page_limit']);
@@ -4144,7 +4144,7 @@ JAVASCRIPT;
         $entity_restrict = -1;
         if (isset($post['entity_restrict'])) {
             $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
-            // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+            $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
         }
 
         // prevent instanciation of bad classes

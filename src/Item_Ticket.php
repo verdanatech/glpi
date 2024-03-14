@@ -610,7 +610,7 @@ class Item_Ticket extends CommonItilObject_Item
             $userID = Session::getLoginUserID();
         }
 
-        // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+        $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
 
         $rand        = $params['rand'];
         $already_add = $params['used'];
