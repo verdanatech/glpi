@@ -40,7 +40,7 @@ use Glpi\Toolbox\Sanitizer;
 
 class Dropdown
 {
-   //Empty value displayed in a dropdown
+    //Empty value displayed in a dropdown
     const EMPTY_VALUE = '-----';
 
     /**
@@ -110,10 +110,10 @@ class Dropdown
         $params['condition']            = [];
         $params['rand']                 = mt_rand();
         $params['displaywith']          = [];
-       //Parameters about choice 0
-       //Empty choice's label
+        //Parameters about choice 0
+        //Empty choice's label
         $params['emptylabel']           = self::EMPTY_VALUE;
-       //Display emptychoice ?
+        //Display emptychoice ?
         $params['display_emptychoice']  = ($itemtype != 'Entity');
         $params['placeholder']          = '';
         $params['display']              = true;
@@ -144,7 +144,7 @@ class Dropdown
             unset($params['value']);
         }
 
-       // Check default value for dropdown : need to be a numeric (or null)
+        // Check default value for dropdown : need to be a numeric (or null)
         if (
             isset($params['value'])
             && ((strlen($params['value']) == 0) || !is_numeric($params['value']) && $params['value'] != 'mygroups')
@@ -190,26 +190,26 @@ class Dropdown
                 . '</span>';
         }
 
-       // Manage entity_sons
+        // Manage entity_sons
         if (
             !($params['entity'] < 0)
             && $params['entity_sons']
         ) {
             if (is_array($params['entity'])) {
-               // translation not needed - only for debug
+                // translation not needed - only for debug
                 $output .= "entity_sons options is not available with entity option as array";
             } else {
                 $params['entity'] = getSonsOf('glpi_entities', $params['entity']);
             }
         }
-        $params['entity'] = Session::getMatchingActiveEntities($params['entity']);
+        // $params['entity'] = Session::getMatchingActiveEntities($params['entity']);
 
         $field_id = Html::cleanId("dropdown_" . $params['name'] . $params['rand']);
 
-       // Manage condition
+        // Manage condition
         if (!empty($params['condition'])) {
-           // Put condition in session and replace it by its key
-           // This is made to prevent passing to many parameters when calling the ajax script
+            // Put condition in session and replace it by its key
+            // This is made to prevent passing to many parameters when calling the ajax script
             $params['condition'] = static::addNewCondition($params['condition']);
         }
 
@@ -283,14 +283,15 @@ class Dropdown
             $add_item_icon .= '</div>';
         }
 
-       // Display comment
+        // Display comment
         $icon_array = [];
         if ($params['comments']) {
             $comment_id      = Html::cleanId("comment_" . $params['name'] . $params['rand']);
             $link_id         = Html::cleanId("comment_link_" . $params['name'] . $params['rand']);
             $kblink_id       = Html::cleanId("kb_link_" . $params['name'] . $params['rand']);
             $breadcrumb_id   = Html::cleanId("dc_breadcrumb_" . $params['name'] . $params['rand']);
-            $options_tooltip = ['contentid' => $comment_id,
+            $options_tooltip = [
+                'contentid' => $comment_id,
                 'linkid'    => $link_id,
                 'display'   => false
             ];
@@ -342,10 +343,10 @@ class Dropdown
                 && !isset($_REQUEST['_in_modal'])
                 && $params['addicon']
             ) {
-                  $icon_array[] = $add_item_icon;
+                $icon_array[] = $add_item_icon;
             }
 
-           // Supplier Links
+            // Supplier Links
             if ($itemtype == "Supplier") {
                 if ($item->getFromDB($params['value'])) {
                     $link_icon = '<div>';
@@ -355,7 +356,7 @@ class Dropdown
                 }
             }
 
-           // Location icon
+            // Location icon
             if ($itemtype == 'Location') {
                 $location_icon = '<div class="btn btn-outline-secondary">';
                 $location_icon .= "<span title='" . __s('Display on map') . "' data-bs-toggle='tooltip' onclick='showMapForLocation(this)' data-fid='$field_id'>
@@ -375,7 +376,7 @@ class Dropdown
                 }
             }
 
-           // KB links
+            // KB links
             if (
                 $item->isField('knowbaseitemcategories_id') && Session::haveRightsOr('knowbase', [READ, KnowbaseItem::READFAQ])
                 && method_exists($item, 'getLinks')
@@ -549,13 +550,13 @@ class Dropdown
             ] + $JOIN;
             $iterator = $DB->request($criteria);
 
-           /// TODO review comment management...
-           /// TODO getDropdownName need to return only name
-           /// When needed to use comment use class instead : getComments function
-           /// GetName of class already give Name !!
-           /// TODO CommonDBTM : review getComments to be recursive and add information from class hierarchy
-           /// getUserName have the same system : clean it too
-           /// Need to study the problem
+            /// TODO review comment management...
+            /// TODO getDropdownName need to return only name
+            /// When needed to use comment use class instead : getComments function
+            /// GetName of class already give Name !!
+            /// TODO CommonDBTM : review getComments to be recursive and add information from class hierarchy
+            /// getUserName have the same system : clean it too
+            /// Need to study the problem
             if (count($iterator)) {
                 $data = $iterator->current();
                 if ($translate && !empty($data['transname'])) {
@@ -574,12 +575,12 @@ class Dropdown
                 switch ($table) {
                     case "glpi_computers":
                         if (empty($name)) {
-                             $name = "($id)";
+                            $name = "($id)";
                         }
                         break;
 
                     case "glpi_contacts":
-                       //TRANS: %1$s is the name, %2$s is the firstname
+                        //TRANS: %1$s is the name, %2$s is the firstname
                         $name = sprintf(__('%1$s %2$s'), $name, $data["firstname"]);
                         if ($tooltip) {
                             if (!empty($data["phone"])) {
@@ -623,11 +624,11 @@ class Dropdown
                     case "glpi_suppliers":
                         if ($tooltip) {
                             if (!empty($data["phonenumber"])) {
-                                 $comment .= "<br>" . sprintf(
-                                     __('%1$s: %2$s'),
-                                     "<span class='b'>" . Phone::getTypeName(1),
-                                     "</span>" . $data['phonenumber']
-                                 );
+                                $comment .= "<br>" . sprintf(
+                                    __('%1$s: %2$s'),
+                                    "<span class='b'>" . Phone::getTypeName(1),
+                                    "</span>" . $data['phonenumber']
+                                );
                             }
                             if (!empty($data["fax"])) {
                                 $comment .= "<br>" . sprintf(
@@ -662,16 +663,16 @@ class Dropdown
                     case "glpi_budgets":
                         if ($tooltip) {
                             if (!empty($data['locations_id'])) {
-                                 $comment .= "<br>" . sprintf(
-                                     __('%1$s: %2$s'),
-                                     "<span class='b'>" . Location::getTypeName(1) . "</span>",
-                                     self::getDropdownName(
-                                         "glpi_locations",
-                                         $data["locations_id"],
-                                         false,
-                                         $translate
-                                     )
-                                 );
+                                $comment .= "<br>" . sprintf(
+                                    __('%1$s: %2$s'),
+                                    "<span class='b'>" . Location::getTypeName(1) . "</span>",
+                                    self::getDropdownName(
+                                        "glpi_locations",
+                                        $data["locations_id"],
+                                        false,
+                                        $translate
+                                    )
+                                );
                             }
                             if (!empty($data['budgettypes_id'])) {
                                 $comment .= "<br>" . sprintf(
@@ -749,7 +750,7 @@ class Dropdown
                 ]);
 
                 foreach ($iterator as $data) {
-                     $tabs[$data['id']] = $data[$field];
+                    $tabs[$data['id']] = $data[$field];
                 }
             }
         }
@@ -920,11 +921,11 @@ class Dropdown
 JAVASCRIPT;
                 echo Html::scriptBlock($js);
             } else {
-               //TRANS: %s is the store path
+                //TRANS: %s is the store path
                 printf(__('Error reading directory %s'), $store_path);
             }
         } else {
-           //TRANS: %s is the store path
+            //TRANS: %s is the store path
             printf(__('Error: %s is not a directory'), $store_path);
         }
     }
@@ -939,7 +940,8 @@ JAVASCRIPT;
     public static function showGMT($name, $value = '')
     {
 
-        $elements = [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3.5, -3, -2, -1, 0,
+        $elements = [
+            -12, -11, -10, -9, -8, -7, -6, -5, -4, -3.5, -3, -2, -1, 0,
             '+1', '+2', '+3', '+3.5', '+4', '+4.5', '+5', '+5.5', '+6', '+6.5', '+7',
             '+8', '+9', '+9.5', '+10', '+11', '+12', '+13'
         ];
@@ -982,7 +984,7 @@ JAVASCRIPT;
         $options = [];
 
         if (!array_key_exists('use_checkbox', $params)) {
-           // TODO: switch to true when Html::showCheckbox() is validated
+            // TODO: switch to true when Html::showCheckbox() is validated
             $params['use_checkbox'] = false;
         }
         if ($params['use_checkbox']) {
@@ -992,7 +994,8 @@ JAVASCRIPT;
                 $rand = mt_rand();
             }
 
-            $options = ['name' => $name,
+            $options = [
+                'name' => $name,
                 'id'   => Html::cleanId("dropdown_" . $name . $rand)
             ];
 
@@ -1153,7 +1156,7 @@ JAVASCRIPT;
                     'PeripheralModel' => null,
                     'PhoneModel' => null,
 
-                  // Devices models :
+                    // Devices models :
                     'DeviceCameraModel' => null,
                     'DeviceCaseModel' => null,
                     'DeviceControlModel' => null,
@@ -1467,16 +1470,16 @@ JAVASCRIPT;
 
         $begin = 0;
         $end   = 24;
-       // Check if the $step is Ok for the $value field
+        // Check if the $step is Ok for the $value field
         $split = explode(":", $p['value']);
 
-       // Valid value XX:YY ou XX:YY:ZZ
+        // Valid value XX:YY ou XX:YY:ZZ
         if ((count($split) == 2) || (count($split) == 3)) {
             $min = $split[1];
 
-           // Problem
+            // Problem
             if (($min % $p['step']) != 0) {
-               // set minimum step
+                // set minimum step
                 $p['step'] = 5;
             }
         }
@@ -1510,7 +1513,7 @@ JAVASCRIPT;
                 }
             }
         }
-       // Last item
+        // Last item
         $val = $end . ":00";
         $values[$val] = $val;
         if (($p['value'] == $val . ":00") || ($p['value'] == $val)) {
@@ -1546,10 +1549,10 @@ JAVASCRIPT;
         $params['rand']                = mt_rand();
         $params['on_change']           = '';
         $params['plural']              = false;
-       //Parameters about choice 0
-       //Empty choice's label
+        //Parameters about choice 0
+        //Empty choice's label
         $params['emptylabel']          = self::EMPTY_VALUE;
-       //Display emptychoice ?
+        //Display emptychoice ?
         $params['display_emptychoice'] = true;
         $params['checkright']          = false;
         $params['toupdate']            = '';
@@ -1660,7 +1663,7 @@ JAVASCRIPT;
             'rand'                => $params['rand']
         ];
 
-       // manage condition
+        // manage condition
         if ($params['onlyglobal']) {
             $p_ajax['condition'] = static::addNewCondition(['is_global' => 1]);
         }
@@ -1686,8 +1689,8 @@ JAVASCRIPT;
 
         $out .= "<br><span id='$show_id'>&nbsp;</span>\n";
 
-       // We check $options as the caller will set $options['default_itemtype'] only if it needs a
-       // default itemtype and the default value can be '' thus empty won't be valid !
+        // We check $options as the caller will set $options['default_itemtype'] only if it needs a
+        // default itemtype and the default value can be '' thus empty won't be valid !
         if (array_key_exists('default_itemtype', $options)) {
             $out .= "<script type='text/javascript' >\n";
             $out .= "$(function() {";
@@ -1780,7 +1783,8 @@ JAVASCRIPT;
         } else {
             $valuename = $p['toadd'][$valuekey];
         }
-        $param = ['value'               => $p['value'],
+        $param = [
+            'value'               => $p['value'],
             'valuename'           => $valuename,
             'width'               => $p['width'],
             'on_change'           => $p['on_change'],
@@ -1822,8 +1826,8 @@ JAVASCRIPT;
     {
 
         $formatted_number = is_numeric($value)
-         ? Html::formatNumber($value, false, $decimals)
-         : $value;
+            ? Html::formatNumber($value, false, $decimals)
+            : $value;
 
         if (strlen($unit) == 0) {
             return $formatted_number;
@@ -1831,31 +1835,31 @@ JAVASCRIPT;
 
         switch ($unit) {
             case 'year':
-               //TRANS: %s is a number of years
+                //TRANS: %s is a number of years
                 return sprintf(_n('%s year', '%s years', $value), $formatted_number);
 
             case 'month':
-               //TRANS: %s is a number of months
+                //TRANS: %s is a number of months
                 return sprintf(_n('%s month', '%s months', $value), $formatted_number);
 
             case 'day':
-               //TRANS: %s is a number of days
+                //TRANS: %s is a number of days
                 return sprintf(_n('%s day', '%s days', $value), $formatted_number);
 
             case 'hour':
-               //TRANS: %s is a number of hours
+                //TRANS: %s is a number of hours
                 return sprintf(_n('%s hour', '%s hours', $value), $formatted_number);
 
             case 'minute':
-               //TRANS: %s is a number of minutes
+                //TRANS: %s is a number of minutes
                 return sprintf(_n('%s minute', '%s minutes', $value), $formatted_number);
 
             case 'second':
-               //TRANS: %s is a number of seconds
+                //TRANS: %s is a number of seconds
                 return sprintf(_n('%s second', '%s seconds', $value), $formatted_number);
 
             case 'millisecond':
-               //TRANS: %s is a number of milliseconds
+                //TRANS: %s is a number of milliseconds
                 return sprintf(_n('%s millisecond', '%s milliseconds', $value), $formatted_number);
 
             case 'rack_unit':
@@ -1919,7 +1923,7 @@ JAVASCRIPT;
             }
         }
 
-       // Manage min :
+        // Manage min :
         $params['min'] = floor($params['min'] / $params['step']) * $params['step'];
 
         if ($params['min'] == 0) {
@@ -1930,7 +1934,7 @@ JAVASCRIPT;
             $params['max'] = max($params['value'], $params['max']);
         }
 
-       // Floor with MINUTE_TIMESTAMP for rounded purpose
+        // Floor with MINUTE_TIMESTAMP for rounded purpose
         if (empty($params['value'])) {
             $params['value'] = 0;
         }
@@ -1940,7 +1944,7 @@ JAVASCRIPT;
         ) {
             $params['value'] = floor(($params['value']) / MINUTE_TIMESTAMP) * MINUTE_TIMESTAMP;
         } else if (!in_array($params['value'], $params['toadd'])) {
-           // Round to a valid step except if value is already valid (defined in values to add)
+            // Round to a valid step except if value is already valid (defined in values to add)
             $params['value'] = floor(($params['value']) / $params['step']) * $params['step'];
         }
 
@@ -1989,11 +1993,11 @@ JAVASCRIPT;
             if ($day > 0) {
                 if (($hour > 0) || ($minute > 0)) {
                     if ($minute < 10) {
-                         $minute = '0' . $minute;
+                        $minute = '0' . $minute;
                     }
 
-                   //TRANS: %1$d is the number of days, %2$d the number of hours,
-                   //       %3$s the number of minutes : display 1 day 3h15
+                    //TRANS: %1$d is the number of days, %2$d the number of hours,
+                    //       %3$s the number of minutes : display 1 day 3h15
                     $values[$i] = sprintf(
                         _n('%1$d day %2$dh%3$s', '%1$d days %2$dh%3$s', $day),
                         $day,
@@ -2008,7 +2012,7 @@ JAVASCRIPT;
                     $minute = '0' . $minute;
                 }
 
-               //TRANS: %1$d the number of hours, %2$s the number of minutes : display 3h15
+                //TRANS: %1$d the number of hours, %2$s the number of minutes : display 3h15
                 $values[$i] = sprintf(__('%1$dh%2$s'), $hour, $minute);
             }
         }
@@ -2040,13 +2044,13 @@ JAVASCRIPT;
         $url  = $CFG_GLPI["root_doc"] . "/ajax/ldapdaterestriction.php";
         echo "<script type='text/javascript' >";
         echo "function activateRestriction() {";
-         $params = ['enabled' => 1];
-         Ajax::updateItemJsCode('date_restriction', $url, $params);
+        $params = ['enabled' => 1];
+        Ajax::updateItemJsCode('date_restriction', $url, $params);
         echo "};";
 
         echo "function deactivateRestriction() {";
-         $params = ['enabled' => 0];
-         Ajax::updateItemJsCode('date_restriction', $url, $params);
+        $params = ['enabled' => 0];
+        Ajax::updateItemJsCode('date_restriction', $url, $params);
         echo "};";
         echo "</script>";
 
@@ -2135,7 +2139,7 @@ JAVASCRIPT;
         if ($param['other'] !== false) {
             $param['on_change'] .= "displayOtherSelectOptions(this, \"$other_select_option\");";
 
-           // If $param['other'] is a string, then we must highlight "other" option
+            // If $param['other'] is a string, then we must highlight "other" option
             if (is_string($param['other'])) {
                 if (!$param["multiple"]) {
                     $param['values'] = [$other_select_option];
@@ -2148,7 +2152,7 @@ JAVASCRIPT;
         $param['option_tooltips'] = Html::entities_deep($param['option_tooltips']);
 
         if ($param["display_emptychoice"] && !$param["multiple"]) {
-            $elements = [ 0 => $param['emptylabel'] ] + $elements;
+            $elements = [0 => $param['emptylabel']] + $elements;
         }
 
         if ($param["multiple"]) {
@@ -2158,7 +2162,7 @@ JAVASCRIPT;
         }
 
         $output = '';
-       // readonly mode
+        // readonly mode
         $field_id = Html::cleanId("dropdown_" . $name . $param['rand']);
         if ($param['readonly']) {
             $to_display = [];
@@ -2207,7 +2211,7 @@ JAVASCRIPT;
             $output .= '>';
             $max_option_size = 0;
             foreach ($elements as $key => $val) {
-               // optgroup management
+                // optgroup management
                 if (is_array($val)) {
                     $opt_goup = Html::entities_deep($key);
                     if ($max_option_size < strlen($opt_goup)) {
@@ -2231,7 +2235,7 @@ JAVASCRIPT;
                     foreach ($val as $key2 => $val2) {
                         if (!isset($param['used'][$key2])) {
                             $output .= "<option value='" . $key2 . "'";
-                           // Do not use in_array : trouble with 0 and empty value
+                            // Do not use in_array : trouble with 0 and empty value
                             foreach ($param['values'] as $value) {
                                 if (strcmp($key2, $value) === 0) {
                                     $output .= " selected";
@@ -2251,7 +2255,7 @@ JAVASCRIPT;
                 } else {
                     if (!isset($param['used'][$key])) {
                         $output .= "<option value='" . Html::entities_deep($key) . "'";
-                       // Do not use in_array : trouble with 0 and empty value
+                        // Do not use in_array : trouble with 0 and empty value
                         foreach ($param['values'] as $value) {
                             if (strcmp($key, $value) === 0) {
                                 $output .= " selected";
@@ -2290,7 +2294,7 @@ JAVASCRIPT;
         }
 
         if (!$param['noselect2']) {
-           // Width set on select
+            // Width set on select
             $adapt_params = [
                 'width'             => $param["width"],
                 'templateResult'    => $param["templateResult"],
@@ -2300,16 +2304,16 @@ JAVASCRIPT;
         }
 
         if ($param["multiple"]) {
-           // Hack for All / None because select2 does not provide it
+            // Hack for All / None because select2 does not provide it
             $select   = __('All');
             $deselect = __('None');
             $output  .= "<div class='invisible' id='selectallbuttons_$field_id'>";
             $output  .= "<div class='d-flex justify-content-around p-1'>";
             $output  .= "<a class='btn btn-sm' " .
-                      "onclick=\"selectAll('$field_id');$('#$field_id').select2('close');\">$select" .
-                     "</a> ";
+                "onclick=\"selectAll('$field_id');$('#$field_id').select2('close');\">$select" .
+                "</a> ";
             $output  .= "<a class='btn btn-sm' onclick=\"deselectAll('$field_id');\">$deselect" .
-                     "</a>";
+                "</a>";
             $output  .= "</div></div>";
 
             $js = "
@@ -2347,17 +2351,17 @@ JAVASCRIPT;
 
         $tab[MINUTE_TIMESTAMP] = sprintf(_n('%d minute', '%d minutes', 1), 1);
 
-       // Minutes
+        // Minutes
         for ($i = 5; $i < 60; $i += 5) {
             $tab[$i * MINUTE_TIMESTAMP] = sprintf(_n('%d minute', '%d minutes', $i), $i);
         }
 
-       // Heures
+        // Heures
         for ($i = 1; $i < 24; $i++) {
             $tab[$i * HOUR_TIMESTAMP] = sprintf(_n('%d hour', '%d hours', $i), $i);
         }
 
-       // Jours
+        // Jours
         $tab[DAY_TIMESTAMP] = __('Each day');
         for ($i = 2; $i < 7; $i++) {
             $tab[$i * DAY_TIMESTAMP] = sprintf(_n('%d day', '%d days', $i), $i);
@@ -2413,20 +2417,22 @@ JAVASCRIPT;
                     ['id' => $ID],
                     '',
                     '',
-                    [__('Do you really want to use unitary management for this item?'),
+                    [
+                        __('Do you really want to use unitary management for this item?'),
                         __('Duplicate the element as many times as there are connections')
                     ]
                 );
                 echo "&nbsp;";
 
                 echo "<span class='fa fa-info pointer'" .
-                 " title=\"" . __s('Duplicate the element as many times as there are connections') .
-                 "\"><span class='sr-only'>" . __s('Duplicate the element as many times as there are connections') . "</span></span>";
+                    " title=\"" . __s('Duplicate the element as many times as there are connections') .
+                    "\"><span class='sr-only'>" . __s('Duplicate the element as many times as there are connections') . "</span></span>";
             }
         } else {
             if ($params['management_restrict'] == 2) {
                 $rand = mt_rand();
-                $values = [MANAGEMENT_UNITARY => __('Unit management'),
+                $values = [
+                    MANAGEMENT_UNITARY => __('Unit management'),
                     MANAGEMENT_GLOBAL  => __('Global management')
                 ];
                 Dropdown::showFromArray($params['name'], $values, [
@@ -2435,10 +2441,10 @@ JAVASCRIPT;
                     'width' => $params['width'],
                 ]);
             } else {
-               // Templates edition
+                // Templates edition
                 if (!empty($params['withtemplate'])) {
                     echo "<input type='hidden' name='is_global' value='" .
-                      $params['management_restrict'] . "'>";
+                        $params['management_restrict'] . "'>";
                     echo (!$params['management_restrict'] ? __('Unit management') : __('Global management'));
                 } else {
                     echo (!$params['value'] ? __('Unit management') : __('Global management'));
@@ -2538,15 +2544,15 @@ JAVASCRIPT;
         $values['-' . Search::CSV_OUTPUT]           = __('All pages in CSV');
 
         if ($itemtype != "Stat") {
-           // Do not show this option for stat page
+            // Do not show this option for stat page
             $values['-' . Search::NAMES_OUTPUT] = __('Copy names to clipboard');
         }
 
         $rand = mt_rand();
         Dropdown::showFromArray('display_type', $values, ['rand' => $rand]);
         echo "<button type='submit' name='export' class='btn' " .
-             " title=\"" . _sx('button', 'Export') . "\">" .
-             "<i class='far fa-save'></i><span class='sr-only'>" . _sx('button', 'Export') . "<span>";
+            " title=\"" . _sx('button', 'Export') . "\">" .
+            "<i class='far fa-save'></i><span class='sr-only'>" . _sx('button', 'Export') . "<span>";
     }
 
 
@@ -2589,7 +2595,7 @@ JAVASCRIPT;
             $values[$i] = $i;
         }
         $values[9999999] = 9999999;
-       // Propose max input vars -10
+        // Propose max input vars -10
         $max             = Toolbox::get_max_input_vars();
         if ($max > 10) {
             $values[$max - 10] = $max - 10;
@@ -2598,7 +2604,8 @@ JAVASCRIPT;
         return self::showFromArray(
             'glpilist_limit',
             $values,
-            ['on_change' => $onchange,
+            [
+                'on_change' => $onchange,
                 'value'     => $list_limit,
                 'display'   => $display
             ]
@@ -2621,7 +2628,7 @@ JAVASCRIPT;
          */
         global $CFG_GLPI, $DB;
 
-       // check if asked itemtype is the one originaly requested by the form
+        // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post)) {
             return;
         }
@@ -2641,10 +2648,10 @@ JAVASCRIPT;
                     $entities[] = (int)$value;
                 }
             }
-            $post["entity_restrict"] = Session::getMatchingActiveEntities($entities);
+            // $post["entity_restrict"] = Session::getMatchingActiveEntities($entities);
         }
 
-       // Security
+        // Security
         if (!($item = getItemForItemtype($post['itemtype']))) {
             return;
         }
@@ -2668,7 +2675,7 @@ JAVASCRIPT;
         }
 
         if (isset($post['condition']) && !empty($post['condition']) && !is_array($post['condition'])) {
-           // Retreive conditions from SESSION using its key
+            // Retreive conditions from SESSION using its key
             $key = $post['condition'];
             if (isset($_SESSION['glpicondition']) && isset($_SESSION['glpicondition'][$key])) {
                 $post['condition'] = $_SESSION['glpicondition'][$key];
@@ -2731,7 +2738,7 @@ JAVASCRIPT;
             $one_item = $post['_one_id'];
         }
 
-       // Count real items returned
+        // Count real items returned
         $count = 0;
         if ($item instanceof CommonTreeDropdown) {
             if (isset($post['parent_id']) && $post['parent_id'] != '') {
@@ -2764,7 +2771,7 @@ JAVASCRIPT;
                         $swhere[$table . '.' . $item->getIndexName()] = ['LIKE', "%{$post['searchText']}%"];
                     }
 
-                   // search also in displaywith columns
+                    // search also in displaywith columns
                     if ($displaywith && count($post['displaywith'])) {
                         foreach ($post['displaywith'] as $with) {
                             $swhere[] = ["$table.$with" => ['LIKE', $raw_search]];
@@ -2778,14 +2785,14 @@ JAVASCRIPT;
 
             $multi = false;
 
-           // Manage multiple Entities dropdowns
+            // Manage multiple Entities dropdowns
             $order = ["$table.completename"];
 
-           // No multi if get one item
+            // No multi if get one item
             if ($item->isEntityAssign()) {
                 $recur = $item->maybeRecursive();
 
-               // Entities are not really recursive : do not display parents
+                // Entities are not really recursive : do not display parents
                 if ($post['itemtype'] == 'Entity') {
                     $recur = false;
                 }
@@ -2799,27 +2806,27 @@ JAVASCRIPT;
                     );
 
                     if (is_array($post["entity_restrict"]) && (count($post["entity_restrict"]) > 1)) {
-                          $multi = true;
+                        $multi = true;
                     }
                 } else {
-                   // If private item do not use entity
+                    // If private item do not use entity
                     if (!$item->maybePrivate()) {
                         $where = $where + getEntitiesRestrictCriteria($table, '', '', $recur);
 
                         if (count($_SESSION['glpiactiveentities']) > 1) {
-                             $multi = true;
+                            $multi = true;
                         }
                     } else {
                         $multi = false;
                     }
                 }
 
-               // Force recursive items to multi entity view
+                // Force recursive items to multi entity view
                 if ($recur) {
                     $multi = true;
                 }
 
-               // no multi view for entitites
+                // no multi view for entitites
                 if ($post['itemtype'] == "Entity") {
                     $multi = false;
                 }
@@ -2877,9 +2884,9 @@ JAVASCRIPT;
             }
 
             if ($start > 0 && $multi) {
-               //we want to load last entry of previous page
-               //(and therefore one more result) to check if
-               //entity name must be displayed again
+                //we want to load last entry of previous page
+                //(and therefore one more result) to check if
+                //entity name must be displayed again
                 --$start;
                 ++$limit;
             }
@@ -2898,7 +2905,7 @@ JAVASCRIPT;
             }
             $iterator = $DB->request($criteria);
 
-           // Empty search text : display first
+            // Empty search text : display first
             if ($post['page'] == 1 && empty($post['searchText'])) {
                 if ($post['display_emptychoice']) {
                     $datas[] = [
@@ -2921,7 +2928,7 @@ JAVASCRIPT;
             $last_level_displayed = [];
             $datastoadd           = [];
 
-           // Ignore first item for all pages except first page
+            // Ignore first item for all pages except first page
             $firstitem = (($post['page'] > 1));
             $firstitem_entity = -1;
             $prev             = -1;
@@ -2940,7 +2947,7 @@ JAVASCRIPT;
                         $multi
                         && ($data["entities_id"] != $prev)
                     ) {
-                       // Do not do it for first item for next page load
+                        // Do not do it for first item for next page load
                         if (!$firstitem) {
                             if ($prev >= 0) {
                                 if (count($datastoadd)) {
@@ -2956,7 +2963,7 @@ JAVASCRIPT;
                         if ($firstitem) {
                             $firstitem_entity = $prev;
                         }
-                       // Reset last level displayed :
+                        // Reset last level displayed :
                         $datastoadd = [];
                     }
 
@@ -2973,7 +2980,7 @@ JAVASCRIPT;
                     } else { // Need to check if parent is the good one
                         // Do not do if only get one item
                         if (($level > 1)) {
-                           // Last parent is not the good one need to display arbo
+                            // Last parent is not the good one need to display arbo
                             if (
                                 !isset($last_level_displayed[$level - 1])
                                 || ($last_level_displayed[$level - 1] != $data[$item->getForeignKeyField()])
@@ -2982,7 +2989,7 @@ JAVASCRIPT;
                                 $work_parentID = $data[$item->getForeignKeyField()];
                                 $parent_datas  = [];
                                 do {
-                               // Get parent
+                                    // Get parent
                                     if ($item->getFromDB($work_parentID)) {
                                         // Do not do for first item for next page load
                                         if (!$firstitem) {
@@ -2993,15 +3000,15 @@ JAVASCRIPT;
                                             $selection_text = $title;
 
                                             if (isset($item->fields["comment"])) {
-                                                 $addcomment
-                                                 = DropdownTranslation::getTranslatedValue(
-                                                     $ID,
-                                                     $post['itemtype'],
-                                                     'comment',
-                                                     $_SESSION['glpilanguage'],
-                                                     $item->fields['comment']
-                                                 );
-                                                 $title = sprintf(__('%1$s - %2$s'), $title, $addcomment);
+                                                $addcomment
+                                                    = DropdownTranslation::getTranslatedValue(
+                                                        $ID,
+                                                        $post['itemtype'],
+                                                        'comment',
+                                                        $_SESSION['glpilanguage'],
+                                                        $item->fields['comment']
+                                                    );
+                                                $title = sprintf(__('%1$s - %2$s'), $title, $addcomment);
                                             }
                                             $output2 = DropdownTranslation::getTranslatedValue(
                                                 $item->fields['id'],
@@ -3011,7 +3018,8 @@ JAVASCRIPT;
                                                 $item->fields['name']
                                             );
 
-                                            $temp = ['id'       => $work_parentID,
+                                            $temp = [
+                                                'id'       => $work_parentID,
                                                 'text'     => $output2,
                                                 'level'    => (int)$work_level,
                                                 'disabled' => true
@@ -3031,10 +3039,10 @@ JAVASCRIPT;
                                     }
                                 } while (
                                     ($work_level >= 1)
-                                      && (!isset($last_level_displayed[$work_level])
-                                      || ($last_level_displayed[$work_level] != $work_parentID))
+                                    && (!isset($last_level_displayed[$work_level])
+                                        || ($last_level_displayed[$work_level] != $work_parentID))
                                 );
-                              // Add parents
+                                // Add parents
                                 foreach ($parent_datas as $val) {
                                     $datastoadd[] = $val;
                                 }
@@ -3043,7 +3051,7 @@ JAVASCRIPT;
                         $last_level_displayed[$level] = $data['id'];
                     }
 
-                   // Do not do for first item for next page load
+                    // Do not do for first item for next page load
                     if (!$firstitem) {
                         if (
                             $_SESSION["glpiis_ids_visible"]
@@ -3085,7 +3093,7 @@ JAVASCRIPT;
 
             if ($multi) {
                 if (count($datastoadd)) {
-                   // On paging mode do not add entity information each time
+                    // On paging mode do not add entity information each time
                     if ($prev == $firstitem_entity) {
                         $datas = array_merge($datas, $datastoadd);
                     } else {
@@ -3103,7 +3111,7 @@ JAVASCRIPT;
             }
         } else { // Not a dropdowntree
             $multi = false;
-           // No multi if get one item
+            // No multi if get one item
             if ($item->isEntityAssign()) {
                 $multi = $item->maybeRecursive();
 
@@ -3119,7 +3127,7 @@ JAVASCRIPT;
                         $multi = true;
                     }
                 } else {
-                   // Do not use entity if may be private
+                    // Do not use entity if may be private
                     if (!$item->maybePrivate()) {
                         $where = $where + getEntitiesRestrictCriteria($table, '', '', $multi);
 
@@ -3169,7 +3177,7 @@ JAVASCRIPT;
                     $orwhere[] = ['glpi_softwares.name' => ['LIKE', $encoded_search]];
                 }
 
-               // search also in displaywith columns
+                // search also in displaywith columns
                 if ($displaywith && count($post['displaywith'])) {
                     foreach ($post['displaywith'] as $with) {
                         $orwhere[] = ["$table.$with" => ['LIKE', $raw_search]];
@@ -3220,7 +3228,7 @@ JAVASCRIPT;
                             "$table.entities_id",
                             new \QueryExpression(
                                 "CONCAT(IFNULL(" . $DB->quoteName('name') . ",''),' ',IFNULL(" .
-                                $DB->quoteName('firstname') . ",'')) AS " . $DB->quoteName($field)
+                                    $DB->quoteName('firstname') . ",'')) AS " . $DB->quoteName($field)
                             ),
                             "$table.comment",
                             "$table.id"
@@ -3279,8 +3287,8 @@ JAVASCRIPT;
                             (isset($criteria['LEFT JOIN']) ? $criteria['LEFT JOIN'] : []),
                             $visibility['LEFT JOIN']
                         );
-                       //Do not use where??
-                       /*if (isset($visibility['WHERE'])) {
+                        //Do not use where??
+                        /*if (isset($visibility['WHERE'])) {
                          $where = $visibility['WHERE'];
                        }*/
                     }
@@ -3309,10 +3317,10 @@ JAVASCRIPT;
                     if (count($visibility['LEFT JOIN'])) {
                         $ljoin = array_merge($ljoin, $visibility['LEFT JOIN']);
                         if (isset($visibility['WHERE'])) {
-                             $where[] = $visibility['WHERE'];
+                            $where[] = $visibility['WHERE'];
                         }
                     }
-                   //no break to reach default case.
+                    //no break to reach default case.
 
                 default:
                     $criteria = [
@@ -3346,7 +3354,7 @@ JAVASCRIPT;
 
             $iterator = $DB->request($criteria);
 
-           // Display first if no search
+            // Display first if no search
             if ($post['page'] == 1 && empty($post['searchText'])) {
                 if (!isset($post['display_emptychoice']) || $post['display_emptychoice']) {
                     $datas[] = [
@@ -3420,7 +3428,7 @@ JAVASCRIPT;
                         $_SESSION["glpiis_ids_visible"]
                         || (strlen($outputval) == 0)
                     ) {
-                       //TRANS: %1$s is the name, %2$s the ID
+                        //TRANS: %1$s is the name, %2$s the ID
                         $outputval = sprintf(__('%1$s (%2$s)'), $outputval, $ID);
                     }
                     if ($displaywith) {
@@ -3506,7 +3514,7 @@ JAVASCRIPT;
          */
         global $CFG_GLPI, $DB;
 
-       // check if asked itemtype is the one originaly requested by the form
+        // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post)) {
             return;
         }
@@ -3516,7 +3524,7 @@ JAVASCRIPT;
         }
 
         if (isset($post['entity_restrict'])) {
-            $post['entity_restrict'] = Session::getMatchingActiveEntities($post['entity_restrict']);
+            // $post['entity_restrict'] = Session::getMatchingActiveEntities($post['entity_restrict']);
         }
 
         $fromitem->checkGlobal(UPDATE);
@@ -3531,7 +3539,7 @@ JAVASCRIPT;
             }
         }
 
-       // Make a select box
+        // Make a select box
         $table = getTableForItemType($post["itemtype"]);
         if (!$item = getItemForItemtype($post['itemtype'])) {
             return;
@@ -3644,7 +3652,7 @@ JAVASCRIPT;
         $iterator = $DB->request($criteria);
 
         $results = [];
-       // Display first if no search
+        // Display first if no search
         if (empty($post['searchText'])) {
             $results[] = [
                 'id' => 0,
@@ -3722,14 +3730,14 @@ JAVASCRIPT;
          */
         global $CFG_GLPI, $DB;
 
-       // Security
+        // Security
         if (!$DB->tableExists($post['table'])) {
             return;
         }
 
         $itemtypeisplugin = isPluginItemType($post['itemtype']);
 
-       // check if asked itemtype is the one originaly requested by the form
+        // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post)) {
             return;
         }
@@ -3772,7 +3780,7 @@ JAVASCRIPT;
             $where[] = ['OR' => $orwhere];
         }
 
-       // If software or plugins : filter to display only the objects that are allowed to be visible in Helpdesk
+        // If software or plugins : filter to display only the objects that are allowed to be visible in Helpdesk
         $filterHelpdesk = in_array($post['itemtype'], $CFG_GLPI["helpdesk_visible_types"]);
 
         if (
@@ -3789,12 +3797,12 @@ JAVASCRIPT;
 
         if ($item->isEntityAssign()) {
             if (isset($post["entity_restrict"]) && ($post["entity_restrict"] >= 0)) {
-                $entity = Session::getMatchingActiveEntities($post['entity_restrict']);
+                // $entity = Session::getMatchingActiveEntities($post['entity_restrict']);
             } else {
                 $entity = '';
             }
 
-           // allow opening ticket on recursive object (printer, software, ...)
+            // allow opening ticket on recursive object (printer, software, ...)
             $recursive = $item->maybeRecursive();
             $where     = $where + getEntitiesRestrictCriteria($post['table'], '', $entity, $recursive);
         }
@@ -3817,7 +3825,7 @@ JAVASCRIPT;
 
         $results = [];
 
-       // Display first if no search
+        // Display first if no search
         if ($post['page'] == 1 && empty($post['searchText'])) {
             $results[] = [
                 'id' => 0,
@@ -3895,13 +3903,14 @@ JAVASCRIPT;
         }
 
         $data = [];
-       // Count real items returned
+        // Count real items returned
         $count = 0;
 
         if ($post['page'] == 1) {
             if (count($toadd)) {
                 foreach ($toadd as $key => $val) {
-                    $data[] = ['id' => $key,
+                    $data[] = [
+                        'id' => $key,
                         'text' => (string)stripslashes($val)
                     ];
                 }
@@ -3919,7 +3928,7 @@ JAVASCRIPT;
         }
 
         if (!isset($post['max'])) {
-           //limit max entries to avoid loop issues
+            //limit max entries to avoid loop issues
             $post['max'] = $CFG_GLPI['dropdown_max'] * $post['step'];
         }
 
@@ -3940,7 +3949,8 @@ JAVASCRIPT;
                     $decimals = Toolbox::isFloat($i) ? Toolbox::getDecimalNumbers($post['step']) : 0;
                     $txt = Dropdown::getValueWithUnit($i, $post['unit'], $decimals);
                 }
-                $data[] = ['id' => $i,
+                $data[] = [
+                    'id' => $i,
                     'text' => (string)$txt
                 ];
                 $count++;
@@ -3986,7 +3996,7 @@ JAVASCRIPT;
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-       // check if asked itemtype is the one originaly requested by the form
+        // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post + ['itemtype' => 'User', 'right' => ($post['right'] ?? "")])) {
             return;
         }
@@ -3995,7 +4005,7 @@ JAVASCRIPT;
             $post['right'] = "all";
         }
 
-       // Default view : Nobody
+        // Default view : Nobody
         if (!isset($post['all'])) {
             $post['all'] = 0;
         }
@@ -4027,7 +4037,7 @@ JAVASCRIPT;
             $entity_restrict = -1;
             if (isset($post['entity_restrict'])) {
                 $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
-                $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+                // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
             }
 
             $start  = intval(($post['page'] - 1) * $post['page_limit']);
@@ -4050,7 +4060,7 @@ JAVASCRIPT;
 
         $users = [];
 
-       // Count real items returned
+        // Count real items returned
         $count = 0;
         $logins = [];
         if (count($result)) {
@@ -4067,7 +4077,7 @@ JAVASCRIPT;
 
         $results = [];
 
-       // Display first if empty search
+        // Display first if empty search
         if ($post['page'] == 1 && empty($post['searchText'])) {
             if ($post['all'] == 0 && $post['display_emptychoice']) {
                 $results[] = [
@@ -4134,10 +4144,10 @@ JAVASCRIPT;
         $entity_restrict = -1;
         if (isset($post['entity_restrict'])) {
             $entity_restrict = Toolbox::jsonDecode($post['entity_restrict']);
-            $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+            // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
         }
 
-       // prevent instanciation of bad classes
+        // prevent instanciation of bad classes
         if (!is_subclass_of($post['itiltemplate_class'], 'ITILTemplate')) {
             return false;
         }
@@ -4214,7 +4224,7 @@ JAVASCRIPT;
             }
         }
 
-       // extract entities from groups (present in special `text` key)
+        // extract entities from groups (present in special `text` key)
         $possible_entities = array_column($results, "text");
 
         if (
@@ -4254,7 +4264,7 @@ JAVASCRIPT;
                         $results[$entity_index]['children'] = array_merge($results[$entity_index]['children'], $supplier['children']);
                     }
                 } else {
-                 // otherwise create a new entry
+                    // otherwise create a new entry
                     $results[] = $supplier;
                 }
             }
@@ -4283,7 +4293,7 @@ JAVASCRIPT;
         }
 
         return ($json === true)
-         ? json_encode($return)
-         : $return;
+            ? json_encode($return)
+            : $return;
     }
 }

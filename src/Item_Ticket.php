@@ -42,7 +42,7 @@ use Glpi\Application\View\TemplateRenderer;
  **/
 class Item_Ticket extends CommonItilObject_Item
 {
-   // From CommonDBRelation
+    // From CommonDBRelation
     public static $itemtype_1          = 'Ticket';
     public static $items_id_1          = 'tickets_id';
 
@@ -75,7 +75,7 @@ class Item_Ticket extends CommonItilObject_Item
     {
 
         $ticket = new Ticket();
-       // Not item linked for closed tickets
+        // Not item linked for closed tickets
         if (
             $ticket->getFromDB($this->fields['tickets_id'])
             && in_array($ticket->fields['status'], $ticket->getClosedStatusArray())
@@ -95,7 +95,8 @@ class Item_Ticket extends CommonItilObject_Item
     {
 
         $ticket = new Ticket();
-        $input  = ['id'            => $this->fields['tickets_id'],
+        $input  = [
+            'id'            => $this->fields['tickets_id'],
             'date_mod'      => $_SESSION["glpi_currenttime"],
         ];
 
@@ -115,7 +116,8 @@ class Item_Ticket extends CommonItilObject_Item
     {
 
         $ticket = new Ticket();
-        $input = ['id'            => $this->fields['tickets_id'],
+        $input = [
+            'id'            => $this->fields['tickets_id'],
             'date_mod'      => $_SESSION["glpi_currenttime"],
         ];
 
@@ -131,9 +133,10 @@ class Item_Ticket extends CommonItilObject_Item
     public function prepareInputForAdd($input)
     {
 
-       // Avoid duplicate entry
+        // Avoid duplicate entry
         if (
-            countElementsInTable($this->getTable(), ['tickets_id' => $input['tickets_id'],
+            countElementsInTable($this->getTable(), [
+                'tickets_id' => $input['tickets_id'],
                 'itemtype'   => $input['itemtype'],
                 'items_id'   => $input['items_id']
             ]) > 0
@@ -144,25 +147,25 @@ class Item_Ticket extends CommonItilObject_Item
         $ticket = new Ticket();
         $ticket->getFromDB($input['tickets_id']);
 
-       // Get item location if location is not already set in ticket
+        // Get item location if location is not already set in ticket
         if (empty($ticket->fields['locations_id'])) {
             if (($input["items_id"] > 0) && !empty($input["itemtype"])) {
                 if ($item = getItemForItemtype($input["itemtype"])) {
                     if ($item->getFromDB($input["items_id"])) {
                         if ($item->isField('locations_id')) {
-                             $ticket->fields['_locations_id_of_item'] = $item->fields['locations_id'];
+                            $ticket->fields['_locations_id_of_item'] = $item->fields['locations_id'];
 
-                             // Process Business Rules
-                             $rules = new RuleTicketCollection($ticket->fields['entities_id']);
+                            // Process Business Rules
+                            $rules = new RuleTicketCollection($ticket->fields['entities_id']);
 
-                             $ticket->fields = $rules->processAllRules(
-                                 $ticket->fields,
-                                 $ticket->fields,
-                                 ['recursive' => true]
-                             );
+                            $ticket->fields = $rules->processAllRules(
+                                $ticket->fields,
+                                $ticket->fields,
+                                ['recursive' => true]
+                            );
 
-                               unset($ticket->fields['_locations_id_of_item']);
-                               $ticket->updateInDB(['locations_id']);
+                            unset($ticket->fields['_locations_id_of_item']);
+                            $ticket->updateInDB(['locations_id']);
                         }
                     }
                 }
@@ -213,12 +216,12 @@ class Item_Ticket extends CommonItilObject_Item
         $ticket_is_closed = in_array($ticket->fields['status'], $ticket->getClosedStatusArray());
         $can_add_items = $_SESSION["glpiactiveprofile"]["helpdesk_hardware"] & pow(2, Ticket::HELPDESK_MY_HARDWARE) || $_SESSION["glpiactiveprofile"]["helpdesk_hardware"] & pow(2, Ticket::HELPDESK_ALL_HARDWARE);
         $canedit = ($can_add_items && $ticket->can($params['id'], UPDATE)
-                  && $params['_canupdate'] && !$ticket_is_closed);
+            && $params['_canupdate'] && !$ticket_is_closed);
 
-       // Ticket update case
+        // Ticket update case
         $usedcount = 0;
         if ($params['id'] > 0) {
-           // Get requester
+            // Get requester
             $class        = new $ticket->userlinkclass();
             $tickets_user = $class->getActors($params['id']);
             if (
@@ -230,7 +233,7 @@ class Item_Ticket extends CommonItilObject_Item
                 }
             }
 
-           // Get associated elements for ticket
+            // Get associated elements for ticket
             $used = self::getUsedItems($params['id']);
             foreach ($used as $itemtype => $items) {
                 foreach ($items as $items_id) {
@@ -258,7 +261,7 @@ class Item_Ticket extends CommonItilObject_Item
             'opt'                => []
         ];
 
-       // Get ticket template
+        // Get ticket template
         $tt = new TicketTemplate();
         if (isset($options['_tickettemplate'])) {
             $tt                  = $options['_tickettemplate'];
@@ -271,25 +274,26 @@ class Item_Ticket extends CommonItilObject_Item
                 $twig_params['opt']['templates_id'] = $tt->fields['id'];
             }
         }
-       // Show associated item dropdowns
+        // Show associated item dropdowns
         if ($canedit) {
-            $p = ['used'       => $params['items_id'],
+            $p = [
+                'used'       => $params['items_id'],
                 'rand'       => $rand,
                 'tickets_id' => $params['id']
             ];
-           // My items
+            // My items
             if ($params['_users_id_requester'] > 0) {
                 ob_start();
                 self::dropdownMyDevices($params['_users_id_requester'], $params['entities_id'], $params['itemtype'], 0, $p);
                 $twig_params['my_items_dropdown'] = ob_get_clean();
             }
-           // Global search
+            // Global search
             ob_start();
             self::dropdownAllDevices("itemtype", $params['itemtype'], 0, 1, $params['_users_id_requester'], $params['entities_id'], $p);
             $twig_params['all_items_dropdown'] = ob_get_clean();
         }
 
-       // Display list
+        // Display list
         if (!empty($params['items_id'])) {
             // No delete if mandatory and only one item or if ticket is closed
             $delete = $ticket->canAddItem(__CLASS__) && !$ticket_is_closed;
@@ -400,13 +404,13 @@ class Item_Ticket extends CommonItilObject_Item
             echo "<tr class='tab_bg_2'><th colspan='2'>" . __('Add an item') . "</th></tr>";
 
             echo "<tr class='tab_bg_1'><td>";
-           // Select hardware on creation or if have update right
+            // Select hardware on creation or if have update right
             $class        = new $ticket->userlinkclass();
             $tickets_user = $class->getActors($instID);
             $dev_user_id = 0;
             if (
                 isset($tickets_user[CommonITILActor::REQUESTER])
-                 && (count($tickets_user[CommonITILActor::REQUESTER]) == 1)
+                && (count($tickets_user[CommonITILActor::REQUESTER]) == 1)
             ) {
                 foreach ($tickets_user[CommonITILActor::REQUESTER] as $user_id_single) {
                     $dev_user_id = $user_id_single['users_id'];
@@ -492,7 +496,7 @@ class Item_Ticket extends CommonItilObject_Item
                     if ($prem) {
                         $typename = $item->getTypeName($nb);
                         echo "<td class='center top' rowspan='$nb'>" .
-                         (($nb > 1) ? sprintf(__('%1$s: %2$s'), $typename, $nb) : $typename) . "</td>";
+                            (($nb > 1) ? sprintf(__('%1$s: %2$s'), $typename, $nb) : $typename) . "</td>";
                         $prem = false;
                     }
                     echo "<td class='center'>";
@@ -501,9 +505,9 @@ class Item_Ticket extends CommonItilObject_Item
                         (isset($data['is_deleted']) && $data['is_deleted'] ? " tab_bg_2_2'" : "'");
                     echo ">" . $namelink . "</td>";
                     echo "<td class='center'>" . (isset($data["serial"]) ? "" . $data["serial"] . "" : "-") .
-                    "</td>";
+                        "</td>";
                     echo "<td class='center'>" .
-                      (isset($data["otherserial"]) ? "" . $data["otherserial"] . "" : "-") . "</td>";
+                        (isset($data["otherserial"]) ? "" . $data["otherserial"] . "" : "-") . "</td>";
                     $item->getFromDB($data["id"]);
                     echo "<td class='center'>" . $item->getKBLinks() . "</td>";
                     echo "<td class='center'>";
@@ -542,10 +546,11 @@ class Item_Ticket extends CommonItilObject_Item
                         && (count($_SESSION["glpiactiveprofile"]["helpdesk_item_type"]) > 0)
                     ) {
                         if ($_SESSION['glpishow_count_on_tabs']) {
-                         //$nb = self::countForMainItem($item);
+                            //$nb = self::countForMainItem($item);
                             $nb = countElementsInTable(
                                 'glpi_items_tickets',
-                                ['tickets_id' => $item->getID(),
+                                [
+                                    'tickets_id' => $item->getID(),
                                     'itemtype' => $_SESSION["glpiactiveprofile"]["helpdesk_item_type"]
                                 ]
                             );
@@ -590,7 +595,8 @@ class Item_Ticket extends CommonItilObject_Item
          */
         global $CFG_GLPI, $DB;
 
-        $params = ['tickets_id' => 0,
+        $params = [
+            'tickets_id' => 0,
             'used'       => [],
             'multiple'   => false,
             'rand'       => mt_rand()
@@ -604,7 +610,7 @@ class Item_Ticket extends CommonItilObject_Item
             $userID = Session::getLoginUserID();
         }
 
-        $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
+        // $entity_restrict = Session::getMatchingActiveEntities($entity_restrict);
 
         $rand        = $params['rand'];
         $already_add = $params['used'];
@@ -613,7 +619,7 @@ class Item_Ticket extends CommonItilObject_Item
             $my_devices = ['' => Dropdown::EMPTY_VALUE];
             $devices    = [];
 
-           // My items
+            // My items
             foreach ($CFG_GLPI["linkuser_types"] as $itemtype) {
                 if (
                     ($item = getItemForItemtype($itemtype))
@@ -633,7 +639,7 @@ class Item_Ticket extends CommonItilObject_Item
                         $criteria['WHERE']['is_deleted'] = 0;
                     }
                     if ($item->maybeTemplate()) {
-                         $criteria['WHERE']['is_template'] = 0;
+                        $criteria['WHERE']['is_template'] = 0;
                     }
                     if (in_array($itemtype, $CFG_GLPI["helpdesk_visible_types"])) {
                         $criteria['WHERE']['is_helpdesk_visible'] = 1;
@@ -671,7 +677,7 @@ class Item_Ticket extends CommonItilObject_Item
             if (count($devices)) {
                 $my_devices[__('My devices')] = $devices;
             }
-           // My group items
+            // My group items
             if (Session::haveRight("show_group_hardware", "1")) {
                 $iterator = $DB->request([
                     'SELECT'    => [
@@ -730,7 +736,7 @@ class Item_Ticket extends CommonItilObject_Item
                                 }
                                 foreach ($iterator as $data) {
                                     if (!in_array($data["id"], $already_add[$itemtype])) {
-                                         $output = '';
+                                        $output = '';
                                         if (isset($data["name"])) {
                                             $output = $data["name"];
                                         }
@@ -753,11 +759,11 @@ class Item_Ticket extends CommonItilObject_Item
                         }
                     }
                     if (count($devices)) {
-                          $my_devices[__('Devices own by my groups')] = $devices;
+                        $my_devices[__('Devices own by my groups')] = $devices;
                     }
                 }
             }
-           // Get software linked to all owned items
+            // Get software linked to all owned items
             if (in_array('Software', $_SESSION["glpiactiveprofile"]["helpdesk_item_type"])) {
                 $software_helpdesk_types = array_intersect($CFG_GLPI['software_types'], $_SESSION["glpiactiveprofile"]["helpdesk_item_type"]);
                 foreach ($software_helpdesk_types as $itemtype) {
@@ -792,45 +798,45 @@ class Item_Ticket extends CommonItilObject_Item
                             'ORDERBY'      => 'glpi_softwares.name'
                         ]);
 
-                         $devices = [];
+                        $devices = [];
                         if (count($iterator)) {
-                             $item       = new Software();
-                             $type_name  = $item->getTypeName();
+                            $item       = new Software();
+                            $type_name  = $item->getTypeName();
                             if (!isset($already_add['Software'])) {
                                 $already_add['Software'] = [];
                             }
                             foreach ($iterator as $data) {
                                 if (!in_array($data["id"], $already_add['Software'])) {
-                                     $output = sprintf(__('%1$s - %2$s'), $type_name, $data["name"]);
-                                     $output = sprintf(
-                                         __('%1$s (%2$s)'),
-                                         $output,
-                                         sprintf(
-                                             __('%1$s: %2$s'),
-                                             __('version'),
-                                             $data["version"]
-                                         )
-                                     );
+                                    $output = sprintf(__('%1$s - %2$s'), $type_name, $data["name"]);
+                                    $output = sprintf(
+                                        __('%1$s (%2$s)'),
+                                        $output,
+                                        sprintf(
+                                            __('%1$s: %2$s'),
+                                            __('version'),
+                                            $data["version"]
+                                        )
+                                    );
                                     if ($_SESSION["glpiis_ids_visible"]) {
-                                          $output = sprintf(__('%1$s (%2$s)'), $output, $data["id"]);
+                                        $output = sprintf(__('%1$s (%2$s)'), $output, $data["id"]);
                                     }
-                                     $devices["Software_" . $data["id"]] = $output;
+                                    $devices["Software_" . $data["id"]] = $output;
 
-                                     $already_add['Software'][] = $data["id"];
+                                    $already_add['Software'][] = $data["id"];
                                 }
                             }
                             if (count($devices)) {
-                                  $my_devices[__('Installed software')] = $devices;
+                                $my_devices[__('Installed software')] = $devices;
                             }
                         }
                     }
                 }
             }
-           // Get linked items to computers
+            // Get linked items to computers
             if (isset($already_add['Computer']) && count($already_add['Computer'])) {
                 $devices = [];
 
-               // Direct Connection
+                // Direct Connection
                 $types = ['Monitor', 'Peripheral', 'Phone', 'Printer'];
                 foreach ($types as $itemtype) {
                     if (
@@ -872,11 +878,11 @@ class Item_Ticket extends CommonItilObject_Item
                             $type_name = $item->getTypeName();
                             foreach ($iterator as $data) {
                                 if (!in_array($data["id"], $already_add[$itemtype])) {
-                                     $output = $data["name"];
+                                    $output = $data["name"];
                                     if (empty($output) || $_SESSION["glpiis_ids_visible"]) {
                                         $output = sprintf(__('%1$s (%2$s)'), $output, $data['id']);
                                     }
-                                     $output = sprintf(__('%1$s - %2$s'), $type_name, $output);
+                                    $output = sprintf(__('%1$s - %2$s'), $type_name, $output);
                                     if ($itemtype != 'Software') {
                                         $output = sprintf(__('%1$s - %2$s'), $output, $data['otherserial']);
                                     }
@@ -898,7 +904,7 @@ class Item_Ticket extends CommonItilObject_Item
             echo "<span id='item_ticket_selection_information$rand' class='ms-1'></span>";
             echo "</div>";
 
-           // Auto update summary of active or just solved tickets
+            // Auto update summary of active or just solved tickets
             $params = ['my_items' => '__VALUE__'];
 
             Ajax::updateItemOnSelectEvent(
@@ -938,7 +944,7 @@ class Item_Ticket extends CommonItilObject_Item
         /** @var \DBmysql $DB */
         global $DB;
 
-       // Default values
+        // Default values
         $p['name']           = 'items';
         $p['value']          = '';
         $p['all']            = 0;
@@ -1025,7 +1031,8 @@ class Item_Ticket extends CommonItilObject_Item
 
         switch ($ma->getAction()) {
             case 'add_item':
-                Dropdown::showSelectItemFromItemtypes(['items_id_name'   => 'items_id',
+                Dropdown::showSelectItemFromItemtypes([
+                    'items_id_name'   => 'items_id',
                     'itemtype_name'   => 'item_itemtype',
                     'itemtypes'       => $CFG_GLPI['ticket_types'],
                     'checkright'      => true,
@@ -1035,7 +1042,8 @@ class Item_Ticket extends CommonItilObject_Item
                 break;
 
             case 'delete_item':
-                Dropdown::showSelectItemFromItemtypes(['items_id_name'   => 'items_id',
+                Dropdown::showSelectItemFromItemtypes([
+                    'items_id_name'   => 'items_id',
                     'itemtype_name'   => 'item_itemtype',
                     'itemtypes'       => $CFG_GLPI['ticket_types'],
                     'checkright'      => true,
@@ -1088,7 +1096,7 @@ class Item_Ticket extends CommonItilObject_Item
                         if ($item_ticket->can(-1, CREATE, $input)) {
                             $ok = true;
                             if (!$item_ticket->add($input)) {
-                                 $ok = false;
+                                $ok = false;
                             }
 
                             if ($ok) {
@@ -1119,13 +1127,13 @@ class Item_Ticket extends CommonItilObject_Item
                             'items_id'     => $input['items_id']
                         ]);
                         if (!empty($item_found)) {
-                             $item_founds_id = array_keys($item_found);
-                             $input['id'] = $item_founds_id[0];
+                            $item_founds_id = array_keys($item_found);
+                            $input['id'] = $item_founds_id[0];
 
                             if ($item_ticket->can($input['id'], DELETE, $input)) {
                                 $ok = true;
                                 if (!$item_ticket->delete($input)) {
-                                     $ok = false;
+                                    $ok = false;
                                 }
 
                                 if ($ok) {
@@ -1210,7 +1218,7 @@ class Item_Ticket extends CommonItilObject_Item
             $item->getFromDB($this->fields['items_id']);
 
             if (($name = $item->getName()) == NOT_AVAILABLE) {
-               //TRANS: %1$s is the itemtype, %2$d is the id of the item
+                //TRANS: %1$s is the itemtype, %2$d is the id of the item
                 $item->fields['name'] = sprintf(
                     __('%1$s - ID %2$d'),
                     $item->getTypeName(1),
@@ -1219,10 +1227,10 @@ class Item_Ticket extends CommonItilObject_Item
             }
 
             $display = (isset($this->input['_no_message_link']) ? $item->getNameID()
-                                                            : $item->getLink());
+                : $item->getLink());
 
-           // Do not display quotes
-           //TRANS : %s is the description of the added item
+            // Do not display quotes
+            //TRANS : %s is the description of the added item
             Session::addMessageAfterRedirect(sprintf(
                 __('%1$s: %2$s'),
                 __('Item successfully added'),
@@ -1262,7 +1270,7 @@ class Item_Ticket extends CommonItilObject_Item
             } else {
                 $display = $item->getLink();
             }
-           //TRANS : %s is the description of the updated item
+            //TRANS : %s is the description of the updated item
             Session::addMessageAfterRedirect(sprintf(__('%1$s: %2$s'), __('Item successfully deleted'), $display));
         }
     }
