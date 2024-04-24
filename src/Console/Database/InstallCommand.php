@@ -318,7 +318,7 @@ class InstallCommand extends AbstractConfigureCommand implements ConfigurationCo
 
         $output->writeln('<info>' . __('Installation done.') . '</info>');
 
-        (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
+        // (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
 
         $this->handTelemetryActivation($input, $output);
 
