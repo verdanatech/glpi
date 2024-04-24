@@ -330,6 +330,9 @@ class Entity extends CommonTreeDropdown
         /** @var \DBmysql $DB */
         global $DB;
 
+        if($input['clone']){
+            $input['sons_cache'] = NULL;
+         }
         $input['name'] = isset($input['name']) ? trim($input['name']) : '';
         if (empty($input["name"])) {
             Session::addMessageAfterRedirect(
@@ -354,6 +357,7 @@ class Entity extends CommonTreeDropdown
             'FROM'   => $this->getTable()
         ])->current();
         $input['id'] = $result['newID'];
+
 
         $input['max_closedate'] = $_SESSION["glpi_currenttime"];
 
