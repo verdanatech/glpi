@@ -76,7 +76,8 @@ trait Clonable
             'date_mod',
             'date_creation',
             'template_name',
-            'is_template'
+            'is_template',
+            'sons_cache'
         ];
         foreach ($properties_to_clean as $property) {
             if (array_key_exists($property, $input)) {
@@ -239,6 +240,10 @@ trait Clonable
 
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
+     
+        if(get_class($new_item) == "Project"){
+            $this->fields['newProjectCreate'] = $newID;
+         }
 
         if ($newID !== false) {
             $new_item->cloneRelations($this, $history);
