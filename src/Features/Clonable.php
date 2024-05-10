@@ -227,8 +227,8 @@ trait Clonable
         foreach ($override_input as $key => $value) {
             $input[$key] = Toolbox::addslashes_deep($value);
         }
+        $input['comment'] = Toolbox::stripslashes_deep($input['comment']);
         $input = $new_item->cleanCloneInput($input);
-
         // Do not compute a clone name if a new name is specified (Like creating from template)
         if (!isset($override_input['name'])) {
             if (($copy_name = $this->getUniqueCloneName($input)) !== null) {
