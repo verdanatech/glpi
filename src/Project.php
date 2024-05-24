@@ -376,7 +376,7 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
             $input['projects_id']     = $source->fields['newProjectCreate'];
             $objProjetTask->add($input);
         }
- 
+            return true;
     }
 
 
