@@ -1,0 +1,5 @@
+plugins/*
+# install/*
+files/*
+public/*
+config/*
