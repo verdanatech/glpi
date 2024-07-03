@@ -7809,70 +7809,122 @@ abstract class CommonITILObject extends CommonDBTM
         if (self::getType() == 'Change') {
             $gtable = 'glpi_changes_groups';
             $itable = 'glpi_changes_items';
+            $vtable = 'glpi_changevalidations';
         }
         $utable = static::getTable() . '_users';
         $stable = static::getTable() . '_suppliers';
         if (self::getType() == 'Ticket') {
             $stable = 'glpi_suppliers_tickets';
+            $vtable = 'glpi_ticketvalidations';
         }
         $table = static::getTable();
-        $criteria = [
-            'SELECT'          => [
-                "$table.*",
-                'glpi_itilcategories.completename AS catname'
-            ],
-            'DISTINCT'        => true,
-            'FROM'            => $table,
-            'LEFT JOIN'       => [
-                $gtable  => [
-                    'ON' => [
-                        $table   => 'id',
-                        $gtable  => $fk
+        if (self::getType() !== 'Problem') {
+            $criteria = [
+                'SELECT'          => [
+                    "$table.*",
+                    'glpi_itilcategories.completename AS catname'
+                ],
+                'DISTINCT'        => true,
+                'FROM'            => $table,
+                'LEFT JOIN'       => [
+                    $gtable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $gtable  => $fk
+                        ]
+                    ],
+                    $utable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $utable  => $fk
+                        ]
+                    ],
+                    $stable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $stable  => $fk
+                        ]
+                    ],
+                    'glpi_itilcategories'      => [
+                        'ON' => [
+                            $table                  => 'itilcategories_id',
+                            'glpi_itilcategories'   => 'id'
+                        ]
+                    ],
+                    $itable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $itable  => $fk
+                        ]
+                        ],    $vtable  => [
+                            'ON' => [
+                                $table   => 'id',
+                                $vtable  => $fk
+                            ]
                     ]
                 ],
-                $utable  => [
-                    'ON' => [
-                        $table   => 'id',
-                        $utable  => $fk
-                    ]
-                ],
-                $stable  => [
-                    'ON' => [
-                        $table   => 'id',
-                        $stable  => $fk
-                    ]
-                ],
-                'glpi_itilcategories'      => [
-                    'ON' => [
-                        $table                  => 'itilcategories_id',
-                        'glpi_itilcategories'   => 'id'
-                    ]
-                ],
-                $itable  => [
-                    'ON' => [
-                        $table   => 'id',
-                        $itable  => $fk
-                    ]
-                ]
-            ],
-            'ORDERBY'            => "$table.date_mod DESC"
-        ];
-        if (count($_SESSION["glpiactiveentities"]) > 1) {
-            $criteria['LEFT JOIN']['glpi_entities'] = [
-                'ON' => [
-                    'glpi_entities'   => 'id',
-                    $table            => 'entities_id'
-                ]
+                'ORDERBY'            => "$table.date_mod DESC"
             ];
-            $criteria['SELECT'] = array_merge(
-                $criteria['SELECT'],
-                [
-                    'glpi_entities.completename AS entityname',
-                    "$table.entities_id AS entityID"
-                ]
-            );
         }
-        return $criteria;
+            else{
+            $criteria = [
+                'SELECT'          => [
+                    "$table.*",
+                    'glpi_itilcategories.completename AS catname'
+                ],
+                'DISTINCT'        => true,
+                'FROM'            => $table,
+                'LEFT JOIN'       => [
+                    $gtable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $gtable  => $fk
+                        ]
+                    ],
+                    $utable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $utable  => $fk
+                        ]
+                    ],
+                    $stable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $stable  => $fk
+                        ]
+                    ],
+                    'glpi_itilcategories'      => [
+                        'ON' => [
+                            $table                  => 'itilcategories_id',
+                            'glpi_itilcategories'   => 'id'
+                        ]
+                    ],
+                    $itable  => [
+                        'ON' => [
+                            $table   => 'id',
+                            $itable  => $fk
+                        ]
+                        ]
+                ],
+                'ORDERBY'            => "$table.date_mod DESC"
+            ];
+        }
+            if (count($_SESSION["glpiactiveentities"]) > 1) {
+                $criteria['LEFT JOIN']['glpi_entities'] = [
+                    'ON' => [
+                        'glpi_entities'   => 'id',
+                        $table            => 'entities_id'
+                    ]
+                ];
+                $criteria['SELECT'] = array_merge(
+                    $criteria['SELECT'],
+                    [
+                        'glpi_entities.completename AS entityname',
+                        "$table.entities_id AS entityID"
+                    ]
+                );
+            }
+            return $criteria;
     }
 
     public function getForbiddenSingleMassiveActions()
