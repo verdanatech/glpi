@@ -227,6 +227,7 @@ trait Clonable
         foreach ($override_input as $key => $value) {
             $input[$key] = Toolbox::addslashes_deep($value);
         }
+        $input['comment'] = Toolbox::stripslashes_deep($input['comment']);
         $input = $new_item->cleanCloneInput($input);
 
         // Do not compute a clone name if a new name is specified (Like creating from template)
@@ -240,6 +241,11 @@ trait Clonable
 
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
+
+
+        if(get_class($new_item) == "Project"){
+            $this->fields['newProjectCreate'] = $newID;
+         }
 
         if ($newID !== false) {
             $new_item->cloneRelations($this, $history);
