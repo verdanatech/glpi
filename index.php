@@ -134,20 +134,9 @@ if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
     // Random number for html id/label
     $rand = mt_rand();
 
-    $plugin = new Plugin();
-    if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION, '3.4.0', '>=')) {
-        if (class_exists('PluginSkinsConfig')) {
-            $image =  PluginSkinsConfig::returnImgMenus('favicon');
-            $skins = true;
-        }
-    } else {
-        $skins = false;
-        $image = null;
-    }
+
 
     TemplateRenderer::getInstance()->display('pages/login.html.twig', [
-        'plugin_skins'        => $skins,
-        'skins_image'         => $image,
         'rand'                => $rand,
         'card_bg_width'       => true,
         'lang'                => $CFG_GLPI["languages"][$_SESSION['glpilanguage']][3],
