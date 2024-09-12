@@ -5551,21 +5551,8 @@ HTML;
      */
     public static function showPasswordForgetRequestForm()
     {
-        $plugin = new Plugin();
-        if ($plugin->isInstalled('skins') && $plugin->isActivated('skins') && version_compare(SKINS_VERSION,'3.2.0','>=')) {
-            if (class_exists('PluginSkinsConfig')) {
-            $image = PluginSkinsConfig::returnImgMenus("logo");
-            $skins = true;
-            }
-        } else {
-            $skins = false;
-            $image = null;
-        }
-        
         TemplateRenderer::getInstance()->display('password_form.html.twig', [
             'title' => __('Forgotten password?'),
-            'plugin_skins' => $skins,
-            'image_skins' => $image
         ]);
     }
 
