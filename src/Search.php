@@ -4747,6 +4747,7 @@ JAVASCRIPT;
 
         switch ($searchtype) {
             case "notcontains":
+                $nott = !$nott;
             case "contains":
                 // FIXME
                 // `field LIKE '%test%'` condition is not supposed to be relevant, and can sometimes result in SQL performances issues/warnings/errors,
