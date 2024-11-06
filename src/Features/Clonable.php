@@ -233,8 +233,8 @@ trait Clonable
 
         $input = array_merge($this->fields, $override_input);
         $input = Sanitizer::sanitize($input);
+        $input['comment'] = Toolbox::stripslashes_deep($input['comment']);
         $input = $new_item->cleanCloneInput($input);
-
         // Do not compute a clone name if a new name is specified (Like creating from template)
         if (!isset($override_input['name'])) {
             if (($copy_name = $this->getUniqueCloneName($input)) !== null) {
@@ -247,6 +247,9 @@ trait Clonable
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
 
+        if(get_class($new_item) == "Project"){
+            $this->fields['newProjectCreate'] = $newID;
+         }
         if ($newID !== false) {
             $new_item->cloneRelations($this, $history);
             $new_item->post_clone($this, $history);
