@@ -153,7 +153,7 @@ function doUpdateDb()
     $update->doUpdates($current_version);
 
     // Force cache cleaning to ensure it will not contain stale data
-    (new CacheManager())->resetAllCaches();
+    // (new CacheManager())->resetAllCaches();
 
     if (!$update->isUpdatedSchemaConsistent()) {
         $migration->displayError(
