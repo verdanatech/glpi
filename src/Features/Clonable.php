@@ -39,6 +39,7 @@ use CommonDBConnexity;
 use CommonDBTM;
 use Glpi\Toolbox\Sanitizer;
 use Session;
+use Toolbox;
 
 /**
  * Clonable objects
