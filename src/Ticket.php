@@ -377,6 +377,21 @@ class Ticket extends CommonITILObject
             return true;
         }
 
+        $hasType2Group = false;
+        foreach ($this->groups as $group) {
+            // Verifica se $group é um array e percorre todos os subgrupos, se existirem
+            $subgroups = is_array($group) ? $group : [$group];
+            foreach ($subgroups as $subgroup) {
+                if (isset($subgroup['type']) && $subgroup['type'] == 2) {
+                    $hasType2Group = true;
+                    break 2; // Sai dos dois loops quando encontrar o type 2
+                }
+            }
+        }
+        if ($this->isUser(CommonITILActor::REQUESTER, Session::getLoginUserID()) && $hasType2Group) {
+            return true;
+        }
+
        // Cannot take into account if user is a requester (and not assigned)
         if (
             $this->isUser(CommonITILActor::REQUESTER, Session::getLoginUserID())
