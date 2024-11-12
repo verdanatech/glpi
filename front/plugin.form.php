@@ -42,7 +42,6 @@ include('../inc/includes.php');
 Session::checkRight("config", UPDATE);
 
 $plugin = new Plugin();
-$plugin_informations = current($plugin->find(["id" => $id]));
 $id     = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
 $action = $id > 0 && isset($_POST['action']) ? $_POST['action'] : null;
 
