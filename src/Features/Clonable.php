@@ -234,7 +234,6 @@ trait Clonable
 
         $input = array_merge($this->fields, $override_input);
         $input = Sanitizer::sanitize($input);
-        $input['comment'] = Toolbox::stripslashes_deep($input['comment']);
         $input = $new_item->cleanCloneInput($input);
         // Do not compute a clone name if a new name is specified (Like creating from template)
         if (!isset($override_input['name'])) {
