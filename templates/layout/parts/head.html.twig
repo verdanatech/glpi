@@ -35,7 +35,18 @@
 <html lang="{{ lang }}" {% if high_contrast %}data-high-contrast="1"{% endif %}
       {{ glpi_request_id is defined ? 'data-glpi-request-id=' ~ glpi_request_id : '' }}>
 <head>
-   <title>{{ title }} - GLPI</title>
+   <title>{{ title }} - Verdanadesk</title>
+
+   <!-- Google tag (gtag.js) -->
+   <script async src="https://www.googletagmanager.com/gtag/js?id=G-91BJ3NG8VN"></script>
+   <script>
+   window.dataLayer = window.dataLayer || [];
+   function gtag(){dataLayer.push(arguments);}
+   gtag('js', new Date());
+
+   gtag('config', 'G-91BJ3NG8VN');
+   </script>
+
 
    <meta charset="utf-8" />
 
