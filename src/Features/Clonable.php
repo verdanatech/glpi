@@ -246,7 +246,11 @@ trait Clonable
 
         $input['clone'] = true;
         $newID = $new_item->add($input, [], $history);
-
+      
+        if(get_class($new_item) == "Project"){
+            $this->fields['newProjectCreate'] = $newID;
+         }
+         
         if ($newID !== false) {
             $new_item->cloneRelations($this, $history);
             $new_item->post_clone($this, $history);
