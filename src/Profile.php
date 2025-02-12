@@ -515,7 +515,7 @@ class Profile extends CommonDBTM
             );
         }
 
-        if (isset($input["managed_domainrecordtypes"])) && is_array($input["managed_domainrecordtypes"]))  {
+        if (isset($input["managed_domainrecordtypes"]) && is_array($input["managed_domainrecordtypes"]))  {
             $input["managed_domainrecordtypes"] = exportArrayToDB(
                 ArrayNormalizer::normalizeValues($input["managed_domainrecordtypes"], 'intval')
             );
