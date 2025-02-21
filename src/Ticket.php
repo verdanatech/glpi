@@ -4301,7 +4301,7 @@ JAVASCRIPT;
             $options['entities_id'] = $item->fields['entities_id'];
         }
 
-        $initial_creation = static::isNewID($ID) && !$this->hasSavedInput();
+        $initial_creation = static::isNewID($ID);
 
         $this->restoreInputAndDefaults($ID, $options, null, true);
 
@@ -4318,7 +4318,7 @@ JAVASCRIPT;
 
         if (!isset($options['_skip_promoted_fields'])) {
             $options['_skip_promoted_fields'] = false;
-        }
+        }   
 
         if ($initial_creation) {
             // Override some values only for the initial load of a new ticket
@@ -4363,6 +4363,8 @@ JAVASCRIPT;
                         'link'         => Ticket_Ticket::SON_OF,
                         'tickets_id_2' => $tickettask->fields['tickets_id']
                     ];
+    
+
 
                     // Set entity from parent
                     $parent = new Ticket();
@@ -4425,6 +4427,7 @@ JAVASCRIPT;
         if (!isset($options['_promoted_task_id'])) {
             $options['_promoted_task_id'] = 0;
         }
+
 
        // Load template if available :
         $tt = $this->getITILTemplateToUse(
