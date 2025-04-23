@@ -22,8 +22,9 @@ use function idn_to_utf8;
 use function is_array;
 use function is_string;
 use function preg_match;
+use function str_contains;
 use function strlen;
-use function strpos;
+use function trim;
 
 use const INTL_IDNA_VARIANT_UTS46;
 
@@ -453,6 +454,10 @@ class EmailAddress extends AbstractValidator
                 $reserved = false;
             }
 
+            if (! is_string($hostname) || ! trim($hostname)) {
+                continue;
+            }
+
             if (
                 ! $res
                 && (checkdnsrr($hostname, 'A')
@@ -509,7 +514,7 @@ class EmailAddress extends AbstractValidator
 
         // Split email address up and disallow '..'
         if (
-            strpos($value, '..') !== false
+            str_contains($value, '..')
             || ! preg_match('/^(.+)@([^@]+)$/', $value, $matches)
         ) {
             return false;

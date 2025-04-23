@@ -3,40 +3,13 @@
 namespace wapmorgan\UnifiedArchive\Commands;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use wapmorgan\UnifiedArchive\Abilities;
 use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
 use wapmorgan\UnifiedArchive\Formats;
 use wapmorgan\UnifiedArchive\UnifiedArchive;
 
 class BaseCommand extends \Symfony\Component\Console\Command\Command
 {
-    protected static $abilitiesLabels = [
-        'open' => BasicDriver::OPEN,
-        'open (+password)' => BasicDriver::OPEN_ENCRYPTED,
-        'get comment' => BasicDriver::GET_COMMENT,
-        'extract' => BasicDriver::EXTRACT_CONTENT,
-        'stream' => BasicDriver::STREAM_CONTENT,
-        'append' => BasicDriver::APPEND,
-        'delete' => BasicDriver::DELETE,
-        'set comment' => BasicDriver::SET_COMMENT,
-        'create' => BasicDriver::CREATE,
-        'create (+password)' => BasicDriver::CREATE_ENCRYPTED,
-        'create (as string)' => BasicDriver::CREATE_IN_STRING,
-    ];
-
-    protected static $abilitiesShortCuts = [
-        BasicDriver::OPEN => 'o',
-        BasicDriver::OPEN_ENCRYPTED => 'O',
-        BasicDriver::GET_COMMENT => 't',
-        BasicDriver::EXTRACT_CONTENT => 'x',
-        BasicDriver::STREAM_CONTENT => 's',
-        BasicDriver::APPEND => 'a',
-        BasicDriver::DELETE => 'd',
-        BasicDriver::SET_COMMENT => 'T',
-        BasicDriver::CREATE => 'c',
-        BasicDriver::CREATE_ENCRYPTED => 'C',
-        BasicDriver::CREATE_IN_STRING => 'S',
-    ];
-
     /**
      * @param $file
      * @param null $password
@@ -45,8 +18,11 @@ class BaseCommand extends \Symfony\Component\Console\Command\Command
      */
     protected function open($file, $password = null)
     {
-        if (!UnifiedArchive::canOpen($file))
-            throw new \Exception('Could not open archive '.$file.'. Try installing suggested packages or run `cam -f` to see formats support.');
+        if (!UnifiedArchive::canOpen($file, !empty($password))) {
+            throw new \Exception(
+                'Could not open archive ' . $file . '. Try installing suggested packages or run `cam -f` to see formats support.'
+            );
+        }
 
         $archive = UnifiedArchive::open($file, [], $password);
         if ($archive === null)

@@ -11,9 +11,17 @@ use function is_array;
 use function is_scalar;
 use function preg_replace;
 
+/**
+ * @psalm-type Options = array{
+ *     locale: string|null,
+ *     allow_white_space: bool,
+ *     ...
+ * }
+ * @extends AbstractLocale<Options>
+ */
 class Alnum extends AbstractLocale
 {
-    /** @var array */
+    /** @var Options */
     protected $options = [
         'locale'            => null,
         'allow_white_space' => false,
@@ -65,8 +73,8 @@ class Alnum extends AbstractLocale
      *
      * Returns $value as string with all non-alphanumeric characters removed
      *
-     * @param  string|array $value
-     * @return string|array
+     * @param mixed $value
+     * @return string|list<string>|mixed
      */
     public function filter($value)
     {

@@ -10,20 +10,24 @@ use function array_replace;
 
 /**
  * Text domain.
+ *
+ * @template TKey of array-key
+ * @template TValue
+ * @extends ArrayObject<TKey, TValue>
  */
 class TextDomain extends ArrayObject
 {
     /**
      * Plural rule.
      *
-     * @var PluralRule
+     * @var PluralRule|null
      */
     protected $pluralRule;
 
     /**
      * Default plural rule shared between instances.
      *
-     * @var PluralRule
+     * @var PluralRule|null
      */
     protected static $defaultPluralRule;
 
@@ -86,6 +90,10 @@ class TextDomain extends ArrayObject
      *
      * @return $this
      * @throws Exception\RuntimeException
+     * @template TNewKey of array-key
+     * @template TNewValue
+     * @param self<TNewKey, TNewValue> $textDomain
+     * @psalm-self-out self<TKey|TNewKey, TValue|TNewValue>
      */
     public function merge(TextDomain $textDomain)
     {

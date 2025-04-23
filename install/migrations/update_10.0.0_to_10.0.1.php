@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,7 @@
 /**
  * Update from 10.0.0 to 10.0.1
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update1000to1001()
 {
@@ -51,8 +50,6 @@ function update1000to1001()
     $DELFROMDISPLAYPREF = [];
     $update_dir = __DIR__ . '/update_10.0.0_to_10.0.1/';
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '10.0.1'));
     $migration->setVersion('10.0.1');
 
     $update_scripts = scandir($update_dir);
@@ -72,25 +69,21 @@ function update1000to1001()
                 [
                     'rank'      => $rank++
                 ],
-                Toolbox::addslashes_deep(
-                    [
-                        'users_id'  => "0",
-                        'itemtype'  => $type,
-                        'num'       => $newval,
-                    ]
-                )
+                [
+                    'users_id'  => "0",
+                    'itemtype'  => $type,
+                    'num'       => $newval,
+                ]
             );
         }
     }
     foreach ($DELFROMDISPLAYPREF as $type => $tab) {
-        $DB->deleteOrDie(
+        $DB->delete(
             'glpi_displaypreferences',
-            Toolbox::addslashes_deep(
-                [
-                    'itemtype'  => $type,
-                    'num'       => $tab
-                ]
-            )
+            [
+                'itemtype'  => $type,
+                'num'       => $tab
+            ]
         );
     }
 

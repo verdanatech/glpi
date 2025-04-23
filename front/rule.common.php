@@ -38,9 +38,7 @@
  * @var RuleCollection $rulecollection
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
+use Glpi\Application\View\TemplateRenderer;
 
 if (!isset($_GET["id"])) {
     $_GET["id"] = "";
@@ -55,21 +53,21 @@ if (isset($_POST["action"])) {
 } else if (isset($_POST["reinit"]) || isset($_GET['reinit'])) {
    //reinitialize current rules
     $ruleclass = $rulecollection->getRuleClass();
-    if ($ruleclass::initRules()) {
+    if ($ruleclass->initRules()) {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
             //TRANS: first parameter is the rule type name
                 __('%1$s has been reset.'),
                 $rulecollection->getTitle()
-            )
+            ))
         );
     } else {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
                 //TRANS: first parameter is the rule type name
                 __('%1$s reset failed.'),
                 $rulecollection->getTitle()
-            ),
+            )),
             false,
             ERROR
         );
@@ -88,7 +86,7 @@ if (isset($_POST["action"])) {
 
     Html::header(
         Rule::getTypeName(Session::getPluralNumber()),
-        $_SERVER['PHP_SELF'],
+        '',
         "admin",
         $rulecollection->menu_type,
         $rulecollection->menu_option
@@ -96,20 +94,20 @@ if (isset($_POST["action"])) {
 
     if (
         !(isset($_POST['replay_confirm']) || isset($_GET['offset']))
-        && $rulecollection->warningBeforeReplayRulesOnExistingDB($_SERVER['PHP_SELF'])
+        && $rulecollection->warningBeforeReplayRulesOnExistingDB()
     ) {
         Html::footer();
-        exit();
+        return;
     }
 
-    echo "<table class='tab_cadrehov'>";
-
-    echo "<tr><th><div class='relative b'>" . $rulecollection->getTitle() . "<br>" .
-         __('Replay the rules dictionary') . "</div></th></tr>\n";
-    echo "<tr><td class='center'>";
-    Html::createProgressBar(__('Work in progress...'));
-    echo "</td></tr>\n";
-    echo "</table>";
+    echo "<div class='position-relative fw-bold'>" . htmlescape($rulecollection->getTitle()) . "<br>" .
+         __s('Replay the rules dictionary') . "</div>";
+    echo "<div class='text-center mb-3'>";
+    Html::progressBar('doaction_progress', [
+        'create' => true,
+        'message' => __s('Work in progress...')
+    ]);
+    echo '</div>';
 
     if (!isset($_GET['offset'])) {
        // First run
@@ -129,6 +127,8 @@ if (isset($_POST["action"])) {
         $start = $_GET["start"];
     }
 
+    $rule_class = $rulecollection->getRuleClassName();
+
     if ($offset < 0) {
        // Work ended
         $duree = round(microtime(true) - $start);
@@ -136,20 +136,20 @@ if (isset($_POST["action"])) {
             __('Task completed in %s'),
             Html::timestampToString($duree)
         ));
-        echo "<a href='" . $_SERVER['PHP_SELF'] . "'>" . __('Back') . "</a>";
+        echo "<a href='" . htmlescape($rule_class::getSearchURL()) . "'>" . __s('Back') . "</a>";
     } else {
        // Need more work
-        Html::redirect($_SERVER['PHP_SELF'] . "?start=$start&replay_rule=1&offset=$offset&manufacturer=" .
+        Html::redirect($rule_class::getSearchURL() . "?start=$start&replay_rule=1&offset=$offset&manufacturer=" .
                      "$manufacturer");
     }
 
-    Html::footer(true);
-    exit();
+    Html::footer();
+    return;
 }
 
 Html::header(
     Rule::getTypeName(Session::getPluralNumber()),
-    $_SERVER['PHP_SELF'],
+    '',
     'admin',
     $rulecollection->menu_type,
     $rulecollection->menu_option

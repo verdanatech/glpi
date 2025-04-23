@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -38,7 +37,6 @@
  * @var \Migration $migration
  */
 
-$migration->displayMessage("Adding unicity key to reservationitem");
 $table = 'glpi_reservationitems';
 
 // Copy table
@@ -64,7 +62,7 @@ $select = $DB->request([
 ])->getSql();
 
 // "IGNORE" keyword used to avoid duplicates
-$DB->doQueryOrDie("INSERT IGNORE INTO $quote_tmp_table $select");
+$DB->doQuery("INSERT IGNORE INTO $quote_tmp_table $select");
 
 // Replace table with the new version
 $migration->dropTable($table);

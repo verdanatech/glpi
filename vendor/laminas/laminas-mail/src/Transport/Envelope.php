@@ -4,16 +4,15 @@ namespace Laminas\Mail\Transport;
 
 use Laminas\Stdlib\AbstractOptions;
 
+/**
+ * @extends AbstractOptions<string|list<string>>
+ */
 class Envelope extends AbstractOptions
 {
-    /**
-     * @var string|null
-     */
+    /** @var string|null */
     protected $from;
 
-    /**
-     * @var string|null
-     */
+    /** @var string|null */
     protected $to;
 
     /**

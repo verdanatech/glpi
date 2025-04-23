@@ -25,7 +25,7 @@ interface RRuleInterface extends \ArrayAccess, \Countable, \IteratorAggregate
 	public function getOccurrences($limit = null);
 
 	/**
-	 * Return all the ocurrences after a date, before a date, or between two dates.
+	 * Return all the occurrences after a date, before a date, or between two dates.
 	 *
 	 * @param mixed $begin Can be null to return all occurrences before $end
 	 * @param mixed $end Can be null to return all occurrences after $begin
@@ -49,7 +49,7 @@ interface RRuleInterface extends \ArrayAccess, \Countable, \IteratorAggregate
 	 * 
 	 * @param mixed $date
 	 * @param int $index The index (starts at 1)
-	 * @return DateTimeInterface|null
+	 * @return \DateTimeInterface|null
 	 */
 	public function getNthOccurrenceAfter($date, $index);
 
@@ -68,7 +68,7 @@ interface RRuleInterface extends \ArrayAccess, \Countable, \IteratorAggregate
 	 * 
 	 * @param mixed $date
 	 * @param int $index The index (starts at 1)
-	 * @return DateTimeInterface|null
+	 * @return \DateTimeInterface|null
 	 */
 	public function getNthOccurrenceBefore($date, $index);
 
@@ -77,7 +77,7 @@ interface RRuleInterface extends \ArrayAccess, \Countable, \IteratorAggregate
 	 * 
 	 * @param mixed $date
 	 * @param int $index 0 returns the date, positive integer returns index in the future, negative in the past
-	 * @return DateTimeInterface|null
+	 * @return \DateTimeInterface|null
 	 */
 	public function getNthOccurrenceFrom($date, $index);
 
@@ -97,7 +97,7 @@ interface RRuleInterface extends \ArrayAccess, \Countable, \IteratorAggregate
 	public function isFinite();
 
 	/**
-	 * Return true if the rrule has no end condition (infite)
+	 * Return true if the rrule has no end condition (infinite)
 	 *
 	 * @return bool
 	 */

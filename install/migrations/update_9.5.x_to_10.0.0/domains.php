@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -41,6 +40,9 @@
 /** Domains improvements */
 
 /** Add templates to domains  */
+
+use Glpi\DBAL\QueryExpression;
+
 $migration->addField('glpi_domains', 'is_template', 'bool', [
     'after' => 'comment'
 ]);
@@ -57,7 +59,7 @@ $migration->addPostQuery(
     $DB->buildUpdate(
         'glpi_domains',
         ['is_active' => 1],
-        [true]
+        [new QueryExpression('true')]
     )
 );
 /** /Active domains */

@@ -33,30 +33,28 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
-if (!isset($_GET['itemtype']) || !class_exists($_GET['itemtype'])) {
+$itemDevice = getItemForItemtype($_GET['itemtype']);
+if (!$itemDevice) {
     throw new \RuntimeException(
         'Missing or incorrect item device type called!'
     );
 }
 
-/** @var class-string $_GET['itemtype'] */
-$itemDevice = getItemForItemtype($_GET['itemtype']);
 if (!$itemDevice->canView()) {
-    Session::redirectIfNotLoggedIn();
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
 if (in_array($itemDevice->getType(), $CFG_GLPI['devices_in_menu'])) {
-    Html::header($itemDevice->getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], "assets", strtolower($itemDevice->getType()));
+    Html::header($itemDevice->getTypeName(Session::getPluralNumber()), '', "assets", strtolower($itemDevice->getType()));
 } else {
     Html::header($itemDevice->getTypeName(Session::getPluralNumber()), '', "config", "commondevice", $itemDevice->getType());
 }
 
-Search::show($_GET['itemtype']);
+Search::show($itemDevice->getType());
 
 Html::footer();

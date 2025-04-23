@@ -21,7 +21,7 @@ class Uri extends AbstractValidator
     public const INVALID = 'uriInvalid';
     public const NOT_URI = 'notUri';
 
-    /** @var array */
+    /** @var array<string, string> */
     protected $messageTemplates = [
         self::INVALID => 'Invalid type given. String expected',
         self::NOT_URI => 'The input does not appear to be a valid Uri',
@@ -175,7 +175,7 @@ class Uri extends AbstractValidator
                     return true;
                 }
             }
-        } catch (UriException $ex) {
+        } catch (UriException) {
             // Error parsing URI, it must be invalid
         }
 

@@ -2,6 +2,7 @@
 
 namespace Laminas\Validator\File;
 
+use finfo;
 use Laminas\Stdlib\ArrayUtils;
 use Laminas\Stdlib\ErrorHandler;
 use Laminas\Validator\AbstractValidator;
@@ -65,7 +66,7 @@ class MimeType extends AbstractValidator
     /**
      * Finfo object to use
      *
-     * @var resource
+     * @var finfo|null
      */
     protected $finfo;
 
@@ -165,7 +166,7 @@ class MimeType extends AbstractValidator
             foreach ($this->magicFiles as $file) {
                 try {
                     $this->setMagicFile($file);
-                } catch (Exception\ExceptionInterface $e) {
+                } catch (Exception\ExceptionInterface) {
                     // suppressing errors which are thrown due to open_basedir restrictions
                     continue;
                 }
@@ -276,6 +277,7 @@ class MimeType extends AbstractValidator
      *
      * @param  bool $asArray Returns the values as array, when false a concatenated string is returned
      * @return string|array
+     * @psalm-return ($asArray is true ? list<string> : string)
      */
     public function getMimeType($asArray = false)
     {

@@ -1,5 +1,70 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.5.2] - 2025-02-21
+
+### Fixed
+
+- Fix "november" typo in french translation [#155](https://github.com/rlanvin/php-rrule/issues/155)
+- Fix incorrect calculation from partially filled cache [#160](https://github.com/rlanvin/php-rrule/issues/160)
+
+## [2.5.1] - 2024-06-23
+
+### Fixed
+
+- Fix insufficient type detection for FREQ and WKST leading to deprecation warning in tests with PHP 8.3 [#149](https://github.com/rlanvin/php-rrule/pull/149)
+- Fix failing tests with ICU 72.1 because of NNBSP
+- Fix C.UTF8 locale support when intl isn't installed
+
+## [2.5.0] - 2024-06-08
+
+### Fixed
+
+- Swedish: Corrects the spelling of monday and the grammar of enumeration partials. [#134](https://github.com/rlanvin/php-rrule/pull/134)
+- Spanish: Improve clarity in daily and weekly recurrence translation [#147](https://github.com/rlanvin/php-rrule/pull/147)
+- Dutch: weekdays and months are written in lowercase [#136](https://github.com/rlanvin/php-rrule/pull/136)
+- Better handle TZ with Exchange / M365 generated iCal files [#143](https://github.com/rlanvin/php-rrule/pull/143)
+
+### Added
+
+- Human readable time of day option [#124](https://github.com/rlanvin/php-rrule/pull/124)
+- Japanese translation [#139](https://github.com/rlanvin/php-rrule/pull/139)
+- Czech translation [#137](https://github.com/rlanvin/php-rrule/pull/137)
+
+## [2.4.1] - 2023-06-07
+
+### Fixed
+
+- Correctly parse `DateTimeImmutable` [#132](https://github.com/rlanvin/php-rrule/pull/132)
+- Fix namespace on return type [#130](https://github.com/rlanvin/php-rrule/pull/130)
+- Humanreadable gets monthly wrong [#129](https://github.com/rlanvin/php-rrule/pull/129)
+
+## [2.4.0] - 2023-01-06
+
+### Fixed
+
+- Exclude files from dist packages [#110](https://github.com/rlanvin/php-rrule/pull/110)
+- Improve German translation [#112](https://github.com/rlanvin/php-rrule/issues/112)
+- Daylight Saving Time issue with PHP 8.1 [#120](https://github.com/rlanvin/php-rrule/issues/120)
+
+### Added
+
+- Added Portuguese translation [#108](https://github.com/rlanvin/php-rrule/pull/108)
+- Added Polish translation [#106](https://github.com/rlanvin/php-rrule/pull/106)
+
+## [2.3.2] - 2022-05-03
+
+### Fixed
+
+- Fix timezone (and the entire rule) changed to uppercase if rule was created using `createdFromRfcString` [#103](https://github.com/rlanvin/php-rrule/issues/103)
+
+## [2.3.1] - 2022-04-22
+
+### Fixed
+
+- Fix microseconds not always removed from dtstart, causing date comparison issues with specific date input [#104](https://github.com/rlanvin/php-rrule/issues/104)
+
 ## [2.3.0] - 2021-10-25
 
 ### Added
@@ -56,7 +121,7 @@
 
 ## [2.0.0-rc1] - 2019-01-13
 
-- Rewrite the core algorithm to use a native PHP generator, drop compability with PHP < 5.6 [#43](https://github.com/rlanvin/php-rrule/issues/43)
+- Rewrite the core algorithm to use a native PHP generator, drop compatibility with PHP < 5.6 [#43](https://github.com/rlanvin/php-rrule/issues/43)
 
 ### Added
 
@@ -170,7 +235,7 @@
 
 ### Fixed
 
-- `RRule::parseRfcString()` is strictier and will not accept invalid `DTSTART` and `UNTIL` formats (use the array syntax in the constructor with `DateTime` objects if you need to create rules with complex combinations of timezones). [#13](https://github.com/rlanvin/php-rrule/issues/13)
+- `RRule::parseRfcString()` is stricter and will not accept invalid `DTSTART` and `UNTIL` formats (use the array syntax in the constructor with `DateTime` objects if you need to create rules with complex combinations of timezones). [#13](https://github.com/rlanvin/php-rrule/issues/13)
 
 ## [1.2.0] - 2016-04-09
 
@@ -215,7 +280,15 @@
 
 - First release, everything before that was unversioned (`dev-master` was used).
 
-[Unreleased]: https://github.com/rlanvin/php-rrule/compare/v2.2.2...HEAD
+[Unreleased]: https://github.com/rlanvin/php-rrule/compare/v2.5.2...HEAD
+[2.5.2]: https://github.com/rlanvin/php-rrule/compare/v2.5.1...v2.5.2
+[2.5.1]: https://github.com/rlanvin/php-rrule/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/rlanvin/php-rrule/compare/v2.4.1...v2.5.0
+[2.4.1]: https://github.com/rlanvin/php-rrule/compare/v2.4.0...v2.4.1
+[2.4.0]: https://github.com/rlanvin/php-rrule/compare/v2.3.2...v2.4.0
+[2.3.2]: https://github.com/rlanvin/php-rrule/compare/v2.3.1...v2.3.2
+[2.3.1]: https://github.com/rlanvin/php-rrule/compare/v2.3.0...v2.3.1
+[2.3.0]: https://github.com/rlanvin/php-rrule/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/rlanvin/php-rrule/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/rlanvin/php-rrule/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/rlanvin/php-rrule/compare/v2.1.0...v2.2.0

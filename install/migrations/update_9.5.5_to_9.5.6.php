@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -33,10 +32,13 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QuerySubQuery;
+
 /**
  * Update from 9.5.5 to 9.5.6
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update955to956()
 {
@@ -51,8 +53,6 @@ function update955to956()
     $updateresult     = true;
     $ADDTODISPLAYPREF = [];
 
-   //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.5.6'));
     $migration->setVersion('9.5.6');
 
    // Change DC itemtype template_name search option ID from 50 to 61 to prevent duplicate IDs now that those itemtypes have Infocom search options.
@@ -75,18 +75,22 @@ function update955to956()
             ]
         ]);
 
-        $migration->addPostQuery($DB->buildUpdate(
-            'glpi_documents_items',
-            ['date' => new QueryExpression($parent_date->getQuery())],
-            ['itemtype' => ['ITILFollowup']]
-        ));
+        $migration->addPostQuery(
+            $DB->buildUpdate(
+                'glpi_documents_items',
+                ['date' => new QueryExpression($parent_date->getQuery())],
+                ['itemtype' => ['ITILFollowup']]
+            )
+        );
 
        // Init date as the value of date_creation for others items
-        $migration->addPostQuery($DB->buildUpdate(
-            'glpi_documents_items',
-            ['date' => new QueryExpression($DB->quoteName('glpi_documents_items.date_creation'))],
-            ['itemtype' => ['!=', 'ITILFollowup']]
-        ));
+        $migration->addPostQuery(
+            $DB->buildUpdate(
+                'glpi_documents_items',
+                ['date' => new QueryExpression($DB->quoteName('glpi_documents_items.date_creation'))],
+                ['itemtype' => ['!=', 'ITILFollowup']]
+            )
+        );
     }
    /* /Add `date` to glpi_documents_items */
 

@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,7 @@
 /**
  * Update from 9.5.4 to 9.5.5
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update954to955()
 {
@@ -48,8 +47,6 @@ function update954to955()
 
     $updateresult = true;
 
-   //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.5.5'));
     $migration->setVersion('9.5.5');
 
    /* Add `DEFAULT CURRENT_TIMESTAMP` to some date fields */

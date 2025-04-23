@@ -5,7 +5,7 @@
 /***/ ((module) => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -961,10 +961,10 @@
     const PlatformDetection = { detect: detect$2 };
 
     const mediaMatch = query => window.matchMedia(query).matches;
-    let platform$4 = cached(() => PlatformDetection.detect(navigator.userAgent, Optional.from(navigator.userAgentData), mediaMatch));
+    let platform$4 = cached(() => PlatformDetection.detect(window.navigator.userAgent, Optional.from(window.navigator.userAgentData), mediaMatch));
     const detect$1 = () => platform$4();
 
-    const userAgent = navigator.userAgent;
+    const userAgent = window.navigator.userAgent;
     const platform$3 = detect$1();
     const browser$3 = platform$3.browser;
     const os$1 = platform$3.os;
@@ -1184,7 +1184,7 @@
         throw new Error('Attribute value was not simple');
       }
     };
-    const set$3 = (element, key, value) => {
+    const set$4 = (element, key, value) => {
       rawSet(element.dom, key, value);
     };
     const setAll$1 = (element, attrs) => {
@@ -1221,13 +1221,13 @@
     const add$4 = (element, attr, id) => {
       const old = read$4(element, attr);
       const nu = old.concat([id]);
-      set$3(element, attr, nu.join(' '));
+      set$4(element, attr, nu.join(' '));
       return true;
     };
     const remove$8 = (element, attr, id) => {
       const nu = filter$5(read$4(element, attr), v => v !== id);
       if (nu.length > 0) {
-        set$3(element, attr, nu.join(' '));
+        set$4(element, attr, nu.join(' '));
       } else {
         remove$9(element, attr);
       }
@@ -1408,9 +1408,7 @@
     };
 
     const isShadowRoot = dos => isDocumentFragment$1(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const isSupported$1 = constant(supported);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getStyleContainer = dos => isShadowRoot(dos) ? dos : getHead(documentOrOwner(dos));
     const getContentContainer = dos => isShadowRoot(dos) ? dos : SugarElement.fromDom(documentOrOwner(dos).dom.body);
     const getShadowRoot = e => {
@@ -1419,7 +1417,7 @@
     };
     const getShadowHost = e => SugarElement.fromDom(e.dom.host);
     const getOriginalEventTarget = event => {
-      if (isSupported$1() && isNonNullable(event.target)) {
+      if (isNonNullable(event.target)) {
         const el = SugarElement.fromDom(event.target);
         if (isElement$7(el) && isOpenShadowHost(el)) {
           if (event.composed && event.composedPath) {
@@ -1516,6 +1514,9 @@
       }
     };
     const getRaw$1 = element => element.dom.contentEditable;
+    const set$3 = (element, editable) => {
+      element.dom.contentEditable = editable ? 'true' : 'false';
+    };
 
     const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
 
@@ -2004,6 +2005,7 @@
     const isImg = matchNodeName('img');
     const isContentEditableTrue$3 = hasContentEditableState('true');
     const isContentEditableFalse$b = hasContentEditableState('false');
+    const isEditingHost = node => isHTMLElement(node) && node.isContentEditable && isNonNullable(node.parentElement) && !node.parentElement.isContentEditable;
     const isTableCell$3 = matchNodeNames([
       'td',
       'th'
@@ -2434,16 +2436,16 @@
           id: state.id
         });
         if (settings.contentCssCors) {
-          set$3(linkElem, 'crossOrigin', 'anonymous');
+          set$4(linkElem, 'crossOrigin', 'anonymous');
         }
         if (settings.referrerPolicy) {
-          set$3(linkElem, 'referrerpolicy', settings.referrerPolicy);
+          set$4(linkElem, 'referrerpolicy', settings.referrerPolicy);
         }
         link = linkElem.dom;
         link.onload = passed;
         link.onerror = failed;
         addStyle(linkElem);
-        set$3(linkElem, 'href', urlWithSuffix);
+        set$4(linkElem, 'href', urlWithSuffix);
       });
       const loadRawCss = (key, css) => {
         const state = getOrCreateState(key);
@@ -2451,9 +2453,10 @@
         state.count++;
         const styleElem = SugarElement.fromTag('style', doc.dom);
         setAll$1(styleElem, {
-          rel: 'stylesheet',
-          type: 'text/css',
-          id: state.id
+          'rel': 'stylesheet',
+          'type': 'text/css',
+          'id': state.id,
+          'data-mce-key': key
         });
         styleElem.dom.innerHTML = css;
         addStyle(styleElem);
@@ -4071,7 +4074,7 @@
           delete this.events[id];
           try {
             delete target[this.expando];
-          } catch (ex) {
+          } catch (_a) {
             target[this.expando] = null;
           }
         }
@@ -4156,7 +4159,7 @@
       if (isNullable(value) || value === '') {
         remove$9(elm, name);
       } else {
-        set$3(elm, name, value);
+        set$4(elm, name, value);
       }
     };
     const camelCaseToHyphens = name => name.replace(/[A-Z]/g, v => '-' + v.toLowerCase());
@@ -5364,7 +5367,7 @@
       const toggleActiveAttr = (uid, state) => {
         each$e(findMarkers(editor, uid), elem => {
           if (state) {
-            set$3(elem, dataAnnotationActive(), 'true');
+            set$4(elem, dataAnnotationActive(), 'true');
           } else {
             remove$9(elem, dataAnnotationActive());
           }
@@ -5461,13 +5464,16 @@
       };
     };
 
+    const clamp$2 = (value, min, max) => Math.min(Math.max(value, min), max);
+    const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
+
     let unique = 0;
     const generate$1 = prefix => {
       const date = new Date();
       const time = date.getTime();
-      const random = Math.floor(Math.random() * 1000000000);
+      const random$1 = Math.floor(random() * 1000000000);
       unique++;
-      return prefix + '_' + random + unique + String(time);
+      return prefix + '_' + random$1 + unique + String(time);
     };
 
     const add = (element, classes) => {
@@ -5660,7 +5666,7 @@
     };
     const createPaddingBr = () => {
       const br = SugarElement.fromTag('br');
-      set$3(br, 'data-mce-bogus', '1');
+      set$4(br, 'data-mce-bogus', '1');
       return br;
     };
     const fillWithPaddingBr = elm => {
@@ -5863,8 +5869,6 @@
       return Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
     };
     const overlapY = (r1, r2) => Math.max(0, Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top));
-
-    const clamp$2 = (value, min, max) => Math.min(Math.max(value, min), max);
 
     const getSelectedNode = range => {
       const startContainer = range.startContainer, startOffset = range.startOffset;
@@ -6833,6 +6837,90 @@
       };
     };
 
+    const firePreProcess = (editor, args) => editor.dispatch('PreProcess', args);
+    const firePostProcess = (editor, args) => editor.dispatch('PostProcess', args);
+    const fireRemove = editor => {
+      editor.dispatch('remove');
+    };
+    const fireDetach = editor => {
+      editor.dispatch('detach');
+    };
+    const fireSwitchMode = (editor, mode) => {
+      editor.dispatch('SwitchMode', { mode });
+    };
+    const fireObjectResizeStart = (editor, target, width, height, origin) => {
+      editor.dispatch('ObjectResizeStart', {
+        target,
+        width,
+        height,
+        origin
+      });
+    };
+    const fireObjectResized = (editor, target, width, height, origin) => {
+      editor.dispatch('ObjectResized', {
+        target,
+        width,
+        height,
+        origin
+      });
+    };
+    const firePreInit = editor => {
+      editor.dispatch('PreInit');
+    };
+    const firePostRender = editor => {
+      editor.dispatch('PostRender');
+    };
+    const fireInit = editor => {
+      editor.dispatch('Init');
+    };
+    const firePlaceholderToggle = (editor, state) => {
+      editor.dispatch('PlaceholderToggle', { state });
+    };
+    const fireError = (editor, errorType, error) => {
+      editor.dispatch(errorType, error);
+    };
+    const fireFormatApply = (editor, format, node, vars) => {
+      editor.dispatch('FormatApply', {
+        format,
+        node,
+        vars
+      });
+    };
+    const fireFormatRemove = (editor, format, node, vars) => {
+      editor.dispatch('FormatRemove', {
+        format,
+        node,
+        vars
+      });
+    };
+    const fireBeforeSetContent = (editor, args) => editor.dispatch('BeforeSetContent', args);
+    const fireSetContent = (editor, args) => editor.dispatch('SetContent', args);
+    const fireBeforeGetContent = (editor, args) => editor.dispatch('BeforeGetContent', args);
+    const fireGetContent = (editor, args) => editor.dispatch('GetContent', args);
+    const fireAutocompleterStart = (editor, args) => {
+      editor.dispatch('AutocompleterStart', args);
+    };
+    const fireAutocompleterUpdate = (editor, args) => {
+      editor.dispatch('AutocompleterUpdate', args);
+    };
+    const fireAutocompleterUpdateActiveRange = (editor, args) => {
+      editor.dispatch('AutocompleterUpdateActiveRange', args);
+    };
+    const fireAutocompleterEnd = editor => {
+      editor.dispatch('AutocompleterEnd');
+    };
+    const firePastePreProcess = (editor, html, internal) => editor.dispatch('PastePreProcess', {
+      content: html,
+      internal
+    });
+    const firePastePostProcess = (editor, node, internal) => editor.dispatch('PastePostProcess', {
+      node,
+      internal
+    });
+    const firePastePlainTextToggle = (editor, state) => editor.dispatch('PastePlainTextToggle', { state });
+    const fireEditableRootStateChange = (editor, state) => editor.dispatch('EditableRootStateChange', { state });
+    const fireDisabledStateChange = (editor, state) => editor.dispatch('DisabledStateChange', { state });
+
     const deviceDetection$1 = detect$1().deviceType;
     const isTouch = deviceDetection$1.isTouch();
     const DOM$a = DOMUtils.DOM;
@@ -7226,6 +7314,26 @@
         processor: 'boolean',
         default: false
       });
+      registerOption('disabled', {
+        processor: value => {
+          if (isBoolean(value)) {
+            if (editor.initialized && isDisabled$1(editor) !== value) {
+              Promise.resolve().then(() => {
+                fireDisabledStateChange(editor, value);
+              });
+            }
+            return {
+              valid: true,
+              value
+            };
+          }
+          return {
+            valid: false,
+            message: 'The value must be a boolean.'
+          };
+        },
+        default: false
+      });
       registerOption('readonly', {
         processor: 'boolean',
         default: false
@@ -7263,7 +7371,7 @@
       });
       registerOption('iframe_aria_text', {
         processor: 'string',
-        default: 'Rich Text Area. Press ALT-0 for help.'
+        default: 'Rich Text Area'.concat(editor.hasPlugin('help') ? '. Press ALT-0 for help.' : '')
       });
       registerOption('setup', { processor: 'function' });
       registerOption('init_instance_callback', { processor: 'function' });
@@ -7296,6 +7404,19 @@
       registerOption('allow_unsafe_link_target', {
         processor: 'boolean',
         default: false
+      });
+      registerOption('allow_mathml_annotation_encodings', {
+        processor: value => {
+          const valid = isArrayOf(value, isString);
+          return valid ? {
+            value,
+            valid
+          } : {
+            valid: false,
+            message: 'Must be an array of strings.'
+          };
+        },
+        default: []
       });
       registerOption('convert_fonts_to_spans', {
         processor: 'boolean',
@@ -7732,6 +7853,7 @@
     const shouldConvertUnsafeEmbeds = option('convert_unsafe_embeds');
     const getLicenseKey = option('license_key');
     const getApiKey = option('api_key');
+    const isDisabled$1 = option('disabled');
 
     const isElement$3 = isElement$6;
     const isText$5 = isText$b;
@@ -7955,14 +8077,14 @@
     const isContentEditableTrue$1 = isContentEditableTrue$3;
     const isContentEditableFalse$7 = isContentEditableFalse$b;
     const isMedia = isMedia$2;
-    const isBlockLike = matchStyleValues('display', 'block table table-cell table-caption list-item');
+    const isBlockLike = matchStyleValues('display', 'block table table-cell table-row table-caption list-item');
     const isCaretContainer = isCaretContainer$2;
     const isCaretContainerBlock = isCaretContainerBlock$1;
     const isElement$2 = isElement$6;
     const isText$4 = isText$b;
     const isCaretCandidate$1 = isCaretCandidate$3;
-    const isForwards = direction => direction > 0;
-    const isBackwards = direction => direction < 0;
+    const isForwards = direction => direction === 1;
+    const isBackwards = direction => direction === -1;
     const skipCaretContainers = (walk, shallow) => {
       let node;
       while (node = walk(shallow)) {
@@ -8175,11 +8297,6 @@
       return inSameBlock;
     };
 
-    var HDirection;
-    (function (HDirection) {
-      HDirection[HDirection['Backwards'] = -1] = 'Backwards';
-      HDirection[HDirection['Forwards'] = 1] = 'Forwards';
-    }(HDirection || (HDirection = {})));
     const isContentEditableFalse$6 = isContentEditableFalse$b;
     const isText$3 = isText$b;
     const isElement$1 = isElement$6;
@@ -8236,7 +8353,7 @@
           return CaretPosition.before(nextSibling);
         }
       } else {
-        return findCaretPosition$1(HDirection.Forwards, CaretPosition.after(nextNode), root);
+        return findCaretPosition$1(1, CaretPosition.after(nextNode), root);
       }
     };
     const findCaretPosition$1 = (direction, startPos, root) => {
@@ -8330,10 +8447,10 @@
     };
     const CaretWalker = root => ({
       next: caretPosition => {
-        return findCaretPosition$1(HDirection.Forwards, caretPosition, root);
+        return findCaretPosition$1(1, caretPosition, root);
       },
       prev: caretPosition => {
-        return findCaretPosition$1(HDirection.Backwards, caretPosition, root);
+        return findCaretPosition$1(-1, caretPosition, root);
       }
     });
 
@@ -9006,7 +9123,8 @@
     const findContent = (start, node, offset) => walkText(start, node, offset, isContent);
     const findWordEndPoint = (dom, body, container, offset, start, includeTrailingSpaces) => {
       let lastTextNode;
-      const rootNode = dom.getParent(container, dom.isBlock) || body;
+      const closestRoot = dom.getParent(container, node => isEditingHost(node) || dom.isBlock(node));
+      const rootNode = isNonNullable(closestRoot) ? closestRoot : body;
       const walk = (container, offset, pred) => {
         const textSeeker = TextSeeker(dom);
         const walker = start ? textSeeker.backwards : textSeeker.forwards;
@@ -9080,7 +9198,7 @@
         return isAtBlockBoundary$1(dom, root, parent, siblingName);
       }
     };
-    const findParentContainer = (dom, formatList, container, offset, start) => {
+    const findParentContainer = (dom, formatList, container, offset, start, expandToBlock) => {
       let parent = container;
       const siblingName = start ? 'previousSibling' : 'nextSibling';
       const root = dom.getRoot();
@@ -9090,8 +9208,11 @@
         }
       }
       while (parent) {
+        if (isEditingHost(parent)) {
+          return container;
+        }
         if (!formatList[0].block_expand && dom.isBlock(parent)) {
-          return parent;
+          return expandToBlock ? parent : container;
         }
         for (let sibling = parent[siblingName]; sibling; sibling = sibling[siblingName]) {
           const allowSpaces = isText$b(sibling) && !isAtBlockBoundary$1(dom, root, sibling, siblingName);
@@ -9108,7 +9229,10 @@
       return container;
     };
     const isSelfOrParentBookmark = container => isBookmarkNode(container.parentNode) || isBookmarkNode(container);
-    const expandRng = (dom, rng, formatList, includeTrailingSpace = false) => {
+    const expandRng = (dom, rng, formatList, expandOptions = {}) => {
+      const {includeTrailingSpace = false, expandToBlock = true} = expandOptions;
+      const editableHost = dom.getParent(rng.commonAncestorContainer, node => isEditingHost(node));
+      const root = isNonNullable(editableHost) ? editableHost : dom.getRoot();
       let {startContainer, startOffset, endContainer, endOffset} = rng;
       const format = formatList[0];
       if (isElement$6(startContainer) && startContainer.hasChildNodes()) {
@@ -9148,12 +9272,12 @@
         }
       }
       if (rng.collapsed) {
-        const startPoint = findWordEndPoint(dom, dom.getRoot(), startContainer, startOffset, true, includeTrailingSpace);
+        const startPoint = findWordEndPoint(dom, root, startContainer, startOffset, true, includeTrailingSpace);
         startPoint.each(({container, offset}) => {
           startContainer = container;
           startOffset = offset;
         });
-        const endPoint = findWordEndPoint(dom, dom.getRoot(), endContainer, endOffset, false, includeTrailingSpace);
+        const endPoint = findWordEndPoint(dom, root, endContainer, endOffset, false, includeTrailingSpace);
         endPoint.each(({container, offset}) => {
           endContainer = container;
           endOffset = offset;
@@ -9161,10 +9285,10 @@
       }
       if (isInlineFormat(format) || format.block_expand) {
         if (!isInlineFormat(format) || (!isText$b(startContainer) || startOffset === 0)) {
-          startContainer = findParentContainer(dom, formatList, startContainer, startOffset, true);
+          startContainer = findParentContainer(dom, formatList, startContainer, startOffset, true, expandToBlock);
         }
         if (!isInlineFormat(format) || (!isText$b(endContainer) || endOffset === endContainer.data.length)) {
-          endContainer = findParentContainer(dom, formatList, endContainer, endOffset, false);
+          endContainer = findParentContainer(dom, formatList, endContainer, endOffset, false, expandToBlock);
         }
       }
       if (shouldExpandToSelector(format)) {
@@ -9176,13 +9300,13 @@
         endContainer = findBlockEndPoint(dom, formatList, endContainer, 'nextSibling');
         if (isBlockFormat(format)) {
           if (!dom.isBlock(startContainer)) {
-            startContainer = findParentContainer(dom, formatList, startContainer, startOffset, true);
+            startContainer = findParentContainer(dom, formatList, startContainer, startOffset, true, expandToBlock);
             if (isText$b(startContainer)) {
               startOffset = 0;
             }
           }
           if (!dom.isBlock(endContainer)) {
-            endContainer = findParentContainer(dom, formatList, endContainer, endOffset, false);
+            endContainer = findParentContainer(dom, formatList, endContainer, endOffset, false, expandToBlock);
             if (isText$b(endContainer)) {
               endOffset = endContainer.data.length;
             }
@@ -9297,18 +9421,18 @@
     const applyAnnotation = (elem, masterUId, data, annotationName, decorate, directAnnotation) => {
       const {uid = masterUId, ...otherData} = data;
       add$2(elem, annotation());
-      set$3(elem, `${ dataAnnotationId() }`, uid);
-      set$3(elem, `${ dataAnnotation() }`, annotationName);
+      set$4(elem, `${ dataAnnotationId() }`, uid);
+      set$4(elem, `${ dataAnnotation() }`, annotationName);
       const {attributes = {}, classes = []} = decorate(uid, otherData);
       setAll$1(elem, attributes);
       add(elem, classes);
       if (directAnnotation) {
         if (classes.length > 0) {
-          set$3(elem, `${ dataAnnotationClasses() }`, classes.join(','));
+          set$4(elem, `${ dataAnnotationClasses() }`, classes.join(','));
         }
         const attributeNames = keys(attributes);
         if (attributeNames.length > 0) {
-          set$3(elem, `${ dataAnnotationAttributes() }`, attributeNames.join(','));
+          set$4(elem, `${ dataAnnotationAttributes() }`, attributeNames.join(','));
         }
       }
     };
@@ -9464,88 +9588,399 @@
       }
     };
 
-    const firePreProcess = (editor, args) => editor.dispatch('PreProcess', args);
-    const firePostProcess = (editor, args) => editor.dispatch('PostProcess', args);
-    const fireRemove = editor => {
-      editor.dispatch('remove');
+    const getDocument = () => SugarElement.fromDom(document);
+
+    const focus$1 = (element, preventScroll = false) => element.dom.focus({ preventScroll });
+    const hasFocus$1 = element => {
+      const root = getRootNode(element).dom;
+      return element.dom === root.activeElement;
     };
-    const fireDetach = editor => {
-      editor.dispatch('detach');
-    };
-    const fireSwitchMode = (editor, mode) => {
-      editor.dispatch('SwitchMode', { mode });
-    };
-    const fireObjectResizeStart = (editor, target, width, height, origin) => {
-      editor.dispatch('ObjectResizeStart', {
-        target,
-        width,
-        height,
-        origin
-      });
-    };
-    const fireObjectResized = (editor, target, width, height, origin) => {
-      editor.dispatch('ObjectResized', {
-        target,
-        width,
-        height,
-        origin
-      });
-    };
-    const firePreInit = editor => {
-      editor.dispatch('PreInit');
-    };
-    const firePostRender = editor => {
-      editor.dispatch('PostRender');
-    };
-    const fireInit = editor => {
-      editor.dispatch('Init');
-    };
-    const firePlaceholderToggle = (editor, state) => {
-      editor.dispatch('PlaceholderToggle', { state });
-    };
-    const fireError = (editor, errorType, error) => {
-      editor.dispatch(errorType, error);
-    };
-    const fireFormatApply = (editor, format, node, vars) => {
-      editor.dispatch('FormatApply', {
-        format,
-        node,
-        vars
-      });
-    };
-    const fireFormatRemove = (editor, format, node, vars) => {
-      editor.dispatch('FormatRemove', {
-        format,
-        node,
-        vars
-      });
-    };
-    const fireBeforeSetContent = (editor, args) => editor.dispatch('BeforeSetContent', args);
-    const fireSetContent = (editor, args) => editor.dispatch('SetContent', args);
-    const fireBeforeGetContent = (editor, args) => editor.dispatch('BeforeGetContent', args);
-    const fireGetContent = (editor, args) => editor.dispatch('GetContent', args);
-    const fireAutocompleterStart = (editor, args) => {
-      editor.dispatch('AutocompleterStart', args);
-    };
-    const fireAutocompleterUpdate = (editor, args) => {
-      editor.dispatch('AutocompleterUpdate', args);
-    };
-    const fireAutocompleterUpdateActiveRange = (editor, args) => {
-      editor.dispatch('AutocompleterUpdateActiveRange', args);
-    };
-    const fireAutocompleterEnd = editor => {
-      editor.dispatch('AutocompleterEnd');
-    };
-    const firePastePreProcess = (editor, html, internal) => editor.dispatch('PastePreProcess', {
-      content: html,
-      internal
+    const active$1 = (root = getDocument()) => Optional.from(root.dom.activeElement).map(SugarElement.fromDom);
+    const search = element => active$1(getRootNode(element)).filter(e => element.dom.contains(e.dom));
+
+    const create$9 = (start, soffset, finish, foffset) => ({
+      start,
+      soffset,
+      finish,
+      foffset
     });
-    const firePastePostProcess = (editor, node, internal) => editor.dispatch('PastePostProcess', {
-      node,
-      internal
+    const SimRange = { create: create$9 };
+
+    const adt$3 = Adt.generate([
+      { before: ['element'] },
+      {
+        on: [
+          'element',
+          'offset'
+        ]
+      },
+      { after: ['element'] }
+    ]);
+    const cata = (subject, onBefore, onOn, onAfter) => subject.fold(onBefore, onOn, onAfter);
+    const getStart$2 = situ => situ.fold(identity, identity, identity);
+    const before$1 = adt$3.before;
+    const on = adt$3.on;
+    const after$1 = adt$3.after;
+    const Situ = {
+      before: before$1,
+      on,
+      after: after$1,
+      cata,
+      getStart: getStart$2
+    };
+
+    const adt$2 = Adt.generate([
+      { domRange: ['rng'] },
+      {
+        relative: [
+          'startSitu',
+          'finishSitu'
+        ]
+      },
+      {
+        exact: [
+          'start',
+          'soffset',
+          'finish',
+          'foffset'
+        ]
+      }
+    ]);
+    const exactFromRange = simRange => adt$2.exact(simRange.start, simRange.soffset, simRange.finish, simRange.foffset);
+    const getStart$1 = selection => selection.match({
+      domRange: rng => SugarElement.fromDom(rng.startContainer),
+      relative: (startSitu, _finishSitu) => Situ.getStart(startSitu),
+      exact: (start, _soffset, _finish, _foffset) => start
     });
-    const firePastePlainTextToggle = (editor, state) => editor.dispatch('PastePlainTextToggle', { state });
-    const fireEditableRootStateChange = (editor, state) => editor.dispatch('EditableRootStateChange', { state });
+    const domRange = adt$2.domRange;
+    const relative = adt$2.relative;
+    const exact = adt$2.exact;
+    const getWin = selection => {
+      const start = getStart$1(selection);
+      return defaultView(start);
+    };
+    const range = SimRange.create;
+    const SimSelection = {
+      domRange,
+      relative,
+      exact,
+      exactFromRange,
+      getWin,
+      range
+    };
+
+    const clamp$1 = (offset, element) => {
+      const max = isText$c(element) ? get$3(element).length : children$1(element).length + 1;
+      if (offset > max) {
+        return max;
+      } else if (offset < 0) {
+        return 0;
+      }
+      return offset;
+    };
+    const normalizeRng = rng => SimSelection.range(rng.start, clamp$1(rng.soffset, rng.start), rng.finish, clamp$1(rng.foffset, rng.finish));
+    const isOrContains = (root, elm) => !isRestrictedNode(elm.dom) && (contains(root, elm) || eq(root, elm));
+    const isRngInRoot = root => rng => isOrContains(root, rng.start) && isOrContains(root, rng.finish);
+    const shouldStore = editor => editor.inline || Env.browser.isFirefox();
+    const nativeRangeToSelectionRange = r => SimSelection.range(SugarElement.fromDom(r.startContainer), r.startOffset, SugarElement.fromDom(r.endContainer), r.endOffset);
+    const readRange = win => {
+      const selection = win.getSelection();
+      const rng = !selection || selection.rangeCount === 0 ? Optional.none() : Optional.from(selection.getRangeAt(0));
+      return rng.map(nativeRangeToSelectionRange);
+    };
+    const getBookmark$1 = root => {
+      const win = defaultView(root);
+      return readRange(win.dom).filter(isRngInRoot(root));
+    };
+    const validate = (root, bookmark) => Optional.from(bookmark).filter(isRngInRoot(root)).map(normalizeRng);
+    const bookmarkToNativeRng = bookmark => {
+      const rng = document.createRange();
+      try {
+        rng.setStart(bookmark.start.dom, bookmark.soffset);
+        rng.setEnd(bookmark.finish.dom, bookmark.foffset);
+        return Optional.some(rng);
+      } catch (_a) {
+        return Optional.none();
+      }
+    };
+    const store = editor => {
+      const newBookmark = shouldStore(editor) ? getBookmark$1(SugarElement.fromDom(editor.getBody())) : Optional.none();
+      editor.bookmark = newBookmark.isSome() ? newBookmark : editor.bookmark;
+    };
+    const getRng = editor => {
+      const bookmark = editor.bookmark ? editor.bookmark : Optional.none();
+      return bookmark.bind(x => validate(SugarElement.fromDom(editor.getBody()), x)).bind(bookmarkToNativeRng);
+    };
+    const restore = editor => {
+      getRng(editor).each(rng => editor.selection.setRng(rng));
+    };
+
+    const isEditorUIElement$1 = elm => {
+      const className = elm.className.toString();
+      return className.indexOf('tox-') !== -1 || className.indexOf('mce-') !== -1;
+    };
+    const FocusManager = { isEditorUIElement: isEditorUIElement$1 };
+
+    const wrappedSetTimeout = (callback, time) => {
+      if (!isNumber(time)) {
+        time = 0;
+      }
+      return setTimeout(callback, time);
+    };
+    const wrappedSetInterval = (callback, time) => {
+      if (!isNumber(time)) {
+        time = 0;
+      }
+      return setInterval(callback, time);
+    };
+    const Delay = {
+      setEditorTimeout: (editor, callback, time) => {
+        return wrappedSetTimeout(() => {
+          if (!editor.removed) {
+            callback();
+          }
+        }, time);
+      },
+      setEditorInterval: (editor, callback, time) => {
+        const timer = wrappedSetInterval(() => {
+          if (!editor.removed) {
+            callback();
+          } else {
+            clearInterval(timer);
+          }
+        }, time);
+        return timer;
+      }
+    };
+
+    const isManualNodeChange = e => {
+      return e.type === 'nodechange' && e.selectionChange;
+    };
+    const registerPageMouseUp = (editor, throttledStore) => {
+      const mouseUpPage = () => {
+        throttledStore.throttle();
+      };
+      DOMUtils.DOM.bind(document, 'mouseup', mouseUpPage);
+      editor.on('remove', () => {
+        DOMUtils.DOM.unbind(document, 'mouseup', mouseUpPage);
+      });
+    };
+    const registerMouseUp = (editor, throttledStore) => {
+      editor.on('mouseup touchend', _e => {
+        throttledStore.throttle();
+      });
+    };
+    const registerEditorEvents = (editor, throttledStore) => {
+      registerMouseUp(editor, throttledStore);
+      editor.on('keyup NodeChange AfterSetSelectionRange', e => {
+        if (!isManualNodeChange(e)) {
+          store(editor);
+        }
+      });
+    };
+    const register$6 = editor => {
+      const throttledStore = first$1(() => {
+        store(editor);
+      }, 0);
+      editor.on('init', () => {
+        if (editor.inline) {
+          registerPageMouseUp(editor, throttledStore);
+        }
+        registerEditorEvents(editor, throttledStore);
+      });
+      editor.on('remove', () => {
+        throttledStore.cancel();
+      });
+    };
+
+    let documentFocusInHandler;
+    const DOM$9 = DOMUtils.DOM;
+    const isEditorUIElement = elm => {
+      return isElement$6(elm) && FocusManager.isEditorUIElement(elm);
+    };
+    const isEditorContentAreaElement = elm => {
+      const classList = elm.classList;
+      if (classList !== undefined) {
+        return classList.contains('tox-edit-area') || classList.contains('tox-edit-area__iframe') || classList.contains('mce-content-body');
+      } else {
+        return false;
+      }
+    };
+    const isUIElement = (editor, elm) => {
+      const customSelector = getCustomUiSelector(editor);
+      const parent = DOM$9.getParent(elm, elm => {
+        return isEditorUIElement(elm) || (customSelector ? editor.dom.is(elm, customSelector) : false);
+      });
+      return parent !== null;
+    };
+    const getActiveElement = editor => {
+      try {
+        const root = getRootNode(SugarElement.fromDom(editor.getElement()));
+        return active$1(root).fold(() => document.body, x => x.dom);
+      } catch (_a) {
+        return document.body;
+      }
+    };
+    const registerEvents$1 = (editorManager, e) => {
+      const editor = e.editor;
+      register$6(editor);
+      const toggleContentAreaOnFocus = (editor, fn) => {
+        if (shouldHighlightOnFocus(editor) && editor.inline !== true) {
+          const contentArea = SugarElement.fromDom(editor.getContainer());
+          fn(contentArea, 'tox-edit-focus');
+        }
+      };
+      editor.on('focusin', () => {
+        const focusedEditor = editorManager.focusedEditor;
+        if (isEditorContentAreaElement(getActiveElement(editor))) {
+          toggleContentAreaOnFocus(editor, add$2);
+        }
+        if (focusedEditor !== editor) {
+          if (focusedEditor) {
+            focusedEditor.dispatch('blur', { focusedEditor: editor });
+          }
+          editorManager.setActive(editor);
+          editorManager.focusedEditor = editor;
+          editor.dispatch('focus', { blurredEditor: focusedEditor });
+          editor.focus(true);
+        }
+      });
+      editor.on('focusout', () => {
+        Delay.setEditorTimeout(editor, () => {
+          const focusedEditor = editorManager.focusedEditor;
+          if (!isEditorContentAreaElement(getActiveElement(editor)) || focusedEditor !== editor) {
+            toggleContentAreaOnFocus(editor, remove$6);
+          }
+          if (!isUIElement(editor, getActiveElement(editor)) && focusedEditor === editor) {
+            editor.dispatch('blur', { focusedEditor: null });
+            editorManager.focusedEditor = null;
+          }
+        });
+      });
+      if (!documentFocusInHandler) {
+        documentFocusInHandler = e => {
+          const activeEditor = editorManager.activeEditor;
+          if (activeEditor) {
+            getOriginalEventTarget(e).each(target => {
+              const elem = target;
+              if (elem.ownerDocument === document) {
+                if (elem !== document.body && !isUIElement(activeEditor, elem) && editorManager.focusedEditor === activeEditor) {
+                  activeEditor.dispatch('blur', { focusedEditor: null });
+                  editorManager.focusedEditor = null;
+                }
+              }
+            });
+          }
+        };
+        DOM$9.bind(document, 'focusin', documentFocusInHandler);
+      }
+    };
+    const unregisterDocumentEvents = (editorManager, e) => {
+      if (editorManager.focusedEditor === e.editor) {
+        editorManager.focusedEditor = null;
+      }
+      if (!editorManager.activeEditor && documentFocusInHandler) {
+        DOM$9.unbind(document, 'focusin', documentFocusInHandler);
+        documentFocusInHandler = null;
+      }
+    };
+    const setup$w = editorManager => {
+      editorManager.on('AddEditor', curry(registerEvents$1, editorManager));
+      editorManager.on('RemoveEditor', curry(unregisterDocumentEvents, editorManager));
+    };
+
+    const getContentEditableHost = (editor, node) => editor.dom.getParent(node, node => editor.dom.getContentEditable(node) === 'true');
+    const hasContentEditableFalseParent$1 = (editor, node) => editor.dom.getParent(node, node => editor.dom.getContentEditable(node) === 'false') !== null;
+    const getCollapsedNode = rng => rng.collapsed ? Optional.from(getNode$1(rng.startContainer, rng.startOffset)).map(SugarElement.fromDom) : Optional.none();
+    const getFocusInElement = (root, rng) => getCollapsedNode(rng).bind(node => {
+      if (isTableSection(node)) {
+        return Optional.some(node);
+      } else if (!contains(root, node)) {
+        return Optional.some(root);
+      } else {
+        return Optional.none();
+      }
+    });
+    const normalizeSelection = (editor, rng) => {
+      getFocusInElement(SugarElement.fromDom(editor.getBody()), rng).bind(elm => {
+        return firstPositionIn(elm.dom);
+      }).fold(() => {
+        editor.selection.normalize();
+      }, caretPos => editor.selection.setRng(caretPos.toRange()));
+    };
+    const focusBody = body => {
+      if (body.setActive) {
+        try {
+          body.setActive();
+        } catch (_a) {
+          body.focus();
+        }
+      } else {
+        body.focus();
+      }
+    };
+    const hasElementFocus = elm => hasFocus$1(elm) || search(elm).isSome();
+    const hasIframeFocus = editor => isNonNullable(editor.iframeElement) && hasFocus$1(SugarElement.fromDom(editor.iframeElement));
+    const hasInlineFocus = editor => {
+      const rawBody = editor.getBody();
+      return rawBody && hasElementFocus(SugarElement.fromDom(rawBody));
+    };
+    const hasUiFocus = editor => {
+      const dos = getRootNode(SugarElement.fromDom(editor.getElement()));
+      return active$1(dos).filter(elem => !isEditorContentAreaElement(elem.dom) && isUIElement(editor, elem.dom)).isSome();
+    };
+    const hasFocus = editor => editor.inline ? hasInlineFocus(editor) : hasIframeFocus(editor);
+    const hasEditorOrUiFocus = editor => hasFocus(editor) || hasUiFocus(editor);
+    const focusEditor = editor => {
+      const selection = editor.selection;
+      const body = editor.getBody();
+      let rng = selection.getRng();
+      editor.quirks.refreshContentEditable();
+      const restoreBookmark = editor => {
+        getRng(editor).each(bookmarkRng => {
+          editor.selection.setRng(bookmarkRng);
+          rng = bookmarkRng;
+        });
+      };
+      if (!hasFocus(editor) && editor.hasEditableRoot()) {
+        restoreBookmark(editor);
+      }
+      const contentEditableHost = getContentEditableHost(editor, selection.getNode());
+      if (contentEditableHost && editor.dom.isChildOf(contentEditableHost, body)) {
+        if (!hasContentEditableFalseParent$1(editor, contentEditableHost)) {
+          focusBody(body);
+        }
+        focusBody(contentEditableHost);
+        if (!editor.hasEditableRoot()) {
+          restoreBookmark(editor);
+        }
+        normalizeSelection(editor, rng);
+        activateEditor(editor);
+        return;
+      }
+      if (!editor.inline) {
+        if (!Env.browser.isOpera()) {
+          focusBody(body);
+        }
+        editor.getWin().focus();
+      }
+      if (Env.browser.isFirefox() || editor.inline) {
+        focusBody(body);
+        normalizeSelection(editor, rng);
+      }
+      activateEditor(editor);
+    };
+    const activateEditor = editor => editor.editorManager.setActive(editor);
+    const focus = (editor, skipFocus) => {
+      if (editor.removed) {
+        return;
+      }
+      if (skipFocus) {
+        activateEditor(editor);
+      } else {
+        focusEditor(editor);
+      }
+    };
 
     const VK = {
       BACKSPACE: 8,
@@ -9607,7 +10042,7 @@
       const rootDocument = document;
       const rootElement = editor.getBody();
       let selectedElm, selectedElmGhost, resizeHelper, selectedHandle, resizeBackdrop;
-      let startX, startY, selectedElmX, selectedElmY, startW, startH, ratio, resizeStarted;
+      let startX, startY, startW, startH, ratio, resizeStarted;
       let width;
       let height;
       let startScrollWidth;
@@ -9642,7 +10077,7 @@
       };
       const isResizable = elm => {
         const selector = getObjectResizing(editor);
-        if (!selector) {
+        if (!selector || editor.mode.isReadOnly()) {
           return false;
         }
         if (elm.getAttribute('data-mce-resize') === 'false') {
@@ -9724,12 +10159,6 @@
           display: 'block'
         });
         resizeHelper.innerHTML = width + ' &times; ' + height;
-        if (selectedHandle[2] < 0 && selectedElmGhost.clientWidth <= width) {
-          dom.setStyle(selectedElmGhost, 'left', selectedElmX + (startW - width));
-        }
-        if (selectedHandle[3] < 0 && selectedElmGhost.clientHeight <= height) {
-          dom.setStyle(selectedElmGhost, 'top', selectedElmY + (startH - height));
-        }
         deltaX = rootElement.scrollWidth - startScrollWidth;
         deltaY = rootElement.scrollHeight - startScrollHeight;
         if (deltaX + deltaY !== 0) {
@@ -9883,7 +10312,7 @@
         each$e(dom.select(`img[${ elementSelectionAttr }],hr[${ elementSelectionAttr }]`), img => {
           img.removeAttribute(elementSelectionAttr);
         });
-        if (isNonNullable(controlElm) && isChildOrEqual(controlElm, rootElement) && editor.hasFocus()) {
+        if (isNonNullable(controlElm) && isChildOrEqual(controlElm, rootElement) && hasEditorOrUiFocus(editor)) {
           disableGeckoResize();
           const startElm = selection.getStart(true);
           if (isChildOrEqual(startElm, controlElm) && isChildOrEqual(selection.getEnd(true), controlElm)) {
@@ -9905,7 +10334,7 @@
       const disableGeckoResize = () => {
         try {
           editor.getDoc().execCommand('enableObjectResizing', false, 'false');
-        } catch (ex) {
+        } catch (_a) {
         }
       };
       editor.on('init', () => {
@@ -9964,7 +10393,7 @@
       return rng;
     };
 
-    const adt$3 = Adt.generate([
+    const adt$1 = Adt.generate([
       {
         ltr: [
           'start',
@@ -10007,117 +10436,46 @@
       const rng = ranges.ltr();
       if (rng.collapsed) {
         const reversed = ranges.rtl().filter(rev => rev.collapsed === false);
-        return reversed.map(rev => adt$3.rtl(SugarElement.fromDom(rev.endContainer), rev.endOffset, SugarElement.fromDom(rev.startContainer), rev.startOffset)).getOrThunk(() => fromRange(win, adt$3.ltr, rng));
+        return reversed.map(rev => adt$1.rtl(SugarElement.fromDom(rev.endContainer), rev.endOffset, SugarElement.fromDom(rev.startContainer), rev.startOffset)).getOrThunk(() => fromRange(win, adt$1.ltr, rng));
       } else {
-        return fromRange(win, adt$3.ltr, rng);
+        return fromRange(win, adt$1.ltr, rng);
       }
     };
     const diagnose = (win, selection) => {
       const ranges = getRanges(win, selection);
       return doDiagnose(win, ranges);
     };
-    adt$3.ltr;
-    adt$3.rtl;
-
-    const create$9 = (start, soffset, finish, foffset) => ({
-      start,
-      soffset,
-      finish,
-      foffset
-    });
-    const SimRange = { create: create$9 };
+    adt$1.ltr;
+    adt$1.rtl;
 
     const caretPositionFromPoint = (doc, x, y) => {
-      var _a, _b;
-      return Optional.from((_b = (_a = doc.dom).caretPositionFromPoint) === null || _b === void 0 ? void 0 : _b.call(_a, x, y)).bind(pos => {
+      var _a;
+      return Optional.from((_a = doc.caretPositionFromPoint) === null || _a === void 0 ? void 0 : _a.call(doc, x, y)).bind(pos => {
         if (pos.offsetNode === null) {
           return Optional.none();
         }
-        const r = doc.dom.createRange();
+        const r = doc.createRange();
         r.setStart(pos.offsetNode, pos.offset);
         r.collapse();
         return Optional.some(r);
       });
     };
     const caretRangeFromPoint = (doc, x, y) => {
-      var _a, _b;
-      return Optional.from((_b = (_a = doc.dom).caretRangeFromPoint) === null || _b === void 0 ? void 0 : _b.call(_a, x, y));
+      var _a;
+      return Optional.from((_a = doc.caretRangeFromPoint) === null || _a === void 0 ? void 0 : _a.call(doc, x, y));
     };
-    const availableSearch = (() => {
-      if (document.caretPositionFromPoint) {
-        return caretPositionFromPoint;
-      } else if (document.caretRangeFromPoint) {
-        return caretRangeFromPoint;
+    const availableSearch = (doc, x, y) => {
+      if (doc.caretPositionFromPoint) {
+        return caretPositionFromPoint(doc, x, y);
+      } else if (doc.caretRangeFromPoint) {
+        return caretRangeFromPoint(doc, x, y);
       } else {
-        return Optional.none;
+        return Optional.none();
       }
-    })();
+    };
     const fromPoint$1 = (win, x, y) => {
-      const doc = SugarElement.fromDom(win.document);
+      const doc = win.document;
       return availableSearch(doc, x, y).map(rng => SimRange.create(SugarElement.fromDom(rng.startContainer), rng.startOffset, SugarElement.fromDom(rng.endContainer), rng.endOffset));
-    };
-
-    const adt$2 = Adt.generate([
-      { before: ['element'] },
-      {
-        on: [
-          'element',
-          'offset'
-        ]
-      },
-      { after: ['element'] }
-    ]);
-    const cata = (subject, onBefore, onOn, onAfter) => subject.fold(onBefore, onOn, onAfter);
-    const getStart$2 = situ => situ.fold(identity, identity, identity);
-    const before$1 = adt$2.before;
-    const on = adt$2.on;
-    const after$1 = adt$2.after;
-    const Situ = {
-      before: before$1,
-      on,
-      after: after$1,
-      cata,
-      getStart: getStart$2
-    };
-
-    const adt$1 = Adt.generate([
-      { domRange: ['rng'] },
-      {
-        relative: [
-          'startSitu',
-          'finishSitu'
-        ]
-      },
-      {
-        exact: [
-          'start',
-          'soffset',
-          'finish',
-          'foffset'
-        ]
-      }
-    ]);
-    const exactFromRange = simRange => adt$1.exact(simRange.start, simRange.soffset, simRange.finish, simRange.foffset);
-    const getStart$1 = selection => selection.match({
-      domRange: rng => SugarElement.fromDom(rng.startContainer),
-      relative: (startSitu, _finishSitu) => Situ.getStart(startSitu),
-      exact: (start, _soffset, _finish, _foffset) => start
-    });
-    const domRange = adt$1.domRange;
-    const relative = adt$1.relative;
-    const exact = adt$1.exact;
-    const getWin = selection => {
-      const start = getStart$1(selection);
-      return defaultView(start);
-    };
-    const range = SimRange.create;
-    const SimSelection = {
-      domRange,
-      relative,
-      exact,
-      exactFromRange,
-      getWin,
-      range
     };
 
     const beforeSpecial = (element, offset) => {
@@ -10437,7 +10795,10 @@
       };
       const expand = (rng, options = { type: 'word' }) => {
         if (options.type === 'word') {
-          const rangeLike = expandRng(dom, rng, [{ inline: 'span' }]);
+          const rangeLike = expandRng(dom, rng, [{ inline: 'span' }], {
+            includeTrailingSpace: false,
+            expandToBlock: false
+          });
           const newRange = dom.createRng();
           newRange.setStart(rangeLike.startContainer, rangeLike.startOffset);
           newRange.setEnd(rangeLike.endContainer, rangeLike.endOffset);
@@ -10500,8 +10861,6 @@
       return inBody(element) ? dom.getBoundingClientRect().height : dom.offsetHeight;
     });
     const get$2 = element => api.get(element);
-
-    const getDocument = () => SugarElement.fromDom(document);
 
     const walkUp = (navigation, doc) => {
       const frame = navigation.view(doc);
@@ -10699,323 +11058,6 @@
     const scrollRangeIntoView = (editor, rng, alignToTop) => {
       const scroller = editor.inline ? rangeIntoWindow : rangeIntoFrame;
       scroller(editor, rng, alignToTop);
-    };
-
-    const focus$1 = (element, preventScroll = false) => element.dom.focus({ preventScroll });
-    const hasFocus$1 = element => {
-      const root = getRootNode(element).dom;
-      return element.dom === root.activeElement;
-    };
-    const active$1 = (root = getDocument()) => Optional.from(root.dom.activeElement).map(SugarElement.fromDom);
-    const search = element => active$1(getRootNode(element)).filter(e => element.dom.contains(e.dom));
-
-    const clamp$1 = (offset, element) => {
-      const max = isText$c(element) ? get$3(element).length : children$1(element).length + 1;
-      if (offset > max) {
-        return max;
-      } else if (offset < 0) {
-        return 0;
-      }
-      return offset;
-    };
-    const normalizeRng = rng => SimSelection.range(rng.start, clamp$1(rng.soffset, rng.start), rng.finish, clamp$1(rng.foffset, rng.finish));
-    const isOrContains = (root, elm) => !isRestrictedNode(elm.dom) && (contains(root, elm) || eq(root, elm));
-    const isRngInRoot = root => rng => isOrContains(root, rng.start) && isOrContains(root, rng.finish);
-    const shouldStore = editor => editor.inline || Env.browser.isFirefox();
-    const nativeRangeToSelectionRange = r => SimSelection.range(SugarElement.fromDom(r.startContainer), r.startOffset, SugarElement.fromDom(r.endContainer), r.endOffset);
-    const readRange = win => {
-      const selection = win.getSelection();
-      const rng = !selection || selection.rangeCount === 0 ? Optional.none() : Optional.from(selection.getRangeAt(0));
-      return rng.map(nativeRangeToSelectionRange);
-    };
-    const getBookmark$1 = root => {
-      const win = defaultView(root);
-      return readRange(win.dom).filter(isRngInRoot(root));
-    };
-    const validate = (root, bookmark) => Optional.from(bookmark).filter(isRngInRoot(root)).map(normalizeRng);
-    const bookmarkToNativeRng = bookmark => {
-      const rng = document.createRange();
-      try {
-        rng.setStart(bookmark.start.dom, bookmark.soffset);
-        rng.setEnd(bookmark.finish.dom, bookmark.foffset);
-        return Optional.some(rng);
-      } catch (_) {
-        return Optional.none();
-      }
-    };
-    const store = editor => {
-      const newBookmark = shouldStore(editor) ? getBookmark$1(SugarElement.fromDom(editor.getBody())) : Optional.none();
-      editor.bookmark = newBookmark.isSome() ? newBookmark : editor.bookmark;
-    };
-    const getRng = editor => {
-      const bookmark = editor.bookmark ? editor.bookmark : Optional.none();
-      return bookmark.bind(x => validate(SugarElement.fromDom(editor.getBody()), x)).bind(bookmarkToNativeRng);
-    };
-    const restore = editor => {
-      getRng(editor).each(rng => editor.selection.setRng(rng));
-    };
-
-    const isEditorUIElement$1 = elm => {
-      const className = elm.className.toString();
-      return className.indexOf('tox-') !== -1 || className.indexOf('mce-') !== -1;
-    };
-    const FocusManager = { isEditorUIElement: isEditorUIElement$1 };
-
-    const wrappedSetTimeout = (callback, time) => {
-      if (!isNumber(time)) {
-        time = 0;
-      }
-      return setTimeout(callback, time);
-    };
-    const wrappedSetInterval = (callback, time) => {
-      if (!isNumber(time)) {
-        time = 0;
-      }
-      return setInterval(callback, time);
-    };
-    const Delay = {
-      setEditorTimeout: (editor, callback, time) => {
-        return wrappedSetTimeout(() => {
-          if (!editor.removed) {
-            callback();
-          }
-        }, time);
-      },
-      setEditorInterval: (editor, callback, time) => {
-        const timer = wrappedSetInterval(() => {
-          if (!editor.removed) {
-            callback();
-          } else {
-            clearInterval(timer);
-          }
-        }, time);
-        return timer;
-      }
-    };
-
-    const isManualNodeChange = e => {
-      return e.type === 'nodechange' && e.selectionChange;
-    };
-    const registerPageMouseUp = (editor, throttledStore) => {
-      const mouseUpPage = () => {
-        throttledStore.throttle();
-      };
-      DOMUtils.DOM.bind(document, 'mouseup', mouseUpPage);
-      editor.on('remove', () => {
-        DOMUtils.DOM.unbind(document, 'mouseup', mouseUpPage);
-      });
-    };
-    const registerMouseUp = (editor, throttledStore) => {
-      editor.on('mouseup touchend', _e => {
-        throttledStore.throttle();
-      });
-    };
-    const registerEditorEvents = (editor, throttledStore) => {
-      registerMouseUp(editor, throttledStore);
-      editor.on('keyup NodeChange AfterSetSelectionRange', e => {
-        if (!isManualNodeChange(e)) {
-          store(editor);
-        }
-      });
-    };
-    const register$6 = editor => {
-      const throttledStore = first$1(() => {
-        store(editor);
-      }, 0);
-      editor.on('init', () => {
-        if (editor.inline) {
-          registerPageMouseUp(editor, throttledStore);
-        }
-        registerEditorEvents(editor, throttledStore);
-      });
-      editor.on('remove', () => {
-        throttledStore.cancel();
-      });
-    };
-
-    let documentFocusInHandler;
-    const DOM$9 = DOMUtils.DOM;
-    const isEditorUIElement = elm => {
-      return isElement$6(elm) && FocusManager.isEditorUIElement(elm);
-    };
-    const isEditorContentAreaElement = elm => {
-      const classList = elm.classList;
-      if (classList !== undefined) {
-        return classList.contains('tox-edit-area') || classList.contains('tox-edit-area__iframe') || classList.contains('mce-content-body');
-      } else {
-        return false;
-      }
-    };
-    const isUIElement = (editor, elm) => {
-      const customSelector = getCustomUiSelector(editor);
-      const parent = DOM$9.getParent(elm, elm => {
-        return isEditorUIElement(elm) || (customSelector ? editor.dom.is(elm, customSelector) : false);
-      });
-      return parent !== null;
-    };
-    const getActiveElement = editor => {
-      try {
-        const root = getRootNode(SugarElement.fromDom(editor.getElement()));
-        return active$1(root).fold(() => document.body, x => x.dom);
-      } catch (ex) {
-        return document.body;
-      }
-    };
-    const registerEvents$1 = (editorManager, e) => {
-      const editor = e.editor;
-      register$6(editor);
-      const toggleContentAreaOnFocus = (editor, fn) => {
-        if (shouldHighlightOnFocus(editor) && editor.inline !== true) {
-          const contentArea = SugarElement.fromDom(editor.getContainer());
-          fn(contentArea, 'tox-edit-focus');
-        }
-      };
-      editor.on('focusin', () => {
-        const focusedEditor = editorManager.focusedEditor;
-        if (isEditorContentAreaElement(getActiveElement(editor))) {
-          toggleContentAreaOnFocus(editor, add$2);
-        }
-        if (focusedEditor !== editor) {
-          if (focusedEditor) {
-            focusedEditor.dispatch('blur', { focusedEditor: editor });
-          }
-          editorManager.setActive(editor);
-          editorManager.focusedEditor = editor;
-          editor.dispatch('focus', { blurredEditor: focusedEditor });
-          editor.focus(true);
-        }
-      });
-      editor.on('focusout', () => {
-        Delay.setEditorTimeout(editor, () => {
-          const focusedEditor = editorManager.focusedEditor;
-          if (!isEditorContentAreaElement(getActiveElement(editor)) || focusedEditor !== editor) {
-            toggleContentAreaOnFocus(editor, remove$6);
-          }
-          if (!isUIElement(editor, getActiveElement(editor)) && focusedEditor === editor) {
-            editor.dispatch('blur', { focusedEditor: null });
-            editorManager.focusedEditor = null;
-          }
-        });
-      });
-      if (!documentFocusInHandler) {
-        documentFocusInHandler = e => {
-          const activeEditor = editorManager.activeEditor;
-          if (activeEditor) {
-            getOriginalEventTarget(e).each(target => {
-              const elem = target;
-              if (elem.ownerDocument === document) {
-                if (elem !== document.body && !isUIElement(activeEditor, elem) && editorManager.focusedEditor === activeEditor) {
-                  activeEditor.dispatch('blur', { focusedEditor: null });
-                  editorManager.focusedEditor = null;
-                }
-              }
-            });
-          }
-        };
-        DOM$9.bind(document, 'focusin', documentFocusInHandler);
-      }
-    };
-    const unregisterDocumentEvents = (editorManager, e) => {
-      if (editorManager.focusedEditor === e.editor) {
-        editorManager.focusedEditor = null;
-      }
-      if (!editorManager.activeEditor && documentFocusInHandler) {
-        DOM$9.unbind(document, 'focusin', documentFocusInHandler);
-        documentFocusInHandler = null;
-      }
-    };
-    const setup$w = editorManager => {
-      editorManager.on('AddEditor', curry(registerEvents$1, editorManager));
-      editorManager.on('RemoveEditor', curry(unregisterDocumentEvents, editorManager));
-    };
-
-    const getContentEditableHost = (editor, node) => editor.dom.getParent(node, node => editor.dom.getContentEditable(node) === 'true');
-    const getCollapsedNode = rng => rng.collapsed ? Optional.from(getNode$1(rng.startContainer, rng.startOffset)).map(SugarElement.fromDom) : Optional.none();
-    const getFocusInElement = (root, rng) => getCollapsedNode(rng).bind(node => {
-      if (isTableSection(node)) {
-        return Optional.some(node);
-      } else if (!contains(root, node)) {
-        return Optional.some(root);
-      } else {
-        return Optional.none();
-      }
-    });
-    const normalizeSelection = (editor, rng) => {
-      getFocusInElement(SugarElement.fromDom(editor.getBody()), rng).bind(elm => {
-        return firstPositionIn(elm.dom);
-      }).fold(() => {
-        editor.selection.normalize();
-      }, caretPos => editor.selection.setRng(caretPos.toRange()));
-    };
-    const focusBody = body => {
-      if (body.setActive) {
-        try {
-          body.setActive();
-        } catch (ex) {
-          body.focus();
-        }
-      } else {
-        body.focus();
-      }
-    };
-    const hasElementFocus = elm => hasFocus$1(elm) || search(elm).isSome();
-    const hasIframeFocus = editor => isNonNullable(editor.iframeElement) && hasFocus$1(SugarElement.fromDom(editor.iframeElement));
-    const hasInlineFocus = editor => {
-      const rawBody = editor.getBody();
-      return rawBody && hasElementFocus(SugarElement.fromDom(rawBody));
-    };
-    const hasUiFocus = editor => {
-      const dos = getRootNode(SugarElement.fromDom(editor.getElement()));
-      return active$1(dos).filter(elem => !isEditorContentAreaElement(elem.dom) && isUIElement(editor, elem.dom)).isSome();
-    };
-    const hasFocus = editor => editor.inline ? hasInlineFocus(editor) : hasIframeFocus(editor);
-    const hasEditorOrUiFocus = editor => hasFocus(editor) || hasUiFocus(editor);
-    const focusEditor = editor => {
-      const selection = editor.selection;
-      const body = editor.getBody();
-      let rng = selection.getRng();
-      editor.quirks.refreshContentEditable();
-      const restoreBookmark = editor => {
-        getRng(editor).each(bookmarkRng => {
-          editor.selection.setRng(bookmarkRng);
-          rng = bookmarkRng;
-        });
-      };
-      if (!hasFocus(editor) && editor.hasEditableRoot()) {
-        restoreBookmark(editor);
-      }
-      const contentEditableHost = getContentEditableHost(editor, selection.getNode());
-      if (contentEditableHost && editor.dom.isChildOf(contentEditableHost, body)) {
-        focusBody(contentEditableHost);
-        if (!editor.hasEditableRoot()) {
-          restoreBookmark(editor);
-        }
-        normalizeSelection(editor, rng);
-        activateEditor(editor);
-        return;
-      }
-      if (!editor.inline) {
-        if (!Env.browser.isOpera()) {
-          focusBody(body);
-        }
-        editor.getWin().focus();
-      }
-      if (Env.browser.isFirefox() || editor.inline) {
-        focusBody(body);
-        normalizeSelection(editor, rng);
-      }
-      activateEditor(editor);
-    };
-    const activateEditor = editor => editor.editorManager.setActive(editor);
-    const focus = (editor, skipFocus) => {
-      if (editor.removed) {
-        return;
-      }
-      if (skipFocus) {
-        activateEditor(editor);
-      } else {
-        focusEditor(editor);
-      }
     };
 
     const isEditableRange = (dom, rng) => {
@@ -11511,7 +11553,7 @@
       const doc = editor.getDoc();
       const dos = getRootNode(SugarElement.fromDom(editor.getBody()));
       const offscreenDiv = SugarElement.fromTag('div', doc);
-      set$3(offscreenDiv, 'data-mce-bogus', 'all');
+      set$4(offscreenDiv, 'data-mce-bogus', 'all');
       setAll(offscreenDiv, {
         position: 'fixed',
         left: '-9999999px',
@@ -12003,7 +12045,7 @@
         return false;
       }
     };
-    const normalizeNbsps = (root, pos, schema) => {
+    const normalizeNbsps$1 = (root, pos, schema) => {
       const container = pos.container();
       if (!isText$b(container)) {
         return Optional.none();
@@ -12021,7 +12063,7 @@
     const normalizeNbspsInEditor = editor => {
       const root = SugarElement.fromDom(editor.getBody());
       if (editor.selection.isCollapsed()) {
-        normalizeNbsps(root, CaretPosition.fromRangeStart(editor.selection.getRng()), editor.schema).each(pos => {
+        normalizeNbsps$1(root, CaretPosition.fromRangeStart(editor.selection.getRng()), editor.schema).each(pos => {
           editor.selection.setRng(pos.toRange());
         });
       }
@@ -12456,7 +12498,7 @@
         editor.selection.collapse(true);
       }
       if (selectedCells.length > 1 && exists(selectedCells, cell => eq(cell, selectedNode))) {
-        set$3(selectedNode, 'data-mce-selected', '1');
+        set$4(selectedNode, 'data-mce-selected', '1');
       }
     };
     const emptySingleTableCells = (editor, cells, outsideDetails) => Optional.some(() => {
@@ -13059,14 +13101,20 @@
         return false;
       }
     };
+    const isEditableEmptyBlock = (dom, node) => {
+      if (dom.isBlock(node) && dom.isEditable(node)) {
+        const childNodes = node.childNodes;
+        return childNodes.length === 1 && isBr$6(childNodes[0]) || childNodes.length === 0;
+      } else {
+        return false;
+      }
+    };
     const validInsertion = (editor, value, parentNode) => {
       var _a;
       if (parentNode.getAttribute('data-mce-bogus') === 'all') {
         (_a = parentNode.parentNode) === null || _a === void 0 ? void 0 : _a.insertBefore(editor.dom.createFragment(value), parentNode);
       } else {
-        const node = parentNode.firstChild;
-        const node2 = parentNode.lastChild;
-        if (!node || node === node2 && node.nodeName === 'BR') {
+        if (isEditableEmptyBlock(editor.dom, parentNode)) {
           editor.dom.setHTML(parentNode, value);
         } else {
           editor.selection.setContent(value, { no_events: true });
@@ -13246,6 +13294,9 @@
       if (node && node.attr('id') === 'mce_marker') {
         const marker = node;
         for (node = node.prev; node; node = node.walk(true)) {
+          if (node.name === 'table') {
+            break;
+          }
           if (node.type === 3 || !dom.isBlock(node.name)) {
             if (node.parent && editor.schema.isValidChild(node.parent.name, 'span')) {
               node.parent.insert(marker, node, node.name === 'br');
@@ -13669,6 +13720,35 @@
         return Optional.none();
       }
     };
+    const normalizeNbsps = node => set(node, get$3(node).replace(new RegExp(`${ nbsp }$`), ' '));
+    const normalizeNbspsBetween = (editor, caretContainer) => {
+      const handler = () => {
+        if (caretContainer !== null && !editor.dom.isEmpty(caretContainer)) {
+          prevSibling(SugarElement.fromDom(caretContainer)).each(node => {
+            if (isText$c(node)) {
+              normalizeNbsps(node);
+            } else {
+              descendant$2(node, e => isText$c(e)).each(textNode => {
+                if (isText$c(textNode)) {
+                  normalizeNbsps(textNode);
+                }
+              });
+            }
+          });
+        }
+      };
+      editor.once('input', e => {
+        if (e.data && !isWhiteSpace(e.data)) {
+          if (!e.isComposing) {
+            handler();
+          } else {
+            editor.once('compositionend', () => {
+              handler();
+            });
+          }
+        }
+      });
+    };
     const applyCaretFormat = (editor, name, vars) => {
       let caretContainer;
       const selection = editor.selection;
@@ -13696,6 +13776,7 @@
           textNode = caretContainer.firstChild;
           selectionRng.insertNode(caretContainer);
           offset = 1;
+          normalizeNbspsBetween(editor, caretContainer);
           editor.formatter.apply(name, vars, caretContainer);
         } else {
           editor.formatter.apply(name, vars, caretContainer);
@@ -13740,7 +13821,7 @@
       if (hasContentAfter) {
         const bookmark = selection.getBookmark();
         rng.collapse(true);
-        let expandedRng = expandRng(dom, rng, formatList, true);
+        let expandedRng = expandRng(dom, rng, formatList, { includeTrailingSpace: true });
         expandedRng = split(expandedRng);
         editor.formatter.remove(name, vars, expandedRng, similar);
         selection.moveToBookmark(bookmark);
@@ -13759,6 +13840,7 @@
           removeCaretContainerNode(editor, caretContainer, isNonNullable(caretContainer));
         }
         selection.setCursorLocation(caretTextNode, 1);
+        normalizeNbspsBetween(editor, newCaretContainer);
         if (dom.isEmpty(formatNode)) {
           dom.remove(formatNode);
         }
@@ -14301,7 +14383,7 @@
       const removeRngStyle = rng => {
         let startContainer;
         let endContainer;
-        let expandedRng = expandRng(dom, rng, formatList, rng.collapsed);
+        let expandedRng = expandRng(dom, rng, formatList, { includeTrailingSpace: rng.collapsed });
         if (format.split) {
           expandedRng = split(expandedRng);
           startContainer = getContainer(ed, expandedRng, true);
@@ -14957,13 +15039,21 @@
       const matches = /([a-z0-9+\/=\s]+)/i.exec(data);
       return matches ? matches[1] : '';
     };
+    const decodeData = data => {
+      try {
+        return decodeURIComponent(data);
+      } catch (_a) {
+        return data;
+      }
+    };
     const parseDataUri = uri => {
       const [type, ...rest] = uri.split(',');
       const data = rest.join(',');
       const matches = /data:([^/]+\/[^;]+)(;.+)?/.exec(type);
       if (matches) {
         const base64Encoded = matches[2] === ';base64';
-        const extractedData = base64Encoded ? extractBase64Data(data) : decodeURIComponent(data);
+        const decodedData = decodeData(data);
+        const extractedData = base64Encoded ? extractBase64Data(decodedData) : decodedData;
         return Optional.some({
           type: matches[1],
           data: extractedData,
@@ -14978,7 +15068,7 @@
       if (base64Encoded) {
         try {
           str = atob(data);
-        } catch (e) {
+        } catch (_a) {
           return Optional.none();
         }
       }
@@ -15230,14 +15320,24 @@
       }
     };
 
-    const {entries, setPrototypeOf, isFrozen, getPrototypeOf, getOwnPropertyDescriptor} = Object;
-    let {freeze, seal, create: create$7} = Object;
-    let {apply, construct} = typeof Reflect !== 'undefined' && Reflect;
-    if (!apply) {
-      apply = function apply(fun, thisValue, args) {
-        return fun.apply(thisValue, args);
-      };
-    }
+    /*! @license DOMPurify 3.2.4 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.2.4/LICENSE */
+
+    const {
+      entries,
+      setPrototypeOf,
+      isFrozen,
+      getPrototypeOf,
+      getOwnPropertyDescriptor
+    } = Object;
+    let {
+      freeze,
+      seal,
+      create: create$7
+    } = Object; // eslint-disable-line import/no-mutable-exports
+    let {
+      apply,
+      construct
+    } = typeof Reflect !== 'undefined' && Reflect;
     if (!freeze) {
       freeze = function freeze(x) {
         return x;
@@ -15248,22 +15348,36 @@
         return x;
       };
     }
+    if (!apply) {
+      apply = function apply(fun, thisValue, args) {
+        return fun.apply(thisValue, args);
+      };
+    }
     if (!construct) {
       construct = function construct(Func, args) {
         return new Func(...args);
       };
     }
     const arrayForEach = unapply(Array.prototype.forEach);
+    const arrayLastIndexOf = unapply(Array.prototype.lastIndexOf);
     const arrayPop = unapply(Array.prototype.pop);
     const arrayPush = unapply(Array.prototype.push);
+    const arraySplice = unapply(Array.prototype.splice);
     const stringToLowerCase = unapply(String.prototype.toLowerCase);
     const stringToString = unapply(String.prototype.toString);
     const stringMatch = unapply(String.prototype.match);
     const stringReplace = unapply(String.prototype.replace);
     const stringIndexOf = unapply(String.prototype.indexOf);
     const stringTrim = unapply(String.prototype.trim);
+    const objectHasOwnProperty = unapply(Object.prototype.hasOwnProperty);
     const regExpTest = unapply(RegExp.prototype.test);
     const typeErrorCreate = unconstruct(TypeError);
+    /**
+     * Creates a new function that calls the given function with a specified thisArg and arguments.
+     *
+     * @param func - The function to be wrapped and called.
+     * @returns A new function that calls the given function with a specified thisArg and arguments.
+     */
     function unapply(func) {
       return function (thisArg) {
         for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -15272,6 +15386,12 @@
         return apply(func, thisArg, args);
       };
     }
+    /**
+     * Creates a new function that constructs an instance of the given constructor function with the provided arguments.
+     *
+     * @param func - The constructor function to be wrapped and called.
+     * @returns A new function that constructs an instance of the given constructor function with the provided arguments.
+     */
     function unconstruct(func) {
       return function () {
         for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -15280,10 +15400,20 @@
         return construct(func, args);
       };
     }
-    function addToSet(set, array, transformCaseFunc) {
-      var _transformCaseFunc;
-      transformCaseFunc = (_transformCaseFunc = transformCaseFunc) !== null && _transformCaseFunc !== void 0 ? _transformCaseFunc : stringToLowerCase;
+    /**
+     * Add properties to a lookup table
+     *
+     * @param set - The set to which elements will be added.
+     * @param array - The array containing elements to be added to the set.
+     * @param transformCaseFunc - An optional function to transform the case of each element before adding to the set.
+     * @returns The modified set with added elements.
+     */
+    function addToSet(set, array) {
+      let transformCaseFunc = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : stringToLowerCase;
       if (setPrototypeOf) {
+        // Make 'in' and truthy checks like Boolean(set.constructor)
+        // independent of any properties defined on Object.prototype.
+        // Prevent prototype setters from intercepting set as a this value.
         setPrototypeOf(set, null);
       }
       let l = array.length;
@@ -15292,6 +15422,7 @@
         if (typeof element === 'string') {
           const lcElement = transformCaseFunc(element);
           if (lcElement !== element) {
+            // Config presets (e.g. tags.js, attrs.js) are immutable.
             if (!isFrozen(array)) {
               array[l] = lcElement;
             }
@@ -15302,13 +15433,50 @@
       }
       return set;
     }
+    /**
+     * Clean up an array to harden against CSPP
+     *
+     * @param array - The array to be cleaned.
+     * @returns The cleaned version of the array
+     */
+    function cleanArray(array) {
+      for (let index = 0; index < array.length; index++) {
+        const isPropertyExist = objectHasOwnProperty(array, index);
+        if (!isPropertyExist) {
+          array[index] = null;
+        }
+      }
+      return array;
+    }
+    /**
+     * Shallow clone an object
+     *
+     * @param object - The object to be cloned.
+     * @returns A new object that copies the original.
+     */
     function clone(object) {
       const newObject = create$7(null);
       for (const [property, value] of entries(object)) {
-        newObject[property] = value;
+        const isPropertyExist = objectHasOwnProperty(object, property);
+        if (isPropertyExist) {
+          if (Array.isArray(value)) {
+            newObject[property] = cleanArray(value);
+          } else if (value && typeof value === 'object' && value.constructor === Object) {
+            newObject[property] = clone(value);
+          } else {
+            newObject[property] = value;
+          }
+        }
       }
       return newObject;
     }
+    /**
+     * This method automatically checks if the prop is function or getter and behaves accordingly.
+     *
+     * @param object - The object to look up the getter function in its prototype chain.
+     * @param prop - The property name for which to find the getter function.
+     * @returns The getter function found in the prototype chain or a fallback function.
+     */
     function lookupGetter(object, prop) {
       while (object !== null) {
         const desc = getOwnPropertyDescriptor(object, prop);
@@ -15322,660 +15490,95 @@
         }
         object = getPrototypeOf(object);
       }
-      function fallbackValue(element) {
-        console.warn('fallback value for', element);
+      function fallbackValue() {
         return null;
       }
       return fallbackValue;
     }
-    const html$1 = freeze([
-      'a',
-      'abbr',
-      'acronym',
-      'address',
-      'area',
-      'article',
-      'aside',
-      'audio',
-      'b',
-      'bdi',
-      'bdo',
-      'big',
-      'blink',
-      'blockquote',
-      'body',
-      'br',
-      'button',
-      'canvas',
-      'caption',
-      'center',
-      'cite',
-      'code',
-      'col',
-      'colgroup',
-      'content',
-      'data',
-      'datalist',
-      'dd',
-      'decorator',
-      'del',
-      'details',
-      'dfn',
-      'dialog',
-      'dir',
-      'div',
-      'dl',
-      'dt',
-      'element',
-      'em',
-      'fieldset',
-      'figcaption',
-      'figure',
-      'font',
-      'footer',
-      'form',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'head',
-      'header',
-      'hgroup',
-      'hr',
-      'html',
-      'i',
-      'img',
-      'input',
-      'ins',
-      'kbd',
-      'label',
-      'legend',
-      'li',
-      'main',
-      'map',
-      'mark',
-      'marquee',
-      'menu',
-      'menuitem',
-      'meter',
-      'nav',
-      'nobr',
-      'ol',
-      'optgroup',
-      'option',
-      'output',
-      'p',
-      'picture',
-      'pre',
-      'progress',
-      'q',
-      'rp',
-      'rt',
-      'ruby',
-      's',
-      'samp',
-      'section',
-      'select',
-      'shadow',
-      'small',
-      'source',
-      'spacer',
-      'span',
-      'strike',
-      'strong',
-      'style',
-      'sub',
-      'summary',
-      'sup',
-      'table',
-      'tbody',
-      'td',
-      'template',
-      'textarea',
-      'tfoot',
-      'th',
-      'thead',
-      'time',
-      'tr',
-      'track',
-      'tt',
-      'u',
-      'ul',
-      'var',
-      'video',
-      'wbr'
-    ]);
-    const svg$1 = freeze([
-      'svg',
-      'a',
-      'altglyph',
-      'altglyphdef',
-      'altglyphitem',
-      'animatecolor',
-      'animatemotion',
-      'animatetransform',
-      'circle',
-      'clippath',
-      'defs',
-      'desc',
-      'ellipse',
-      'filter',
-      'font',
-      'g',
-      'glyph',
-      'glyphref',
-      'hkern',
-      'image',
-      'line',
-      'lineargradient',
-      'marker',
-      'mask',
-      'metadata',
-      'mpath',
-      'path',
-      'pattern',
-      'polygon',
-      'polyline',
-      'radialgradient',
-      'rect',
-      'stop',
-      'style',
-      'switch',
-      'symbol',
-      'text',
-      'textpath',
-      'title',
-      'tref',
-      'tspan',
-      'view',
-      'vkern'
-    ]);
-    const svgFilters = freeze([
-      'feBlend',
-      'feColorMatrix',
-      'feComponentTransfer',
-      'feComposite',
-      'feConvolveMatrix',
-      'feDiffuseLighting',
-      'feDisplacementMap',
-      'feDistantLight',
-      'feDropShadow',
-      'feFlood',
-      'feFuncA',
-      'feFuncB',
-      'feFuncG',
-      'feFuncR',
-      'feGaussianBlur',
-      'feImage',
-      'feMerge',
-      'feMergeNode',
-      'feMorphology',
-      'feOffset',
-      'fePointLight',
-      'feSpecularLighting',
-      'feSpotLight',
-      'feTile',
-      'feTurbulence'
-    ]);
-    const svgDisallowed = freeze([
-      'animate',
-      'color-profile',
-      'cursor',
-      'discard',
-      'font-face',
-      'font-face-format',
-      'font-face-name',
-      'font-face-src',
-      'font-face-uri',
-      'foreignobject',
-      'hatch',
-      'hatchpath',
-      'mesh',
-      'meshgradient',
-      'meshpatch',
-      'meshrow',
-      'missing-glyph',
-      'script',
-      'set',
-      'solidcolor',
-      'unknown',
-      'use'
-    ]);
-    const mathMl$1 = freeze([
-      'math',
-      'menclose',
-      'merror',
-      'mfenced',
-      'mfrac',
-      'mglyph',
-      'mi',
-      'mlabeledtr',
-      'mmultiscripts',
-      'mn',
-      'mo',
-      'mover',
-      'mpadded',
-      'mphantom',
-      'mroot',
-      'mrow',
-      'ms',
-      'mspace',
-      'msqrt',
-      'mstyle',
-      'msub',
-      'msup',
-      'msubsup',
-      'mtable',
-      'mtd',
-      'mtext',
-      'mtr',
-      'munder',
-      'munderover',
-      'mprescripts'
-    ]);
-    const mathMlDisallowed = freeze([
-      'maction',
-      'maligngroup',
-      'malignmark',
-      'mlongdiv',
-      'mscarries',
-      'mscarry',
-      'msgroup',
-      'mstack',
-      'msline',
-      'msrow',
-      'semantics',
-      'annotation',
-      'annotation-xml',
-      'mprescripts',
-      'none'
-    ]);
+
+    const html$1 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
+    const svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'view', 'vkern']);
+    const svgFilters = freeze(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']);
+    // List of SVG elements that are disallowed by default.
+    // We still need to know them so that we can do namespace
+    // checks properly in case one wants to add them to
+    // allow-list.
+    const svgDisallowed = freeze(['animate', 'color-profile', 'cursor', 'discard', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignobject', 'hatch', 'hatchpath', 'mesh', 'meshgradient', 'meshpatch', 'meshrow', 'missing-glyph', 'script', 'set', 'solidcolor', 'unknown', 'use']);
+    const mathMl$1 = freeze(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msup', 'msubsup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'mprescripts']);
+    // Similarly to SVG, we want to know all MathML elements,
+    // even those that we disallow by default.
+    const mathMlDisallowed = freeze(['maction', 'maligngroup', 'malignmark', 'mlongdiv', 'mscarries', 'mscarry', 'msgroup', 'mstack', 'msline', 'msrow', 'semantics', 'annotation', 'annotation-xml', 'mprescripts', 'none']);
     const text = freeze(['#text']);
-    const html = freeze([
-      'accept',
-      'action',
-      'align',
-      'alt',
-      'autocapitalize',
-      'autocomplete',
-      'autopictureinpicture',
-      'autoplay',
-      'background',
-      'bgcolor',
-      'border',
-      'capture',
-      'cellpadding',
-      'cellspacing',
-      'checked',
-      'cite',
-      'class',
-      'clear',
-      'color',
-      'cols',
-      'colspan',
-      'controls',
-      'controlslist',
-      'coords',
-      'crossorigin',
-      'datetime',
-      'decoding',
-      'default',
-      'dir',
-      'disabled',
-      'disablepictureinpicture',
-      'disableremoteplayback',
-      'download',
-      'draggable',
-      'enctype',
-      'enterkeyhint',
-      'face',
-      'for',
-      'headers',
-      'height',
-      'hidden',
-      'high',
-      'href',
-      'hreflang',
-      'id',
-      'inputmode',
-      'integrity',
-      'ismap',
-      'kind',
-      'label',
-      'lang',
-      'list',
-      'loading',
-      'loop',
-      'low',
-      'max',
-      'maxlength',
-      'media',
-      'method',
-      'min',
-      'minlength',
-      'multiple',
-      'muted',
-      'name',
-      'nonce',
-      'noshade',
-      'novalidate',
-      'nowrap',
-      'open',
-      'optimum',
-      'pattern',
-      'placeholder',
-      'playsinline',
-      'poster',
-      'preload',
-      'pubdate',
-      'radiogroup',
-      'readonly',
-      'rel',
-      'required',
-      'rev',
-      'reversed',
-      'role',
-      'rows',
-      'rowspan',
-      'spellcheck',
-      'scope',
-      'selected',
-      'shape',
-      'size',
-      'sizes',
-      'span',
-      'srclang',
-      'start',
-      'src',
-      'srcset',
-      'step',
-      'style',
-      'summary',
-      'tabindex',
-      'title',
-      'translate',
-      'type',
-      'usemap',
-      'valign',
-      'value',
-      'width',
-      'xmlns',
-      'slot'
-    ]);
-    const svg = freeze([
-      'accent-height',
-      'accumulate',
-      'additive',
-      'alignment-baseline',
-      'ascent',
-      'attributename',
-      'attributetype',
-      'azimuth',
-      'basefrequency',
-      'baseline-shift',
-      'begin',
-      'bias',
-      'by',
-      'class',
-      'clip',
-      'clippathunits',
-      'clip-path',
-      'clip-rule',
-      'color',
-      'color-interpolation',
-      'color-interpolation-filters',
-      'color-profile',
-      'color-rendering',
-      'cx',
-      'cy',
-      'd',
-      'dx',
-      'dy',
-      'diffuseconstant',
-      'direction',
-      'display',
-      'divisor',
-      'dur',
-      'edgemode',
-      'elevation',
-      'end',
-      'fill',
-      'fill-opacity',
-      'fill-rule',
-      'filter',
-      'filterunits',
-      'flood-color',
-      'flood-opacity',
-      'font-family',
-      'font-size',
-      'font-size-adjust',
-      'font-stretch',
-      'font-style',
-      'font-variant',
-      'font-weight',
-      'fx',
-      'fy',
-      'g1',
-      'g2',
-      'glyph-name',
-      'glyphref',
-      'gradientunits',
-      'gradienttransform',
-      'height',
-      'href',
-      'id',
-      'image-rendering',
-      'in',
-      'in2',
-      'k',
-      'k1',
-      'k2',
-      'k3',
-      'k4',
-      'kerning',
-      'keypoints',
-      'keysplines',
-      'keytimes',
-      'lang',
-      'lengthadjust',
-      'letter-spacing',
-      'kernelmatrix',
-      'kernelunitlength',
-      'lighting-color',
-      'local',
-      'marker-end',
-      'marker-mid',
-      'marker-start',
-      'markerheight',
-      'markerunits',
-      'markerwidth',
-      'maskcontentunits',
-      'maskunits',
-      'max',
-      'mask',
-      'media',
-      'method',
-      'mode',
-      'min',
-      'name',
-      'numoctaves',
-      'offset',
-      'operator',
-      'opacity',
-      'order',
-      'orient',
-      'orientation',
-      'origin',
-      'overflow',
-      'paint-order',
-      'path',
-      'pathlength',
-      'patterncontentunits',
-      'patterntransform',
-      'patternunits',
-      'points',
-      'preservealpha',
-      'preserveaspectratio',
-      'primitiveunits',
-      'r',
-      'rx',
-      'ry',
-      'radius',
-      'refx',
-      'refy',
-      'repeatcount',
-      'repeatdur',
-      'restart',
-      'result',
-      'rotate',
-      'scale',
-      'seed',
-      'shape-rendering',
-      'specularconstant',
-      'specularexponent',
-      'spreadmethod',
-      'startoffset',
-      'stddeviation',
-      'stitchtiles',
-      'stop-color',
-      'stop-opacity',
-      'stroke-dasharray',
-      'stroke-dashoffset',
-      'stroke-linecap',
-      'stroke-linejoin',
-      'stroke-miterlimit',
-      'stroke-opacity',
-      'stroke',
-      'stroke-width',
-      'style',
-      'surfacescale',
-      'systemlanguage',
-      'tabindex',
-      'targetx',
-      'targety',
-      'transform',
-      'transform-origin',
-      'text-anchor',
-      'text-decoration',
-      'text-rendering',
-      'textlength',
-      'type',
-      'u1',
-      'u2',
-      'unicode',
-      'values',
-      'viewbox',
-      'visibility',
-      'version',
-      'vert-adv-y',
-      'vert-origin-x',
-      'vert-origin-y',
-      'width',
-      'word-spacing',
-      'wrap',
-      'writing-mode',
-      'xchannelselector',
-      'ychannelselector',
-      'x',
-      'x1',
-      'x2',
-      'xmlns',
-      'y',
-      'y1',
-      'y2',
-      'z',
-      'zoomandpan'
-    ]);
-    const mathMl = freeze([
-      'accent',
-      'accentunder',
-      'align',
-      'bevelled',
-      'close',
-      'columnsalign',
-      'columnlines',
-      'columnspan',
-      'denomalign',
-      'depth',
-      'dir',
-      'display',
-      'displaystyle',
-      'encoding',
-      'fence',
-      'frame',
-      'height',
-      'href',
-      'id',
-      'largeop',
-      'length',
-      'linethickness',
-      'lspace',
-      'lquote',
-      'mathbackground',
-      'mathcolor',
-      'mathsize',
-      'mathvariant',
-      'maxsize',
-      'minsize',
-      'movablelimits',
-      'notation',
-      'numalign',
-      'open',
-      'rowalign',
-      'rowlines',
-      'rowspacing',
-      'rowspan',
-      'rspace',
-      'rquote',
-      'scriptlevel',
-      'scriptminsize',
-      'scriptsizemultiplier',
-      'selection',
-      'separator',
-      'separators',
-      'stretchy',
-      'subscriptshift',
-      'supscriptshift',
-      'symmetric',
-      'voffset',
-      'width',
-      'xmlns'
-    ]);
-    const xml = freeze([
-      'xlink:href',
-      'xml:id',
-      'xlink:title',
-      'xml:space',
-      'xmlns:xlink'
-    ]);
-    const MUSTACHE_EXPR = seal(/\{\{[\w\W]*|[\w\W]*\}\}/gm);
+
+    const html = freeze(['accept', 'action', 'align', 'alt', 'autocapitalize', 'autocomplete', 'autopictureinpicture', 'autoplay', 'background', 'bgcolor', 'border', 'capture', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'controlslist', 'coords', 'crossorigin', 'datetime', 'decoding', 'default', 'dir', 'disabled', 'disablepictureinpicture', 'disableremoteplayback', 'download', 'draggable', 'enctype', 'enterkeyhint', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'inputmode', 'integrity', 'ismap', 'kind', 'label', 'lang', 'list', 'loading', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'muted', 'name', 'nonce', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'playsinline', 'popover', 'popovertarget', 'popovertargetaction', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'translate', 'type', 'usemap', 'valign', 'value', 'width', 'wrap', 'xmlns', 'slot']);
+    const svg = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'amplitude', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clippathunits', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'exponent', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'intercept', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'slope', 'specularconstant', 'specularexponent', 'spreadmethod', 'startoffset', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'systemlanguage', 'tabindex', 'tablevalues', 'targetx', 'targety', 'transform', 'transform-origin', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
+    const mathMl = freeze(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'encoding', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
+    const xml = freeze(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
+
+    // eslint-disable-next-line unicorn/better-regex
+    const MUSTACHE_EXPR = seal(/\{\{[\w\W]*|[\w\W]*\}\}/gm); // Specify template detection regex for SAFE_FOR_TEMPLATES mode
     const ERB_EXPR = seal(/<%[\w\W]*|[\w\W]*%>/gm);
-    const TMPLIT_EXPR = seal(/\${[\w\W]*}/gm);
-    const DATA_ATTR = seal(/^data-[\-\w.\u00B7-\uFFFF]/);
-    const ARIA_ATTR = seal(/^aria-[\-\w]+$/);
-    const IS_ALLOWED_URI = seal(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i);
+    const TMPLIT_EXPR = seal(/\$\{[\w\W]*/gm); // eslint-disable-line unicorn/better-regex
+    const DATA_ATTR = seal(/^data-[\-\w.\u00B7-\uFFFF]+$/); // eslint-disable-line no-useless-escape
+    const ARIA_ATTR = seal(/^aria-[\-\w]+$/); // eslint-disable-line no-useless-escape
+    const IS_ALLOWED_URI = seal(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i // eslint-disable-line no-useless-escape
+    );
     const IS_SCRIPT_OR_DATA = seal(/^(?:\w+script|data):/i);
-    const ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g);
+    const ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g // eslint-disable-line no-control-regex
+    );
     const DOCTYPE_NAME = seal(/^html$/i);
-    var EXPRESSIONS = Object.freeze({
+    const CUSTOM_ELEMENT = seal(/^[a-z][.\w]*(-[.\w]+)+$/i);
+
+    var EXPRESSIONS = /*#__PURE__*/Object.freeze({
       __proto__: null,
-      MUSTACHE_EXPR: MUSTACHE_EXPR,
-      ERB_EXPR: ERB_EXPR,
-      TMPLIT_EXPR: TMPLIT_EXPR,
-      DATA_ATTR: DATA_ATTR,
       ARIA_ATTR: ARIA_ATTR,
+      ATTR_WHITESPACE: ATTR_WHITESPACE,
+      CUSTOM_ELEMENT: CUSTOM_ELEMENT,
+      DATA_ATTR: DATA_ATTR,
+      DOCTYPE_NAME: DOCTYPE_NAME,
+      ERB_EXPR: ERB_EXPR,
       IS_ALLOWED_URI: IS_ALLOWED_URI,
       IS_SCRIPT_OR_DATA: IS_SCRIPT_OR_DATA,
-      ATTR_WHITESPACE: ATTR_WHITESPACE,
-      DOCTYPE_NAME: DOCTYPE_NAME
+      MUSTACHE_EXPR: MUSTACHE_EXPR,
+      TMPLIT_EXPR: TMPLIT_EXPR
     });
-    const getGlobal = () => typeof window === 'undefined' ? null : window;
+
+    /* eslint-disable @typescript-eslint/indent */
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
+    const NODE_TYPE = {
+      element: 1,
+      attribute: 2,
+      text: 3,
+      cdataSection: 4,
+      entityReference: 5,
+      // Deprecated
+      entityNode: 6,
+      // Deprecated
+      progressingInstruction: 7,
+      comment: 8,
+      document: 9,
+      documentType: 10,
+      documentFragment: 11,
+      notation: 12 // Deprecated
+    };
+    const getGlobal = function getGlobal() {
+      return typeof window === 'undefined' ? null : window;
+    };
+    /**
+     * Creates a no-op policy for internal use only.
+     * Don't export this function outside this module!
+     * @param trustedTypes The policy factory.
+     * @param purifyHostElement The Script element used to load DOMPurify (to determine policy name suffix).
+     * @return The policy created (or null, if Trusted Types
+     * are not supported or creating the policy failed).
+     */
     const _createTrustedTypesPolicy = function _createTrustedTypesPolicy(trustedTypes, purifyHostElement) {
       if (typeof trustedTypes !== 'object' || typeof trustedTypes.createPolicy !== 'function') {
         return null;
       }
+      // Allow the callers to control the unique policy name
+      // by adding a data-tt-policy-suffix to the script element with the DOMPurify.
+      // Policy creation with duplicate names throws in Trusted Types.
       let suffix = null;
       const ATTR_NAME = 'data-tt-policy-suffix';
       if (purifyHostElement && purifyHostElement.hasAttribute(ATTR_NAME)) {
@@ -15992,28 +15595,65 @@
           }
         });
       } catch (_) {
+        // Policy creation failed (most likely another DOMPurify script has
+        // already run). Skip creating the policy, as this will only cause errors
+        // if TT are enforced.
         console.warn('TrustedTypes policy ' + policyName + ' could not be created.');
         return null;
       }
     };
+    const _createHooksMap = function _createHooksMap() {
+      return {
+        afterSanitizeAttributes: [],
+        afterSanitizeElements: [],
+        afterSanitizeShadowDOM: [],
+        beforeSanitizeAttributes: [],
+        beforeSanitizeElements: [],
+        beforeSanitizeShadowDOM: [],
+        uponSanitizeAttribute: [],
+        uponSanitizeElement: [],
+        uponSanitizeShadowNode: []
+      };
+    };
     function createDOMPurify() {
       let window = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getGlobal();
       const DOMPurify = root => createDOMPurify(root);
-      DOMPurify.version = '3.0.5';
+      DOMPurify.version = '3.2.4';
       DOMPurify.removed = [];
-      if (!window || !window.document || window.document.nodeType !== 9) {
+      if (!window || !window.document || window.document.nodeType !== NODE_TYPE.document || !window.Element) {
+        // Not running in a browser, provide a factory function
+        // so that you can pass your own Window
         DOMPurify.isSupported = false;
         return DOMPurify;
       }
-      const originalDocument = window.document;
+      let {
+        document
+      } = window;
+      const originalDocument = document;
       const currentScript = originalDocument.currentScript;
-      let {document} = window;
-      const {DocumentFragment, HTMLTemplateElement, Node, Element, NodeFilter, NamedNodeMap = window.NamedNodeMap || window.MozNamedAttrMap, HTMLFormElement, DOMParser, trustedTypes} = window;
+      const {
+        DocumentFragment,
+        HTMLTemplateElement,
+        Node,
+        Element,
+        NodeFilter,
+        NamedNodeMap = window.NamedNodeMap || window.MozNamedAttrMap,
+        HTMLFormElement,
+        DOMParser,
+        trustedTypes
+      } = window;
       const ElementPrototype = Element.prototype;
       const cloneNode = lookupGetter(ElementPrototype, 'cloneNode');
+      const remove = lookupGetter(ElementPrototype, 'remove');
       const getNextSibling = lookupGetter(ElementPrototype, 'nextSibling');
       const getChildNodes = lookupGetter(ElementPrototype, 'childNodes');
       const getParentNode = lookupGetter(ElementPrototype, 'parentNode');
+      // As per issue #47, the web-components registry is inherited by a
+      // new document created via createHTMLDocument. As per the spec
+      // (http://w3c.github.io/webcomponents/spec/custom/#creating-and-passing-registries)
+      // a new empty registry is used when creating a template contents owner
+      // document, so we use that as our parent document to ensure nothing
+      // is inherited.
       if (typeof HTMLTemplateElement === 'function') {
         const template = document.createElement('template');
         if (template.content && template.content.ownerDocument) {
@@ -16022,28 +15662,50 @@
       }
       let trustedTypesPolicy;
       let emptyHTML = '';
-      const {implementation, createNodeIterator, createDocumentFragment, getElementsByTagName} = document;
-      const {importNode} = originalDocument;
-      let hooks = {};
+      const {
+        implementation,
+        createNodeIterator,
+        createDocumentFragment,
+        getElementsByTagName
+      } = document;
+      const {
+        importNode
+      } = originalDocument;
+      let hooks = _createHooksMap();
+      /**
+       * Expose whether this browser supports running the full DOMPurify.
+       */
       DOMPurify.isSupported = typeof entries === 'function' && typeof getParentNode === 'function' && implementation && implementation.createHTMLDocument !== undefined;
-      const {MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR, DATA_ATTR, ARIA_ATTR, IS_SCRIPT_OR_DATA, ATTR_WHITESPACE} = EXPRESSIONS;
-      let {IS_ALLOWED_URI: IS_ALLOWED_URI$1} = EXPRESSIONS;
+      const {
+        MUSTACHE_EXPR,
+        ERB_EXPR,
+        TMPLIT_EXPR,
+        DATA_ATTR,
+        ARIA_ATTR,
+        IS_SCRIPT_OR_DATA,
+        ATTR_WHITESPACE,
+        CUSTOM_ELEMENT
+      } = EXPRESSIONS;
+      let {
+        IS_ALLOWED_URI: IS_ALLOWED_URI$1
+      } = EXPRESSIONS;
+      /**
+       * We consider the elements and attributes below to be safe. Ideally
+       * don't add any new ones but feel free to remove unwanted ones.
+       */
+      /* allowed element names */
       let ALLOWED_TAGS = null;
-      const DEFAULT_ALLOWED_TAGS = addToSet({}, [
-        ...html$1,
-        ...svg$1,
-        ...svgFilters,
-        ...mathMl$1,
-        ...text
-      ]);
+      const DEFAULT_ALLOWED_TAGS = addToSet({}, [...html$1, ...svg$1, ...svgFilters, ...mathMl$1, ...text]);
+      /* Allowed attribute names */
       let ALLOWED_ATTR = null;
-      const DEFAULT_ALLOWED_ATTR = addToSet({}, [
-        ...html,
-        ...svg,
-        ...mathMl,
-        ...xml
-      ]);
-      let CUSTOM_ELEMENT_HANDLING = Object.seal(Object.create(null, {
+      const DEFAULT_ALLOWED_ATTR = addToSet({}, [...html, ...svg, ...mathMl, ...xml]);
+      /*
+       * Configure how DOMPurify should handle custom elements and their attributes as well as customized built-in elements.
+       * @property {RegExp|Function|null} tagNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any custom elements)
+       * @property {RegExp|Function|null} attributeNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any attributes not on the allow list)
+       * @property {boolean} allowCustomizedBuiltInElements allow custom elements derived from built-ins if they pass CUSTOM_ELEMENT_HANDLING.tagNameCheck. Default: `false`.
+       */
+      let CUSTOM_ELEMENT_HANDLING = Object.seal(create$7(null, {
         tagNameCheck: {
           writable: true,
           configurable: false,
@@ -16063,137 +15725,160 @@
           value: false
         }
       }));
+      /* Explicitly forbidden tags (overrides ALLOWED_TAGS/ADD_TAGS) */
       let FORBID_TAGS = null;
+      /* Explicitly forbidden attributes (overrides ALLOWED_ATTR/ADD_ATTR) */
       let FORBID_ATTR = null;
+      /* Decide if ARIA attributes are okay */
       let ALLOW_ARIA_ATTR = true;
+      /* Decide if custom data attributes are okay */
       let ALLOW_DATA_ATTR = true;
+      /* Decide if unknown protocols are okay */
       let ALLOW_UNKNOWN_PROTOCOLS = false;
+      /* Decide if self-closing tags in attributes are allowed.
+       * Usually removed due to a mXSS issue in jQuery 3.0 */
       let ALLOW_SELF_CLOSE_IN_ATTR = true;
+      /* Output should be safe for common template engines.
+       * This means, DOMPurify removes data attributes, mustaches and ERB
+       */
       let SAFE_FOR_TEMPLATES = false;
+      /* Output should be safe even for XML used within HTML and alike.
+       * This means, DOMPurify removes comments when containing risky content.
+       */
+      let SAFE_FOR_XML = true;
+      /* Decide if document with <html>... should be returned */
       let WHOLE_DOCUMENT = false;
+      /* Track whether config is already set on this instance of DOMPurify. */
       let SET_CONFIG = false;
+      /* Decide if all elements (e.g. style, script) must be children of
+       * document.body. By default, browsers might move them to document.head */
       let FORCE_BODY = false;
+      /* Decide if a DOM `HTMLBodyElement` should be returned, instead of a html
+       * string (or a TrustedHTML object if Trusted Types are supported).
+       * If `WHOLE_DOCUMENT` is enabled a `HTMLHtmlElement` will be returned instead
+       */
       let RETURN_DOM = false;
+      /* Decide if a DOM `DocumentFragment` should be returned, instead of a html
+       * string  (or a TrustedHTML object if Trusted Types are supported) */
       let RETURN_DOM_FRAGMENT = false;
+      /* Try to return a Trusted Type object instead of a string, return a string in
+       * case Trusted Types are not supported  */
       let RETURN_TRUSTED_TYPE = false;
+      /* Output should be free from DOM clobbering attacks?
+       * This sanitizes markups named with colliding, clobberable built-in DOM APIs.
+       */
       let SANITIZE_DOM = true;
+      /* Achieve full DOM Clobbering protection by isolating the namespace of named
+       * properties and JS variables, mitigating attacks that abuse the HTML/DOM spec rules.
+       *
+       * HTML/DOM spec rules that enable DOM Clobbering:
+       *   - Named Access on Window (§7.3.3)
+       *   - DOM Tree Accessors (§3.1.5)
+       *   - Form Element Parent-Child Relations (§4.10.3)
+       *   - Iframe srcdoc / Nested WindowProxies (§4.8.5)
+       *   - HTMLCollection (§4.2.10.2)
+       *
+       * Namespace isolation is implemented by prefixing `id` and `name` attributes
+       * with a constant string, i.e., `user-content-`
+       */
       let SANITIZE_NAMED_PROPS = false;
       const SANITIZE_NAMED_PROPS_PREFIX = 'user-content-';
+      /* Keep element content when removing element? */
       let KEEP_CONTENT = true;
+      /* If a `Node` is passed to sanitize(), then performs sanitization in-place instead
+       * of importing it into a new Document and returning a sanitized copy */
       let IN_PLACE = false;
+      /* Allow usage of profiles like html, svg and mathMl */
       let USE_PROFILES = {};
+      /* Tags to ignore content of when KEEP_CONTENT is true */
       let FORBID_CONTENTS = null;
-      const DEFAULT_FORBID_CONTENTS = addToSet({}, [
-        'annotation-xml',
-        'audio',
-        'colgroup',
-        'desc',
-        'foreignobject',
-        'head',
-        'iframe',
-        'math',
-        'mi',
-        'mn',
-        'mo',
-        'ms',
-        'mtext',
-        'noembed',
-        'noframes',
-        'noscript',
-        'plaintext',
-        'script',
-        'style',
-        'svg',
-        'template',
-        'thead',
-        'title',
-        'video',
-        'xmp'
-      ]);
+      const DEFAULT_FORBID_CONTENTS = addToSet({}, ['annotation-xml', 'audio', 'colgroup', 'desc', 'foreignobject', 'head', 'iframe', 'math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'noembed', 'noframes', 'noscript', 'plaintext', 'script', 'style', 'svg', 'template', 'thead', 'title', 'video', 'xmp']);
+      /* Tags that are safe for data: URIs */
       let DATA_URI_TAGS = null;
-      const DEFAULT_DATA_URI_TAGS = addToSet({}, [
-        'audio',
-        'video',
-        'img',
-        'source',
-        'image',
-        'track'
-      ]);
+      const DEFAULT_DATA_URI_TAGS = addToSet({}, ['audio', 'video', 'img', 'source', 'image', 'track']);
+      /* Attributes safe for values like "javascript:" */
       let URI_SAFE_ATTRIBUTES = null;
-      const DEFAULT_URI_SAFE_ATTRIBUTES = addToSet({}, [
-        'alt',
-        'class',
-        'for',
-        'id',
-        'label',
-        'name',
-        'pattern',
-        'placeholder',
-        'role',
-        'summary',
-        'title',
-        'value',
-        'style',
-        'xmlns'
-      ]);
+      const DEFAULT_URI_SAFE_ATTRIBUTES = addToSet({}, ['alt', 'class', 'for', 'id', 'label', 'name', 'pattern', 'placeholder', 'role', 'summary', 'title', 'value', 'style', 'xmlns']);
       const MATHML_NAMESPACE = 'http://www.w3.org/1998/Math/MathML';
       const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
       const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+      /* Document namespace */
       let NAMESPACE = HTML_NAMESPACE;
       let IS_EMPTY_INPUT = false;
+      /* Allowed XHTML+XML namespaces */
       let ALLOWED_NAMESPACES = null;
-      const DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [
-        MATHML_NAMESPACE,
-        SVG_NAMESPACE,
-        HTML_NAMESPACE
-      ], stringToString);
-      let PARSER_MEDIA_TYPE;
-      const SUPPORTED_PARSER_MEDIA_TYPES = [
-        'application/xhtml+xml',
-        'text/html'
-      ];
+      const DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [MATHML_NAMESPACE, SVG_NAMESPACE, HTML_NAMESPACE], stringToString);
+      let MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, ['mi', 'mo', 'mn', 'ms', 'mtext']);
+      let HTML_INTEGRATION_POINTS = addToSet({}, ['annotation-xml']);
+      // Certain elements are allowed in both SVG and HTML
+      // namespace. We need to specify them explicitly
+      // so that they don't get erroneously deleted from
+      // HTML namespace.
+      const COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, ['title', 'style', 'font', 'a', 'script']);
+      /* Parsing of strict XHTML documents */
+      let PARSER_MEDIA_TYPE = null;
+      const SUPPORTED_PARSER_MEDIA_TYPES = ['application/xhtml+xml', 'text/html'];
       const DEFAULT_PARSER_MEDIA_TYPE = 'text/html';
-      let transformCaseFunc;
+      let transformCaseFunc = null;
+      /* Keep a reference to config to pass to hooks */
       let CONFIG = null;
+      /* Ideally, do not touch anything below this line */
+      /* ______________________________________________ */
       const formElement = document.createElement('form');
       const isRegexOrFunction = function isRegexOrFunction(testValue) {
         return testValue instanceof RegExp || testValue instanceof Function;
       };
-      const _parseConfig = function _parseConfig(cfg) {
+      /**
+       * _parseConfig
+       *
+       * @param cfg optional config literal
+       */
+      // eslint-disable-next-line complexity
+      const _parseConfig = function _parseConfig() {
+        let cfg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
         if (CONFIG && CONFIG === cfg) {
           return;
         }
+        /* Shield configuration object from tampering */
         if (!cfg || typeof cfg !== 'object') {
           cfg = {};
         }
+        /* Shield configuration object from prototype pollution */
         cfg = clone(cfg);
-        PARSER_MEDIA_TYPE = SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? PARSER_MEDIA_TYPE = DEFAULT_PARSER_MEDIA_TYPE : PARSER_MEDIA_TYPE = cfg.PARSER_MEDIA_TYPE;
+        PARSER_MEDIA_TYPE =
+        // eslint-disable-next-line unicorn/prefer-includes
+        SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? DEFAULT_PARSER_MEDIA_TYPE : cfg.PARSER_MEDIA_TYPE;
+        // HTML tags and attributes are not case-sensitive, converting to lowercase. Keeping XHTML as is.
         transformCaseFunc = PARSER_MEDIA_TYPE === 'application/xhtml+xml' ? stringToString : stringToLowerCase;
-        ALLOWED_TAGS = 'ALLOWED_TAGS' in cfg ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
-        ALLOWED_ATTR = 'ALLOWED_ATTR' in cfg ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
-        ALLOWED_NAMESPACES = 'ALLOWED_NAMESPACES' in cfg ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
-        URI_SAFE_ATTRIBUTES = 'ADD_URI_SAFE_ATTR' in cfg ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR, transformCaseFunc) : DEFAULT_URI_SAFE_ATTRIBUTES;
-        DATA_URI_TAGS = 'ADD_DATA_URI_TAGS' in cfg ? addToSet(clone(DEFAULT_DATA_URI_TAGS), cfg.ADD_DATA_URI_TAGS, transformCaseFunc) : DEFAULT_DATA_URI_TAGS;
-        FORBID_CONTENTS = 'FORBID_CONTENTS' in cfg ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
-        FORBID_TAGS = 'FORBID_TAGS' in cfg ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : {};
-        FORBID_ATTR = 'FORBID_ATTR' in cfg ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : {};
-        USE_PROFILES = 'USE_PROFILES' in cfg ? cfg.USE_PROFILES : false;
-        ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false;
-        ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false;
-        ALLOW_UNKNOWN_PROTOCOLS = cfg.ALLOW_UNKNOWN_PROTOCOLS || false;
-        ALLOW_SELF_CLOSE_IN_ATTR = cfg.ALLOW_SELF_CLOSE_IN_ATTR !== false;
-        SAFE_FOR_TEMPLATES = cfg.SAFE_FOR_TEMPLATES || false;
-        WHOLE_DOCUMENT = cfg.WHOLE_DOCUMENT || false;
-        RETURN_DOM = cfg.RETURN_DOM || false;
-        RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false;
-        RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false;
-        FORCE_BODY = cfg.FORCE_BODY || false;
-        SANITIZE_DOM = cfg.SANITIZE_DOM !== false;
-        SANITIZE_NAMED_PROPS = cfg.SANITIZE_NAMED_PROPS || false;
-        KEEP_CONTENT = cfg.KEEP_CONTENT !== false;
-        IN_PLACE = cfg.IN_PLACE || false;
+        /* Set configuration parameters */
+        ALLOWED_TAGS = objectHasOwnProperty(cfg, 'ALLOWED_TAGS') ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
+        ALLOWED_ATTR = objectHasOwnProperty(cfg, 'ALLOWED_ATTR') ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
+        ALLOWED_NAMESPACES = objectHasOwnProperty(cfg, 'ALLOWED_NAMESPACES') ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
+        URI_SAFE_ATTRIBUTES = objectHasOwnProperty(cfg, 'ADD_URI_SAFE_ATTR') ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR, transformCaseFunc) : DEFAULT_URI_SAFE_ATTRIBUTES;
+        DATA_URI_TAGS = objectHasOwnProperty(cfg, 'ADD_DATA_URI_TAGS') ? addToSet(clone(DEFAULT_DATA_URI_TAGS), cfg.ADD_DATA_URI_TAGS, transformCaseFunc) : DEFAULT_DATA_URI_TAGS;
+        FORBID_CONTENTS = objectHasOwnProperty(cfg, 'FORBID_CONTENTS') ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
+        FORBID_TAGS = objectHasOwnProperty(cfg, 'FORBID_TAGS') ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : {};
+        FORBID_ATTR = objectHasOwnProperty(cfg, 'FORBID_ATTR') ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : {};
+        USE_PROFILES = objectHasOwnProperty(cfg, 'USE_PROFILES') ? cfg.USE_PROFILES : false;
+        ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false; // Default true
+        ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false; // Default true
+        ALLOW_UNKNOWN_PROTOCOLS = cfg.ALLOW_UNKNOWN_PROTOCOLS || false; // Default false
+        ALLOW_SELF_CLOSE_IN_ATTR = cfg.ALLOW_SELF_CLOSE_IN_ATTR !== false; // Default true
+        SAFE_FOR_TEMPLATES = cfg.SAFE_FOR_TEMPLATES || false; // Default false
+        SAFE_FOR_XML = cfg.SAFE_FOR_XML !== false; // Default true
+        WHOLE_DOCUMENT = cfg.WHOLE_DOCUMENT || false; // Default false
+        RETURN_DOM = cfg.RETURN_DOM || false; // Default false
+        RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false; // Default false
+        RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false; // Default false
+        FORCE_BODY = cfg.FORCE_BODY || false; // Default false
+        SANITIZE_DOM = cfg.SANITIZE_DOM !== false; // Default true
+        SANITIZE_NAMED_PROPS = cfg.SANITIZE_NAMED_PROPS || false; // Default false
+        KEEP_CONTENT = cfg.KEEP_CONTENT !== false; // Default true
+        IN_PLACE = cfg.IN_PLACE || false; // Default false
         IS_ALLOWED_URI$1 = cfg.ALLOWED_URI_REGEXP || IS_ALLOWED_URI;
         NAMESPACE = cfg.NAMESPACE || HTML_NAMESPACE;
+        MATHML_TEXT_INTEGRATION_POINTS = cfg.MATHML_TEXT_INTEGRATION_POINTS || MATHML_TEXT_INTEGRATION_POINTS;
+        HTML_INTEGRATION_POINTS = cfg.HTML_INTEGRATION_POINTS || HTML_INTEGRATION_POINTS;
         CUSTOM_ELEMENT_HANDLING = cfg.CUSTOM_ELEMENT_HANDLING || {};
         if (cfg.CUSTOM_ELEMENT_HANDLING && isRegexOrFunction(cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck)) {
           CUSTOM_ELEMENT_HANDLING.tagNameCheck = cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck;
@@ -16210,8 +15895,9 @@
         if (RETURN_DOM_FRAGMENT) {
           RETURN_DOM = true;
         }
+        /* Parse profile info */
         if (USE_PROFILES) {
-          ALLOWED_TAGS = addToSet({}, [...text]);
+          ALLOWED_TAGS = addToSet({}, text);
           ALLOWED_ATTR = [];
           if (USE_PROFILES.html === true) {
             addToSet(ALLOWED_TAGS, html$1);
@@ -16233,6 +15919,7 @@
             addToSet(ALLOWED_ATTR, xml);
           }
         }
+        /* Merge configuration parameters */
         if (cfg.ADD_TAGS) {
           if (ALLOWED_TAGS === DEFAULT_ALLOWED_TAGS) {
             ALLOWED_TAGS = clone(ALLOWED_TAGS);
@@ -16254,16 +15941,15 @@
           }
           addToSet(FORBID_CONTENTS, cfg.FORBID_CONTENTS, transformCaseFunc);
         }
+        /* Add #text in case KEEP_CONTENT is set to true */
         if (KEEP_CONTENT) {
           ALLOWED_TAGS['#text'] = true;
         }
+        /* Add html, head and body to ALLOWED_TAGS in case WHOLE_DOCUMENT is true */
         if (WHOLE_DOCUMENT) {
-          addToSet(ALLOWED_TAGS, [
-            'html',
-            'head',
-            'body'
-          ]);
+          addToSet(ALLOWED_TAGS, ['html', 'head', 'body']);
         }
+        /* Add tbody to ALLOWED_TAGS in case tables are permitted, see #286, #365 */
         if (ALLOWED_TAGS.table) {
           addToSet(ALLOWED_TAGS, ['tbody']);
           delete FORBID_TAGS.tbody;
@@ -16275,48 +15961,42 @@
           if (typeof cfg.TRUSTED_TYPES_POLICY.createScriptURL !== 'function') {
             throw typeErrorCreate('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');
           }
+          // Overwrite existing TrustedTypes policy.
           trustedTypesPolicy = cfg.TRUSTED_TYPES_POLICY;
+          // Sign local variables required by `sanitize`.
           emptyHTML = trustedTypesPolicy.createHTML('');
         } else {
+          // Uninitialized policy, attempt to initialize the internal dompurify policy.
           if (trustedTypesPolicy === undefined) {
             trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, currentScript);
           }
+          // If creating the internal policy succeeded sign internal variables.
           if (trustedTypesPolicy !== null && typeof emptyHTML === 'string') {
             emptyHTML = trustedTypesPolicy.createHTML('');
           }
         }
+        // Prevent further manipulation of configuration.
+        // Not available in IE8, Safari 5, etc.
         if (freeze) {
           freeze(cfg);
         }
         CONFIG = cfg;
       };
-      const MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, [
-        'mi',
-        'mo',
-        'mn',
-        'ms',
-        'mtext'
-      ]);
-      const HTML_INTEGRATION_POINTS = addToSet({}, [
-        'foreignobject',
-        'desc',
-        'title',
-        'annotation-xml'
-      ]);
-      const COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, [
-        'title',
-        'style',
-        'font',
-        'a',
-        'script'
-      ]);
-      const ALL_SVG_TAGS = addToSet({}, svg$1);
-      addToSet(ALL_SVG_TAGS, svgFilters);
-      addToSet(ALL_SVG_TAGS, svgDisallowed);
-      const ALL_MATHML_TAGS = addToSet({}, mathMl$1);
-      addToSet(ALL_MATHML_TAGS, mathMlDisallowed);
+      /* Keep track of all possible SVG and MathML tags
+       * so that we can perform the namespace checks
+       * correctly. */
+      const ALL_SVG_TAGS = addToSet({}, [...svg$1, ...svgFilters, ...svgDisallowed]);
+      const ALL_MATHML_TAGS = addToSet({}, [...mathMl$1, ...mathMlDisallowed]);
+      /**
+       * @param element a DOM element whose namespace is being checked
+       * @returns Return false if the element has a
+       *  namespace that a spec-compliant parser would never
+       *  return. Return true otherwise.
+       */
       const _checkValidNamespace = function _checkValidNamespace(element) {
         let parent = getParentNode(element);
+        // In JSDOM, if we're inside shadow DOM, then parentNode
+        // can be null. We just simulate parent in this case.
         if (!parent || !parent.tagName) {
           parent = {
             namespaceURI: NAMESPACE,
@@ -16329,313 +16009,499 @@
           return false;
         }
         if (element.namespaceURI === SVG_NAMESPACE) {
+          // The only way to switch from HTML namespace to SVG
+          // is via <svg>. If it happens via any other tag, then
+          // it should be killed.
           if (parent.namespaceURI === HTML_NAMESPACE) {
             return tagName === 'svg';
           }
+          // The only way to switch from MathML to SVG is via`
+          // svg if parent is either <annotation-xml> or MathML
+          // text integration points.
           if (parent.namespaceURI === MATHML_NAMESPACE) {
             return tagName === 'svg' && (parentTagName === 'annotation-xml' || MATHML_TEXT_INTEGRATION_POINTS[parentTagName]);
           }
+          // We only allow elements that are defined in SVG
+          // spec. All others are disallowed in SVG namespace.
           return Boolean(ALL_SVG_TAGS[tagName]);
         }
         if (element.namespaceURI === MATHML_NAMESPACE) {
+          // The only way to switch from HTML namespace to MathML
+          // is via <math>. If it happens via any other tag, then
+          // it should be killed.
           if (parent.namespaceURI === HTML_NAMESPACE) {
             return tagName === 'math';
           }
+          // The only way to switch from SVG to MathML is via
+          // <math> and HTML integration points
           if (parent.namespaceURI === SVG_NAMESPACE) {
             return tagName === 'math' && HTML_INTEGRATION_POINTS[parentTagName];
           }
+          // We only allow elements that are defined in MathML
+          // spec. All others are disallowed in MathML namespace.
           return Boolean(ALL_MATHML_TAGS[tagName]);
         }
         if (element.namespaceURI === HTML_NAMESPACE) {
+          // The only way to switch from SVG to HTML is via
+          // HTML integration points, and from MathML to HTML
+          // is via MathML text integration points
           if (parent.namespaceURI === SVG_NAMESPACE && !HTML_INTEGRATION_POINTS[parentTagName]) {
             return false;
           }
           if (parent.namespaceURI === MATHML_NAMESPACE && !MATHML_TEXT_INTEGRATION_POINTS[parentTagName]) {
             return false;
           }
+          // We disallow tags that are specific for MathML
+          // or SVG and should never appear in HTML namespace
           return !ALL_MATHML_TAGS[tagName] && (COMMON_SVG_AND_HTML_ELEMENTS[tagName] || !ALL_SVG_TAGS[tagName]);
         }
+        // For XHTML and XML documents that support custom namespaces
         if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && ALLOWED_NAMESPACES[element.namespaceURI]) {
           return true;
         }
+        // The code should never reach this place (this means
+        // that the element somehow got namespace that is not
+        // HTML, SVG, MathML or allowed via ALLOWED_NAMESPACES).
+        // Return false just in case.
         return false;
       };
+      /**
+       * _forceRemove
+       *
+       * @param node a DOM node
+       */
       const _forceRemove = function _forceRemove(node) {
-        arrayPush(DOMPurify.removed, { element: node });
+        arrayPush(DOMPurify.removed, {
+          element: node
+        });
         try {
-          node.parentNode.removeChild(node);
+          // eslint-disable-next-line unicorn/prefer-dom-node-remove
+          getParentNode(node).removeChild(node);
         } catch (_) {
-          node.remove();
+          remove(node);
         }
       };
-      const _removeAttribute = function _removeAttribute(name, node) {
+      /**
+       * _removeAttribute
+       *
+       * @param name an Attribute name
+       * @param element a DOM node
+       */
+      const _removeAttribute = function _removeAttribute(name, element) {
         try {
           arrayPush(DOMPurify.removed, {
-            attribute: node.getAttributeNode(name),
-            from: node
+            attribute: element.getAttributeNode(name),
+            from: element
           });
         } catch (_) {
           arrayPush(DOMPurify.removed, {
             attribute: null,
-            from: node
+            from: element
           });
         }
-        node.removeAttribute(name);
-        if (name === 'is' && !ALLOWED_ATTR[name]) {
+        element.removeAttribute(name);
+        // We void attribute values for unremovable "is" attributes
+        if (name === 'is') {
           if (RETURN_DOM || RETURN_DOM_FRAGMENT) {
             try {
-              _forceRemove(node);
-            } catch (_) {
-            }
+              _forceRemove(element);
+            } catch (_) {}
           } else {
             try {
-              node.setAttribute(name, '');
-            } catch (_) {
-            }
+              element.setAttribute(name, '');
+            } catch (_) {}
           }
         }
       };
+      /**
+       * _initDocument
+       *
+       * @param dirty - a string of dirty markup
+       * @return a DOM, filled with the dirty markup
+       */
       const _initDocument = function _initDocument(dirty) {
-        let doc;
-        let leadingWhitespace;
+        /* Create a HTML document */
+        let doc = null;
+        let leadingWhitespace = null;
         if (FORCE_BODY) {
           dirty = '<remove></remove>' + dirty;
         } else {
+          /* If FORCE_BODY isn't used, leading whitespace needs to be preserved manually */
           const matches = stringMatch(dirty, /^[\r\n\t ]+/);
           leadingWhitespace = matches && matches[0];
         }
         if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && NAMESPACE === HTML_NAMESPACE) {
+          // Root of XHTML doc must contain xmlns declaration (see https://www.w3.org/TR/xhtml1/normative.html#strict)
           dirty = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + dirty + '</body></html>';
         }
         const dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
+        /*
+         * Use the DOMParser API by default, fallback later if needs be
+         * DOMParser not work for svg when has multiple root element.
+         */
         if (NAMESPACE === HTML_NAMESPACE) {
           try {
             doc = new DOMParser().parseFromString(dirtyPayload, PARSER_MEDIA_TYPE);
-          } catch (_) {
-          }
+          } catch (_) {}
         }
+        /* Use createHTMLDocument in case DOMParser is not available */
         if (!doc || !doc.documentElement) {
           doc = implementation.createDocument(NAMESPACE, 'template', null);
           try {
             doc.documentElement.innerHTML = IS_EMPTY_INPUT ? emptyHTML : dirtyPayload;
           } catch (_) {
+            // Syntax error if dirtyPayload is invalid xml
           }
         }
         const body = doc.body || doc.documentElement;
         if (dirty && leadingWhitespace) {
           body.insertBefore(document.createTextNode(leadingWhitespace), body.childNodes[0] || null);
         }
+        /* Work on whole document or just its body */
         if (NAMESPACE === HTML_NAMESPACE) {
           return getElementsByTagName.call(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
         }
         return WHOLE_DOCUMENT ? doc.documentElement : body;
       };
-      const _createIterator = function _createIterator(root) {
-        return createNodeIterator.call(root.ownerDocument || root, root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null, false);
+      /**
+       * Creates a NodeIterator object that you can use to traverse filtered lists of nodes or elements in a document.
+       *
+       * @param root The root element or node to start traversing on.
+       * @return The created NodeIterator
+       */
+      const _createNodeIterator = function _createNodeIterator(root) {
+        return createNodeIterator.call(root.ownerDocument || root, root,
+        // eslint-disable-next-line no-bitwise
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_PROCESSING_INSTRUCTION | NodeFilter.SHOW_CDATA_SECTION, null);
       };
-      const _isClobbered = function _isClobbered(elm) {
-        return elm instanceof HTMLFormElement && (typeof elm.nodeName !== 'string' || typeof elm.textContent !== 'string' || typeof elm.removeChild !== 'function' || !(elm.attributes instanceof NamedNodeMap) || typeof elm.removeAttribute !== 'function' || typeof elm.setAttribute !== 'function' || typeof elm.namespaceURI !== 'string' || typeof elm.insertBefore !== 'function' || typeof elm.hasChildNodes !== 'function');
+      /**
+       * _isClobbered
+       *
+       * @param element element to check for clobbering attacks
+       * @return true if clobbered, false if safe
+       */
+      const _isClobbered = function _isClobbered(element) {
+        return element instanceof HTMLFormElement && (typeof element.nodeName !== 'string' || typeof element.textContent !== 'string' || typeof element.removeChild !== 'function' || !(element.attributes instanceof NamedNodeMap) || typeof element.removeAttribute !== 'function' || typeof element.setAttribute !== 'function' || typeof element.namespaceURI !== 'string' || typeof element.insertBefore !== 'function' || typeof element.hasChildNodes !== 'function');
       };
-      const _isNode = function _isNode(object) {
-        return typeof Node === 'object' ? object instanceof Node : object && typeof object === 'object' && typeof object.nodeType === 'number' && typeof object.nodeName === 'string';
+      /**
+       * Checks whether the given object is a DOM node.
+       *
+       * @param value object to check whether it's a DOM node
+       * @return true is object is a DOM node
+       */
+      const _isNode = function _isNode(value) {
+        return typeof Node === 'function' && value instanceof Node;
       };
-      const _executeHook = function _executeHook(entryPoint, currentNode, data) {
-        if (!hooks[entryPoint]) {
-          return;
-        }
-        arrayForEach(hooks[entryPoint], hook => {
+      function _executeHooks(hooks, currentNode, data) {
+        arrayForEach(hooks, hook => {
           hook.call(DOMPurify, currentNode, data, CONFIG);
         });
-      };
+      }
+      /**
+       * _sanitizeElements
+       *
+       * @protect nodeName
+       * @protect textContent
+       * @protect removeChild
+       * @param currentNode to check for permission to exist
+       * @return true if node was killed, false if left alive
+       */
       const _sanitizeElements = function _sanitizeElements(currentNode) {
-        let content;
-        _executeHook('beforeSanitizeElements', currentNode, null);
+        let content = null;
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeElements, currentNode, null);
+        /* Check if element is clobbered or can clobber */
         if (_isClobbered(currentNode)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Now let's check the element's type and name */
         const tagName = transformCaseFunc(currentNode.nodeName);
-        _executeHook('uponSanitizeElement', currentNode, {
+        /* Execute a hook if present */
+        _executeHooks(hooks.uponSanitizeElement, currentNode, {
           tagName,
           allowedTags: ALLOWED_TAGS
         });
-        if (currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && (!_isNode(currentNode.content) || !_isNode(currentNode.content.firstElementChild)) && regExpTest(/<[/\w]/g, currentNode.innerHTML) && regExpTest(/<[/\w]/g, currentNode.textContent)) {
+        /* Detect mXSS attempts abusing namespace confusion */
+        if (currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && regExpTest(/<[/\w]/g, currentNode.innerHTML) && regExpTest(/<[/\w]/g, currentNode.textContent)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Remove any occurrence of processing instructions */
+        if (currentNode.nodeType === NODE_TYPE.progressingInstruction) {
+          _forceRemove(currentNode);
+          return true;
+        }
+        /* Remove any kind of possibly harmful comments */
+        if (SAFE_FOR_XML && currentNode.nodeType === NODE_TYPE.comment && regExpTest(/<[/\w]/g, currentNode.data)) {
+          _forceRemove(currentNode);
+          return true;
+        }
+        /* Remove element if anything forbids its presence */
         if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
-          if (!FORBID_TAGS[tagName] && _basicCustomElementTest(tagName)) {
-            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName))
+          /* Check if we have a custom element to handle */
+          if (!FORBID_TAGS[tagName] && _isBasicCustomElement(tagName)) {
+            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) {
               return false;
-            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName))
+            }
+            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName)) {
               return false;
+            }
           }
+          /* Keep content except for bad-listed elements */
           if (KEEP_CONTENT && !FORBID_CONTENTS[tagName]) {
             const parentNode = getParentNode(currentNode) || currentNode.parentNode;
             const childNodes = getChildNodes(currentNode) || currentNode.childNodes;
             if (childNodes && parentNode) {
               const childCount = childNodes.length;
               for (let i = childCount - 1; i >= 0; --i) {
-                parentNode.insertBefore(cloneNode(childNodes[i], true), getNextSibling(currentNode));
+                const childClone = cloneNode(childNodes[i], true);
+                childClone.__removalCount = (currentNode.__removalCount || 0) + 1;
+                parentNode.insertBefore(childClone, getNextSibling(currentNode));
               }
             }
           }
           _forceRemove(currentNode);
           return true;
         }
+        /* Check whether element has a valid namespace */
         if (currentNode instanceof Element && !_checkValidNamespace(currentNode)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Make sure that older browsers don't get fallback-tag mXSS */
         if ((tagName === 'noscript' || tagName === 'noembed' || tagName === 'noframes') && regExpTest(/<\/no(script|embed|frames)/i, currentNode.innerHTML)) {
           _forceRemove(currentNode);
           return true;
         }
-        if (SAFE_FOR_TEMPLATES && currentNode.nodeType === 3) {
+        /* Sanitize element content to be template-safe */
+        if (SAFE_FOR_TEMPLATES && currentNode.nodeType === NODE_TYPE.text) {
+          /* Get the element's text content */
           content = currentNode.textContent;
-          content = stringReplace(content, MUSTACHE_EXPR, ' ');
-          content = stringReplace(content, ERB_EXPR, ' ');
-          content = stringReplace(content, TMPLIT_EXPR, ' ');
+          arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+            content = stringReplace(content, expr, ' ');
+          });
           if (currentNode.textContent !== content) {
-            arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+            arrayPush(DOMPurify.removed, {
+              element: currentNode.cloneNode()
+            });
             currentNode.textContent = content;
           }
         }
-        _executeHook('afterSanitizeElements', currentNode, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeElements, currentNode, null);
         return false;
       };
+      /**
+       * _isValidAttribute
+       *
+       * @param lcTag Lowercase tag name of containing element.
+       * @param lcName Lowercase attribute name.
+       * @param value Attribute value.
+       * @return Returns true if `value` is valid, otherwise false.
+       */
+      // eslint-disable-next-line complexity
       const _isValidAttribute = function _isValidAttribute(lcTag, lcName, value) {
+        /* Make sure attribute cannot clobber */
         if (SANITIZE_DOM && (lcName === 'id' || lcName === 'name') && (value in document || value in formElement)) {
           return false;
         }
-        if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName));
-        else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName));
-        else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
-          if (_basicCustomElementTest(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) || lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value)));
-          else {
+        /* Allow valid data-* attributes: At least one character after "-"
+            (https://html.spec.whatwg.org/multipage/dom.html#embedding-custom-non-visible-data-with-the-data-*-attributes)
+            XML-compatible (https://html.spec.whatwg.org/multipage/infrastructure.html#xml-compatible and http://www.w3.org/TR/xml/#d0e804)
+            We don't need to check the value; it's always URI safe. */
+        if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
+          if (
+          // First condition does a very basic check if a) it's basically a valid custom element tagname AND
+          // b) if the tagName passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+          // and c) if the attribute name passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.attributeNameCheck
+          _isBasicCustomElement(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) ||
+          // Alternative, second condition checks if it's an `is`-attribute, AND
+          // the value passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+          lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value))) ; else {
             return false;
           }
-        } else if (URI_SAFE_ATTRIBUTES[lcName]);
-        else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE, '')));
-        else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]);
-        else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA, stringReplace(value, ATTR_WHITESPACE, '')));
-        else if (value) {
+          /* Check value is safe. First, is attr inert? If so, is safe */
+        } else if (URI_SAFE_ATTRIBUTES[lcName]) ; else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE, ''))) ; else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]) ; else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA, stringReplace(value, ATTR_WHITESPACE, ''))) ; else if (value) {
           return false;
         } else ;
         return true;
       };
-      const _basicCustomElementTest = function _basicCustomElementTest(tagName) {
-        return tagName.indexOf('-') > 0;
+      /**
+       * _isBasicCustomElement
+       * checks if at least one dash is included in tagName, and it's not the first char
+       * for more sophisticated checking see https://github.com/sindresorhus/validate-element-name
+       *
+       * @param tagName name of the tag of the node to sanitize
+       * @returns Returns true if the tag name meets the basic criteria for a custom element, otherwise false.
+       */
+      const _isBasicCustomElement = function _isBasicCustomElement(tagName) {
+        return tagName !== 'annotation-xml' && stringMatch(tagName, CUSTOM_ELEMENT);
       };
+      /**
+       * _sanitizeAttributes
+       *
+       * @protect attributes
+       * @protect nodeName
+       * @protect removeAttribute
+       * @protect setAttribute
+       *
+       * @param currentNode to sanitize
+       */
       const _sanitizeAttributes = function _sanitizeAttributes(currentNode) {
-        let attr;
-        let value;
-        let lcName;
-        let l;
-        _executeHook('beforeSanitizeAttributes', currentNode, null);
-        const {attributes} = currentNode;
-        if (!attributes) {
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeAttributes, currentNode, null);
+        const {
+          attributes
+        } = currentNode;
+        /* Check if we have attributes; if not we might have a text node */
+        if (!attributes || _isClobbered(currentNode)) {
           return;
         }
         const hookEvent = {
           attrName: '',
           attrValue: '',
           keepAttr: true,
-          allowedAttributes: ALLOWED_ATTR
+          allowedAttributes: ALLOWED_ATTR,
+          forceKeepAttr: undefined
         };
-        l = attributes.length;
+        let l = attributes.length;
+        /* Go backwards over all attributes; safely remove bad ones */
         while (l--) {
-          attr = attributes[l];
-          const {name, namespaceURI} = attr;
-          value = name === 'value' ? attr.value : stringTrim(attr.value);
+          const attr = attributes[l];
+          const {
+            name,
+            namespaceURI,
+            value: attrValue
+          } = attr;
+          const lcName = transformCaseFunc(name);
+          let value = name === 'value' ? attrValue : stringTrim(attrValue);
           const initValue = value;
-          lcName = transformCaseFunc(name);
+          /* Execute a hook if present */
           hookEvent.attrName = lcName;
           hookEvent.attrValue = value;
           hookEvent.keepAttr = true;
-          hookEvent.forceKeepAttr = undefined;
-          _executeHook('uponSanitizeAttribute', currentNode, hookEvent);
+          hookEvent.forceKeepAttr = undefined; // Allows developers to see this is a property they can set
+          _executeHooks(hooks.uponSanitizeAttribute, currentNode, hookEvent);
           value = hookEvent.attrValue;
+          /* Full DOM Clobbering protection via namespace isolation,
+           * Prefix id and name attributes with `user-content-`
+           */
+          if (SANITIZE_NAMED_PROPS && (lcName === 'id' || lcName === 'name')) {
+            // Remove the attribute with this value
+            _removeAttribute(name, currentNode);
+            // Prefix the value and later re-create the attribute with the sanitized value
+            value = SANITIZE_NAMED_PROPS_PREFIX + value;
+          }
+          /* Work around a security issue with comments inside attributes */
+          if (SAFE_FOR_XML && regExpTest(/((--!?|])>)|<\/(style|title)/i, value)) {
+            _removeAttribute(name, currentNode);
+            continue;
+          }
+          /* Did the hooks approve of the attribute? */
           if (hookEvent.forceKeepAttr) {
             continue;
           }
+          /* Remove attribute */
+          /* Did the hooks approve of the attribute? */
           if (!hookEvent.keepAttr) {
             _removeAttribute(name, currentNode);
             continue;
           }
+          /* Work around a security issue in jQuery 3.0 */
           if (!ALLOW_SELF_CLOSE_IN_ATTR && regExpTest(/\/>/i, value)) {
             _removeAttribute(name, currentNode);
             continue;
           }
+          /* Sanitize attribute content to be template-safe */
           if (SAFE_FOR_TEMPLATES) {
-            value = stringReplace(value, MUSTACHE_EXPR, ' ');
-            value = stringReplace(value, ERB_EXPR, ' ');
-            value = stringReplace(value, TMPLIT_EXPR, ' ');
+            arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+              value = stringReplace(value, expr, ' ');
+            });
           }
+          /* Is `value` valid for this attribute? */
           const lcTag = transformCaseFunc(currentNode.nodeName);
           if (!_isValidAttribute(lcTag, lcName, value)) {
             _removeAttribute(name, currentNode);
             continue;
           }
-          if (SANITIZE_NAMED_PROPS && (lcName === 'id' || lcName === 'name')) {
-            _removeAttribute(name, currentNode);
-            value = SANITIZE_NAMED_PROPS_PREFIX + value;
-          }
+          /* Handle attributes that require Trusted Types */
           if (trustedTypesPolicy && typeof trustedTypes === 'object' && typeof trustedTypes.getAttributeType === 'function') {
-            if (namespaceURI);
-            else {
+            if (namespaceURI) ; else {
               switch (trustedTypes.getAttributeType(lcTag, lcName)) {
-              case 'TrustedHTML': {
-                  value = trustedTypesPolicy.createHTML(value);
-                  break;
-                }
-              case 'TrustedScriptURL': {
-                  value = trustedTypesPolicy.createScriptURL(value);
-                  break;
-                }
+                case 'TrustedHTML':
+                  {
+                    value = trustedTypesPolicy.createHTML(value);
+                    break;
+                  }
+                case 'TrustedScriptURL':
+                  {
+                    value = trustedTypesPolicy.createScriptURL(value);
+                    break;
+                  }
               }
             }
           }
+          /* Handle invalid data-* attribute set by try-catching it */
           if (value !== initValue) {
             try {
               if (namespaceURI) {
                 currentNode.setAttributeNS(namespaceURI, name, value);
               } else {
+                /* Fallback to setAttribute() for browser-unrecognized namespaces e.g. "x-schema". */
                 currentNode.setAttribute(name, value);
               }
-            } catch (_) {
-              _removeAttribute(name, currentNode);
-            }
+              if (_isClobbered(currentNode)) {
+                _forceRemove(currentNode);
+              } else {
+                arrayPop(DOMPurify.removed);
+              }
+            } catch (_) {}
           }
         }
-        _executeHook('afterSanitizeAttributes', currentNode, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeAttributes, currentNode, null);
       };
+      /**
+       * _sanitizeShadowDOM
+       *
+       * @param fragment to iterate over recursively
+       */
       const _sanitizeShadowDOM = function _sanitizeShadowDOM(fragment) {
-        let shadowNode;
-        const shadowIterator = _createIterator(fragment);
-        _executeHook('beforeSanitizeShadowDOM', fragment, null);
+        let shadowNode = null;
+        const shadowIterator = _createNodeIterator(fragment);
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeShadowDOM, fragment, null);
         while (shadowNode = shadowIterator.nextNode()) {
-          _executeHook('uponSanitizeShadowNode', shadowNode, null);
-          if (_sanitizeElements(shadowNode)) {
-            continue;
-          }
+          /* Execute a hook if present */
+          _executeHooks(hooks.uponSanitizeShadowNode, shadowNode, null);
+          /* Sanitize tags and elements */
+          _sanitizeElements(shadowNode);
+          /* Check attributes next */
+          _sanitizeAttributes(shadowNode);
+          /* Deep shadow DOM detected */
           if (shadowNode.content instanceof DocumentFragment) {
             _sanitizeShadowDOM(shadowNode.content);
           }
-          _sanitizeAttributes(shadowNode);
         }
-        _executeHook('afterSanitizeShadowDOM', fragment, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeShadowDOM, fragment, null);
       };
+      // eslint-disable-next-line complexity
       DOMPurify.sanitize = function (dirty) {
         let cfg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-        let body;
-        let importedNode;
-        let currentNode;
-        let returnNode;
+        let body = null;
+        let importedNode = null;
+        let currentNode = null;
+        let returnNode = null;
+        /* Make sure we have a string to sanitize.
+          DO NOT return early, as this will return the wrong type if
+          the user has requested a DOM object rather than a string */
         IS_EMPTY_INPUT = !dirty;
         if (IS_EMPTY_INPUT) {
           dirty = '<!-->';
         }
+        /* Stringify, in case dirty is an object */
         if (typeof dirty !== 'string' && !_isNode(dirty)) {
           if (typeof dirty.toString === 'function') {
             dirty = dirty.toString();
@@ -16646,17 +16512,22 @@
             throw typeErrorCreate('toString is not a function');
           }
         }
+        /* Return dirty HTML if DOMPurify cannot run */
         if (!DOMPurify.isSupported) {
           return dirty;
         }
+        /* Assign config vars */
         if (!SET_CONFIG) {
           _parseConfig(cfg);
         }
+        /* Clean up removed elements */
         DOMPurify.removed = [];
+        /* Check if dirty is correctly typed for IN_PLACE */
         if (typeof dirty === 'string') {
           IN_PLACE = false;
         }
         if (IN_PLACE) {
+          /* Do some early pre-sanitization to avoid unsafe root nodes */
           if (dirty.nodeName) {
             const tagName = transformCaseFunc(dirty.nodeName);
             if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
@@ -16664,66 +16535,92 @@
             }
           }
         } else if (dirty instanceof Node) {
+          /* If dirty is a DOM element, append to an empty document to avoid
+             elements being stripped by the parser */
           body = _initDocument('<!---->');
           importedNode = body.ownerDocument.importNode(dirty, true);
-          if (importedNode.nodeType === 1 && importedNode.nodeName === 'BODY') {
+          if (importedNode.nodeType === NODE_TYPE.element && importedNode.nodeName === 'BODY') {
+            /* Node is already a body, use as is */
             body = importedNode;
           } else if (importedNode.nodeName === 'HTML') {
             body = importedNode;
           } else {
+            // eslint-disable-next-line unicorn/prefer-dom-node-append
             body.appendChild(importedNode);
           }
         } else {
-          if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && dirty.indexOf('<') === -1) {
+          /* Exit directly if we have nothing to do */
+          if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT &&
+          // eslint-disable-next-line unicorn/prefer-includes
+          dirty.indexOf('<') === -1) {
             return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(dirty) : dirty;
           }
+          /* Initialize the document to work on */
           body = _initDocument(dirty);
+          /* Check we have a DOM node from the data */
           if (!body) {
             return RETURN_DOM ? null : RETURN_TRUSTED_TYPE ? emptyHTML : '';
           }
         }
+        /* Remove first element node (ours) if FORCE_BODY is set */
         if (body && FORCE_BODY) {
           _forceRemove(body.firstChild);
         }
-        const nodeIterator = _createIterator(IN_PLACE ? dirty : body);
+        /* Get node iterator */
+        const nodeIterator = _createNodeIterator(IN_PLACE ? dirty : body);
+        /* Now start iterating over the created document */
         while (currentNode = nodeIterator.nextNode()) {
-          if (_sanitizeElements(currentNode)) {
-            continue;
-          }
+          /* Sanitize tags and elements */
+          _sanitizeElements(currentNode);
+          /* Check attributes next */
+          _sanitizeAttributes(currentNode);
+          /* Shadow DOM detected, sanitize it */
           if (currentNode.content instanceof DocumentFragment) {
             _sanitizeShadowDOM(currentNode.content);
           }
-          _sanitizeAttributes(currentNode);
         }
+        /* If we sanitized `dirty` in-place, return it. */
         if (IN_PLACE) {
           return dirty;
         }
+        /* Return sanitized string or DOM */
         if (RETURN_DOM) {
           if (RETURN_DOM_FRAGMENT) {
             returnNode = createDocumentFragment.call(body.ownerDocument);
             while (body.firstChild) {
+              // eslint-disable-next-line unicorn/prefer-dom-node-append
               returnNode.appendChild(body.firstChild);
             }
           } else {
             returnNode = body;
           }
           if (ALLOWED_ATTR.shadowroot || ALLOWED_ATTR.shadowrootmode) {
+            /*
+              AdoptNode() is not used because internal state is not reset
+              (e.g. the past names map of a HTMLFormElement), this is safe
+              in theory but we would rather not risk another attack vector.
+              The state that is cloned by importNode() is explicitly defined
+              by the specs.
+            */
             returnNode = importNode.call(originalDocument, returnNode, true);
           }
           return returnNode;
         }
         let serializedHTML = WHOLE_DOCUMENT ? body.outerHTML : body.innerHTML;
+        /* Serialize doctype if allowed */
         if (WHOLE_DOCUMENT && ALLOWED_TAGS['!doctype'] && body.ownerDocument && body.ownerDocument.doctype && body.ownerDocument.doctype.name && regExpTest(DOCTYPE_NAME, body.ownerDocument.doctype.name)) {
           serializedHTML = '<!DOCTYPE ' + body.ownerDocument.doctype.name + '>\n' + serializedHTML;
         }
+        /* Sanitize final string template-safe */
         if (SAFE_FOR_TEMPLATES) {
-          serializedHTML = stringReplace(serializedHTML, MUSTACHE_EXPR, ' ');
-          serializedHTML = stringReplace(serializedHTML, ERB_EXPR, ' ');
-          serializedHTML = stringReplace(serializedHTML, TMPLIT_EXPR, ' ');
+          arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+            serializedHTML = stringReplace(serializedHTML, expr, ' ');
+          });
         }
         return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
       };
-      DOMPurify.setConfig = function (cfg) {
+      DOMPurify.setConfig = function () {
+        let cfg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
         _parseConfig(cfg);
         SET_CONFIG = true;
       };
@@ -16732,6 +16629,7 @@
         SET_CONFIG = false;
       };
       DOMPurify.isValidAttribute = function (tag, attr, value) {
+        /* Initialize shared config vars if necessary. */
         if (!CONFIG) {
           _parseConfig({});
         }
@@ -16743,21 +16641,20 @@
         if (typeof hookFunction !== 'function') {
           return;
         }
-        hooks[entryPoint] = hooks[entryPoint] || [];
         arrayPush(hooks[entryPoint], hookFunction);
       };
-      DOMPurify.removeHook = function (entryPoint) {
-        if (hooks[entryPoint]) {
-          return arrayPop(hooks[entryPoint]);
+      DOMPurify.removeHook = function (entryPoint, hookFunction) {
+        if (hookFunction !== undefined) {
+          const index = arrayLastIndexOf(hooks[entryPoint], hookFunction);
+          return index === -1 ? undefined : arraySplice(hooks[entryPoint], index, 1)[0];
         }
+        return arrayPop(hooks[entryPoint]);
       };
       DOMPurify.removeHooks = function (entryPoint) {
-        if (hooks[entryPoint]) {
-          hooks[entryPoint] = [];
-        }
+        hooks[entryPoint] = [];
       };
       DOMPurify.removeAllHooks = function () {
-        hooks = {};
+        hooks = _createHooksMap();
       };
       return DOMPurify;
     }
@@ -16800,7 +16697,7 @@
     const decodeUri = encodedUri => {
       try {
         return decodeURIComponent(encodedUri);
-      } catch (ex) {
+      } catch (_a) {
         return unescape(encodedUri);
       }
     };
@@ -17115,11 +17012,11 @@
       }
       if (validate && rule && !isInternalElement) {
         each$e((_c = rule.attributesForced) !== null && _c !== void 0 ? _c : [], attr => {
-          set$3(element, attr.name, attr.value === '{$uid}' ? `mce_${ uid++ }` : attr.value);
+          set$4(element, attr.name, attr.value === '{$uid}' ? `mce_${ uid++ }` : attr.value);
         });
         each$e((_d = rule.attributesDefault) !== null && _d !== void 0 ? _d : [], attr => {
           if (!has$1(element, attr.name)) {
-            set$3(element, attr.name, attr.value === '{$uid}' ? `mce_${ uid++ }` : attr.value);
+            set$4(element, attr.name, attr.value === '{$uid}' ? `mce_${ uid++ }` : attr.value);
           }
         });
         if (rule.attributesRequired && !exists(rule.attributesRequired, attr => has$1(element, attr))) {
@@ -17191,7 +17088,8 @@
           '#cdata-section',
           'body'
         ],
-        ALLOWED_ATTR: []
+        ALLOWED_ATTR: [],
+        SAFE_FOR_XML: false
       };
       const config = { ...basePurifyConfig };
       config.PARSER_MEDIA_TYPE = mimeType;
@@ -17202,37 +17100,65 @@
       }
       return config;
     };
-    const sanitizeNamespaceElement = ele => {
+    const sanitizeSvgElement = ele => {
+      const xlinkAttrs = [
+        'type',
+        'href',
+        'role',
+        'arcrole',
+        'title',
+        'show',
+        'actuate',
+        'label',
+        'from',
+        'to'
+      ].map(name => `xlink:${ name }`);
+      const config = {
+        IN_PLACE: true,
+        USE_PROFILES: {
+          html: true,
+          svg: true,
+          svgFilters: true
+        },
+        ALLOWED_ATTR: xlinkAttrs
+      };
+      purify().sanitize(ele, config);
+    };
+    const sanitizeMathmlElement = (node, settings) => {
+      const config = {
+        IN_PLACE: true,
+        USE_PROFILES: { mathMl: true }
+      };
+      const purify$1 = purify();
+      const allowedEncodings = settings.allow_mathml_annotation_encodings;
+      const hasAllowedEncodings = isArray$1(allowedEncodings) && allowedEncodings.length > 0;
+      const hasValidEncoding = el => {
+        const encoding = el.getAttribute('encoding');
+        return hasAllowedEncodings && isString(encoding) && contains$2(allowedEncodings, encoding);
+      };
+      purify$1.addHook('uponSanitizeElement', (node, evt) => {
+        var _a;
+        const lcTagName = (_a = evt.tagName) !== null && _a !== void 0 ? _a : node.nodeName.toLowerCase();
+        if (hasAllowedEncodings && lcTagName === 'semantics') {
+          evt.allowedTags[lcTagName] = true;
+        }
+        if (lcTagName === 'annotation') {
+          const elm = node;
+          const keepElement = hasValidEncoding(elm);
+          evt.allowedTags[lcTagName] = keepElement;
+          if (!keepElement) {
+            elm.remove();
+          }
+        }
+      });
+      purify$1.sanitize(node, config);
+    };
+    const mkSanitizeNamespaceElement = settings => ele => {
       const namespaceType = toScopeType(ele);
       if (namespaceType === 'svg') {
-        const xlinkAttrs = [
-          'type',
-          'href',
-          'role',
-          'arcrole',
-          'title',
-          'show',
-          'actuate',
-          'label',
-          'from',
-          'to'
-        ].map(name => `xlink:${ name }`);
-        const config = {
-          IN_PLACE: true,
-          USE_PROFILES: {
-            html: true,
-            svg: true,
-            svgFilters: true
-          },
-          ALLOWED_ATTR: xlinkAttrs
-        };
-        purify().sanitize(ele, config);
+        sanitizeSvgElement(ele);
       } else if (namespaceType === 'math') {
-        const config = {
-          IN_PLACE: true,
-          USE_PROFILES: { mathMl: true }
-        };
-        purify().sanitize(ele, config);
+        sanitizeMathmlElement(ele, settings);
       } else {
         throw new Error('Not a namespace element');
       }
@@ -17248,7 +17174,7 @@
         };
         return {
           sanitizeHtmlElement,
-          sanitizeNamespaceElement
+          sanitizeNamespaceElement: mkSanitizeNamespaceElement(settings)
         };
       } else {
         const sanitizeHtmlElement = (body, _mimeType) => {
@@ -17369,6 +17295,8 @@
             }
             if (text.length === 0) {
               node.remove();
+            } else if (text === ' ' && node.prev && node.prev.type === COMMENT && node.next && node.next.type === COMMENT) {
+              node.remove();
             } else {
               node.value = text;
             }
@@ -17438,8 +17366,16 @@
         const mimeType = format === 'xhtml' ? 'application/xhtml+xml' : 'text/html';
         const isSpecialRoot = has$2(schema.getSpecialElements(), rootName.toLowerCase());
         const content = isSpecialRoot ? `<${ rootName }>${ html }</${ rootName }>` : html;
-        const wrappedHtml = format === 'xhtml' ? `<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>${ content }</body></html>` : `<body>${ content }</body>`;
-        const body = parser.parseFromString(wrappedHtml, mimeType).body;
+        const makeWrap = () => {
+          if (format === 'xhtml') {
+            return `<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>${ content }</body></html>`;
+          } else if (/^[\s]*<head/i.test(html) || /^[\s]*<html/i.test(html) || /^[\s]*<!DOCTYPE/i.test(html)) {
+            return `<html>${ content }</html>`;
+          } else {
+            return `<body>${ content }</body>`;
+          }
+        };
+        const body = parser.parseFromString(makeWrap(), mimeType).body;
         sanitizer.sanitizeHtmlElement(body, mimeType);
         return isSpecialRoot ? body.firstChild : body;
       };
@@ -18705,6 +18641,9 @@
         return !sel || rng.collapsed;
       };
       const isEditable = () => {
+        if (editor.mode.isReadOnly()) {
+          return false;
+        }
         const rng = getRng$1();
         const fakeSelectedElements = editor.getBody().querySelectorAll('[data-mce-selected="1"]');
         if (fakeSelectedElements.length > 0) {
@@ -18724,7 +18663,7 @@
         const tryCompareBoundaryPoints = (how, sourceRange, destinationRange) => {
           try {
             return sourceRange.compareBoundaryPoints(how, destinationRange);
-          } catch (ex) {
+          } catch (_a) {
             return -1;
           }
         };
@@ -18745,7 +18684,7 @@
             }
             rng = processRanges(editor, [rng])[0];
           }
-        } catch (ex) {
+        } catch (_a) {
         }
         if (!rng) {
           rng = doc.createRange();
@@ -18780,7 +18719,7 @@
           try {
             sel.removeAllRanges();
             sel.addRange(rng);
-          } catch (ex) {
+          } catch (_a) {
           }
           if (forward === false && sel.extend) {
             sel.collapse(rng.endContainer, rng.endOffset);
@@ -18826,7 +18765,7 @@
           anchorRange.collapse(true);
           focusRange.setStart(focusNode, sel.focusOffset);
           focusRange.collapse(true);
-        } catch (e) {
+        } catch (_a) {
           return true;
         }
         return anchorRange.compareBoundaryPoints(anchorRange.START_TO_START, focusRange) <= 0;
@@ -19559,7 +19498,7 @@
           }
           reposition();
         });
-        editor.on('show ResizeEditor NodeChange', () => {
+        editor.on('show ResizeEditor ResizeWindow NodeChange ToggleView FullscreenStateChanged', () => {
           requestAnimationFrame(reposition);
         });
         editor.on('remove', () => {
@@ -19567,7 +19506,14 @@
             getImplementation().close(notification);
           });
         });
-        editor.addShortcut('alt+F12', 'Focus to notification', () => getTopNotification().map(notificationApi => SugarElement.fromDom(notificationApi.getEl())).each(elm => focus$1(elm)));
+        editor.on('keydown', e => {
+          var _a;
+          const isF12 = ((_a = e.key) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'f12' || e.keyCode === 123;
+          if (e.altKey && isF12) {
+            e.preventDefault();
+            getTopNotification().map(notificationApi => SugarElement.fromDom(notificationApi.getEl())).each(elm => focus$1(elm));
+          }
+        });
       };
       registerEvents(editor);
       return {
@@ -19730,6 +19676,147 @@
       }
     };
 
+    const removeFakeSelection = editor => {
+      Optional.from(editor.selection.getNode()).each(elm => {
+        elm.removeAttribute('data-mce-selected');
+      });
+    };
+    const setEditorCommandState = (editor, cmd, state) => {
+      try {
+        editor.getDoc().execCommand(cmd, false, String(state));
+      } catch (_a) {
+      }
+    };
+    const setCommonEditorCommands = (editor, state) => {
+      setEditorCommandState(editor, 'StyleWithCSS', state);
+      setEditorCommandState(editor, 'enableInlineTableEditing', state);
+      setEditorCommandState(editor, 'enableObjectResizing', state);
+    };
+    const restoreFakeSelection = editor => {
+      editor.selection.setRng(editor.selection.getRng());
+    };
+    const toggleClass = (elm, cls, state) => {
+      if (has(elm, cls) && !state) {
+        remove$6(elm, cls);
+      } else if (state) {
+        add$2(elm, cls);
+      }
+    };
+    const disableEditor = editor => {
+      const body = SugarElement.fromDom(editor.getBody());
+      toggleClass(body, 'mce-content-readonly', true);
+      editor.selection.controlSelection.hideResizeRect();
+      editor._selectionOverrides.hideFakeCaret();
+      removeFakeSelection(editor);
+    };
+    const enableEditor = editor => {
+      const body = SugarElement.fromDom(editor.getBody());
+      toggleClass(body, 'mce-content-readonly', false);
+      if (editor.hasEditableRoot()) {
+        set$3(body, true);
+      }
+      setCommonEditorCommands(editor, false);
+      if (hasEditorOrUiFocus(editor)) {
+        editor.focus();
+      }
+      restoreFakeSelection(editor);
+      editor.nodeChanged();
+    };
+
+    const isDisabled = editor => isDisabled$1(editor);
+    const internalContentEditableAttr = 'data-mce-contenteditable';
+    const switchOffContentEditableTrue = elm => {
+      each$e(descendants(elm, '*[contenteditable="true"]'), elm => {
+        set$4(elm, internalContentEditableAttr, 'true');
+        set$3(elm, false);
+      });
+    };
+    const switchOnContentEditableTrue = elm => {
+      each$e(descendants(elm, `*[${ internalContentEditableAttr }="true"]`), elm => {
+        remove$9(elm, internalContentEditableAttr);
+        set$3(elm, true);
+      });
+    };
+    const toggleDisabled = (editor, state) => {
+      const body = SugarElement.fromDom(editor.getBody());
+      if (state) {
+        disableEditor(editor);
+        set$3(body, false);
+        switchOffContentEditableTrue(body);
+      } else {
+        switchOnContentEditableTrue(body);
+        enableEditor(editor);
+      }
+    };
+    const registerDisabledContentFilters = editor => {
+      if (editor.serializer) {
+        registerFilters(editor);
+      } else {
+        editor.on('PreInit', () => {
+          registerFilters(editor);
+        });
+      }
+    };
+    const registerFilters = editor => {
+      editor.parser.addAttributeFilter('contenteditable', nodes => {
+        if (isDisabled(editor)) {
+          each$e(nodes, node => {
+            node.attr(internalContentEditableAttr, node.attr('contenteditable'));
+            node.attr('contenteditable', 'false');
+          });
+        }
+      });
+      editor.serializer.addAttributeFilter(internalContentEditableAttr, nodes => {
+        if (isDisabled(editor)) {
+          each$e(nodes, node => {
+            node.attr('contenteditable', node.attr(internalContentEditableAttr));
+          });
+        }
+      });
+      editor.serializer.addTempAttr(internalContentEditableAttr);
+    };
+    const isClickEvent = e => e.type === 'click';
+    const allowedEvents = ['copy'];
+    const isAllowedEventInDisabledMode = e => contains$2(allowedEvents, e.type);
+    const getAnchorHrefOpt = (editor, elm) => {
+      const isRoot = elm => eq(elm, SugarElement.fromDom(editor.getBody()));
+      return closest$3(elm, 'a', isRoot).bind(a => getOpt(a, 'href'));
+    };
+    const processDisabledEvents = (editor, e) => {
+      if (isClickEvent(e) && !VK.metaKeyPressed(e)) {
+        const elm = SugarElement.fromDom(e.target);
+        getAnchorHrefOpt(editor, elm).each(href => {
+          e.preventDefault();
+          if (/^#/.test(href)) {
+            const targetEl = editor.dom.select(`${ href },[name="${ removeLeading(href, '#') }"]`);
+            if (targetEl.length) {
+              editor.selection.scrollIntoView(targetEl[0], true);
+            }
+          } else {
+            window.open(href, '_blank', 'rel=noopener noreferrer,menubar=yes,toolbar=yes,location=yes,status=yes,resizable=yes,scrollbars=yes');
+          }
+        });
+      } else if (isAllowedEventInDisabledMode(e)) {
+        editor.dispatch(e.type, e);
+      }
+    };
+    const registerDisabledModeEventHandlers = editor => {
+      editor.on('ShowCaret ObjectSelected', e => {
+        if (isDisabled(editor)) {
+          e.preventDefault();
+        }
+      });
+      editor.on('DisabledStateChange', e => {
+        if (!e.isDefaultPrevented()) {
+          toggleDisabled(editor, e.state);
+        }
+      });
+    };
+    const registerEventsAndFilters$1 = editor => {
+      registerDisabledContentFilters(editor);
+      registerDisabledModeEventHandlers(editor);
+    };
+
     const isContentCssSkinName = url => /^[a-z0-9\-]+$/i.test(url);
     const toContentSkinResourceName = url => 'content/' + url + '/content.css';
     const isBundledCssSkinName = url => tinymce.Resource.has(toContentSkinResourceName(url));
@@ -19864,7 +19951,7 @@
     let count = 0;
     const seed = () => {
       const rnd = () => {
-        return Math.round(Math.random() * 4294967295).toString(36);
+        return Math.round(random() * 4294967295).toString(36);
       };
       const now = new Date().getTime();
       return 's' + now.toString(36) + rnd() + rnd() + rnd();
@@ -20326,6 +20413,11 @@
             preview: 'font-family font-size'
           },
           {
+            selector: '.mce-placeholder',
+            styles: { float: 'left' },
+            ceFalseOverride: true
+          },
+          {
             selector: 'table',
             collapsed: false,
             styles: {
@@ -20366,6 +20458,15 @@
               marginRight: 'auto'
             },
             preview: false
+          },
+          {
+            selector: '.mce-placeholder',
+            styles: {
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto'
+            },
+            ceFalseOverride: true
           },
           {
             selector: 'table',
@@ -20415,6 +20516,11 @@
             collapsed: false,
             styles: { float: 'right' },
             preview: 'font-family font-size'
+          },
+          {
+            selector: '.mce-placeholder',
+            styles: { float: 'right' },
+            ceFalseOverride: true
           },
           {
             selector: 'table',
@@ -20574,6 +20680,7 @@
         subscript: { inline: 'sub' },
         superscript: { inline: 'sup' },
         code: { inline: 'code' },
+        samp: { inline: 'samp' },
         link: {
           inline: 'a',
           selector: 'a',
@@ -20633,7 +20740,7 @@
           }
         ]
       };
-      Tools.each('p h1 h2 h3 h4 h5 h6 div address pre dt dd samp'.split(/\s/), name => {
+      Tools.each('p h1 h2 h3 h4 h5 h6 div address pre dt dd'.split(/\s/), name => {
         formats[name] = {
           block: name,
           remove: 'all'
@@ -21489,7 +21596,7 @@
       if (!isText$b(range.commonAncestorContainer)) {
         return Optional.none();
       }
-      const direction = forward ? HDirection.Forwards : HDirection.Backwards;
+      const direction = forward ? 1 : -1;
       const caretWalker = CaretWalker(editor.getBody());
       const getNextPosFn = curry(getVisualCaretPosition, forward ? caretWalker.next : caretWalker.prev);
       const isBeforeFn = forward ? isBeforeBoundary : isAfterBoundary;
@@ -21979,10 +22086,10 @@
       BreakType[BreakType['Wrap'] = 2] = 'Wrap';
       BreakType[BreakType['Eol'] = 3] = 'Eol';
     }(BreakType || (BreakType = {})));
-    const flip = (direction, positions) => direction === HDirection.Backwards ? reverse(positions) : positions;
-    const walk$1 = (direction, caretWalker, pos) => direction === HDirection.Forwards ? caretWalker.next(pos) : caretWalker.prev(pos);
+    const flip = (direction, positions) => direction === -1 ? reverse(positions) : positions;
+    const walk$1 = (direction, caretWalker, pos) => direction === 1 ? caretWalker.next(pos) : caretWalker.prev(pos);
     const getBreakType = (scope, direction, currentPos, nextPos) => {
-      if (isBr$6(nextPos.getNode(direction === HDirection.Forwards))) {
+      if (isBr$6(nextPos.getNode(direction === 1))) {
         return BreakType.Br;
       } else if (isInSameBlock(currentPos, nextPos) === false) {
         return BreakType.Block;
@@ -22000,7 +22107,7 @@
           break;
         }
         if (isBr$6(nextPos.getNode(false))) {
-          if (direction === HDirection.Forwards) {
+          if (direction === 1) {
             return {
               positions: flip(direction, positions).concat([nextPos]),
               breakType: BreakType.Br,
@@ -22037,7 +22144,7 @@
     };
     const getAdjacentLinePositions = (direction, getPositionsUntilBreak, scope, start) => getPositionsUntilBreak(scope, start).breakAt.map(pos => {
       const positions = getPositionsUntilBreak(scope, pos).positions;
-      return direction === HDirection.Backwards ? positions.concat(pos) : [pos].concat(positions);
+      return direction === -1 ? positions.concat(pos) : [pos].concat(positions);
     }).getOr([]);
     const findClosestHorizontalPositionFromPoint = (positions, x) => foldl(positions, (acc, newPos) => acc.fold(() => Optional.some(newPos), lastPos => lift2(head(lastPos.getClientRects()), head(newPos.getClientRects()), (lastRect, newRect) => {
       const lastDist = Math.abs(x - lastRect.left);
@@ -22111,7 +22218,7 @@
       const result = [];
       const add = node => {
         let clientRects = getClientRects([node]);
-        if (direction === -1) {
+        if (direction === VDirection.Up) {
           clientRects = clientRects.reverse();
         }
         for (let i = 0; i < clientRects.length; i++) {
@@ -22156,7 +22263,7 @@
       let caretPosition;
       const result = [];
       let line = 0;
-      if (direction === 1) {
+      if (direction === VDirection.Down) {
         walkFn = caretWalker.next;
         isBelowFn = isBelow$1;
         isAboveFn = isAbove$1;
@@ -22198,17 +22305,17 @@
     };
     const renderRangeCaretOpt = (editor, range, scrollIntoView) => Optional.some(renderRangeCaret(editor, range, scrollIntoView));
     const moveHorizontally = (editor, direction, range, isBefore, isAfter, isElement) => {
-      const forwards = direction === HDirection.Forwards;
+      const forwards = direction === 1;
       const caretWalker = CaretWalker(editor.getBody());
       const getNextPosFn = curry(getVisualCaretPosition, forwards ? caretWalker.next : caretWalker.prev);
       const isBeforeFn = forwards ? isBefore : isAfter;
       if (!range.collapsed) {
         const node = getSelectedNode(range);
         if (isElement(node)) {
-          return showCaret(direction, editor, node, direction === HDirection.Backwards, false);
+          return showCaret(direction, editor, node, direction === -1, false);
         } else if (isCefAtEdgeSelected(editor)) {
           const newRange = range.cloneRange();
-          newRange.collapse(direction === HDirection.Backwards);
+          newRange.collapse(direction === -1);
           return Optional.from(newRange);
         }
       }
@@ -22574,7 +22681,7 @@
     };
     const deleteCaret = (editor, forward) => {
       const isNearMedia = forward ? isBeforeMedia : isAfterMedia;
-      const direction = forward ? HDirection.Forwards : HDirection.Backwards;
+      const direction = forward ? 1 : -1;
       const fromPos = getNormalizedRangeEndPoint(direction, editor.getBody(), editor.selection.getRng());
       if (isNearMedia(fromPos)) {
         return deleteElement(editor, forward, fromPos.getNode(!forward));
@@ -22621,6 +22728,9 @@
     const getBlocksToIndent = editor => filter$5(fromDom$1(editor.selection.getSelectedBlocks()), el => !isListComponent(el) && !parentIsListComponent(el) && isEditable(el));
     const handle = (editor, command) => {
       var _a, _b;
+      if (editor.mode.isReadOnly()) {
+        return;
+      }
       const {dom} = editor;
       const indentation = getIndentation(editor);
       const indentUnit = (_b = (_a = /[a-z%]+$/i.exec(indentation)) === null || _a === void 0 ? void 0 : _a[0]) !== null && _b !== void 0 ? _b : 'px';
@@ -22997,7 +23107,7 @@
       }
     };
     const getHorizontalRange = (editor, forward) => {
-      const direction = forward ? HDirection.Forwards : HDirection.Backwards;
+      const direction = forward ? 1 : -1;
       const range = editor.selection.getRng();
       return moveToCeFalseHorizontally(direction, editor, range).orThunk(() => {
         exitPreBlock(editor, direction, range);
@@ -23124,7 +23234,7 @@
     const executeWithDelayedAction = (patterns, evt) => findMap(matchDelayed(patterns, evt), pattern => pattern.action());
 
     const moveH$1 = (editor, forward) => {
-      const direction = forward ? HDirection.Forwards : HDirection.Backwards;
+      const direction = forward ? 1 : -1;
       const range = editor.selection.getRng();
       return moveHorizontally(editor, direction, range, isBeforeMedia, isAfterMedia, isMedia$2).exists(newRange => {
         moveToRange(editor, newRange);
@@ -23360,12 +23470,18 @@
           return getCellFirstCursorPosition(cell);
         });
       }, current => {
+        if (editor.mode.isReadOnly() || !isCellInEditableTable(current)) {
+          return Optional.none();
+        }
         editor.execCommand('mceTableInsertRowAfter');
         return tabForward(editor, isRoot, current);
       });
     };
-    const tabForward = (editor, isRoot, cell) => tabGo(editor, isRoot, next(cell, isEditable$2));
-    const tabBackward = (editor, isRoot, cell) => tabGo(editor, isRoot, prev(cell, isEditable$2));
+    const isCellInEditableTable = cell => closest$4(cell, isTag('table')).exists(isEditable$2);
+    const tabForward = (editor, isRoot, cell) => tabGo(editor, isRoot, next(cell, isCellEditable));
+    const tabBackward = (editor, isRoot, cell) => tabGo(editor, isRoot, prev(cell, isCellEditable));
+    const isCellEditable = cell => isEditable$2(cell) || descendant(cell, isEditableHTMLElement);
+    const isEditableHTMLElement = node => isHTMLElement$1(node) && isEditable$2(node);
     const handleTab = (editor, forward) => {
       const rootElements = [
         'table',
@@ -23573,7 +23689,7 @@
 
     const isValidTextRange = rng => rng.collapsed && isText$b(rng.startContainer);
     const getText = rng => trim$2(rng.toString().replace(/\u00A0/g, ' '));
-    const isWhitespace = chr => chr !== '' && ' \xA0\f\n\r\t\x0B'.indexOf(chr) !== -1;
+    const isWhitespace = chr => chr !== '' && ' \xA0\uFEFF\f\n\r\t\x0B'.indexOf(chr) !== -1;
 
     const stripTrigger = (text, trigger) => text.substring(trigger.length);
     const findTrigger = (text, index, trigger, includeWhitespace = false) => {
@@ -23964,6 +24080,29 @@
         toString
       };
     };
+    const oneOf = (props, rawF) => {
+      const f = rawF !== undefined ? rawF : identity;
+      const extract = (path, val) => {
+        const errors = [];
+        for (const prop of props) {
+          const res = prop.extract(path, val);
+          if (res.stype === SimpleResultType.Value) {
+            return {
+              stype: SimpleResultType.Value,
+              svalue: f(res.svalue)
+            };
+          }
+          errors.push(res);
+        }
+        return ResultCombine.consolidateArr(errors);
+      };
+      const toString = () => 'oneOf(' + map$3(props, prop => prop.toString()).join(', ') + ')';
+      return {
+        extract,
+        toString
+      };
+    };
+    const arrOfObj = compose(arrOf, objOf);
 
     const valueOf = validator => value(v => validator(v).fold(SimpleResult.serror, SimpleResult.svalue));
     const extractValue = (label, prop, obj) => {
@@ -23994,6 +24133,7 @@
     const validateEnum = values => valueOf(value => contains$2(values, value) ? Result.value(value) : Result.error(`Unsupported value: "${ value }", choose one of "${ values.join(', ') }".`));
     const requiredOf = (key, schema) => field(key, key, required(), schema);
     const requiredString = key => requiredOf(key, string);
+    const requiredStringEnum = (key, values) => field(key, key, required(), validateEnum(values));
     const requiredFunction = key => requiredOf(key, functionProcessor);
     const requiredArrayOf = (key, schema) => field(key, key, required(), arrOf(schema));
     const optionOf = (key, schema) => field(key, key, asOption(), schema);
@@ -24040,7 +24180,8 @@
       optionalTooltip,
       optionalIcon,
       optionalText,
-      onSetup
+      onSetup,
+      defaultedString('context', 'mode:design')
     ];
 
     const baseToolbarToggleButtonFields = [active].concat(baseToolbarButtonFields);
@@ -24060,12 +24201,14 @@
 
     const contextButtonFields = baseToolbarButtonFields.concat([
       defaultedType('contextformbutton'),
+      defaultedString('align', 'end'),
       primary,
       onAction,
       customField('original', identity)
     ]);
     const contextToggleButtonFields = baseToolbarToggleButtonFields.concat([
       defaultedType('contextformbutton'),
+      defaultedString('align', 'end'),
       primary,
       onAction,
       customField('original', identity)
@@ -24076,15 +24219,56 @@
       contextformbutton: contextButtonFields,
       contextformtogglebutton: contextToggleButtonFields
     });
-    objOf([
-      defaultedType('contextform'),
-      defaultedFunction('initValue', constant('')),
+    const baseContextFormFields = [
       optionalLabel,
       requiredArrayOf('commands', toggleOrNormal),
       optionOf('launch', choose('type', {
         contextformbutton: launchButtonFields,
         contextformtogglebutton: launchToggleButtonFields
+      })),
+      defaultedFunction('onInput', noop),
+      defaultedFunction('onSetup', noop)
+    ];
+    const contextFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextform']),
+      defaultedFunction('initValue', constant('')),
+      optionString('placeholder')
+    ];
+    const contextSliderFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextsliderform']),
+      defaultedFunction('initValue', constant(0)),
+      defaultedFunction('min', constant(0)),
+      defaultedFunction('max', constant(100))
+    ];
+    const contextSizeInputFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextsizeinputform']),
+      defaultedFunction('initValue', constant({
+        width: '',
+        height: ''
       }))
+    ];
+    choose('type', {
+      contextform: contextFormFields,
+      contextsliderform: contextSliderFormFields,
+      contextsizeinputform: contextSizeInputFormFields
+    });
+
+    objOf([
+      defaultedType('contexttoolbar'),
+      requiredOf('items', oneOf([
+        string,
+        arrOfObj([
+          optionString('name'),
+          optionString('label'),
+          requiredArrayOf('items', string)
+        ])
+      ]))
     ].concat(contextBarFields));
 
     const register$2 = editor => {
@@ -24903,8 +25087,11 @@
     const isEmptyAnchor = (dom, elm) => {
       return elm && elm.nodeName === 'A' && dom.isEmpty(elm);
     };
-    const containerAndSiblingName = (container, nodeName) => {
+    const containerAndPreviousSiblingName = (container, nodeName) => {
       return container.nodeName === nodeName || container.previousSibling && container.previousSibling.nodeName === nodeName;
+    };
+    const containerAndNextSiblingName = (container, nodeName) => {
+      return container.nodeName === nodeName || container.nextSibling && container.nextSibling.nodeName === nodeName;
     };
     const canSplitBlock = (dom, node) => {
       return isNonNullable(node) && dom.isBlock(node) && !/^(TD|TH|CAPTION|FORM)$/.test(node.nodeName) && !/^(fixed|absolute)/i.test(node.style.position) && dom.isEditable(node.parentNode) && dom.getContentEditable(node) !== 'false';
@@ -25047,7 +25234,10 @@
         if (start && isElement$6(container) && container === parentBlock.firstChild) {
           return true;
         }
-        if (containerAndSiblingName(container, 'TABLE') || containerAndSiblingName(container, 'HR')) {
+        if (containerAndPreviousSiblingName(container, 'TABLE') || containerAndPreviousSiblingName(container, 'HR')) {
+          if (containerAndNextSiblingName(container, 'BR')) {
+            return !start;
+          }
           return isAfterLastNodeInContainer && !start || !isAfterLastNodeInContainer && start;
         }
         const walker = new DomTreeWalker(container, parentBlock);
@@ -25165,7 +25355,7 @@
         const afterBr = isAfterBr(parentBlockSugar, caretPos, editor.schema);
         const prevBrOpt = afterBr ? findPreviousBr(parentBlockSugar, caretPos, editor.schema).bind(pos => Optional.from(pos.getNode())) : Optional.none();
         newBlock = parentBlockParent.insertBefore(createNewBlock$1(), parentBlock);
-        const root = containerAndSiblingName(parentBlock, 'HR') || afterTable ? newBlock : prevBrOpt.getOr(parentBlock);
+        const root = containerAndPreviousSiblingName(parentBlock, 'HR') || afterTable ? newBlock : prevBrOpt.getOr(parentBlock);
         moveToCaretPosition(editor, root);
       } else {
         const tmpRng = includeZwspInRange(rng).cloneRange();
@@ -25425,6 +25615,9 @@
     };
 
     const insertBreak = (breakType, editor, evt) => {
+      if (editor.mode.isReadOnly()) {
+        return;
+      }
       if (!editor.selection.isCollapsed()) {
         execEditorDeleteCommand(editor);
       }
@@ -25440,6 +25633,9 @@
       }
     };
     const insert$1 = (editor, evt) => {
+      if (editor.mode.isReadOnly()) {
+        return;
+      }
       const br = () => insertBreak(linebreak, editor, evt);
       const block = () => insertBreak(blockbreak, editor, evt);
       const logicalAction = getAction(editor, evt);
@@ -25617,9 +25813,16 @@
       });
     };
 
+    const isValidContainer = (root, container) => root === container || root.contains(container);
+    const isInEditableRange = (editor, range) => {
+      if (!isValidContainer(editor.getBody(), range.startContainer) || !isValidContainer(editor.getBody(), range.endContainer)) {
+        return true;
+      }
+      return isEditableRange(editor.dom, range);
+    };
     const setup$e = editor => {
       editor.on('beforeinput', e => {
-        if (!editor.selection.isEditable() || exists(e.getTargetRanges(), rng => !isEditableRange(editor.dom, rng))) {
+        if (!editor.selection.isEditable() || exists(e.getTargetRanges(), rng => !isInEditableRange(editor, rng))) {
           e.preventDefault();
         }
       });
@@ -25802,16 +26005,17 @@
         });
       }
       nodeChanged(args = {}) {
-        const selection = this.editor.selection;
+        const editor = this.editor;
+        const selection = editor.selection;
         let node;
-        if (this.editor.initialized && selection && !shouldDisableNodeChange(this.editor) && !this.editor.mode.isReadOnly()) {
-          const root = this.editor.getBody();
+        if (editor.initialized && selection && !shouldDisableNodeChange(editor) && !isDisabled$1(editor)) {
+          const root = editor.getBody();
           node = selection.getStart(true) || root;
-          if (node.ownerDocument !== this.editor.getDoc() || !this.editor.dom.isChildOf(node, root)) {
+          if (node.ownerDocument !== editor.getDoc() || !editor.dom.isChildOf(node, root)) {
             node = root;
           }
           const parents = [];
-          this.editor.dom.getParent(node, node => {
+          editor.dom.getParent(node, node => {
             if (node === root) {
               return true;
             } else {
@@ -25819,7 +26023,7 @@
               return false;
             }
           });
-          this.editor.dispatch('NodeChange', {
+          editor.dispatch('NodeChange', {
             ...args,
             element: node,
             parents
@@ -26361,7 +26565,7 @@
           const contentType = dataTransfer.types[i];
           try {
             items[contentType] = dataTransfer.getData(contentType);
-          } catch (ex) {
+          } catch (_a) {
             items[contentType] = '';
           }
         }
@@ -26554,7 +26758,7 @@
           clipboardData.setData('text/plain', text);
           clipboardData.setData(internalHtmlMime(), html);
           return true;
-        } catch (e) {
+        } catch (_a) {
           return false;
         }
       } else {
@@ -27093,6 +27297,8 @@
         clientX: 0,
         clientY: 0,
         ctrlKey: false,
+        layerX: 0,
+        layerY: 0,
         metaKey: false,
         movementX: 0,
         movementY: 0,
@@ -27635,7 +27841,7 @@
         const doc = editor.getDoc();
         const realSelectionContainer = descendant$1(body, '#' + realSelectionId).getOrThunk(() => {
           const newContainer = SugarElement.fromHtml('<div data-mce-bogus="all" class="mce-offscreen-selection"></div>', doc);
-          set$3(newContainer, 'id', realSelectionId);
+          set$4(newContainer, 'id', realSelectionId);
           append$1(body, newContainer);
           return newContainer;
         });
@@ -28282,10 +28488,15 @@
         '?'
       ];
       const keyCodes = [32];
-      const getPatternSet = () => createPatternSet(getTextPatterns(editor), getTextPatternsLookup(editor));
+      const getPatternSet = () => createPatternSet(getTextPatterns(editor).filter(pattern => {
+        if (pattern.type === 'inline-command' || pattern.type === 'block-command') {
+          return editor.queryCommandSupported(pattern.cmd);
+        }
+        return true;
+      }), getTextPatternsLookup(editor));
       const hasDynamicPatterns = () => hasTextPatternsLookup(editor);
       editor.on('keydown', e => {
-        if (e.keyCode === 13 && !VK.modifierPressed(e) && editor.selection.isCollapsed()) {
+        if (e.keyCode === 13 && !VK.modifierPressed(e) && editor.selection.isCollapsed() && editor.selection.isEditable()) {
           const patternSet = filterByTrigger(getPatternSet(), 'enter');
           const hasPatterns = patternSet.inlinePatterns.length > 0 || patternSet.blockPatterns.length > 0 || hasDynamicPatterns();
           if (hasPatterns && handleEnter(editor, patternSet)) {
@@ -28294,7 +28505,7 @@
         }
       }, true);
       editor.on('keydown', e => {
-        if (e.keyCode === 32 && editor.selection.isCollapsed()) {
+        if (e.keyCode === 32 && editor.selection.isCollapsed() && editor.selection.isEditable()) {
           const patternSet = filterByTrigger(getPatternSet(), 'space');
           const hasPatterns = patternSet.blockPatterns.length > 0 || hasDynamicPatterns();
           if (hasPatterns && handleBlockPatternOnSpace(editor, patternSet)) {
@@ -28303,7 +28514,7 @@
         }
       }, true);
       const handleInlineTrigger = () => {
-        if (editor.selection.isCollapsed()) {
+        if (editor.selection.isCollapsed() && editor.selection.isEditable()) {
           const patternSet = filterByTrigger(getPatternSet(), 'space');
           const hasPatterns = patternSet.inlinePatterns.length > 0 || hasDynamicPatterns();
           if (hasPatterns) {
@@ -28338,7 +28549,7 @@
       const setEditorCommandState = (cmd, state) => {
         try {
           editor.getDoc().execCommand(cmd, false, String(state));
-        } catch (ex) {
+        } catch (_a) {
         }
       };
       const isDefaultPrevented = e => {
@@ -28733,7 +28944,7 @@
       const body = SugarElement.fromDom(editor.getBody());
       const container = getStyleContainer(getRootNode(body));
       const style = SugarElement.fromTag('style');
-      set$3(style, 'type', 'text/css');
+      set$4(style, 'type', 'text/css');
       append$1(style, SugarElement.fromText(text));
       append$1(container, style);
       editor.on('remove', () => {
@@ -28751,6 +28962,7 @@
         allow_svg_data_urls: getOption('allow_svg_data_urls'),
         allow_html_in_named_anchor: getOption('allow_html_in_named_anchor'),
         allow_script_urls: getOption('allow_script_urls'),
+        allow_mathml_annotation_encodings: getOption('allow_mathml_annotation_encodings'),
         allow_unsafe_link_target: getOption('allow_unsafe_link_target'),
         convert_unsafe_embeds: getOption('convert_unsafe_embeds'),
         convert_fonts_to_spans: getOption('convert_fonts_to_spans'),
@@ -28906,6 +29118,9 @@
         initInstanceCallback.call(editor, editor);
       }
       autoFocus(editor);
+      if (isDisabled(editor)) {
+        toggleDisabled(editor, true);
+      }
     };
     const getStyleSheetLoader$1 = editor => editor.inline ? editor.ui.styleSheetLoader : editor.dom.styleSheetLoader;
     const makeStylesheetLoadingPromises = (editor, css, framedFonts) => {
@@ -29033,7 +29248,7 @@
       body.disabled = true;
       editor.readonly = isReadOnly$1(editor);
       editor._editableRoot = hasEditableRoot$1(editor);
-      if (!editor.readonly && editor.hasEditableRoot()) {
+      if (!isDisabled$1(editor) && editor.hasEditableRoot()) {
         if (editor.inline && DOM$6.getStyle(body, 'position', true) === 'static') {
           body.style.position = 'relative';
         }
@@ -29110,7 +29325,7 @@
     const DOM$5 = DOMUtils.DOM;
     const createIframeElement = (id, title, customAttrs, tabindex) => {
       const iframe = SugarElement.fromTag('iframe');
-      tabindex.each(t => set$3(iframe, 'tabindex', t));
+      tabindex.each(t => set$4(iframe, 'tabindex', t));
       setAll$1(iframe, customAttrs);
       setAll$1(iframe, {
         id: id + '_ifr',
@@ -29292,7 +29507,8 @@
         hide: Optional.from(api.hide).getOr(noop),
         isEnabled: Optional.from(api.isEnabled).getOr(always),
         setEnabled: state => {
-          if (!editor.mode.isReadOnly()) {
+          const shouldSkip = state && (editor.mode.get() === 'readonly' || isDisabled(editor));
+          if (!shouldSkip) {
             Optional.from(api.setEnabled).each(f => f(state));
           }
         }
@@ -29505,7 +29721,7 @@
     const setEditableRoot = (editor, state) => {
       if (editor._editableRoot !== state) {
         editor._editableRoot = state;
-        if (!editor.readonly) {
+        if (!isDisabled(editor)) {
           editor.getBody().contentEditable = String(editor.hasEditableRoot());
           editor.nodeChanged();
         }
@@ -29658,7 +29874,7 @@
           let failed;
           try {
             doc.execCommand(command);
-          } catch (ex) {
+          } catch (_a) {
             failed = true;
           }
           if (command === 'paste' && !doc.queryCommandEnabled(command)) {
@@ -29949,6 +30165,9 @@
 
     const registerCommands$4 = editor => {
       const applyLinkToSelection = (_command, _ui, value) => {
+        if (editor.mode.isReadOnly()) {
+          return;
+        }
         const linkDetails = isString(value) ? { href: value } : value;
         const anchor = editor.dom.getParent(editor.selection.getNode(), 'a');
         if (isObject(linkDetails) && isString(linkDetails.href)) {
@@ -29986,6 +30205,9 @@
       return Optional.from(topParentBlock).map(SugarElement.fromDom);
     };
     const insert = (editor, before) => {
+      if (editor.mode.isReadOnly()) {
+        return;
+      }
       const dom = editor.dom;
       const rng = editor.selection.getRng();
       const node = before ? editor.selection.getStart() : editor.selection.getEnd();
@@ -30190,135 +30412,6 @@
       }
     }
 
-    const internalContentEditableAttr = 'data-mce-contenteditable';
-    const toggleClass = (elm, cls, state) => {
-      if (has(elm, cls) && !state) {
-        remove$6(elm, cls);
-      } else if (state) {
-        add$2(elm, cls);
-      }
-    };
-    const setEditorCommandState = (editor, cmd, state) => {
-      try {
-        editor.getDoc().execCommand(cmd, false, String(state));
-      } catch (ex) {
-      }
-    };
-    const setContentEditable = (elm, state) => {
-      elm.dom.contentEditable = state ? 'true' : 'false';
-    };
-    const switchOffContentEditableTrue = elm => {
-      each$e(descendants(elm, '*[contenteditable="true"]'), elm => {
-        set$3(elm, internalContentEditableAttr, 'true');
-        setContentEditable(elm, false);
-      });
-    };
-    const switchOnContentEditableTrue = elm => {
-      each$e(descendants(elm, `*[${ internalContentEditableAttr }="true"]`), elm => {
-        remove$9(elm, internalContentEditableAttr);
-        setContentEditable(elm, true);
-      });
-    };
-    const removeFakeSelection = editor => {
-      Optional.from(editor.selection.getNode()).each(elm => {
-        elm.removeAttribute('data-mce-selected');
-      });
-    };
-    const restoreFakeSelection = editor => {
-      editor.selection.setRng(editor.selection.getRng());
-    };
-    const toggleReadOnly = (editor, state) => {
-      const body = SugarElement.fromDom(editor.getBody());
-      toggleClass(body, 'mce-content-readonly', state);
-      if (state) {
-        editor.selection.controlSelection.hideResizeRect();
-        editor._selectionOverrides.hideFakeCaret();
-        removeFakeSelection(editor);
-        editor.readonly = true;
-        setContentEditable(body, false);
-        switchOffContentEditableTrue(body);
-      } else {
-        editor.readonly = false;
-        if (editor.hasEditableRoot()) {
-          setContentEditable(body, true);
-        }
-        switchOnContentEditableTrue(body);
-        setEditorCommandState(editor, 'StyleWithCSS', false);
-        setEditorCommandState(editor, 'enableInlineTableEditing', false);
-        setEditorCommandState(editor, 'enableObjectResizing', false);
-        if (hasEditorOrUiFocus(editor)) {
-          editor.focus();
-        }
-        restoreFakeSelection(editor);
-        editor.nodeChanged();
-      }
-    };
-    const isReadOnly = editor => editor.readonly;
-    const registerFilters = editor => {
-      editor.parser.addAttributeFilter('contenteditable', nodes => {
-        if (isReadOnly(editor)) {
-          each$e(nodes, node => {
-            node.attr(internalContentEditableAttr, node.attr('contenteditable'));
-            node.attr('contenteditable', 'false');
-          });
-        }
-      });
-      editor.serializer.addAttributeFilter(internalContentEditableAttr, nodes => {
-        if (isReadOnly(editor)) {
-          each$e(nodes, node => {
-            node.attr('contenteditable', node.attr(internalContentEditableAttr));
-          });
-        }
-      });
-      editor.serializer.addTempAttr(internalContentEditableAttr);
-    };
-    const registerReadOnlyContentFilters = editor => {
-      if (editor.serializer) {
-        registerFilters(editor);
-      } else {
-        editor.on('PreInit', () => {
-          registerFilters(editor);
-        });
-      }
-    };
-    const isClickEvent = e => e.type === 'click';
-    const allowedEvents = ['copy'];
-    const isReadOnlyAllowedEvent = e => contains$2(allowedEvents, e.type);
-    const getAnchorHrefOpt = (editor, elm) => {
-      const isRoot = elm => eq(elm, SugarElement.fromDom(editor.getBody()));
-      return closest$3(elm, 'a', isRoot).bind(a => getOpt(a, 'href'));
-    };
-    const processReadonlyEvents = (editor, e) => {
-      if (isClickEvent(e) && !VK.metaKeyPressed(e)) {
-        const elm = SugarElement.fromDom(e.target);
-        getAnchorHrefOpt(editor, elm).each(href => {
-          e.preventDefault();
-          if (/^#/.test(href)) {
-            const targetEl = editor.dom.select(`${ href },[name="${ removeLeading(href, '#') }"]`);
-            if (targetEl.length) {
-              editor.selection.scrollIntoView(targetEl[0], true);
-            }
-          } else {
-            window.open(href, '_blank', 'rel=noopener noreferrer,menubar=yes,toolbar=yes,location=yes,status=yes,resizable=yes,scrollbars=yes');
-          }
-        });
-      } else if (isReadOnlyAllowedEvent(e)) {
-        editor.dispatch(e.type, e);
-      }
-    };
-    const registerReadOnlySelectionBlockers = editor => {
-      editor.on('ShowCaret', e => {
-        if (isReadOnly(editor)) {
-          e.preventDefault();
-        }
-      });
-      editor.on('ObjectSelected', e => {
-        if (isReadOnly(editor)) {
-          e.preventDefault();
-        }
-      });
-    };
-
     const nativeEvents = Tools.makeMap('focus blur focusin focusout click dblclick mousedown mouseup mousemove mouseover beforepaste paste cut copy selectionchange ' + 'mouseout mouseenter mouseleave wheel keydown keypress keyup input beforeinput contextmenu dragstart dragend dragover ' + 'draggesture dragdrop drop drag submit ' + 'compositionstart compositionend compositionupdate touchstart touchmove touchend touchcancel', ' ');
     class EventDispatcher {
       static isNative(name) {
@@ -30510,12 +30603,12 @@
       }
       return editor.getBody();
     };
-    const isListening = editor => !editor.hidden && !isReadOnly(editor);
+    const isListening = editor => !editor.hidden && !isDisabled(editor);
     const fireEvent = (editor, eventName, e) => {
       if (isListening(editor)) {
         editor.dispatch(eventName, e);
-      } else if (isReadOnly(editor)) {
-        processReadonlyEvents(editor, e);
+      } else if (isDisabled(editor)) {
+        processDisabledEvents(editor, e);
       }
     };
     const bindEventDelegate = (editor, eventName) => {
@@ -30764,6 +30857,52 @@
       };
     };
 
+    const setContentEditable = (elm, state) => {
+      elm.dom.contentEditable = state ? 'true' : 'false';
+    };
+    const toggleReadOnly = (editor, state) => {
+      const body = SugarElement.fromDom(editor.getBody());
+      if (state) {
+        editor.readonly = true;
+        if (editor.hasEditableRoot()) {
+          setContentEditable(body, true);
+        }
+        disableEditor(editor);
+      } else {
+        editor.readonly = false;
+        enableEditor(editor);
+      }
+    };
+    const isReadOnly = editor => editor.readonly;
+    const registerReadOnlyInputBlockers = editor => {
+      editor.on('beforeinput paste cut dragend dragover draggesture dragdrop drop drag', e => {
+        if (isReadOnly(editor)) {
+          e.preventDefault();
+        }
+      });
+      editor.on('BeforeExecCommand', e => {
+        if ((e.command === 'Undo' || e.command === 'Redo') && isReadOnly(editor)) {
+          e.preventDefault();
+        }
+      });
+      editor.on('input', e => {
+        if (!e.isComposing && isReadOnly(editor)) {
+          const undoLevel = editor.undoManager.add();
+          if (isNonNullable(undoLevel)) {
+            editor.undoManager.undo();
+          }
+        }
+      });
+      editor.on('compositionend', () => {
+        if (isReadOnly(editor)) {
+          const undoLevel = editor.undoManager.add();
+          if (isNonNullable(undoLevel)) {
+            editor.undoManager.undo();
+          }
+        }
+      });
+    };
+
     const defaultModes = [
       'design',
       'readonly'
@@ -30785,7 +30924,7 @@
       fireSwitchMode(editor, mode);
     };
     const setMode = (editor, availableModes, activeMode, mode) => {
-      if (mode === activeMode.get()) {
+      if (mode === activeMode.get() || editor.initialized && isDisabled(editor)) {
         return;
       } else if (!has$2(availableModes, mode)) {
         throw new Error(`Editor mode '${ mode }' is invalid`);
@@ -30829,8 +30968,8 @@
           editorReadOnly: true
         }
       });
-      registerReadOnlyContentFilters(editor);
-      registerReadOnlySelectionBlockers(editor);
+      registerReadOnlyInputBlockers(editor);
+      registerEventsAndFilters$1(editor);
       return {
         isReadOnly: () => isReadOnly(editor),
         set: mode => setMode(editor, availableModes.get(), activeMode, mode),
@@ -31005,6 +31144,7 @@
       const icons = {};
       const contextMenus = {};
       const contextToolbars = {};
+      const contexts = {};
       const sidebars = {};
       const views = {};
       const add = (collection, type) => (name, spec) => {
@@ -31013,7 +31153,14 @@
           type
         };
       };
+      const addDefaulted = (collection, type) => (name, spec) => {
+        collection[name.toLowerCase()] = {
+          type,
+          ...spec
+        };
+      };
       const addIcon = (name, svgData) => icons[name.toLowerCase()] = svgData;
+      const addContext = (name, pred) => contexts[name.toLowerCase()] = pred;
       return {
         addButton: add(buttons, 'button'),
         addGroupToolbarButton: add(buttons, 'grouptoolbarbutton'),
@@ -31026,10 +31173,11 @@
         addAutocompleter: add(popups, 'autocompleter'),
         addContextMenu: add(contextMenus, 'contextmenu'),
         addContextToolbar: add(contextToolbars, 'contexttoolbar'),
-        addContextForm: add(contextToolbars, 'contextform'),
+        addContextForm: addDefaulted(contextToolbars, 'contextform'),
         addSidebar: add(sidebars, 'sidebar'),
         addView: add(views, 'views'),
         addIcon,
+        addContext,
         getAll: () => ({
           buttons,
           menuItems,
@@ -31038,7 +31186,8 @@
           contextMenus,
           contextToolbars,
           sidebars,
-          views
+          views,
+          contexts
         })
       };
     };
@@ -31061,6 +31210,7 @@
         addGroupToolbarButton: bridge.addGroupToolbarButton,
         addToggleMenuItem: bridge.addToggleMenuItem,
         addView: bridge.addView,
+        addContext: bridge.addContext,
         getAll: bridge.getAll
       };
     };
@@ -31497,8 +31647,8 @@
       documentBaseURL: null,
       suffix: null,
       majorVersion: '7',
-      minorVersion: '2.0',
-      releaseDate: '2024-06-19',
+      minorVersion: '7.2',
+      releaseDate: '2025-03-19',
       i18n: I18n,
       activeEditor: null,
       focusedEditor: null,
@@ -32020,7 +32170,7 @@
       localStorage = window.localStorage;
       localStorage.setItem(test, test);
       localStorage.removeItem(test);
-    } catch (e) {
+    } catch (_a) {
       localStorage = create();
     }
     var LocalStorage = localStorage;
@@ -32103,7 +32253,7 @@
       if (true) {
         try {
           module.exports = tinymce;
-        } catch (_) {
+        } catch (_a) {
         }
       }
     };
@@ -32185,6 +32335,7 @@ tinymce.IconManager.add('default', {
     'flip-horizontally': '<svg width="24" height="24"><path d="M14 19h2v-2h-2v2Zm4-8h2V9h-2v2ZM4 7v10c0 1.1.9 2 2 2h3v-2H6V7h3V5H6a2 2 0 0 0-2 2Zm14-2v2h2a2 2 0 0 0-2-2Zm-7 16h2V3h-2v18Zm7-6h2v-2h-2v2Zm-4-8h2V5h-2v2Zm4 12a2 2 0 0 0 2-2h-2v2Z" fill-rule="nonzero"/></svg>',
     'flip-vertically': '<svg width="24" height="24"><path d="M5 14v2h2v-2H5Zm8 4v2h2v-2h-2Zm4-14H7a2 2 0 0 0-2 2v3h2V6h10v3h2V6a2 2 0 0 0-2-2Zm2 14h-2v2a2 2 0 0 0 2-2ZM3 11v2h18v-2H3Zm6 7v2h2v-2H9Zm8-4v2h2v-2h-2ZM5 18c0 1.1.9 2 2 2v-2H5Z" fill-rule="nonzero"/></svg>',
     'footnote': '<svg width="24" height="24"><path d="M19 13c.6 0 1 .4 1 1s-.4 1-1 1H5a1 1 0 1 1 0-2h14Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M19 4v6h-1V5h-1.5V4h2.6Z"/><path d="M12 18c.6 0 1 .4 1 1s-.4 1-1 1H5a1 1 0 1 1 0-2h7ZM14 8c.6 0 1 .4 1 1s-.4 1-1 1H5a1 1 0 0 1 0-2h9Z"/></svg>',
+    'format-code': '<svg width="24" height="24"><path d="m10 22 2-7H6l9-13h2l-2 8h7L12 22h-2ZM6 2h7l-1.4 2H6V2Zm4.2 4H4v2h4.8l1.4-2Zm-2.7 4H2v2h4l1.5-2Z"/></svg>',
     'format-painter': '<svg width="24" height="24"><path d="M18 5V4c0-.5-.4-1-1-1H5a1 1 0 0 0-1 1v4c0 .6.5 1 1 1h12c.6 0 1-.4 1-1V7h1v4H9v9c0 .6.4 1 1 1h2c.6 0 1-.4 1-1v-7h8V5h-3Z" fill-rule="nonzero"/></svg>',
     'format': '<svg width="24" height="24"><path fill-rule="evenodd" d="M17 5a1 1 0 0 1 0 2h-4v11a1 1 0 0 1-2 0V7H7a1 1 0 1 1 0-2h10Z"/></svg>',
     'fullscreen': '<svg width="24" height="24"><path d="m15.3 10-1.2-1.3 2.9-3h-2.3a.9.9 0 1 1 0-1.7H19c.5 0 .9.4.9.9v4.4a.9.9 0 1 1-1.8 0V7l-2.9 3Zm0 4 3 3v-2.3a.9.9 0 1 1 1.7 0V19c0 .5-.4.9-.9.9h-4.4a.9.9 0 1 1 0-1.8H17l-3-2.9 1.3-1.2ZM10 15.4l-2.9 3h2.3a.9.9 0 1 1 0 1.7H5a.9.9 0 0 1-.9-.9v-4.4a.9.9 0 1 1 1.8 0V17l2.9-3 1.2 1.3ZM8.7 10 5.7 7v2.3a.9.9 0 0 1-1.7 0V5c0-.5.4-.9.9-.9h4.4a.9.9 0 0 1 0 1.8H7l3 2.9-1.3 1.2Z" fill-rule="nonzero"/></svg>',
@@ -32224,6 +32375,7 @@ tinymce.IconManager.add('default', {
     'lock': '<svg width="24" height="24"><path d="M16.3 11c.2 0 .3 0 .5.2l.2.6v7.4c0 .3 0 .4-.2.6l-.6.2H7.8c-.3 0-.4 0-.6-.2a.7.7 0 0 1-.2-.6v-7.4c0-.3 0-.4.2-.6l.5-.2H8V8c0-.8.3-1.5.9-2.1.6-.6 1.3-.9 2.1-.9h2c.8 0 1.5.3 2.1.9.6.6.9 1.3.9 2.1v3h.3ZM10 8v3h4V8a1 1 0 0 0-.3-.7A1 1 0 0 0 13 7h-2a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7Z" fill-rule="evenodd"/></svg>',
     'ltr': '<svg width="24" height="24"><path d="M11 5h7a1 1 0 0 1 0 2h-1v11a1 1 0 0 1-2 0V7h-2v11a1 1 0 0 1-2 0v-6c-.5 0-1 0-1.4-.3A3.4 3.4 0 0 1 7.8 10a3.3 3.3 0 0 1 0-2.8 3.4 3.4 0 0 1 1.8-1.8L11 5ZM4.4 16.2 6.2 15l-1.8-1.2a1 1 0 0 1 1.2-1.6l3 2a1 1 0 0 1 0 1.6l-3 2a1 1 0 1 1-1.2-1.6Z" fill-rule="evenodd"/></svg>',
     'math-equation': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 4.8c.1-.5.5-.8 1-.8h10a1 1 0 1 1 0 2h-9.2L8.3 19.2a1 1 0 0 1-1.7.4l-3.4-4.2a1 1 0 0 1 1.6-1.2l2 2.5L9 4.8Zm9.7 5.5c.4.4.4 1 0 1.4L17 13.5l1.8 1.8a1 1 0 1 1-1.4 1.4L15.5 15l-1.8 1.8a1 1 0 0 1-1.4-1.4l1.8-1.8-1.8-1.8a1 1 0 0 1 1.4-1.4l1.8 1.8 1.8-1.8a1 1 0 0 1 1.4 0Z"/></svg>',
+    'mentions': '<svg height="24" width="24"><path d="M12 21a8.8 8.8 0 0 1-3.5-.7 9 9 0 0 1-2.9-2 9 9 0 0 1-1.9-2.8A8.8 8.8 0 0 1 3 12c0-1.3.2-2.4.7-3.5a9 9 0 0 1 4.8-4.8A8.8 8.8 0 0 1 12 3c1.3 0 2.4.2 3.5.7a9.1 9.1 0 0 1 4.8 4.8A8.7 8.7 0 0 1 21 12v1.4a3 3 0 0 1-.9 2.2 3 3 0 0 1-2.2.9c-.5 0-1-.1-1.5-.4a3.8 3.8 0 0 1-1.1-1 4.8 4.8 0 0 1-1.5 1 4.3 4.3 0 0 1-1.8.4c-1.2 0-2.3-.4-3.2-1.3-.9-.9-1.3-2-1.3-3.2s.4-2.3 1.3-3.2c.9-.9 2-1.3 3.2-1.3s2.3.4 3.2 1.3c.9.9 1.3 2 1.3 3.2v1.4c0 .4.1.7.4 1 .3.3.6.4 1 .4s.7-.1 1-.4c.3-.3.4-.6.4-1V12c0-2-.7-3.8-2.1-5.2S14 4.7 12 4.7s-3.8.7-5.2 2.1S4.7 10 4.7 12s.7 3.8 2.1 5.2 3.2 2.1 5.2 2.1h4.5V21zm0-6.2c.8 0 1.4-.3 2-.8a2.7 2.7 0 0 0 .8-2c0-.8-.3-1.4-.8-2a2.7 2.7 0 0 0-2-.8c-.8 0-1.4.3-2 .8a2.7 2.7 0 0 0-.8 2c0 .8.3 1.4.8 2a2.7 2.7 0 0 0 2 .8z"/></svg>',
     'minus': '<svg width="24" height="24"><path d="M19 11a1 1 0 0 1 .1 2H5a1 1 0 0 1-.1-2H19Z"/></svg>',
     'more-drawer': '<svg width="24" height="24"><path d="M6 10a2 2 0 0 0-2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2 2 2 0 0 0-2-2Zm12 0a2 2 0 0 0-2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2 2 2 0 0 0-2-2Zm-6 0a2 2 0 0 0-2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2 2 2 0 0 0-2-2Z" fill-rule="nonzero"/></svg>',
     'new-document': '<svg width="24" height="24"><path d="M14.4 3H7a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h10a2 2 0 0 0 2-2V7.6L14.4 3ZM17 19H7V5h6v4h4v10Z" fill-rule="nonzero"/></svg>',
@@ -32234,6 +32386,9 @@ tinymce.IconManager.add('default', {
     'ordered-list': '<svg width="24" height="24"><path d="M10 17h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 0 1 0-2Zm0-6h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 0 1 0-2Zm0-6h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 1 1 0-2ZM6 4v3.5c0 .3-.2.5-.5.5a.5.5 0 0 1-.5-.5V5h-.5a.5.5 0 0 1 0-1H6Zm-1 8.8.2.2h1.3c.3 0 .5.2.5.5s-.2.5-.5.5H4.9a1 1 0 0 1-.9-1V13c0-.4.3-.8.6-1l1.2-.4.2-.3a.2.2 0 0 0-.2-.2H4.5a.5.5 0 0 1-.5-.5c0-.3.2-.5.5-.5h1.6c.5 0 .9.4.9 1v.1c0 .4-.3.8-.6 1l-1.2.4-.2.3ZM7 17v2c0 .6-.4 1-1 1H4.5a.5.5 0 0 1 0-1h1.2c.2 0 .3-.1.3-.3 0-.2-.1-.3-.3-.3H4.4a.4.4 0 1 1 0-.8h1.3c.2 0 .3-.1.3-.3 0-.2-.1-.3-.3-.3H4.5a.5.5 0 1 1 0-1H6c.6 0 1 .4 1 1Z" fill-rule="evenodd"/></svg>',
     'orientation': '<svg width="24" height="24"><path d="M7.3 6.4 1 13l6.4 6.5 6.5-6.5-6.5-6.5ZM3.7 13l3.6-3.7L11 13l-3.7 3.7-3.6-3.7ZM12 6l2.8 2.7c.3.3.3.8 0 1-.3.4-.9.4-1.2 0L9.2 5.7a.8.8 0 0 1 0-1.2L13.6.2c.3-.3.9-.3 1.2 0 .3.3.3.8 0 1.1L12 4h1a9 9 0 1 1-4.3 16.9l1.5-1.5A7 7 0 1 0 13 6h-1Z" fill-rule="nonzero"/></svg>',
     'outdent': '<svg width="24" height="24"><path d="M7 5h12c.6 0 1 .4 1 1s-.4 1-1 1H7a1 1 0 1 1 0-2Zm5 4h7c.6 0 1 .4 1 1s-.4 1-1 1h-7a1 1 0 0 1 0-2Zm0 4h7c.6 0 1 .4 1 1s-.4 1-1 1h-7a1 1 0 0 1 0-2Zm-5 4h12a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2Zm1.6-3.8a1 1 0 0 1-1.2 1.6l-3-2a1 1 0 0 1 0-1.6l3-2a1 1 0 0 1 1.2 1.6L6.8 12l1.8 1.2Z" fill-rule="evenodd"/></svg>',
+    'export-pdf': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V17h-2V9h-4V5H7v3H5V5c0-1.1.9-2 2-2Z"/><path d="M2.6 15.2v-1.9h1c.6 0 1-.2 1.4-.5.3-.3.5-.7.5-1.2s-.2-.9-.5-1.2a2 2 0 0 0-1.3-.4H1v5.2h1.6Zm.4-3h-.4v-1.1h.5l.6.1.2.5c0 .1 0 .3-.2.4l-.7.1Zm5.7 3 1-.1c.3 0 .5-.2.7-.4l.5-.8c.2-.3.2-.7.2-1.3v-1l-.5-.8c-.2-.3-.4-.5-.7-.6L8.7 10H6.3v5.2h2.4Zm-.4-1.1H8v-3h.4c.5 0 .8.2 1 .4l.2 1.1-.1 1-.3.3-.8.2Zm5.3 1.2V13h2v-1h-2v-1H16V10h-4v5.2h1.6Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M15 17a1 1 0 1 0-2 0v3.1l-1.4-1a1 1 0 1 0-1.2 1.7l3.6 2.4 3.6-2.4a1 1 0 0 0-1.2-1.6l-1.4 1V17Z"/></svg>',
+    'export-word': '<svg width="24" height="24"><path d="M9.5 7A1.5 1.5 0 0 1 11 8.4v7.1A1.5 1.5 0 0 1 9.6 17H2.5A1.5 1.5 0 0 1 1 15.6V8.5A1.5 1.5 0 0 1 2.4 7h7.1Zm-1 2.8-1 2.6-1-2.5v-.1a.6.6 0 0 0-1 0l-.1.1-.9 2.5-1-2.5v-.1a.6.6 0 0 0-1 .4v.1l1.5 4v.1a.6.6 0 0 0 1 0v-.1l1-2.5.9 2.5v.1a.6.6 0 0 0 1 0H8l1.6-4v-.2a.6.6 0 0 0-1.1-.4Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V17h-2V9h-4V5H5c0-1.1.9-2 2-2ZM15 17a1 1 0 1 0-2 0v3.1l-1.4-1a1 1 0 1 0-1.2 1.7l3.6 2.4 3.6-2.4a1 1 0 0 0-1.2-1.6l-1.4 1V17Z"/></svg>',
+    'import-word': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V15h-2V9h-4V5H5c0-1.1.9-2 2-2Z"/><path d="M9.5 7A1.5 1.5 0 0 1 11 8.4v7.1A1.5 1.5 0 0 1 9.6 17H2.5A1.5 1.5 0 0 1 1 15.6V8.5A1.5 1.5 0 0 1 2.4 7h7.1Zm-1 2.8-1 2.6-1-2.5v-.1a.6.6 0 0 0-1 0l-.1.1-.9 2.5-1-2.5v-.1a.6.6 0 0 0-1 .4v.1l1.5 4v.1a.6.6 0 0 0 1 0v-.1l1-2.5.9 2.5v.1a.6.6 0 0 0 1 0H8l1.6-4v-.2a.6.6 0 0 0-1.1-.4Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.4 18.2a1 1 0 0 0 1.2 1.6l1.4-1V22a1 1 0 1 0 2 0v-3.1l1.4 1a1 1 0 0 0 1.2-1.7L15 15.8l-3.6 2.4Z"/></svg>',
     'page-break': '<svg width="24" height="24"><g fill-rule="evenodd"><path d="M5 11c.6 0 1 .4 1 1s-.4 1-1 1a1 1 0 0 1 0-2Zm3 0h1c.6 0 1 .4 1 1s-.4 1-1 1H8a1 1 0 0 1 0-2Zm4 0c.6 0 1 .4 1 1s-.4 1-1 1a1 1 0 0 1 0-2Zm3 0h1c.6 0 1 .4 1 1s-.4 1-1 1h-1a1 1 0 0 1 0-2Zm4 0c.6 0 1 .4 1 1s-.4 1-1 1a1 1 0 0 1 0-2ZM7 3v5h10V3c0-.6.4-1 1-1s1 .4 1 1v7H5V3c0-.6.4-1 1-1s1 .4 1 1ZM6 22a1 1 0 0 1-1-1v-7h14v7c0 .6-.4 1-1 1a1 1 0 0 1-1-1v-5H7v5c0 .6-.4 1-1 1Z"/></g></svg>',
     'paragraph': '<svg width="24" height="24"><path fill-rule="evenodd" d="M10 5h7a1 1 0 0 1 0 2h-1v11a1 1 0 0 1-2 0V7h-2v11a1 1 0 0 1-2 0v-6c-.5 0-1 0-1.4-.3A3.4 3.4 0 0 1 6.8 10a3.3 3.3 0 0 1 0-2.8 3.4 3.4 0 0 1 1.8-1.8L10 5Z"/></svg>',
     'paste-column-after': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12 1a3 3 0 0 1 2.8 2H18c1 0 2 .8 2 1.9V7h-2V5h-2v1c0 .6-.4 1-1 1H9a1 1 0 0 1-1-1V5H6v13h7v2H6c-1 0-2-.8-2-1.9V5c0-1 .8-2 1.9-2H9.2A3 3 0 0 1 12 1Zm8 7v12h-6V8h6Zm-1.5 1.5h-3v9h3v-9ZM12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg>',
@@ -32308,6 +32463,33 @@ tinymce.IconManager.add('default', {
     'unordered-list': '<svg width="24" height="24"><path d="M11 5h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 0 1 0-2Zm0 6h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 0 1 0-2Zm0 6h8c.6 0 1 .4 1 1s-.4 1-1 1h-8a1 1 0 0 1 0-2ZM4.5 6c0-.4.1-.8.4-1 .3-.4.7-.5 1.1-.5.4 0 .8.1 1 .4.4.3.5.7.5 1.1 0 .4-.1.8-.4 1-.3.4-.7.5-1.1.5-.4 0-.8-.1-1-.4-.4-.3-.5-.7-.5-1.1Zm0 6c0-.4.1-.8.4-1 .3-.4.7-.5 1.1-.5.4 0 .8.1 1 .4.4.3.5.7.5 1.1 0 .4-.1.8-.4 1-.3.4-.7.5-1.1.5-.4 0-.8-.1-1-.4-.4-.3-.5-.7-.5-1.1Zm0 6c0-.4.1-.8.4-1 .3-.4.7-.5 1.1-.5.4 0 .8.1 1 .4.4.3.5.7.5 1.1 0 .4-.1.8-.4 1-.3.4-.7.5-1.1.5-.4 0-.8-.1-1-.4-.4-.3-.5-.7-.5-1.1Z" fill-rule="evenodd"/></svg>',
     'unselected': '<svg width="24" height="24"><path fill-rule="nonzero" d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2Zm0 1a1 1 0 0 0-1 1v12c0 .6.4 1 1 1h12c.6 0 1-.4 1-1V6c0-.6-.4-1-1-1H6Z"/></svg>',
     'upload': '<svg width="24" height="24"><path d="M18 19v-2a1 1 0 0 1 2 0v3c0 .6-.4 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 2 0v2h12ZM11 6.4 8.7 8.7a1 1 0 0 1-1.4-1.4l4-4a1 1 0 0 1 1.4 0l4 4a1 1 0 1 1-1.4 1.4L13 6.4V16a1 1 0 0 1-2 0V6.4Z" fill-rule="nonzero"/></svg>',
+    'add-file': '<svg height="24" width="24"><path d="M2 7h2V4h3V2H4a2 2 0 0 0-2 2zm20 0h-2V4h-3V2h3a2 2 0 0 1 2 2zm0 2h-2v6h2zm0 8h-2v3h-3v2h3a2 2 0 0 0 2-2zM2 9h2v6H2zm0 8h2v3h3v2H4a2 2 0 0 1-2-2zm7 5v-2h6v2zm6-20v2H9V2zM6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M2 7h2V4h3V2H4a2 2 0 0 0-2 2zm20 0h-2V4h-3V2h3a2 2 0 0 1 2 2zm0 2h-2v6h2zm0 8h-2v3h-3v2h3a2 2 0 0 0 2-2zM2 9h2v6H2zm0 8h2v3h3v2H4a2 2 0 0 1-2-2zm7 5v-2h6v2zm6-20v2H9V2zM6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/></svg>',
+    'adjustments': '<svg width="24" height="24"><path d="M16 11a3 3 0 1 1 2.8-4H21v2h-2.2a3 3 0 0 1-2.8 2Zm0-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2ZM3 9h8V7H3v2Zm5 10a3 3 0 1 0-2.8-4H3v2h2.2A3 3 0 0 0 8 19Zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm13 0h-8v-2h8v2Z"/></svg>',
+    'alt-text': '<svg width="24" height="24"><path d="M3 20a2 2 0 0 1-1.4-.6A2 2 0 0 1 1 18V6c0-.6.2-1 .6-1.4A2 2 0 0 1 3 4h18c.6 0 1 .2 1.4.6.4.4.6.9.6 1.4v12c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6H3Zm0-2h18V6H3v12Zm1.5-3H6v-1.5h1.5V15H9v-5a1 1 0 0 0-.3-.7A1 1 0 0 0 8 9H5.5a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v5ZM6 12v-1.5h1.5V12H6Z"/><path d="M11 15V9h1.3v4.5h2V15H11Zm5.8-4.5V15h1.4v-4.5h1.3V9h-4v1.5h1.3Z"/></svg>',
+    'blur': '<svg width="24" height="24"><path d="M19.3 9.3a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7A1 1 0 0 0 20 9a1 1 0 0 0-.7.3Zm-16 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3A1 1 0 0 0 5 10a1 1 0 0 0-.3-.7A1 1 0 0 0 4 9a1 1 0 0 0-.7.3Zm16 6a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3Zm-16 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3A1 1 0 0 0 5 16a1 1 0 0 0-.3-.7A1 1 0 0 0 4 15a1 1 0 0 0-.7.3Zm5-11A1 1 0 0 0 8 5a1 1 0 0 0 1 1c.3 0 .5-.1.7-.3A1 1 0 0 0 10 5a1 1 0 0 0-.3-.7A1 1 0 0 0 9 4a1 1 0 0 0-.7.3Zm6 0a1 1 0 0 0-.3.7 1 1 0 0 0 1 1c.3 0 .5-.1.7-.3A1 1 0 0 0 16 5a1 1 0 0 0-.3-.7A1 1 0 0 0 15 4a1 1 0 0 0-.7.3Zm-6 16a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7A1 1 0 0 0 9 20a1 1 0 0 0-.7.3Zm6 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3ZM7.6 8.6A2 2 0 0 0 7 10c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 9 8a2 2 0 0 0-1.4.6Zm0 6A2 2 0 0 0 7 16c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 9 14a2 2 0 0 0-1.4.6Zm6-6A2 2 0 0 0 13 10c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 15 8a2 2 0 0 0-1.4.6Zm0 6A2 2 0 0 0 13 16c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 15 14a2 2 0 0 0-1.4.6Z"/></svg>',
+    'box': '<svg width="24" height="24"><path d="M3.8 7a1 1 0 0 0-.7.6l-.1 3V13.8a3.5 3.5 0 0 0 4 2.7c.8-.2 1.4-.5 2-1l.3-.3.3.2c.7.7 1.4 1 2.4 1.1 1.2 0 2.4-.6 3-1.6.9-1.2.8-2.8 0-4a3.7 3.7 0 0 0-2-1.2c-.4-.1-1.2-.1-1.6 0a3.4 3.4 0 0 0-1.7 1l-.3.2-.2-.1c-.4-.5-1.2-1-2-1.1-.6-.2-1.5 0-2 .2H5V9c0-1.3 0-1.3-.3-1.6a1 1 0 0 0-1-.3Zm12 2.6c-.3.2-.5.4-.6.8v.6l.9 1 .7 1v.1l-.8 1-.7 1a1 1 0 0 0 0 .7 1 1 0 0 0 1.3.6c.2 0 .3-.2 1-1l.5-.7.6.8.7.8c.4.3 1 .3 1.3 0l.2-.3a1 1 0 0 0 0-.8l-.8-1.2-.7-1a26 26 0 0 0 1.5-2 .8.8 0 0 0 .1-.4c0-.4-.1-.7-.5-.9H20c-.4 0-.5 0-1.2.8l-.7.8-.6-.7-.7-.9a1 1 0 0 0-1 0Zm-9 2 .4.1c.3.1.6.5.7.8l.1.6v.6c-.6 1-2 1.2-2.7.3-.3-.3-.3-.5-.3-1v-.5c.3-.5.7-.8 1.1-1a1.5 1.5 0 0 1 .7 0Zm5.7 0c.4 0 .8.4 1 .8l.2.6-.1.7c-.5.9-1.6 1.1-2.4.6a1.4 1.4 0 0 1-.6-1.1 1.4 1.4 0 0 1 .5-1.2 1.5 1.5 0 0 1 1.4-.4Z"/></svg>',
+    'camera': '<svg height="24" width="24"><g clip-rule="evenodd" fill-rule="evenodd"><path d="M10 5.4a1 1 0 0 1 .8-.4h4.4a1 1 0 0 1 .8.4l1.2 1.8h2.3A2.5 2.5 0 0 1 22 9.6v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 4 17.6v-8a2.5 2.5 0 0 1 2.5-2.4h2.3zM11.4 7l-1.2 1.7a1 1 0 0 1-.8.5h-3a.5.5 0 0 0-.4.4v8a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.4h-2.9a1 1 0 0 1-.8-.5L14.6 7z"/><path d="M13 11.4a2 2 0 1 0 0 3.8 2 2 0 0 0 0-3.8zm-4 1.9a4 4 0 1 1 8 0 4 4 0 0 1-8 0z"/></g></svg>',
+    'caption': '<svg height="24" width="24"><path d="M6 16h8v-2H6zm10 0h2v-2h-2zM4 20a2 2 0 0 1-1.5-.6A2 2 0 0 1 2 18V6c0-.6.2-1 .6-1.4A2 2 0 0 1 4 4h16c.6 0 1 .2 1.4.6.4.4.6.9.6 1.4v12c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6zm0-2h16V6H4z"/></svg>',
+    'dropbox': '<svg height="24" width="24"><path clip-rule="evenodd" d="m6.4 9.3-3-2a1 1 0 0 1 0-1.6l4-2.5a1 1 0 0 1 1 0L12 5.5l3.6-2.3a1 1 0 0 1 1 0l4 2.5a1 1 0 0 1 0 1.7l-3 1.9 3 1.9a1 1 0 0 1 0 1.6l-2.9 1.9V16c0 .3-.1.6-.4.8l-4.5 3a1 1 0 0 1-1.2 0l-4.4-3a1 1 0 0 1-.5-.9v-1l-3.2-2.2a1 1 0 0 1 0-1.6zm3 0L12 7.5l2.6 1.8L12 11zM8.9 15v.4l3.3 2.3 3.4-2.3v-.2L12 13l-3.1 2zm-1-10-2 1.4 2 1.3 2-1.3zm8.2 0-2 1.4 2 1.3 2-1.3zm-2 6.9 2-1.3 2 1.3-2 1.3-2-1.3zm-8.3 0 2-1.3L10 12l-2 1.3-2-1.3z" fill-rule="evenodd"/></svg>',
+    'evernote': '<svg width="24" height="24"><path fill-rule="evenodd" d="m9.5 3-.3.1-2.6 2.6C3.8 8.5 4 8.2 4 8.7c0 1.3.3 3 .6 4.3.5 2 1.1 3.2 2 3.7l1.2.3c1 .2 1.5.2 2.2.2 1.3 0 1.7 0 2.2-.4.3-.2.3-.4.4-1a38.4 38.4 0 0 1 .3-.4l.3.1 1.8.1h1.6v-1.8H14l-.1-.2a6.8 6.8 0 0 1-.5-1c-.2-.4-.3-.6-.5-.7a.8.8 0 0 0-.5-.1.9.9 0 0 0-.8.5l-.4 1.6-.3 1.5H9.4l-2-.3a1 1 0 0 1-.1-.2A10.1 10.1 0 0 1 6 9.7v-.2h4l.5-.5V5H12c.4.2.7.7.8 1.1a1 1 0 0 0 .2.6c.2.2.3.2 1 .3 1.2 0 2 .2 2.5.6.4.2.8.7 1 1.2.3 1.2.5 4 .3 6.4 0 1.8-.4 3.4-.8 4h-.7a8 8 0 0 1-.8 0c-.2 0-.3-.3-.2-.5a.5.5 0 0 1 .4-.3h.9v-1.8H16c-.7 0-.9 0-1.2.2-.9.4-1.4 1.2-1.4 2.1l.1.4.1.2a1 1 0 0 1 .1.2c.3.7.8 1.2 1.4 1.3l1.2.1h1.2a2 2 0 0 0 1-.8 9 9 0 0 0 1.1-4.3c.2-3 0-6.3-.4-7.7A4.3 4.3 0 0 0 16 5.3a7 7 0 0 0-1.3-.2 7.2 7.2 0 0 1-.4 0 5.5 5.5 0 0 1 0-.3c-.2-.5-.6-1-1.2-1.4a3 3 0 0 0-.5-.2c-.4-.2-.5-.2-1.8-.2a26.5 26.5 0 0 0-1.3 0Zm-.8 4v.7H7.2l.7-.8.8-.7v.7Zm7 3.5c-.4 0-.7.5-.9 1v.7h.3c.7 0 1.1.2 1.5.6l.3.2.3-.6V11a1 1 0 0 0-.6-.4 2 2 0 0 0-.8 0Z" clip-rule="evenodd"/></svg>',
+    'exposure': '<svg width="24" height="24"><path d="M5 21a2 2 0 0 1-1.4-.6A2 2 0 0 1 3 19V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5 3h14c.6 0 1 .2 1.4.6.4.4.6.8.6 1.4v14c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6H5Zm0-2h14V5L5 19Zm9.5-1v-2h-2v-1.5h2v-2H16v2h2V16h-2v2h-1.5ZM6 8.5h5V7H6v1.5Z"/></svg>',
+    'fb': '<svg width="24" height="24"><path fill-rule="evenodd" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-11 6.7V14H8.1v-2.5h2v-1C10 8.2 11.5 7 12.8 7H16v2.5h-2.4c-.8 0-1 .7-1 1.3v.7h3.2l-1 2.5h-2v5a7 7 0 1 0-2.8-.2Z" clip-rule="evenodd"/></svg>',
+    'flickr': '<svg width="24" height="24"><path d="M8.2 15.3c1.7 0 3.1-1.4 3.1-3.1A3.2 3.2 0 0 0 8.1 9 3.2 3.2 0 0 0 5 12.2c0 1.7 1.4 3 3.2 3Zm7.6 0c1.7 0 3.2-1.4 3.2-3.1a3.2 3.2 0 0 0-6.3 0c0 1.7 1.4 3 3.1 3Z"/></svg>',
+    'folder': '<svg width="24" height="24"><path fill-rule="evenodd" d="M5.6 6a.6.6 0 0 0-.6.6v11.2a.6.6 0 0 0 .6.6h12.8a.6.6 0 0 0 .6-.6V9a.6.6 0 0 0-.6-.6h-7.2a1 1 0 0 1-.8-.4L9 6H5.6ZM3.8 4.8A2.6 2.6 0 0 1 5.6 4h4a1 1 0 0 1 .8.4l1.3 2h6.7A2.6 2.6 0 0 1 21 9v8.8a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 17.8V6.6c0-.7.3-1.4.8-1.8Z" clip-rule="evenodd"/></svg>',
+    'google-drive': '<svg height="24" width="24"><path clip-rule="evenodd" d="M8.7 4.5a1 1 0 0 1 .9-.5h4.8a1 1 0 0 1 .9.5l5.6 9.7a1 1 0 0 1 0 1l-2.4 4.2a1 1 0 0 1-.9.5H6.4a1 1 0 0 1-.9-.5l-2.4-4.2a1 1 0 0 1 0-1zM10.2 6l-4.5 7.7h2.5L12.7 6h-2.5zm4.2 1 4.4 7.7-1.2 2.2-4.4-7.7zM12 11.2l-1.5 2.5h3zm2.6 4.5H5.7L7 17.9h8.9l-1.3-2.2z" fill-rule="evenodd"/></svg>',
+    'google-photos': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12.4 3c-.8 0-1.4.7-1.4 1.4v3.2a5 5 0 0 0-8 4c0 .8.6 1.4 1.4 1.4h3.2a5 5 0 0 0-1 3 5 5 0 0 0 5 5c.8 0 1.4-.6 1.4-1.4v-3.2a5 5 0 0 0 8-4c0-.8-.7-1.4-1.4-1.4h-3.2a5 5 0 0 0-4-8Zm.6 8V5a3 3 0 0 1 2.4 3 3 3 0 0 1-2.4 3Zm-2 0H5a3 3 0 0 1 3-2.4 3 3 0 0 1 3 2.4Zm2 2a3 3 0 0 0 3 2.4 3 3 0 0 0 3-2.4h-6Zm-4.4 3a3 3 0 0 1 2.4-3v6a3 3 0 0 1-2.4-3Z" clip-rule="evenodd"/></svg>',
+    'grayscale': '<svg height="24" width="24"><g clip-rule="evenodd" fill-rule="evenodd"><path d="M12 15v2a5 5 0 0 0 0-10v2a3 3 0 1 0 0 6zm0 0a3 3 0 1 0 0-6z"/><path d="M5 21a2 2 0 0 1-1.4-.6A2 2 0 0 1 3 19V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5 3h14c.6 0 1 .2 1.4.6.4.4.6.8.6 1.4v14c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6zm7-2h7V5h-7v2a5 5 0 0 0 0 10z"/></g></svg>',
+    'huddle': '<svg height="24" width="24"><path d="M10.3 5.6V8h.8v-2l3.5 2 4.3-2.5L14.6 3l-4.3 2.6zM14.6 8v5.2l4.3-2.6V5.6L14.6 8zM6 13.3v2.5h.9v-2l3.4 2 4.3-2.5-4.3-2.6zm4.3 2.6V21l4.3-2.6v-5.1l-4.3 2.6z"/></svg>',
+    'image-decorative': '<svg width="24" height="24"><path d="M12 10c.3 0 .5-.1.7-.3A1 1 0 0 0 13 9a1 1 0 0 0-.3-.7A1 1 0 0 0 12 8a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7 1 1 0 0 0 1 1Zm0 6a3 3 0 0 1-1.8-.5A3 3 0 0 1 9.1 14a2 2 0 0 0-.2 0 3 3 0 0 1-2.5-1 3 3 0 0 1-.9-2.2A3 3 0 0 1 6.2 9a3.4 3.4 0 0 1-.5-1 3 3 0 0 1-.2-1 3 3 0 0 1 1-2.2A3 3 0 0 1 8.8 4H9a3 3 0 0 1 1.1-1.4A3 3 0 0 1 12 2a3 3 0 0 1 1.8.5c.5.4.9.9 1.1 1.5h.2a3 3 0 0 1 2.5.8 3 3 0 0 1 .9 2.3c0 .3 0 .7-.2 1a2.8 2.8 0 0 1-.5.9l.5 1 .2 1a3 3 0 0 1-1 2.2 3 3 0 0 1-2.4.9 1.8 1.8 0 0 0-.2 0 3 3 0 0 1-1.1 1.4 3 3 0 0 1-1.8.5Zm0 7a8.7 8.7 0 0 1 .7-3.5 9.2 9.2 0 0 1 2-2.8 9.2 9.2 0 0 1 2.8-2A8.6 8.6 0 0 1 21 14a8.6 8.6 0 0 1-.7 3.5 9.2 9.2 0 0 1-2 2.8 9.2 9.2 0 0 1-2.8 2 8.6 8.6 0 0 1-3.5.7Zm2.5-2.5a6.8 6.8 0 0 0 2.4-1.5 6.8 6.8 0 0 0 1.7-2.6c-1 .4-1.8 1-2.6 1.7a6.8 6.8 0 0 0-1.5 2.4ZM12 23a8.6 8.6 0 0 0-.7-3.5 9.2 9.2 0 0 0-2-2.9 9.2 9.2 0 0 0-2.8-1.9A8.6 8.6 0 0 0 3 14a8.7 8.7 0 0 0 .7 3.5 9.2 9.2 0 0 0 2 2.9 9.2 9.2 0 0 0 2.8 1.9 8.6 8.6 0 0 0 3.5.7Zm-2.5-2.5A6.8 6.8 0 0 1 7.2 19a6.8 6.8 0 0 1-1.6-2.6c.9.4 1.7 1 2.5 1.7a6.8 6.8 0 0 1 1.6 2.4Zm5.9-8.4c.3 0 .5-.1.8-.4.2-.2.3-.5.3-.8 0-.2 0-.4-.2-.6a1.3 1.3 0 0 0-.5-.4l-.8-.4a3 3 0 0 1-.2.5 3.8 3.8 0 0 1-.2.5 2.5 2.5 0 0 1-.3.4 4 4 0 0 1-.4.4l.8.6a.8.8 0 0 0 .3.1h.4ZM15 8.5l.8-.4.5-.4.2-.6a1.1 1.1 0 0 0-.3-.8 1 1 0 0 0-.8-.4 1.1 1.1 0 0 0-.7.2l-.8.6.4.4.3.4a3.9 3.9 0 0 1 .4 1Zm-4-2.3a2.7 2.7 0 0 1 1-.2 2.7 2.7 0 0 1 1 .2l.2-1.1c0-.3-.1-.6-.4-.8A1.2 1.2 0 0 0 12 4c-.3 0-.6.1-.8.3-.3.2-.4.5-.3.8v1.1Zm1 7.8c.3 0 .6-.1.8-.3.3-.2.4-.5.3-.8v-1.1a2.7 2.7 0 0 1-1.1.2 2.7 2.7 0 0 1-1-.2l-.2 1.1c0 .3.1.6.4.8.2.2.5.3.8.3ZM9 8.5a3 3 0 0 1 .4-1l.3-.4.4-.4-.8-.6A.9.9 0 0 0 9 6a1.2 1.2 0 0 0-.3 0c-.4 0-.6 0-.9.3a1.1 1.1 0 0 0-.3.8c0 .2 0 .4.2.6l.5.4.9.4Zm-.3 3.6H9l.3-.2.8-.6a5.5 5.5 0 0 1-.4-.4 2.1 2.1 0 0 1-.3-.4 3.8 3.8 0 0 1-.2-.5 3 3 0 0 1-.1-.5l-1 .4-.4.4a1.1 1.1 0 0 0-.2.6c0 .3.2.6.4.8.2.2.4.4.7.4Z"/></svg>',
+    'image-enhancements': '<svg height="24" width="24"><path d="M5.3 21a2 2 0 0 1-1.5-.6 2 2 0 0 1-.6-1.4V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5.2 3H13v2H5.2v14h14v-8h2v8c0 .6-.1 1-.5 1.4a2 2 0 0 1-1.4.6z"/><path d="M11 9a4 4 0 0 0 4 4 4 4 0 0 0-4 4 4 4 0 0 0-4-4 4 4 0 0 0 4-4zm5.5-6c.2 2.1 2.2 4.1 4.5 4.5-2.3.4-4.3 2.4-4.5 4.5A5.2 5.2 0 0 0 12 7.5 5.2 5.2 0 0 0 16.5 3z"/></svg>',
+    'instagram': '<svg height="24" width="24"><path clip-rule="evenodd" d="M10.1 9a4 4 0 1 1 4.4 6.6A4 4 0 0 1 10.1 9zm2.2 1.3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill-rule="evenodd"/><path d="M16 9.3a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6z"/><path clip-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zm3-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" fill-rule="evenodd"/></svg>',
+    'onedrive': '<svg height="24" width="24"><path d="M4 13.7h1zm16 .7h-1zm-11.7-4A4.4 4.4 0 0 1 12.1 8V6a6.4 6.4 0 0 0-5.6 3.4l1.8 1zM12.1 8c2 0 3.6 1.4 4 2.8l2-.5A6.3 6.3 0 0 0 12 6v2zm8.1 6.8-9.8-5.5-1 1.8 9.8 5.5 1-1.8zm-9.8-5.5A5 5 0 0 0 3 13.7h2A3 3 0 0 1 9.5 11l1-1.8zM3 13.7a5 5 0 0 0 1 2.8l1.5-1.1a3 3 0 0 1-.5-1.7zm15.8 1.6a2.3 2.3 0 0 1-2 1.4v2a4.3 4.3 0 0 0 3.9-2.6zm-2 1.4H8v2h8.7zm-8.8 0a3 3 0 0 1-2.5-1.3L4 16.5a5 5 0 0 0 4 2.2v-2zm12.7-.6c.2-.6.3-1.1.3-1.7h-2c0 .3 0 .6-.2.9zm.3-1.7c0-3-3.1-5.1-6-4l.8 1.9a2.3 2.3 0 0 1 3.2 2h2zm-6-4L4.4 15l.8 1.9 10.7-4.6-.7-1.8z"/></svg>',
+    'revert-changes': '<svg height="24" width="24"><path d="m8.9 18.8.4 3.2H13v-2h-2v-2.6a4.6 4.6 0 0 1-1.6-.6 5.9 5.9 0 0 1-1.3-1l-2.5 1-1-1.7 2.2-1.6a4 4 0 0 1-.2-.7 5.9 5.9 0 0 1 0-.8v-.8l.2-.8-2.2-1.6 1-1.7 2.5 1a6 6 0 0 1 1.2-.9l1.4-.6.4-2.6h2l.3 2.6A5.6 5.6 0 0 1 16 8.2l2.5-1 1 1.6-2.2 1.7.2.7v.8a5 5 0 0 1 0 1h2a2.6 2.6 0 0 0 0-.5V11.3l2.6-2-2.8-4.7-3 1.3a8.2 8.2 0 0 0-.5-.4 3.8 3.8 0 0 0-.6-.3L14.8 2H9.3l-.4 3.2a5 5 0 0 0-1.2.7l-3-1.3L2 9.4l2.6 2V12.6l-2.6 2 2.7 4.7 3-1.3a8 8 0 0 0 1.2.7z"/><path d="m14.5 20.3 2.1-2-2.1-2.2 1.4-1.4 2.1 2.1 2.1-2 1.4 1.3-2 2.1 2 2.1-1.4 1.4-2.1-2-2.1 2zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>',
+    'saturation': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12 20.5a6 6 0 1 1-5.9-10.2 6 6 0 1 1 11.8 0A6 6 0 1 1 12 20.5Zm-1.1-7.7a6 6 0 0 0-.2.3 4.3 4.3 0 0 1-2-1.3c.9.1 1.6.5 2.2 1Zm2.4.3a6 6 0 0 0-.2-.3 4.3 4.3 0 0 1 2.2-1 4.3 4.3 0 0 1-2 1.3ZM12.2 15a6.3 6.3 0 0 1-.4 0 4.3 4.3 0 0 0 .2 2.5 4.3 4.3 0 0 0 .2-2.5Zm.9 4.2a6 6 0 0 0 .8-4.5 6 6 0 0 0 3.4-2.8 4.3 4.3 0 0 1-1.3 8.4 4.3 4.3 0 0 1-2.9-1.1Zm-2.2 0a4.3 4.3 0 1 1-4.2-7.3 6 6 0 0 0 3.4 2.8 6 6 0 0 0 .8 4.5Zm-3-9.2a4.3 4.3 0 1 1 8.3 0 6 6 0 0 0-4.2 1.5A6 6 0 0 0 7.8 10Z" clip-rule="evenodd"/></svg>',
+    'transform-image': '<svg height="24" width="24"><path d="M3 21v-6h2V9H3V3h6v2h6V3h6v6h-2v6h2v6h-6v-2H9v2zm6-4h6v-2h2V9h-2V7H9v2H7v6h2zM5 7h2V5H5zm12 0h2V5h-2zm0 12h2v-2h-2zM5 19h2v-2H5z"/></svg>',
+    'vibrance': '<svg height="24" width="24"><path clip-rule="evenodd" d="M12 20 22 4H2zm2.6-8 1.3-2H8l1.3 2h5.2zm-1.2 2h-2.8l1.4 2.2zm5-8L17 8H7L5.6 6h12.8z" fill-rule="evenodd"/></svg>',
+    'vk': '<svg width="24" height="24"><path fill-rule="evenodd" d="M14.8 17.4a2 2 0 0 1-1.3.7 8 8 0 0 1-7.7-3.6c-1.4-2-2.2-4.4-2.6-5.7L3 8.6A2 2 0 0 1 5 6h2.5c.4 0 .8.1 1.2.4A2 2 0 0 1 9.8 6h3.5a2 2 0 0 1 1.4.6 2 2 0 0 1 1.5-.6h2.4a2 2 0 0 1 2 2.5c-.5 1.5-1.2 2.6-1.8 3.6a12.5 12.5 0 0 1 2 3.2A2 2 0 0 1 19 18h-2.6a2 2 0 0 1-1.3-.5 6.9 6.9 0 0 1-.3-.2Zm.5-2.5-1.2-1a3 3 0 0 0-.8-.2v2.4h-1.7a5.6 5.6 0 0 1-.3 0c-3-.7-4.7-3.7-5.6-6.1A38.1 38.1 0 0 1 5 8.1V8h2.5a80.5 80.5 0 0 1 1.2 2.5c.6 1.2 1.2 2 2 2.1V9l-.9-1h3.5v4.1a5 5 0 0 0 .4-.3c.7-.7 1.2-1.4 1.6-2.2l.2-.3.7-1.3h2.4a8.5 8.5 0 0 1-.8 2l-1.3 2-.3.3a10.5 10.5 0 0 1 2.8 3.8h-2.6l-.8-.9a20.6 20.6 0 0 0-.3-.3Z" clip-rule="evenodd"/></svg>',
+    'warmth': '<svg height="24" width="24"><path d="M12 21.1c-1.4 0-2.6-.5-3.6-1.5s-1.5-2.1-1.5-3.5c0-.8.2-1.6.6-2.2A5 5 0 0 1 8.9 12v-6c0-.8.3-1.5 1-2.1a2.9 2.9 0 0 1 2-.9c.9 0 1.6.3 2.2.9.5.6.8 1.3.8 2.1v6a5 5 0 0 1 1.5 1.8A4.9 4.9 0 0 1 17 16c0 1.4-.5 2.6-1.4 3.5s-2.2 1.5-3.6 1.5zm-3-5h6c0-.5-.2-1-.4-1.4a3 3 0 0 0-.9-1l-.8-.6v-7a1 1 0 0 0-.3-.7A1 1 0 0 0 12 5a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v7l-.8.6a2.9 2.9 0 0 0-.9 1 3 3 0 0 0-.3 1.4z"/></svg>',
     'user': '<svg width="24" height="24"><path d="M12 24a12 12 0 1 1 0-24 12 12 0 0 1 0 24Zm-8.7-5.3a11 11 0 0 0 17.4 0C19.4 16.3 14.6 15 12 15c-2.6 0-7.4 1.3-8.7 3.7ZM12 13c2.2 0 4-2 4-4.5S14.2 4 12 4 8 6 8 8.5 9.8 13 12 13Z" fill-rule="nonzero"/></svg>',
     'vertical-align': '<svg width="24" height="24"><g fill-rule="nonzero"><rect width="18" height="2" x="3" y="11" rx="1"/><path d="M12 2c.6 0 1 .4 1 1v4l2-1.3a1 1 0 0 1 1.2 1.5l-.1.1-4.1 3-4-3a1 1 0 0 1 1-1.7l2 1.5V3c0-.6.4-1 1-1zm0 11.8 4 2.9a1 1 0 0 1-1 1.7l-2-1.5V21c0 .5-.4 1-.9 1H12a1 1 0 0 1-1-1v-4l-2 1.3a1 1 0 0 1-1.2-.1l-.1-.1a1 1 0 0 1 .1-1.3l.1-.1 4.1-3z"/></g></svg>',
     'visualblocks': '<svg width="24" height="24"><path d="M9 19v2H7v-2h2Zm-4 0v2a2 2 0 0 1-2-2h2Zm8 0v2h-2v-2h2Zm8 0a2 2 0 0 1-2 2v-2h2Zm-4 0v2h-2v-2h2ZM15 7a1 1 0 0 1 0 2v7a1 1 0 0 1-2 0V9h-1v7a1 1 0 0 1-2 0v-4a2.5 2.5 0 0 1-.2-5H15ZM5 15v2H3v-2h2Zm16 0v2h-2v-2h2ZM5 11v2H3v-2h2Zm16 0v2h-2v-2h2ZM5 7v2H3V7h2Zm16 0v2h-2V7h2ZM5 3v2H3c0-1.1.9-2 2-2Zm8 0v2h-2V3h2Zm6 0a2 2 0 0 1 2 2h-2V3ZM9 3v2H7V3h2Zm8 0v2h-2V3h2Z" fill-rule="evenodd"/></svg>',
@@ -32315,9 +32497,6 @@ tinymce.IconManager.add('default', {
     'warning': '<svg width="24" height="24"><path d="M19.8 18.3c.2.5.3.9 0 1.2-.1.3-.5.5-1 .5H5.2c-.5 0-.9-.2-1-.5-.3-.3-.2-.7 0-1.2L11 4.7l.5-.5.5-.2c.2 0 .3 0 .5.2.2 0 .3.3.5.5l6.8 13.6ZM12 18c.3 0 .5-.1.7-.3.2-.2.3-.4.3-.7a1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3 1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3Zm.7-3 .3-4a1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3 1 1 0 0 0-.3.7l.3 4h1.4Z" fill-rule="evenodd"/></svg>',
     'zoom-in': '<svg width="24" height="24"><path d="M16 17.3a8 8 0 1 1 1.4-1.4l4.3 4.4a1 1 0 0 1-1.4 1.4l-4.4-4.3Zm-5-.3a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm-1-9a1 1 0 0 1 2 0v6a1 1 0 0 1-2 0V8Zm-2 4a1 1 0 0 1 0-2h6a1 1 0 0 1 0 2H8Z" fill-rule="nonzero"/></svg>',
     'zoom-out': '<svg width="24" height="24"><path d="M16 17.3a8 8 0 1 1 1.4-1.4l4.3 4.4a1 1 0 0 1-1.4 1.4l-4.4-4.3Zm-5-.3a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm-3-5a1 1 0 0 1 0-2h6a1 1 0 0 1 0 2H8Z" fill-rule="nonzero"/></svg>',
-    'export-pdf': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V17h-2V9h-4V5H7v3H5V5c0-1.1.9-2 2-2Z"/><path d="M2.6 15.2v-1.9h1c.6 0 1-.2 1.4-.5.3-.3.5-.7.5-1.2s-.2-.9-.5-1.2a2 2 0 0 0-1.3-.4H1v5.2h1.6Zm.4-3h-.4v-1.1h.5l.6.1.2.5c0 .1 0 .3-.2.4l-.7.1Zm5.7 3 1-.1c.3 0 .5-.2.7-.4l.5-.8c.2-.3.2-.7.2-1.3v-1l-.5-.8c-.2-.3-.4-.5-.7-.6L8.7 10H6.3v5.2h2.4Zm-.4-1.1H8v-3h.4c.5 0 .8.2 1 .4l.2 1.1-.1 1-.3.3-.8.2Zm5.3 1.2V13h2v-1h-2v-1H16V10h-4v5.2h1.6Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M15 17a1 1 0 1 0-2 0v3.1l-1.4-1a1 1 0 1 0-1.2 1.7l3.6 2.4 3.6-2.4a1 1 0 0 0-1.2-1.6l-1.4 1V17Z"/></svg>',
-    'export-word': '<svg width="24" height="24"><path d="M9.5 7A1.5 1.5 0 0 1 11 8.4v7.1A1.5 1.5 0 0 1 9.6 17H2.5A1.5 1.5 0 0 1 1 15.6V8.5A1.5 1.5 0 0 1 2.4 7h7.1Zm-1 2.8-1 2.6-1-2.5v-.1a.6.6 0 0 0-1 0l-.1.1-.9 2.5-1-2.5v-.1a.6.6 0 0 0-1 .4v.1l1.5 4v.1a.6.6 0 0 0 1 0v-.1l1-2.5.9 2.5v.1a.6.6 0 0 0 1 0H8l1.6-4v-.2a.6.6 0 0 0-1.1-.4Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V17h-2V9h-4V5H5c0-1.1.9-2 2-2ZM15 17a1 1 0 1 0-2 0v3.1l-1.4-1a1 1 0 1 0-1.2 1.7l3.6 2.4 3.6-2.4a1 1 0 0 0-1.2-1.6l-1.4 1V17Z"/></svg>',
-    'import-word': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 3h7.4L19 7.6V15h-2V9h-4V5H5c0-1.1.9-2 2-2Z"/><path d="M9.5 7A1.5 1.5 0 0 1 11 8.4v7.1A1.5 1.5 0 0 1 9.6 17H2.5A1.5 1.5 0 0 1 1 15.6V8.5A1.5 1.5 0 0 1 2.4 7h7.1Zm-1 2.8-1 2.6-1-2.5v-.1a.6.6 0 0 0-1 0l-.1.1-.9 2.5-1-2.5v-.1a.6.6 0 0 0-1 .4v.1l1.5 4v.1a.6.6 0 0 0 1 0v-.1l1-2.5.9 2.5v.1a.6.6 0 0 0 1 0H8l1.6-4v-.2a.6.6 0 0 0-1.1-.4Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.4 18.2a1 1 0 0 0 1.2 1.6l1.4-1V22a1 1 0 1 0 2 0v-3.1l1.4 1a1 1 0 0 0 1.2-1.7L15 15.8l-3.6 2.4Z"/></svg>',
   }
 });
 
@@ -32338,7 +32517,7 @@ __webpack_require__(4);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -33088,16 +33267,15 @@ __webpack_require__(4);
     });
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const isSupported$1 = constant(supported);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
+    const getContentContainer = dos => isShadowRoot(dos) ? dos : SugarElement.fromDom(documentOrOwner(dos).dom.body);
     const getShadowRoot = e => {
       const r = getRootNode(e);
       return isShadowRoot(r) ? Optional.some(r) : Optional.none();
     };
     const getShadowHost = e => SugarElement.fromDom(e.dom.host);
     const getOriginalEventTarget = event => {
-      if (isSupported$1() && isNonNullable(event.target)) {
+      if (isNonNullable(event.target)) {
         const el = SugarElement.fromDom(event.target);
         if (isElement(el) && isOpenShadowHost(el)) {
           if (event.composed && event.composedPath) {
@@ -33710,7 +33888,7 @@ __webpack_require__(4);
     const PlatformDetection = { detect: detect$3 };
 
     const mediaMatch = query => window.matchMedia(query).matches;
-    let platform = cached(() => PlatformDetection.detect(navigator.userAgent, Optional.from(navigator.userAgentData), mediaMatch));
+    let platform = cached(() => PlatformDetection.detect(window.navigator.userAgent, Optional.from(window.navigator.userAgentData), mediaMatch));
     const detect$2 = () => platform();
 
     const Dimension = (name, getOffset) => {
@@ -33852,7 +34030,7 @@ __webpack_require__(4);
       });
       return columnsGroup;
     };
-    const generate$1 = list => {
+    const generate$2 = list => {
       const access = {};
       const cells = [];
       const tableOpt = head(list).map(rowData => rowData.element).bind(table);
@@ -33910,7 +34088,7 @@ __webpack_require__(4);
     };
     const fromTable = table => {
       const list = fromTable$1(table);
-      return generate$1(list);
+      return generate$2(list);
     };
     const justCells = warehouse => bind$2(warehouse.all, w => w.cells);
     const justColumns = warehouse => values(warehouse.columns);
@@ -33918,7 +34096,7 @@ __webpack_require__(4);
     const getColumnAt = (warehouse, columnIndex) => Optional.from(warehouse.columns[columnIndex]);
     const Warehouse = {
       fromTable,
-      generate: generate$1,
+      generate: generate$2,
       getAt,
       findItem,
       filterItems,
@@ -34839,6 +35017,26 @@ __webpack_require__(4);
       return options.isSet('table_default_styles') ? defaultStyles : determineDefaultTableStyles(editor, defaultStyles);
     };
     const tableUseColumnGroup = option('table_use_colgroups');
+    const fixedContainerSelector = option('fixed_toolbar_container');
+    const fixedToolbarContainerTarget = option('fixed_toolbar_container_target');
+    const fixedContainerTarget = editor => {
+      var _a;
+      if (!editor.inline) {
+        return Optional.none();
+      }
+      const selector = (_a = fixedContainerSelector(editor)) !== null && _a !== void 0 ? _a : '';
+      if (selector.length > 0) {
+        return descendant(body$1(), selector);
+      }
+      const element = fixedToolbarContainerTarget(editor);
+      if (isNonNullable(element)) {
+        return Optional.some(SugarElement.fromDom(element));
+      }
+      return Optional.none();
+    };
+    const useFixedContainer = editor => editor.inline && fixedContainerTarget(editor).isSome();
+    const getUiMode = option('ui_mode');
+    const isSplitUiMode = editor => !useFixedContainer(editor) && getUiMode(editor) === 'split';
 
     const closest = target => closest$1(target, '[contenteditable]');
     const isEditable$1 = (element, assumeEditable = false) => {
@@ -35365,13 +35563,32 @@ __webpack_require__(4);
       });
     };
     const serializeElements = (editor, elements) => map$1(elements, elm => editor.selection.serializer.serialize(elm.dom, {})).join('');
-    const getTextContent = elements => map$1(elements, element => element.dom.innerText).join('');
+    const getTextContent = (editor, replicaElements) => {
+      const doc = editor.getDoc();
+      const dos = getRootNode(SugarElement.fromDom(editor.getBody()));
+      const offscreenDiv = SugarElement.fromTag('div', doc);
+      set$2(offscreenDiv, 'data-mce-bogus', 'all');
+      setAll(offscreenDiv, {
+        position: 'fixed',
+        left: '-9999999px',
+        top: '0',
+        overflow: 'hidden',
+        opacity: '0'
+      });
+      const root = getContentContainer(dos);
+      append(offscreenDiv, replicaElements);
+      append$1(root, offscreenDiv);
+      const textContent = offscreenDiv.dom.innerText;
+      remove$6(offscreenDiv);
+      return textContent;
+    };
     const registerEvents = (editor, actions) => {
       editor.on('BeforeGetContent', e => {
         const multiCellContext = cells => {
           e.preventDefault();
-          extractSelected(cells).each(elements => {
-            e.content = e.format === 'text' ? getTextContent(elements) : serializeElements(editor, elements);
+          extractSelected(cells).each(replicaElements => {
+            const content = e.format === 'text' ? getTextContent(editor, replicaElements) : serializeElements(editor, replicaElements);
+            e.content = content;
           });
         };
         if (e.selection === true) {
@@ -36364,7 +36581,7 @@ __webpack_require__(4);
       return replaceIn(grid, targetCells, comparator, substitution, replace, Optional.none, always);
     };
 
-    const generate = cases => {
+    const generate$1 = cases => {
       if (!isArray(cases)) {
         throw new Error('cases must be an array');
       }
@@ -36427,7 +36644,7 @@ __webpack_require__(4);
       });
       return adt;
     };
-    const Adt = { generate };
+    const Adt = { generate: generate$1 };
 
     const adt$6 = Adt.generate([
       { none: [] },
@@ -37049,9 +37266,9 @@ __webpack_require__(4);
     const eraseRows = run(opEraseRows, onCells, noop, prune, Generators.modification);
     const makeColumnsHeader = run(opMakeColumnsHeader, onUnlockedCells, noop, noop, headerCellGenerator);
     const unmakeColumnsHeader = run(opUnmakeColumnsHeader, onUnlockedCells, noop, noop, bodyCellGenerator);
-    const makeRowsHeader = run(opMakeRowsHeader, onUnlockedCells, noop, noop, headerCellGenerator);
-    const makeRowsBody = run(opMakeRowsBody, onUnlockedCells, noop, noop, bodyCellGenerator);
-    const makeRowsFooter = run(opMakeRowsFooter, onUnlockedCells, noop, noop, bodyCellGenerator);
+    const makeRowsHeader = run(opMakeRowsHeader, onCells, noop, noop, headerCellGenerator);
+    const makeRowsBody = run(opMakeRowsBody, onCells, noop, noop, bodyCellGenerator);
+    const makeRowsFooter = run(opMakeRowsFooter, onCells, noop, noop, bodyCellGenerator);
     const makeCellsHeader = run(opMakeCellsHeader, onUnlockedCells, noop, noop, headerCellGenerator);
     const unmakeCellsHeader = run(opUnmakeCellsHeader, onUnlockedCells, noop, noop, bodyCellGenerator);
     const mergeCells = run(opMergeCells, onUnlockedMergable, resize, noop, Generators.merging);
@@ -38657,7 +38874,6 @@ __webpack_require__(4);
                 const isCellClosestContentEditable = is(closest(event.target), singleCell, eq$1);
                 if (isNonEditableCell && isCellClosestContentEditable) {
                   annotations.selectRange(container, boxes, singleCell, singleCell);
-                  bridge.selectContents(singleCell);
                 }
               } else if (boxes.length > 1) {
                 annotations.selectRange(container, boxes, cellSel.start, cellSel.finish);
@@ -38775,32 +38991,32 @@ __webpack_require__(4);
     };
 
     const caretPositionFromPoint = (doc, x, y) => {
-      var _a, _b;
-      return Optional.from((_b = (_a = doc.dom).caretPositionFromPoint) === null || _b === void 0 ? void 0 : _b.call(_a, x, y)).bind(pos => {
+      var _a;
+      return Optional.from((_a = doc.caretPositionFromPoint) === null || _a === void 0 ? void 0 : _a.call(doc, x, y)).bind(pos => {
         if (pos.offsetNode === null) {
           return Optional.none();
         }
-        const r = doc.dom.createRange();
+        const r = doc.createRange();
         r.setStart(pos.offsetNode, pos.offset);
         r.collapse();
         return Optional.some(r);
       });
     };
     const caretRangeFromPoint = (doc, x, y) => {
-      var _a, _b;
-      return Optional.from((_b = (_a = doc.dom).caretRangeFromPoint) === null || _b === void 0 ? void 0 : _b.call(_a, x, y));
+      var _a;
+      return Optional.from((_a = doc.caretRangeFromPoint) === null || _a === void 0 ? void 0 : _a.call(doc, x, y));
     };
-    const availableSearch = (() => {
-      if (document.caretPositionFromPoint) {
-        return caretPositionFromPoint;
-      } else if (document.caretRangeFromPoint) {
-        return caretRangeFromPoint;
+    const availableSearch = (doc, x, y) => {
+      if (doc.caretPositionFromPoint) {
+        return caretPositionFromPoint(doc, x, y);
+      } else if (doc.caretRangeFromPoint) {
+        return caretRangeFromPoint(doc, x, y);
       } else {
-        return Optional.none;
+        return Optional.none();
       }
-    })();
+    };
     const fromPoint = (win, x, y) => {
-      const doc = SugarElement.fromDom(win.document);
+      const doc = win.document;
       return availableSearch(doc, x, y).map(rng => SimRange.create(SugarElement.fromDom(rng.startContainer), rng.startOffset, SugarElement.fromDom(rng.endContainer), rng.endOffset));
     };
 
@@ -38867,7 +39083,7 @@ __webpack_require__(4);
           } else if (selection.extend) {
             try {
               setLegacyRtlRange(win, selection, start, soffset, finish, foffset);
-            } catch (e) {
+            } catch (_a) {
               doSetRange(win, finish, foffset, start, soffset);
             }
           } else {
@@ -40051,7 +40267,7 @@ __webpack_require__(4);
         set$2(target, 'data-initial-' + dir, getCssValue(target, dir));
         add(target, resizeBarDragging);
         set$1(target, 'opacity', '0.2');
-        resizing.go(wire.parent());
+        resizing.go(wire.dragContainer());
       };
       const mousedown = bind(wire.parent(), 'mousedown', event => {
         if (isRowBar(event.target)) {
@@ -40155,11 +40371,23 @@ __webpack_require__(4);
     };
     const TableResize = { create };
 
+    const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
+
+    let unique = 0;
+    const generate = prefix => {
+      const date = new Date();
+      const time = date.getTime();
+      const random$1 = Math.floor(random() * 1000000000);
+      unique++;
+      return prefix + '_' + random$1 + unique + String(time);
+    };
+
     const only = (element, isResizable) => {
       const parent = isDocument(element) ? documentElement(element) : element;
       return {
         parent: constant(parent),
         view: constant(element),
+        dragContainer: constant(parent),
         origin: constant(SugarPosition(0, 0)),
         isResizable
       };
@@ -40169,6 +40397,7 @@ __webpack_require__(4);
       return {
         parent: constant(chrome),
         view: constant(editable),
+        dragContainer: constant(chrome),
         origin,
         isResizable
       };
@@ -40177,31 +40406,58 @@ __webpack_require__(4);
       return {
         parent: constant(chrome),
         view: constant(editable),
+        dragContainer: constant(chrome),
         origin: constant(SugarPosition(0, 0)),
+        isResizable
+      };
+    };
+    const scrollable = (editable, chrome, dragContainer, isResizable) => {
+      return {
+        parent: constant(chrome),
+        view: constant(editable),
+        dragContainer: constant(dragContainer),
+        origin: () => absolute(chrome),
         isResizable
       };
     };
     const ResizeWire = {
       only,
       detached,
-      body
+      body,
+      scrollable
     };
 
-    const createContainer = () => {
+    const createContainer = position => {
+      const id = generate('resizer-container');
       const container = SugarElement.fromTag('div');
+      set$2(container, 'id', id);
       setAll(container, {
-        position: 'static',
+        position,
         height: '0',
         width: '0',
         padding: '0',
         margin: '0',
         border: '0'
       });
-      append$1(body$1(), container);
       return container;
     };
+    const getInlineResizeWire = (editor, isResizable) => {
+      const isSplitUiMode$1 = isSplitUiMode(editor);
+      const editorBody = SugarElement.fromDom(editor.getBody());
+      const container = createContainer(isSplitUiMode$1 ? 'relative' : 'static');
+      const body = body$1();
+      if (isSplitUiMode$1) {
+        after$5(editorBody, container);
+        return ResizeWire.scrollable(editorBody, container, body, isResizable);
+      }
+      append$1(body, container);
+      return ResizeWire.body(editorBody, container, isResizable);
+    };
     const get = (editor, isResizable) => {
-      return editor.inline ? ResizeWire.body(SugarElement.fromDom(editor.getBody()), createContainer(), isResizable) : ResizeWire.only(SugarElement.fromDom(editor.getDoc()), isResizable);
+      if (editor.inline) {
+        return getInlineResizeWire(editor, isResizable);
+      }
+      return ResizeWire.only(SugarElement.fromDom(editor.getDoc()), isResizable);
     };
     const remove = (editor, wire) => {
       if (editor.inline) {
@@ -40280,7 +40536,9 @@ __webpack_require__(4);
         if (hasTableObjectResizing(editor) && hasTableResizeBars(editor)) {
           const resizing = lazyResizingBehaviour();
           const sz = TableResize.create(rawWire, resizing, lazySizing);
-          sz.on();
+          if (!editor.mode.isReadOnly()) {
+            sz.on();
+          }
           sz.events.startDrag.bind(_event => {
             selectionRng.set(editor.selection.getRng());
           });
@@ -40304,7 +40562,7 @@ __webpack_require__(4);
       });
       editor.on('ObjectResizeStart', e => {
         const targetElm = e.target;
-        if (isTable(targetElm)) {
+        if (isTable(targetElm) && !editor.mode.isReadOnly()) {
           const table = SugarElement.fromDom(targetElm);
           each$2(editor.dom.select('.mce-clonedresizable'), clone => {
             editor.dom.addClass(clone, 'mce-' + getTableColumnResizingBehaviour(editor) + '-columns');
@@ -40335,25 +40593,26 @@ __webpack_require__(4);
           fireTableModified(editor, table.dom, styleModified);
         }
       });
-      editor.on('SwitchMode', () => {
+      const showResizeBars = () => {
         tableResize.on(resize => {
-          if (editor.mode.isReadOnly()) {
-            resize.hideBars();
-          } else {
-            resize.showBars();
-          }
+          resize.on();
+          resize.showBars();
         });
+      };
+      const hideResizeBars = () => {
+        tableResize.on(resize => {
+          resize.off();
+          resize.hideBars();
+        });
+      };
+      editor.on('DisabledStateChange', e => {
+        e.state ? hideResizeBars() : showResizeBars();
+      });
+      editor.on('SwitchMode', () => {
+        editor.mode.isReadOnly() ? hideResizeBars() : showResizeBars();
       });
       editor.on('dragstart dragend', e => {
-        tableResize.on(resize => {
-          if (e.type === 'dragstart') {
-            resize.hideBars();
-            resize.off();
-          } else {
-            resize.on();
-            resize.showBars();
-          }
-        });
+        e.type === 'dragstart' ? hideResizeBars() : showResizeBars();
       });
       editor.on('remove', () => {
         destroy();
@@ -40406,7 +40665,7 @@ __webpack_require__(4);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -40891,8 +41150,12 @@ __webpack_require__(4);
     const trim$1 = blank(/^\s+|\s+$/g);
     const isNotEmpty = s => s.length > 0;
     const isEmpty = s => !isNotEmpty(s);
+    const toFloat = value => {
+      const num = parseFloat(value);
+      return isNaN(num) ? Optional.none() : Optional.some(num);
+    };
 
-    const isSupported$1 = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
+    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
 
     const fromHtml$2 = (html, scope) => {
       const doc = scope || document;
@@ -41059,9 +41322,7 @@ __webpack_require__(4);
     };
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const isSupported = constant$1(supported);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getContentContainer = dos => isShadowRoot(dos) ? dos : SugarElement.fromDom(documentOrOwner(dos).dom.body);
     const isInShadowRoot = e => getShadowRoot(e).isSome();
     const getShadowRoot = e => {
@@ -41070,7 +41331,7 @@ __webpack_require__(4);
     };
     const getShadowHost = e => SugarElement.fromDom(e.dom.host);
     const getOriginalEventTarget = event => {
-      if (isSupported() && isNonNullable(event.target)) {
+      if (isNonNullable(event.target)) {
         const el = SugarElement.fromDom(event.target);
         if (isElement$1(el) && isOpenShadowHost(el)) {
           if (event.composed && event.composedPath) {
@@ -41141,12 +41402,12 @@ __webpack_require__(4);
         console.error('Invalid call to CSS.set. Property ', property, ':: Value ', value, ':: Element ', dom);
         throw new Error('CSS value must be a string: ' + value);
       }
-      if (isSupported$1(dom)) {
+      if (isSupported(dom)) {
         dom.style.setProperty(property, value);
       }
     };
     const internalRemove = (dom, property) => {
-      if (isSupported$1(dom)) {
+      if (isSupported(dom)) {
         dom.style.removeProperty(property);
       }
     };
@@ -41176,7 +41437,7 @@ __webpack_require__(4);
       const r = styles.getPropertyValue(property);
       return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
     };
-    const getUnsafeProperty = (dom, property) => isSupported$1(dom) ? dom.style.getPropertyValue(property) : '';
+    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
     const getRaw = (element, property) => {
       const dom = element.dom;
       const raw = getUnsafeProperty(dom, property);
@@ -41185,7 +41446,7 @@ __webpack_require__(4);
     const getAllRaw = element => {
       const css = {};
       const dom = element.dom;
-      if (isSupported$1(dom)) {
+      if (isSupported(dom)) {
         for (let i = 0; i < dom.style.length; i++) {
           const ruleName = dom.style.item(i);
           css[ruleName] = dom.style[ruleName];
@@ -41214,7 +41475,7 @@ __webpack_require__(4);
           throw new Error(name + '.set accepts only positive integer values. Value was ' + h);
         }
         const dom = element.dom;
-        if (isSupported$1(dom)) {
+        if (isSupported(dom)) {
           dom.style[name] = h + 'px';
         }
       };
@@ -41655,7 +41916,7 @@ __webpack_require__(4);
     const PlatformDetection = { detect: detect$2 };
 
     const mediaMatch = query => window.matchMedia(query).matches;
-    let platform = cached(() => PlatformDetection.detect(navigator.userAgent, Optional.from(navigator.userAgentData), mediaMatch));
+    let platform = cached(() => PlatformDetection.detect(window.navigator.userAgent, Optional.from(window.navigator.userAgentData), mediaMatch));
     const detect$1 = () => platform();
 
     const mkEvent = (target, x, y, stop, prevent, kill, raw) => ({
@@ -42412,7 +42673,6 @@ __webpack_require__(4);
     const requiredNumber = key => requiredOf(key, number);
     const requiredString = key => requiredOf(key, string);
     const requiredStringEnum = (key, values) => field$1(key, key, required$2(), validateEnum(values));
-    const requiredBoolean = key => requiredOf(key, boolean);
     const requiredFunction = key => requiredOf(key, functionProcessor);
     const forbid = (key, message) => field$1(key, key, asOption(), value$2(_v => SimpleResult.serror('The field: ' + key + ' is forbidden. ' + message)));
     const requiredObjOf = (key, objSchema) => field$1(key, key, required$2(), objOf(objSchema));
@@ -43676,13 +43936,26 @@ __webpack_require__(4);
         events: events$h
     });
 
+    const cycleBy = (value, delta, min, max) => {
+      const r = value + delta;
+      if (r > max) {
+        return min;
+      } else if (r < min) {
+        return max;
+      } else {
+        return r;
+      }
+    };
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
+
     let unique = 0;
     const generate$6 = prefix => {
       const date = new Date();
       const time = date.getTime();
-      const random = Math.floor(Math.random() * 1000000000);
+      const random$1 = Math.floor(random() * 1000000000);
       unique++;
-      return prefix + '_' + random + unique + String(time);
+      return prefix + '_' + random$1 + unique + String(time);
     };
 
     const prefix$1 = constant$1('alloy-id-');
@@ -43934,7 +44207,8 @@ __webpack_require__(4);
           baseBehaviour,
           'disabling',
           'toggling',
-          'representing'
+          'representing',
+          'tooltipping'
         ],
         [input()]: [
           baseBehaviour,
@@ -44111,7 +44385,7 @@ __webpack_require__(4);
       try {
         const e = reconcileToDom(definition, obsoleted);
         return Optional.some(e);
-      } catch (err) {
+      } catch (_a) {
         return Optional.none();
       }
     };
@@ -44400,18 +44674,6 @@ __webpack_require__(4);
     const north$3 = adt$a.north;
     const east$3 = adt$a.east;
     const west$3 = adt$a.west;
-
-    const cycleBy = (value, delta, min, max) => {
-      const r = value + delta;
-      if (r > max) {
-        return min;
-      } else if (r < min) {
-        return max;
-      } else {
-        return r;
-      }
-    };
-    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
     const getRestriction = (anchor, restriction) => {
       switch (restriction) {
@@ -46681,7 +46943,7 @@ __webpack_require__(4);
       f(component);
       disableConfig.onEnabled(component);
     };
-    const isDisabled = (component, disableConfig) => hasNative(component, disableConfig) ? nativeIsDisabled(component) : ariaIsDisabled(component);
+    const isDisabled$1 = (component, disableConfig) => hasNative(component, disableConfig) ? nativeIsDisabled(component) : ariaIsDisabled(component);
     const set$4 = (component, disableConfig, disableState, disabled) => {
       const f = disabled ? disable : enable;
       f(component, disableConfig);
@@ -46691,14 +46953,14 @@ __webpack_require__(4);
         __proto__: null,
         enable: enable,
         disable: disable,
-        isDisabled: isDisabled,
+        isDisabled: isDisabled$1,
         onLoad: onLoad$1,
         set: set$4
     });
 
     const exhibit$5 = (base, disableConfig) => nu$8({ classes: disableConfig.disabled() ? disableConfig.disableClass.toArray() : [] });
     const events$d = (disableConfig, disableState) => derive$2([
-      abort(execute$5(), (component, _simulatedEvent) => isDisabled(component, disableConfig)),
+      abort(execute$5(), (component, _simulatedEvent) => isDisabled$1(component, disableConfig)),
       loadEvent(disableConfig, disableState, onLoad$1)
     ]);
 
@@ -47016,7 +47278,7 @@ __webpack_require__(4);
         return Optional.some(true);
       });
       const go = (component, _simulatedEvent, tabbingConfig, cycle) => {
-        const tabstops = descendants(component.element, tabbingConfig.selector);
+        const tabstops = filter$2(descendants(component.element, tabbingConfig.selector), element => isVisible(tabbingConfig, element));
         return findCurrent(component, tabbingConfig).bind(tabstop => {
           const optStopIndex = findIndex$1(tabstops, curry(eq, tabstop));
           return optStopIndex.bind(stopIndex => goFromTabstop(component, tabstops, stopIndex, tabbingConfig, cycle));
@@ -47197,7 +47459,7 @@ __webpack_require__(4);
       defaulted('captureTab', false),
       initSize()
     ];
-    const focusIn$3 = (component, gridConfig, _gridState) => {
+    const focusIn$4 = (component, gridConfig, _gridState) => {
       descendant(component.element, gridConfig.selector).each(first => {
         gridConfig.focusManager.set(component, first);
       });
@@ -47230,7 +47492,7 @@ __webpack_require__(4);
       rule(inSet(ESCAPE), doEscape$1),
       rule(inSet(SPACE), stopEventForFirefox)
     ]);
-    var FlatgridType = typical(schema$u, flatgrid$1, getKeydownRules$4, getKeyupRules$4, () => Optional.some(focusIn$3));
+    var FlatgridType = typical(schema$u, flatgrid$1, getKeydownRules$4, getKeyupRules$4, () => Optional.some(focusIn$4));
 
     const f = (container, selector, current, delta, getNewIndex) => {
       const isDisabledButton = candidate => name$3(candidate) === 'button' && get$g(candidate, 'disabled') === 'disabled';
@@ -47262,7 +47524,7 @@ __webpack_require__(4);
     ];
     const findCurrent = (component, flowConfig) => flowConfig.focusManager.get(component).bind(elem => closest$1(elem, flowConfig.selector));
     const execute$2 = (component, simulatedEvent, flowConfig) => findCurrent(component, flowConfig).bind(focused => flowConfig.execute(component, simulatedEvent, focused));
-    const focusIn$2 = (component, flowConfig, _state) => {
+    const focusIn$3 = (component, flowConfig, _state) => {
       flowConfig.getInitial(component).orThunk(() => descendant(component.element, flowConfig.selector)).each(first => {
         flowConfig.focusManager.set(component, first);
       });
@@ -47285,7 +47547,7 @@ __webpack_require__(4);
       rule(inSet(SPACE), stopEventForFirefox),
       rule(inSet(ESCAPE), doEscape)
     ]);
-    var FlowType = typical(schema$t, NoState.init, getKeydownRules$3, getKeyupRules$3, () => Optional.some(focusIn$2));
+    var FlowType = typical(schema$t, NoState.init, getKeydownRules$3, getKeyupRules$3, () => Optional.some(focusIn$3));
 
     const toCell = (matrix, rowIndex, columnIndex) => Optional.from(matrix[rowIndex]).bind(row => Optional.from(row[columnIndex]).map(cell => ({
       rowIndex,
@@ -47334,7 +47596,7 @@ __webpack_require__(4);
       defaulted('previousSelector', Optional.none),
       defaulted('execute', defaultExecute)
     ];
-    const focusIn$1 = (component, matrixConfig, _state) => {
+    const focusIn$2 = (component, matrixConfig, _state) => {
       const focused = matrixConfig.previousSelector(component).orThunk(() => {
         const selectors = matrixConfig.selectors;
         return descendant(component.element, selectors.cell);
@@ -47370,7 +47632,7 @@ __webpack_require__(4);
       rule(inSet(SPACE.concat(ENTER)), execute$1)
     ]);
     const getKeyupRules$2 = constant$1([rule(inSet(SPACE), stopEventForFirefox)]);
-    var MatrixType = typical(schema$s, NoState.init, getKeydownRules$2, getKeyupRules$2, () => Optional.some(focusIn$1));
+    var MatrixType = typical(schema$s, NoState.init, getKeydownRules$2, getKeyupRules$2, () => Optional.some(focusIn$2));
 
     const schema$r = [
       required$1('selector'),
@@ -47378,7 +47640,7 @@ __webpack_require__(4);
       defaulted('moveOnTab', false)
     ];
     const execute = (component, simulatedEvent, menuConfig) => menuConfig.focusManager.get(component).bind(focused => menuConfig.execute(component, simulatedEvent, focused));
-    const focusIn = (component, menuConfig, _state) => {
+    const focusIn$1 = (component, menuConfig, _state) => {
       descendant(component.element, menuConfig.selector).each(first => {
         menuConfig.focusManager.set(component, first);
       });
@@ -47402,7 +47664,7 @@ __webpack_require__(4);
       rule(inSet(SPACE), execute)
     ]);
     const getKeyupRules$1 = constant$1([rule(inSet(SPACE), stopEventForFirefox)]);
-    var MenuType = typical(schema$r, NoState.init, getKeydownRules$1, getKeyupRules$1, () => Optional.some(focusIn));
+    var MenuType = typical(schema$r, NoState.init, getKeydownRules$1, getKeyupRules$1, () => Optional.some(focusIn$1));
 
     const schema$q = [
       onKeyboardHandler('onSpace'),
@@ -48839,7 +49101,7 @@ __webpack_require__(4);
     }(ToolbarLocation$1 || (ToolbarLocation$1 = {})));
     const option$2 = name => editor => editor.options.get(name);
     const wrapOptional = fn => editor => Optional.from(fn(editor));
-    const register$e = editor => {
+    const register$f = editor => {
       const isPhone = global$6.deviceType.isPhone();
       const isMobile = global$6.deviceType.isTablet() || isPhone;
       const registerOption = editor.options.register;
@@ -49009,6 +49271,7 @@ __webpack_require__(4);
       });
     };
     const isReadOnly = option$2('readonly');
+    const isDisabled = option$2('disabled');
     const getHeightOption = option$2('height');
     const getWidthOption = option$2('width');
     const getMinWidthOption = wrapOptional(option$2('min_width'));
@@ -49046,6 +49309,7 @@ __webpack_require__(4);
     const promotionEnabled = option$2('promotion');
     const useHelpAccessibility = option$2('help_accessibility');
     const getDefaultFontStack = option$2('default_font_stack');
+    const getSkin = option$2('skin');
     const isSkinDisabled = editor => editor.options.get('skin') === false;
     const isMenubarEnabled = editor => editor.options.get('menubar') !== false;
     const getSkinUrl = editor => {
@@ -49117,10 +49381,12 @@ __webpack_require__(4);
         __proto__: null,
         get ToolbarMode () { return ToolbarMode$1; },
         get ToolbarLocation () { return ToolbarLocation$1; },
-        register: register$e,
+        register: register$f,
         getSkinUrl: getSkinUrl,
         getSkinUrlOption: getSkinUrlOption,
         isReadOnly: isReadOnly,
+        isDisabled: isDisabled,
+        getSkin: getSkin,
         isSkinDisabled: isSkinDisabled,
         getHeightOption: getHeightOption,
         getWidthOption: getWidthOption,
@@ -49186,21 +49452,23 @@ __webpack_require__(4);
         return false;
       }
     };
-    const detect = popupSinkElem => {
+    const isFullscreen = editor => editor.plugins.fullscreen && editor.plugins.fullscreen.isFullscreen();
+    const detect = (editor, popupSinkElem) => {
       const ancestorsScrollers = ancestors(popupSinkElem, isScroller);
       const scrollers = ancestorsScrollers.length === 0 ? getShadowRoot(popupSinkElem).map(getShadowHost).map(x => ancestors(x, isScroller)).getOr([]) : ancestorsScrollers;
       return head(scrollers).map(element => ({
         element,
-        others: scrollers.slice(1)
+        others: scrollers.slice(1),
+        isFullscreen: () => isFullscreen(editor)
       }));
     };
-    const detectWhenSplitUiMode = (editor, popupSinkElem) => isSplitUiMode(editor) ? detect(popupSinkElem) : Optional.none();
+    const detectWhenSplitUiMode = (editor, popupSinkElem) => isSplitUiMode(editor) ? detect(editor, popupSinkElem) : Optional.none();
     const getBoundsFrom = sc => {
       const scrollableBoxes = [
         ...map$2(sc.others, box$1),
         win()
       ];
-      return constrainByMany(box$1(sc.element), scrollableBoxes);
+      return sc.isFullscreen() ? win() : constrainByMany(box$1(sc.element), scrollableBoxes);
     };
 
     const factory$n = detail => {
@@ -49326,18 +49594,24 @@ __webpack_require__(4);
     const hideAllExclusive = (component, _tConfig, _tState) => {
       component.getSystem().broadcastOn([ExclusivityChannel], {});
     };
-    const setComponents = (component, tConfig, tState, specs) => {
+    const setComponents = (_component, _tConfig, tState, specs) => {
       tState.getTooltip().each(tooltip => {
         if (tooltip.getSystem().isConnected()) {
           Replacing.set(tooltip, specs);
         }
       });
     };
+    const isEnabled = (_component, _tConfig, tState) => tState.isEnabled();
+    const setEnabled = (_component, _tConfig, tState, enabled) => tState.setEnabled(enabled);
+    const immediateOpenClose = (component, _tConfig, _tState, open) => emit(component, open ? ImmediateShowTooltipEvent : ImmediateHideTooltipEvent);
 
     var TooltippingApis = /*#__PURE__*/Object.freeze({
         __proto__: null,
         hideAllExclusive: hideAllExclusive,
-        setComponents: setComponents
+        immediateOpenClose: immediateOpenClose,
+        isEnabled: isEnabled,
+        setComponents: setComponents,
+        setEnabled: setEnabled
     });
 
     const events$8 = (tooltipConfig, state) => {
@@ -49352,7 +49626,7 @@ __webpack_require__(4);
         state.clearTimer();
       };
       const show = comp => {
-        if (!state.isShowing()) {
+        if (!state.isShowing() && state.isEnabled()) {
           hideAllExclusive(comp);
           const sink = tooltipConfig.lazySink(comp).getOrDie();
           const popup = comp.getSystem().build({
@@ -49471,6 +49745,9 @@ __webpack_require__(4);
       };
       return derive$2(flatten([
         [
+          runOnInit(component => {
+            tooltipConfig.onSetup(component);
+          }),
           run$1(ShowTooltipEvent, comp => {
             state.resetTimer(() => {
               show(comp);
@@ -49518,7 +49795,8 @@ __webpack_require__(4);
       defaulted('exclusive', true),
       defaulted('tooltipComponents', []),
       defaultedFunction('delayForShow', constant$1(300)),
-      defaultedFunction('delayForHide', constant$1(300)),
+      defaultedFunction('delayForHide', constant$1(100)),
+      defaultedFunction('onSetup', noop),
       defaultedStringEnum('mode', 'normal', [
         'normal',
         'follow-highlight',
@@ -49553,6 +49831,7 @@ __webpack_require__(4);
     ];
 
     const init$a = () => {
+      const enabled = Cell(true);
       const timer = value$4();
       const popup = value$4();
       const clearTimer = () => {
@@ -49570,7 +49849,9 @@ __webpack_require__(4);
         clearTooltip: popup.clear,
         clearTimer,
         resetTimer,
-        readState
+        readState,
+        isEnabled: () => enabled.get(),
+        setEnabled: setToEnabled => enabled.set(setToEnabled)
       });
     };
 
@@ -49587,14 +49868,24 @@ __webpack_require__(4);
       apis: TooltippingApis
     });
 
-    const {entries, setPrototypeOf, isFrozen, getPrototypeOf, getOwnPropertyDescriptor} = Object;
-    let {freeze, seal, create: create$1} = Object;
-    let {apply, construct} = typeof Reflect !== 'undefined' && Reflect;
-    if (!apply) {
-      apply = function apply(fun, thisValue, args) {
-        return fun.apply(thisValue, args);
-      };
-    }
+    /*! @license DOMPurify 3.2.4 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.2.4/LICENSE */
+
+    const {
+      entries,
+      setPrototypeOf,
+      isFrozen,
+      getPrototypeOf,
+      getOwnPropertyDescriptor
+    } = Object;
+    let {
+      freeze,
+      seal,
+      create: create$1
+    } = Object; // eslint-disable-line import/no-mutable-exports
+    let {
+      apply,
+      construct
+    } = typeof Reflect !== 'undefined' && Reflect;
     if (!freeze) {
       freeze = function freeze(x) {
         return x;
@@ -49605,22 +49896,36 @@ __webpack_require__(4);
         return x;
       };
     }
+    if (!apply) {
+      apply = function apply(fun, thisValue, args) {
+        return fun.apply(thisValue, args);
+      };
+    }
     if (!construct) {
       construct = function construct(Func, args) {
         return new Func(...args);
       };
     }
     const arrayForEach = unapply(Array.prototype.forEach);
+    const arrayLastIndexOf = unapply(Array.prototype.lastIndexOf);
     const arrayPop = unapply(Array.prototype.pop);
     const arrayPush = unapply(Array.prototype.push);
+    const arraySplice = unapply(Array.prototype.splice);
     const stringToLowerCase = unapply(String.prototype.toLowerCase);
     const stringToString = unapply(String.prototype.toString);
     const stringMatch = unapply(String.prototype.match);
     const stringReplace = unapply(String.prototype.replace);
     const stringIndexOf = unapply(String.prototype.indexOf);
     const stringTrim = unapply(String.prototype.trim);
+    const objectHasOwnProperty = unapply(Object.prototype.hasOwnProperty);
     const regExpTest = unapply(RegExp.prototype.test);
     const typeErrorCreate = unconstruct(TypeError);
+    /**
+     * Creates a new function that calls the given function with a specified thisArg and arguments.
+     *
+     * @param func - The function to be wrapped and called.
+     * @returns A new function that calls the given function with a specified thisArg and arguments.
+     */
     function unapply(func) {
       return function (thisArg) {
         for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -49629,6 +49934,12 @@ __webpack_require__(4);
         return apply(func, thisArg, args);
       };
     }
+    /**
+     * Creates a new function that constructs an instance of the given constructor function with the provided arguments.
+     *
+     * @param func - The constructor function to be wrapped and called.
+     * @returns A new function that constructs an instance of the given constructor function with the provided arguments.
+     */
     function unconstruct(func) {
       return function () {
         for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -49637,10 +49948,20 @@ __webpack_require__(4);
         return construct(func, args);
       };
     }
-    function addToSet(set, array, transformCaseFunc) {
-      var _transformCaseFunc;
-      transformCaseFunc = (_transformCaseFunc = transformCaseFunc) !== null && _transformCaseFunc !== void 0 ? _transformCaseFunc : stringToLowerCase;
+    /**
+     * Add properties to a lookup table
+     *
+     * @param set - The set to which elements will be added.
+     * @param array - The array containing elements to be added to the set.
+     * @param transformCaseFunc - An optional function to transform the case of each element before adding to the set.
+     * @returns The modified set with added elements.
+     */
+    function addToSet(set, array) {
+      let transformCaseFunc = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : stringToLowerCase;
       if (setPrototypeOf) {
+        // Make 'in' and truthy checks like Boolean(set.constructor)
+        // independent of any properties defined on Object.prototype.
+        // Prevent prototype setters from intercepting set as a this value.
         setPrototypeOf(set, null);
       }
       let l = array.length;
@@ -49649,6 +49970,7 @@ __webpack_require__(4);
         if (typeof element === 'string') {
           const lcElement = transformCaseFunc(element);
           if (lcElement !== element) {
+            // Config presets (e.g. tags.js, attrs.js) are immutable.
             if (!isFrozen(array)) {
               array[l] = lcElement;
             }
@@ -49659,13 +49981,50 @@ __webpack_require__(4);
       }
       return set;
     }
+    /**
+     * Clean up an array to harden against CSPP
+     *
+     * @param array - The array to be cleaned.
+     * @returns The cleaned version of the array
+     */
+    function cleanArray(array) {
+      for (let index = 0; index < array.length; index++) {
+        const isPropertyExist = objectHasOwnProperty(array, index);
+        if (!isPropertyExist) {
+          array[index] = null;
+        }
+      }
+      return array;
+    }
+    /**
+     * Shallow clone an object
+     *
+     * @param object - The object to be cloned.
+     * @returns A new object that copies the original.
+     */
     function clone(object) {
       const newObject = create$1(null);
       for (const [property, value] of entries(object)) {
-        newObject[property] = value;
+        const isPropertyExist = objectHasOwnProperty(object, property);
+        if (isPropertyExist) {
+          if (Array.isArray(value)) {
+            newObject[property] = cleanArray(value);
+          } else if (value && typeof value === 'object' && value.constructor === Object) {
+            newObject[property] = clone(value);
+          } else {
+            newObject[property] = value;
+          }
+        }
       }
       return newObject;
     }
+    /**
+     * This method automatically checks if the prop is function or getter and behaves accordingly.
+     *
+     * @param object - The object to look up the getter function in its prototype chain.
+     * @param prop - The property name for which to find the getter function.
+     * @returns The getter function found in the prototype chain or a fallback function.
+     */
     function lookupGetter(object, prop) {
       while (object !== null) {
         const desc = getOwnPropertyDescriptor(object, prop);
@@ -49679,660 +50038,95 @@ __webpack_require__(4);
         }
         object = getPrototypeOf(object);
       }
-      function fallbackValue(element) {
-        console.warn('fallback value for', element);
+      function fallbackValue() {
         return null;
       }
       return fallbackValue;
     }
-    const html$1 = freeze([
-      'a',
-      'abbr',
-      'acronym',
-      'address',
-      'area',
-      'article',
-      'aside',
-      'audio',
-      'b',
-      'bdi',
-      'bdo',
-      'big',
-      'blink',
-      'blockquote',
-      'body',
-      'br',
-      'button',
-      'canvas',
-      'caption',
-      'center',
-      'cite',
-      'code',
-      'col',
-      'colgroup',
-      'content',
-      'data',
-      'datalist',
-      'dd',
-      'decorator',
-      'del',
-      'details',
-      'dfn',
-      'dialog',
-      'dir',
-      'div',
-      'dl',
-      'dt',
-      'element',
-      'em',
-      'fieldset',
-      'figcaption',
-      'figure',
-      'font',
-      'footer',
-      'form',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'head',
-      'header',
-      'hgroup',
-      'hr',
-      'html',
-      'i',
-      'img',
-      'input',
-      'ins',
-      'kbd',
-      'label',
-      'legend',
-      'li',
-      'main',
-      'map',
-      'mark',
-      'marquee',
-      'menu',
-      'menuitem',
-      'meter',
-      'nav',
-      'nobr',
-      'ol',
-      'optgroup',
-      'option',
-      'output',
-      'p',
-      'picture',
-      'pre',
-      'progress',
-      'q',
-      'rp',
-      'rt',
-      'ruby',
-      's',
-      'samp',
-      'section',
-      'select',
-      'shadow',
-      'small',
-      'source',
-      'spacer',
-      'span',
-      'strike',
-      'strong',
-      'style',
-      'sub',
-      'summary',
-      'sup',
-      'table',
-      'tbody',
-      'td',
-      'template',
-      'textarea',
-      'tfoot',
-      'th',
-      'thead',
-      'time',
-      'tr',
-      'track',
-      'tt',
-      'u',
-      'ul',
-      'var',
-      'video',
-      'wbr'
-    ]);
-    const svg$1 = freeze([
-      'svg',
-      'a',
-      'altglyph',
-      'altglyphdef',
-      'altglyphitem',
-      'animatecolor',
-      'animatemotion',
-      'animatetransform',
-      'circle',
-      'clippath',
-      'defs',
-      'desc',
-      'ellipse',
-      'filter',
-      'font',
-      'g',
-      'glyph',
-      'glyphref',
-      'hkern',
-      'image',
-      'line',
-      'lineargradient',
-      'marker',
-      'mask',
-      'metadata',
-      'mpath',
-      'path',
-      'pattern',
-      'polygon',
-      'polyline',
-      'radialgradient',
-      'rect',
-      'stop',
-      'style',
-      'switch',
-      'symbol',
-      'text',
-      'textpath',
-      'title',
-      'tref',
-      'tspan',
-      'view',
-      'vkern'
-    ]);
-    const svgFilters = freeze([
-      'feBlend',
-      'feColorMatrix',
-      'feComponentTransfer',
-      'feComposite',
-      'feConvolveMatrix',
-      'feDiffuseLighting',
-      'feDisplacementMap',
-      'feDistantLight',
-      'feDropShadow',
-      'feFlood',
-      'feFuncA',
-      'feFuncB',
-      'feFuncG',
-      'feFuncR',
-      'feGaussianBlur',
-      'feImage',
-      'feMerge',
-      'feMergeNode',
-      'feMorphology',
-      'feOffset',
-      'fePointLight',
-      'feSpecularLighting',
-      'feSpotLight',
-      'feTile',
-      'feTurbulence'
-    ]);
-    const svgDisallowed = freeze([
-      'animate',
-      'color-profile',
-      'cursor',
-      'discard',
-      'font-face',
-      'font-face-format',
-      'font-face-name',
-      'font-face-src',
-      'font-face-uri',
-      'foreignobject',
-      'hatch',
-      'hatchpath',
-      'mesh',
-      'meshgradient',
-      'meshpatch',
-      'meshrow',
-      'missing-glyph',
-      'script',
-      'set',
-      'solidcolor',
-      'unknown',
-      'use'
-    ]);
-    const mathMl$1 = freeze([
-      'math',
-      'menclose',
-      'merror',
-      'mfenced',
-      'mfrac',
-      'mglyph',
-      'mi',
-      'mlabeledtr',
-      'mmultiscripts',
-      'mn',
-      'mo',
-      'mover',
-      'mpadded',
-      'mphantom',
-      'mroot',
-      'mrow',
-      'ms',
-      'mspace',
-      'msqrt',
-      'mstyle',
-      'msub',
-      'msup',
-      'msubsup',
-      'mtable',
-      'mtd',
-      'mtext',
-      'mtr',
-      'munder',
-      'munderover',
-      'mprescripts'
-    ]);
-    const mathMlDisallowed = freeze([
-      'maction',
-      'maligngroup',
-      'malignmark',
-      'mlongdiv',
-      'mscarries',
-      'mscarry',
-      'msgroup',
-      'mstack',
-      'msline',
-      'msrow',
-      'semantics',
-      'annotation',
-      'annotation-xml',
-      'mprescripts',
-      'none'
-    ]);
+
+    const html$1 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
+    const svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'view', 'vkern']);
+    const svgFilters = freeze(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']);
+    // List of SVG elements that are disallowed by default.
+    // We still need to know them so that we can do namespace
+    // checks properly in case one wants to add them to
+    // allow-list.
+    const svgDisallowed = freeze(['animate', 'color-profile', 'cursor', 'discard', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignobject', 'hatch', 'hatchpath', 'mesh', 'meshgradient', 'meshpatch', 'meshrow', 'missing-glyph', 'script', 'set', 'solidcolor', 'unknown', 'use']);
+    const mathMl$1 = freeze(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msup', 'msubsup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'mprescripts']);
+    // Similarly to SVG, we want to know all MathML elements,
+    // even those that we disallow by default.
+    const mathMlDisallowed = freeze(['maction', 'maligngroup', 'malignmark', 'mlongdiv', 'mscarries', 'mscarry', 'msgroup', 'mstack', 'msline', 'msrow', 'semantics', 'annotation', 'annotation-xml', 'mprescripts', 'none']);
     const text$1 = freeze(['#text']);
-    const html = freeze([
-      'accept',
-      'action',
-      'align',
-      'alt',
-      'autocapitalize',
-      'autocomplete',
-      'autopictureinpicture',
-      'autoplay',
-      'background',
-      'bgcolor',
-      'border',
-      'capture',
-      'cellpadding',
-      'cellspacing',
-      'checked',
-      'cite',
-      'class',
-      'clear',
-      'color',
-      'cols',
-      'colspan',
-      'controls',
-      'controlslist',
-      'coords',
-      'crossorigin',
-      'datetime',
-      'decoding',
-      'default',
-      'dir',
-      'disabled',
-      'disablepictureinpicture',
-      'disableremoteplayback',
-      'download',
-      'draggable',
-      'enctype',
-      'enterkeyhint',
-      'face',
-      'for',
-      'headers',
-      'height',
-      'hidden',
-      'high',
-      'href',
-      'hreflang',
-      'id',
-      'inputmode',
-      'integrity',
-      'ismap',
-      'kind',
-      'label',
-      'lang',
-      'list',
-      'loading',
-      'loop',
-      'low',
-      'max',
-      'maxlength',
-      'media',
-      'method',
-      'min',
-      'minlength',
-      'multiple',
-      'muted',
-      'name',
-      'nonce',
-      'noshade',
-      'novalidate',
-      'nowrap',
-      'open',
-      'optimum',
-      'pattern',
-      'placeholder',
-      'playsinline',
-      'poster',
-      'preload',
-      'pubdate',
-      'radiogroup',
-      'readonly',
-      'rel',
-      'required',
-      'rev',
-      'reversed',
-      'role',
-      'rows',
-      'rowspan',
-      'spellcheck',
-      'scope',
-      'selected',
-      'shape',
-      'size',
-      'sizes',
-      'span',
-      'srclang',
-      'start',
-      'src',
-      'srcset',
-      'step',
-      'style',
-      'summary',
-      'tabindex',
-      'title',
-      'translate',
-      'type',
-      'usemap',
-      'valign',
-      'value',
-      'width',
-      'xmlns',
-      'slot'
-    ]);
-    const svg = freeze([
-      'accent-height',
-      'accumulate',
-      'additive',
-      'alignment-baseline',
-      'ascent',
-      'attributename',
-      'attributetype',
-      'azimuth',
-      'basefrequency',
-      'baseline-shift',
-      'begin',
-      'bias',
-      'by',
-      'class',
-      'clip',
-      'clippathunits',
-      'clip-path',
-      'clip-rule',
-      'color',
-      'color-interpolation',
-      'color-interpolation-filters',
-      'color-profile',
-      'color-rendering',
-      'cx',
-      'cy',
-      'd',
-      'dx',
-      'dy',
-      'diffuseconstant',
-      'direction',
-      'display',
-      'divisor',
-      'dur',
-      'edgemode',
-      'elevation',
-      'end',
-      'fill',
-      'fill-opacity',
-      'fill-rule',
-      'filter',
-      'filterunits',
-      'flood-color',
-      'flood-opacity',
-      'font-family',
-      'font-size',
-      'font-size-adjust',
-      'font-stretch',
-      'font-style',
-      'font-variant',
-      'font-weight',
-      'fx',
-      'fy',
-      'g1',
-      'g2',
-      'glyph-name',
-      'glyphref',
-      'gradientunits',
-      'gradienttransform',
-      'height',
-      'href',
-      'id',
-      'image-rendering',
-      'in',
-      'in2',
-      'k',
-      'k1',
-      'k2',
-      'k3',
-      'k4',
-      'kerning',
-      'keypoints',
-      'keysplines',
-      'keytimes',
-      'lang',
-      'lengthadjust',
-      'letter-spacing',
-      'kernelmatrix',
-      'kernelunitlength',
-      'lighting-color',
-      'local',
-      'marker-end',
-      'marker-mid',
-      'marker-start',
-      'markerheight',
-      'markerunits',
-      'markerwidth',
-      'maskcontentunits',
-      'maskunits',
-      'max',
-      'mask',
-      'media',
-      'method',
-      'mode',
-      'min',
-      'name',
-      'numoctaves',
-      'offset',
-      'operator',
-      'opacity',
-      'order',
-      'orient',
-      'orientation',
-      'origin',
-      'overflow',
-      'paint-order',
-      'path',
-      'pathlength',
-      'patterncontentunits',
-      'patterntransform',
-      'patternunits',
-      'points',
-      'preservealpha',
-      'preserveaspectratio',
-      'primitiveunits',
-      'r',
-      'rx',
-      'ry',
-      'radius',
-      'refx',
-      'refy',
-      'repeatcount',
-      'repeatdur',
-      'restart',
-      'result',
-      'rotate',
-      'scale',
-      'seed',
-      'shape-rendering',
-      'specularconstant',
-      'specularexponent',
-      'spreadmethod',
-      'startoffset',
-      'stddeviation',
-      'stitchtiles',
-      'stop-color',
-      'stop-opacity',
-      'stroke-dasharray',
-      'stroke-dashoffset',
-      'stroke-linecap',
-      'stroke-linejoin',
-      'stroke-miterlimit',
-      'stroke-opacity',
-      'stroke',
-      'stroke-width',
-      'style',
-      'surfacescale',
-      'systemlanguage',
-      'tabindex',
-      'targetx',
-      'targety',
-      'transform',
-      'transform-origin',
-      'text-anchor',
-      'text-decoration',
-      'text-rendering',
-      'textlength',
-      'type',
-      'u1',
-      'u2',
-      'unicode',
-      'values',
-      'viewbox',
-      'visibility',
-      'version',
-      'vert-adv-y',
-      'vert-origin-x',
-      'vert-origin-y',
-      'width',
-      'word-spacing',
-      'wrap',
-      'writing-mode',
-      'xchannelselector',
-      'ychannelselector',
-      'x',
-      'x1',
-      'x2',
-      'xmlns',
-      'y',
-      'y1',
-      'y2',
-      'z',
-      'zoomandpan'
-    ]);
-    const mathMl = freeze([
-      'accent',
-      'accentunder',
-      'align',
-      'bevelled',
-      'close',
-      'columnsalign',
-      'columnlines',
-      'columnspan',
-      'denomalign',
-      'depth',
-      'dir',
-      'display',
-      'displaystyle',
-      'encoding',
-      'fence',
-      'frame',
-      'height',
-      'href',
-      'id',
-      'largeop',
-      'length',
-      'linethickness',
-      'lspace',
-      'lquote',
-      'mathbackground',
-      'mathcolor',
-      'mathsize',
-      'mathvariant',
-      'maxsize',
-      'minsize',
-      'movablelimits',
-      'notation',
-      'numalign',
-      'open',
-      'rowalign',
-      'rowlines',
-      'rowspacing',
-      'rowspan',
-      'rspace',
-      'rquote',
-      'scriptlevel',
-      'scriptminsize',
-      'scriptsizemultiplier',
-      'selection',
-      'separator',
-      'separators',
-      'stretchy',
-      'subscriptshift',
-      'supscriptshift',
-      'symmetric',
-      'voffset',
-      'width',
-      'xmlns'
-    ]);
-    const xml = freeze([
-      'xlink:href',
-      'xml:id',
-      'xlink:title',
-      'xml:space',
-      'xmlns:xlink'
-    ]);
-    const MUSTACHE_EXPR = seal(/\{\{[\w\W]*|[\w\W]*\}\}/gm);
+
+    const html = freeze(['accept', 'action', 'align', 'alt', 'autocapitalize', 'autocomplete', 'autopictureinpicture', 'autoplay', 'background', 'bgcolor', 'border', 'capture', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'controlslist', 'coords', 'crossorigin', 'datetime', 'decoding', 'default', 'dir', 'disabled', 'disablepictureinpicture', 'disableremoteplayback', 'download', 'draggable', 'enctype', 'enterkeyhint', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'inputmode', 'integrity', 'ismap', 'kind', 'label', 'lang', 'list', 'loading', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'muted', 'name', 'nonce', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'playsinline', 'popover', 'popovertarget', 'popovertargetaction', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'translate', 'type', 'usemap', 'valign', 'value', 'width', 'wrap', 'xmlns', 'slot']);
+    const svg = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'amplitude', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clippathunits', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'exponent', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'intercept', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'slope', 'specularconstant', 'specularexponent', 'spreadmethod', 'startoffset', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'systemlanguage', 'tabindex', 'tablevalues', 'targetx', 'targety', 'transform', 'transform-origin', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
+    const mathMl = freeze(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'encoding', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
+    const xml = freeze(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
+
+    // eslint-disable-next-line unicorn/better-regex
+    const MUSTACHE_EXPR = seal(/\{\{[\w\W]*|[\w\W]*\}\}/gm); // Specify template detection regex for SAFE_FOR_TEMPLATES mode
     const ERB_EXPR = seal(/<%[\w\W]*|[\w\W]*%>/gm);
-    const TMPLIT_EXPR = seal(/\${[\w\W]*}/gm);
-    const DATA_ATTR = seal(/^data-[\-\w.\u00B7-\uFFFF]/);
-    const ARIA_ATTR = seal(/^aria-[\-\w]+$/);
-    const IS_ALLOWED_URI = seal(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i);
+    const TMPLIT_EXPR = seal(/\$\{[\w\W]*/gm); // eslint-disable-line unicorn/better-regex
+    const DATA_ATTR = seal(/^data-[\-\w.\u00B7-\uFFFF]+$/); // eslint-disable-line no-useless-escape
+    const ARIA_ATTR = seal(/^aria-[\-\w]+$/); // eslint-disable-line no-useless-escape
+    const IS_ALLOWED_URI = seal(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i // eslint-disable-line no-useless-escape
+    );
     const IS_SCRIPT_OR_DATA = seal(/^(?:\w+script|data):/i);
-    const ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g);
+    const ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g // eslint-disable-line no-control-regex
+    );
     const DOCTYPE_NAME = seal(/^html$/i);
-    var EXPRESSIONS = Object.freeze({
+    const CUSTOM_ELEMENT = seal(/^[a-z][.\w]*(-[.\w]+)+$/i);
+
+    var EXPRESSIONS = /*#__PURE__*/Object.freeze({
       __proto__: null,
-      MUSTACHE_EXPR: MUSTACHE_EXPR,
-      ERB_EXPR: ERB_EXPR,
-      TMPLIT_EXPR: TMPLIT_EXPR,
-      DATA_ATTR: DATA_ATTR,
       ARIA_ATTR: ARIA_ATTR,
+      ATTR_WHITESPACE: ATTR_WHITESPACE,
+      CUSTOM_ELEMENT: CUSTOM_ELEMENT,
+      DATA_ATTR: DATA_ATTR,
+      DOCTYPE_NAME: DOCTYPE_NAME,
+      ERB_EXPR: ERB_EXPR,
       IS_ALLOWED_URI: IS_ALLOWED_URI,
       IS_SCRIPT_OR_DATA: IS_SCRIPT_OR_DATA,
-      ATTR_WHITESPACE: ATTR_WHITESPACE,
-      DOCTYPE_NAME: DOCTYPE_NAME
+      MUSTACHE_EXPR: MUSTACHE_EXPR,
+      TMPLIT_EXPR: TMPLIT_EXPR
     });
-    const getGlobal = () => typeof window === 'undefined' ? null : window;
+
+    /* eslint-disable @typescript-eslint/indent */
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
+    const NODE_TYPE = {
+      element: 1,
+      attribute: 2,
+      text: 3,
+      cdataSection: 4,
+      entityReference: 5,
+      // Deprecated
+      entityNode: 6,
+      // Deprecated
+      progressingInstruction: 7,
+      comment: 8,
+      document: 9,
+      documentType: 10,
+      documentFragment: 11,
+      notation: 12 // Deprecated
+    };
+    const getGlobal = function getGlobal() {
+      return typeof window === 'undefined' ? null : window;
+    };
+    /**
+     * Creates a no-op policy for internal use only.
+     * Don't export this function outside this module!
+     * @param trustedTypes The policy factory.
+     * @param purifyHostElement The Script element used to load DOMPurify (to determine policy name suffix).
+     * @return The policy created (or null, if Trusted Types
+     * are not supported or creating the policy failed).
+     */
     const _createTrustedTypesPolicy = function _createTrustedTypesPolicy(trustedTypes, purifyHostElement) {
       if (typeof trustedTypes !== 'object' || typeof trustedTypes.createPolicy !== 'function') {
         return null;
       }
+      // Allow the callers to control the unique policy name
+      // by adding a data-tt-policy-suffix to the script element with the DOMPurify.
+      // Policy creation with duplicate names throws in Trusted Types.
       let suffix = null;
       const ATTR_NAME = 'data-tt-policy-suffix';
       if (purifyHostElement && purifyHostElement.hasAttribute(ATTR_NAME)) {
@@ -50349,28 +50143,65 @@ __webpack_require__(4);
           }
         });
       } catch (_) {
+        // Policy creation failed (most likely another DOMPurify script has
+        // already run). Skip creating the policy, as this will only cause errors
+        // if TT are enforced.
         console.warn('TrustedTypes policy ' + policyName + ' could not be created.');
         return null;
       }
     };
+    const _createHooksMap = function _createHooksMap() {
+      return {
+        afterSanitizeAttributes: [],
+        afterSanitizeElements: [],
+        afterSanitizeShadowDOM: [],
+        beforeSanitizeAttributes: [],
+        beforeSanitizeElements: [],
+        beforeSanitizeShadowDOM: [],
+        uponSanitizeAttribute: [],
+        uponSanitizeElement: [],
+        uponSanitizeShadowNode: []
+      };
+    };
     function createDOMPurify() {
       let window = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getGlobal();
       const DOMPurify = root => createDOMPurify(root);
-      DOMPurify.version = '3.0.5';
+      DOMPurify.version = '3.2.4';
       DOMPurify.removed = [];
-      if (!window || !window.document || window.document.nodeType !== 9) {
+      if (!window || !window.document || window.document.nodeType !== NODE_TYPE.document || !window.Element) {
+        // Not running in a browser, provide a factory function
+        // so that you can pass your own Window
         DOMPurify.isSupported = false;
         return DOMPurify;
       }
-      const originalDocument = window.document;
+      let {
+        document
+      } = window;
+      const originalDocument = document;
       const currentScript = originalDocument.currentScript;
-      let {document} = window;
-      const {DocumentFragment, HTMLTemplateElement, Node, Element, NodeFilter, NamedNodeMap = window.NamedNodeMap || window.MozNamedAttrMap, HTMLFormElement, DOMParser, trustedTypes} = window;
+      const {
+        DocumentFragment,
+        HTMLTemplateElement,
+        Node,
+        Element,
+        NodeFilter,
+        NamedNodeMap = window.NamedNodeMap || window.MozNamedAttrMap,
+        HTMLFormElement,
+        DOMParser,
+        trustedTypes
+      } = window;
       const ElementPrototype = Element.prototype;
       const cloneNode = lookupGetter(ElementPrototype, 'cloneNode');
+      const remove = lookupGetter(ElementPrototype, 'remove');
       const getNextSibling = lookupGetter(ElementPrototype, 'nextSibling');
       const getChildNodes = lookupGetter(ElementPrototype, 'childNodes');
       const getParentNode = lookupGetter(ElementPrototype, 'parentNode');
+      // As per issue #47, the web-components registry is inherited by a
+      // new document created via createHTMLDocument. As per the spec
+      // (http://w3c.github.io/webcomponents/spec/custom/#creating-and-passing-registries)
+      // a new empty registry is used when creating a template contents owner
+      // document, so we use that as our parent document to ensure nothing
+      // is inherited.
       if (typeof HTMLTemplateElement === 'function') {
         const template = document.createElement('template');
         if (template.content && template.content.ownerDocument) {
@@ -50379,28 +50210,50 @@ __webpack_require__(4);
       }
       let trustedTypesPolicy;
       let emptyHTML = '';
-      const {implementation, createNodeIterator, createDocumentFragment, getElementsByTagName} = document;
-      const {importNode} = originalDocument;
-      let hooks = {};
+      const {
+        implementation,
+        createNodeIterator,
+        createDocumentFragment,
+        getElementsByTagName
+      } = document;
+      const {
+        importNode
+      } = originalDocument;
+      let hooks = _createHooksMap();
+      /**
+       * Expose whether this browser supports running the full DOMPurify.
+       */
       DOMPurify.isSupported = typeof entries === 'function' && typeof getParentNode === 'function' && implementation && implementation.createHTMLDocument !== undefined;
-      const {MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR, DATA_ATTR, ARIA_ATTR, IS_SCRIPT_OR_DATA, ATTR_WHITESPACE} = EXPRESSIONS;
-      let {IS_ALLOWED_URI: IS_ALLOWED_URI$1} = EXPRESSIONS;
+      const {
+        MUSTACHE_EXPR,
+        ERB_EXPR,
+        TMPLIT_EXPR,
+        DATA_ATTR,
+        ARIA_ATTR,
+        IS_SCRIPT_OR_DATA,
+        ATTR_WHITESPACE,
+        CUSTOM_ELEMENT
+      } = EXPRESSIONS;
+      let {
+        IS_ALLOWED_URI: IS_ALLOWED_URI$1
+      } = EXPRESSIONS;
+      /**
+       * We consider the elements and attributes below to be safe. Ideally
+       * don't add any new ones but feel free to remove unwanted ones.
+       */
+      /* allowed element names */
       let ALLOWED_TAGS = null;
-      const DEFAULT_ALLOWED_TAGS = addToSet({}, [
-        ...html$1,
-        ...svg$1,
-        ...svgFilters,
-        ...mathMl$1,
-        ...text$1
-      ]);
+      const DEFAULT_ALLOWED_TAGS = addToSet({}, [...html$1, ...svg$1, ...svgFilters, ...mathMl$1, ...text$1]);
+      /* Allowed attribute names */
       let ALLOWED_ATTR = null;
-      const DEFAULT_ALLOWED_ATTR = addToSet({}, [
-        ...html,
-        ...svg,
-        ...mathMl,
-        ...xml
-      ]);
-      let CUSTOM_ELEMENT_HANDLING = Object.seal(Object.create(null, {
+      const DEFAULT_ALLOWED_ATTR = addToSet({}, [...html, ...svg, ...mathMl, ...xml]);
+      /*
+       * Configure how DOMPurify should handle custom elements and their attributes as well as customized built-in elements.
+       * @property {RegExp|Function|null} tagNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any custom elements)
+       * @property {RegExp|Function|null} attributeNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any attributes not on the allow list)
+       * @property {boolean} allowCustomizedBuiltInElements allow custom elements derived from built-ins if they pass CUSTOM_ELEMENT_HANDLING.tagNameCheck. Default: `false`.
+       */
+      let CUSTOM_ELEMENT_HANDLING = Object.seal(create$1(null, {
         tagNameCheck: {
           writable: true,
           configurable: false,
@@ -50420,137 +50273,160 @@ __webpack_require__(4);
           value: false
         }
       }));
+      /* Explicitly forbidden tags (overrides ALLOWED_TAGS/ADD_TAGS) */
       let FORBID_TAGS = null;
+      /* Explicitly forbidden attributes (overrides ALLOWED_ATTR/ADD_ATTR) */
       let FORBID_ATTR = null;
+      /* Decide if ARIA attributes are okay */
       let ALLOW_ARIA_ATTR = true;
+      /* Decide if custom data attributes are okay */
       let ALLOW_DATA_ATTR = true;
+      /* Decide if unknown protocols are okay */
       let ALLOW_UNKNOWN_PROTOCOLS = false;
+      /* Decide if self-closing tags in attributes are allowed.
+       * Usually removed due to a mXSS issue in jQuery 3.0 */
       let ALLOW_SELF_CLOSE_IN_ATTR = true;
+      /* Output should be safe for common template engines.
+       * This means, DOMPurify removes data attributes, mustaches and ERB
+       */
       let SAFE_FOR_TEMPLATES = false;
+      /* Output should be safe even for XML used within HTML and alike.
+       * This means, DOMPurify removes comments when containing risky content.
+       */
+      let SAFE_FOR_XML = true;
+      /* Decide if document with <html>... should be returned */
       let WHOLE_DOCUMENT = false;
+      /* Track whether config is already set on this instance of DOMPurify. */
       let SET_CONFIG = false;
+      /* Decide if all elements (e.g. style, script) must be children of
+       * document.body. By default, browsers might move them to document.head */
       let FORCE_BODY = false;
+      /* Decide if a DOM `HTMLBodyElement` should be returned, instead of a html
+       * string (or a TrustedHTML object if Trusted Types are supported).
+       * If `WHOLE_DOCUMENT` is enabled a `HTMLHtmlElement` will be returned instead
+       */
       let RETURN_DOM = false;
+      /* Decide if a DOM `DocumentFragment` should be returned, instead of a html
+       * string  (or a TrustedHTML object if Trusted Types are supported) */
       let RETURN_DOM_FRAGMENT = false;
+      /* Try to return a Trusted Type object instead of a string, return a string in
+       * case Trusted Types are not supported  */
       let RETURN_TRUSTED_TYPE = false;
+      /* Output should be free from DOM clobbering attacks?
+       * This sanitizes markups named with colliding, clobberable built-in DOM APIs.
+       */
       let SANITIZE_DOM = true;
+      /* Achieve full DOM Clobbering protection by isolating the namespace of named
+       * properties and JS variables, mitigating attacks that abuse the HTML/DOM spec rules.
+       *
+       * HTML/DOM spec rules that enable DOM Clobbering:
+       *   - Named Access on Window (§7.3.3)
+       *   - DOM Tree Accessors (§3.1.5)
+       *   - Form Element Parent-Child Relations (§4.10.3)
+       *   - Iframe srcdoc / Nested WindowProxies (§4.8.5)
+       *   - HTMLCollection (§4.2.10.2)
+       *
+       * Namespace isolation is implemented by prefixing `id` and `name` attributes
+       * with a constant string, i.e., `user-content-`
+       */
       let SANITIZE_NAMED_PROPS = false;
       const SANITIZE_NAMED_PROPS_PREFIX = 'user-content-';
+      /* Keep element content when removing element? */
       let KEEP_CONTENT = true;
+      /* If a `Node` is passed to sanitize(), then performs sanitization in-place instead
+       * of importing it into a new Document and returning a sanitized copy */
       let IN_PLACE = false;
+      /* Allow usage of profiles like html, svg and mathMl */
       let USE_PROFILES = {};
+      /* Tags to ignore content of when KEEP_CONTENT is true */
       let FORBID_CONTENTS = null;
-      const DEFAULT_FORBID_CONTENTS = addToSet({}, [
-        'annotation-xml',
-        'audio',
-        'colgroup',
-        'desc',
-        'foreignobject',
-        'head',
-        'iframe',
-        'math',
-        'mi',
-        'mn',
-        'mo',
-        'ms',
-        'mtext',
-        'noembed',
-        'noframes',
-        'noscript',
-        'plaintext',
-        'script',
-        'style',
-        'svg',
-        'template',
-        'thead',
-        'title',
-        'video',
-        'xmp'
-      ]);
+      const DEFAULT_FORBID_CONTENTS = addToSet({}, ['annotation-xml', 'audio', 'colgroup', 'desc', 'foreignobject', 'head', 'iframe', 'math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'noembed', 'noframes', 'noscript', 'plaintext', 'script', 'style', 'svg', 'template', 'thead', 'title', 'video', 'xmp']);
+      /* Tags that are safe for data: URIs */
       let DATA_URI_TAGS = null;
-      const DEFAULT_DATA_URI_TAGS = addToSet({}, [
-        'audio',
-        'video',
-        'img',
-        'source',
-        'image',
-        'track'
-      ]);
+      const DEFAULT_DATA_URI_TAGS = addToSet({}, ['audio', 'video', 'img', 'source', 'image', 'track']);
+      /* Attributes safe for values like "javascript:" */
       let URI_SAFE_ATTRIBUTES = null;
-      const DEFAULT_URI_SAFE_ATTRIBUTES = addToSet({}, [
-        'alt',
-        'class',
-        'for',
-        'id',
-        'label',
-        'name',
-        'pattern',
-        'placeholder',
-        'role',
-        'summary',
-        'title',
-        'value',
-        'style',
-        'xmlns'
-      ]);
+      const DEFAULT_URI_SAFE_ATTRIBUTES = addToSet({}, ['alt', 'class', 'for', 'id', 'label', 'name', 'pattern', 'placeholder', 'role', 'summary', 'title', 'value', 'style', 'xmlns']);
       const MATHML_NAMESPACE = 'http://www.w3.org/1998/Math/MathML';
       const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
       const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+      /* Document namespace */
       let NAMESPACE = HTML_NAMESPACE;
       let IS_EMPTY_INPUT = false;
+      /* Allowed XHTML+XML namespaces */
       let ALLOWED_NAMESPACES = null;
-      const DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [
-        MATHML_NAMESPACE,
-        SVG_NAMESPACE,
-        HTML_NAMESPACE
-      ], stringToString);
-      let PARSER_MEDIA_TYPE;
-      const SUPPORTED_PARSER_MEDIA_TYPES = [
-        'application/xhtml+xml',
-        'text/html'
-      ];
+      const DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [MATHML_NAMESPACE, SVG_NAMESPACE, HTML_NAMESPACE], stringToString);
+      let MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, ['mi', 'mo', 'mn', 'ms', 'mtext']);
+      let HTML_INTEGRATION_POINTS = addToSet({}, ['annotation-xml']);
+      // Certain elements are allowed in both SVG and HTML
+      // namespace. We need to specify them explicitly
+      // so that they don't get erroneously deleted from
+      // HTML namespace.
+      const COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, ['title', 'style', 'font', 'a', 'script']);
+      /* Parsing of strict XHTML documents */
+      let PARSER_MEDIA_TYPE = null;
+      const SUPPORTED_PARSER_MEDIA_TYPES = ['application/xhtml+xml', 'text/html'];
       const DEFAULT_PARSER_MEDIA_TYPE = 'text/html';
-      let transformCaseFunc;
+      let transformCaseFunc = null;
+      /* Keep a reference to config to pass to hooks */
       let CONFIG = null;
+      /* Ideally, do not touch anything below this line */
+      /* ______________________________________________ */
       const formElement = document.createElement('form');
       const isRegexOrFunction = function isRegexOrFunction(testValue) {
         return testValue instanceof RegExp || testValue instanceof Function;
       };
-      const _parseConfig = function _parseConfig(cfg) {
+      /**
+       * _parseConfig
+       *
+       * @param cfg optional config literal
+       */
+      // eslint-disable-next-line complexity
+      const _parseConfig = function _parseConfig() {
+        let cfg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
         if (CONFIG && CONFIG === cfg) {
           return;
         }
+        /* Shield configuration object from tampering */
         if (!cfg || typeof cfg !== 'object') {
           cfg = {};
         }
+        /* Shield configuration object from prototype pollution */
         cfg = clone(cfg);
-        PARSER_MEDIA_TYPE = SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? PARSER_MEDIA_TYPE = DEFAULT_PARSER_MEDIA_TYPE : PARSER_MEDIA_TYPE = cfg.PARSER_MEDIA_TYPE;
+        PARSER_MEDIA_TYPE =
+        // eslint-disable-next-line unicorn/prefer-includes
+        SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? DEFAULT_PARSER_MEDIA_TYPE : cfg.PARSER_MEDIA_TYPE;
+        // HTML tags and attributes are not case-sensitive, converting to lowercase. Keeping XHTML as is.
         transformCaseFunc = PARSER_MEDIA_TYPE === 'application/xhtml+xml' ? stringToString : stringToLowerCase;
-        ALLOWED_TAGS = 'ALLOWED_TAGS' in cfg ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
-        ALLOWED_ATTR = 'ALLOWED_ATTR' in cfg ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
-        ALLOWED_NAMESPACES = 'ALLOWED_NAMESPACES' in cfg ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
-        URI_SAFE_ATTRIBUTES = 'ADD_URI_SAFE_ATTR' in cfg ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR, transformCaseFunc) : DEFAULT_URI_SAFE_ATTRIBUTES;
-        DATA_URI_TAGS = 'ADD_DATA_URI_TAGS' in cfg ? addToSet(clone(DEFAULT_DATA_URI_TAGS), cfg.ADD_DATA_URI_TAGS, transformCaseFunc) : DEFAULT_DATA_URI_TAGS;
-        FORBID_CONTENTS = 'FORBID_CONTENTS' in cfg ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
-        FORBID_TAGS = 'FORBID_TAGS' in cfg ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : {};
-        FORBID_ATTR = 'FORBID_ATTR' in cfg ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : {};
-        USE_PROFILES = 'USE_PROFILES' in cfg ? cfg.USE_PROFILES : false;
-        ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false;
-        ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false;
-        ALLOW_UNKNOWN_PROTOCOLS = cfg.ALLOW_UNKNOWN_PROTOCOLS || false;
-        ALLOW_SELF_CLOSE_IN_ATTR = cfg.ALLOW_SELF_CLOSE_IN_ATTR !== false;
-        SAFE_FOR_TEMPLATES = cfg.SAFE_FOR_TEMPLATES || false;
-        WHOLE_DOCUMENT = cfg.WHOLE_DOCUMENT || false;
-        RETURN_DOM = cfg.RETURN_DOM || false;
-        RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false;
-        RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false;
-        FORCE_BODY = cfg.FORCE_BODY || false;
-        SANITIZE_DOM = cfg.SANITIZE_DOM !== false;
-        SANITIZE_NAMED_PROPS = cfg.SANITIZE_NAMED_PROPS || false;
-        KEEP_CONTENT = cfg.KEEP_CONTENT !== false;
-        IN_PLACE = cfg.IN_PLACE || false;
+        /* Set configuration parameters */
+        ALLOWED_TAGS = objectHasOwnProperty(cfg, 'ALLOWED_TAGS') ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
+        ALLOWED_ATTR = objectHasOwnProperty(cfg, 'ALLOWED_ATTR') ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
+        ALLOWED_NAMESPACES = objectHasOwnProperty(cfg, 'ALLOWED_NAMESPACES') ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
+        URI_SAFE_ATTRIBUTES = objectHasOwnProperty(cfg, 'ADD_URI_SAFE_ATTR') ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR, transformCaseFunc) : DEFAULT_URI_SAFE_ATTRIBUTES;
+        DATA_URI_TAGS = objectHasOwnProperty(cfg, 'ADD_DATA_URI_TAGS') ? addToSet(clone(DEFAULT_DATA_URI_TAGS), cfg.ADD_DATA_URI_TAGS, transformCaseFunc) : DEFAULT_DATA_URI_TAGS;
+        FORBID_CONTENTS = objectHasOwnProperty(cfg, 'FORBID_CONTENTS') ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
+        FORBID_TAGS = objectHasOwnProperty(cfg, 'FORBID_TAGS') ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : {};
+        FORBID_ATTR = objectHasOwnProperty(cfg, 'FORBID_ATTR') ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : {};
+        USE_PROFILES = objectHasOwnProperty(cfg, 'USE_PROFILES') ? cfg.USE_PROFILES : false;
+        ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false; // Default true
+        ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false; // Default true
+        ALLOW_UNKNOWN_PROTOCOLS = cfg.ALLOW_UNKNOWN_PROTOCOLS || false; // Default false
+        ALLOW_SELF_CLOSE_IN_ATTR = cfg.ALLOW_SELF_CLOSE_IN_ATTR !== false; // Default true
+        SAFE_FOR_TEMPLATES = cfg.SAFE_FOR_TEMPLATES || false; // Default false
+        SAFE_FOR_XML = cfg.SAFE_FOR_XML !== false; // Default true
+        WHOLE_DOCUMENT = cfg.WHOLE_DOCUMENT || false; // Default false
+        RETURN_DOM = cfg.RETURN_DOM || false; // Default false
+        RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false; // Default false
+        RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false; // Default false
+        FORCE_BODY = cfg.FORCE_BODY || false; // Default false
+        SANITIZE_DOM = cfg.SANITIZE_DOM !== false; // Default true
+        SANITIZE_NAMED_PROPS = cfg.SANITIZE_NAMED_PROPS || false; // Default false
+        KEEP_CONTENT = cfg.KEEP_CONTENT !== false; // Default true
+        IN_PLACE = cfg.IN_PLACE || false; // Default false
         IS_ALLOWED_URI$1 = cfg.ALLOWED_URI_REGEXP || IS_ALLOWED_URI;
         NAMESPACE = cfg.NAMESPACE || HTML_NAMESPACE;
+        MATHML_TEXT_INTEGRATION_POINTS = cfg.MATHML_TEXT_INTEGRATION_POINTS || MATHML_TEXT_INTEGRATION_POINTS;
+        HTML_INTEGRATION_POINTS = cfg.HTML_INTEGRATION_POINTS || HTML_INTEGRATION_POINTS;
         CUSTOM_ELEMENT_HANDLING = cfg.CUSTOM_ELEMENT_HANDLING || {};
         if (cfg.CUSTOM_ELEMENT_HANDLING && isRegexOrFunction(cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck)) {
           CUSTOM_ELEMENT_HANDLING.tagNameCheck = cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck;
@@ -50567,8 +50443,9 @@ __webpack_require__(4);
         if (RETURN_DOM_FRAGMENT) {
           RETURN_DOM = true;
         }
+        /* Parse profile info */
         if (USE_PROFILES) {
-          ALLOWED_TAGS = addToSet({}, [...text$1]);
+          ALLOWED_TAGS = addToSet({}, text$1);
           ALLOWED_ATTR = [];
           if (USE_PROFILES.html === true) {
             addToSet(ALLOWED_TAGS, html$1);
@@ -50590,6 +50467,7 @@ __webpack_require__(4);
             addToSet(ALLOWED_ATTR, xml);
           }
         }
+        /* Merge configuration parameters */
         if (cfg.ADD_TAGS) {
           if (ALLOWED_TAGS === DEFAULT_ALLOWED_TAGS) {
             ALLOWED_TAGS = clone(ALLOWED_TAGS);
@@ -50611,16 +50489,15 @@ __webpack_require__(4);
           }
           addToSet(FORBID_CONTENTS, cfg.FORBID_CONTENTS, transformCaseFunc);
         }
+        /* Add #text in case KEEP_CONTENT is set to true */
         if (KEEP_CONTENT) {
           ALLOWED_TAGS['#text'] = true;
         }
+        /* Add html, head and body to ALLOWED_TAGS in case WHOLE_DOCUMENT is true */
         if (WHOLE_DOCUMENT) {
-          addToSet(ALLOWED_TAGS, [
-            'html',
-            'head',
-            'body'
-          ]);
+          addToSet(ALLOWED_TAGS, ['html', 'head', 'body']);
         }
+        /* Add tbody to ALLOWED_TAGS in case tables are permitted, see #286, #365 */
         if (ALLOWED_TAGS.table) {
           addToSet(ALLOWED_TAGS, ['tbody']);
           delete FORBID_TAGS.tbody;
@@ -50632,48 +50509,42 @@ __webpack_require__(4);
           if (typeof cfg.TRUSTED_TYPES_POLICY.createScriptURL !== 'function') {
             throw typeErrorCreate('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');
           }
+          // Overwrite existing TrustedTypes policy.
           trustedTypesPolicy = cfg.TRUSTED_TYPES_POLICY;
+          // Sign local variables required by `sanitize`.
           emptyHTML = trustedTypesPolicy.createHTML('');
         } else {
+          // Uninitialized policy, attempt to initialize the internal dompurify policy.
           if (trustedTypesPolicy === undefined) {
             trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, currentScript);
           }
+          // If creating the internal policy succeeded sign internal variables.
           if (trustedTypesPolicy !== null && typeof emptyHTML === 'string') {
             emptyHTML = trustedTypesPolicy.createHTML('');
           }
         }
+        // Prevent further manipulation of configuration.
+        // Not available in IE8, Safari 5, etc.
         if (freeze) {
           freeze(cfg);
         }
         CONFIG = cfg;
       };
-      const MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, [
-        'mi',
-        'mo',
-        'mn',
-        'ms',
-        'mtext'
-      ]);
-      const HTML_INTEGRATION_POINTS = addToSet({}, [
-        'foreignobject',
-        'desc',
-        'title',
-        'annotation-xml'
-      ]);
-      const COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, [
-        'title',
-        'style',
-        'font',
-        'a',
-        'script'
-      ]);
-      const ALL_SVG_TAGS = addToSet({}, svg$1);
-      addToSet(ALL_SVG_TAGS, svgFilters);
-      addToSet(ALL_SVG_TAGS, svgDisallowed);
-      const ALL_MATHML_TAGS = addToSet({}, mathMl$1);
-      addToSet(ALL_MATHML_TAGS, mathMlDisallowed);
+      /* Keep track of all possible SVG and MathML tags
+       * so that we can perform the namespace checks
+       * correctly. */
+      const ALL_SVG_TAGS = addToSet({}, [...svg$1, ...svgFilters, ...svgDisallowed]);
+      const ALL_MATHML_TAGS = addToSet({}, [...mathMl$1, ...mathMlDisallowed]);
+      /**
+       * @param element a DOM element whose namespace is being checked
+       * @returns Return false if the element has a
+       *  namespace that a spec-compliant parser would never
+       *  return. Return true otherwise.
+       */
       const _checkValidNamespace = function _checkValidNamespace(element) {
         let parent = getParentNode(element);
+        // In JSDOM, if we're inside shadow DOM, then parentNode
+        // can be null. We just simulate parent in this case.
         if (!parent || !parent.tagName) {
           parent = {
             namespaceURI: NAMESPACE,
@@ -50686,313 +50557,499 @@ __webpack_require__(4);
           return false;
         }
         if (element.namespaceURI === SVG_NAMESPACE) {
+          // The only way to switch from HTML namespace to SVG
+          // is via <svg>. If it happens via any other tag, then
+          // it should be killed.
           if (parent.namespaceURI === HTML_NAMESPACE) {
             return tagName === 'svg';
           }
+          // The only way to switch from MathML to SVG is via`
+          // svg if parent is either <annotation-xml> or MathML
+          // text integration points.
           if (parent.namespaceURI === MATHML_NAMESPACE) {
             return tagName === 'svg' && (parentTagName === 'annotation-xml' || MATHML_TEXT_INTEGRATION_POINTS[parentTagName]);
           }
+          // We only allow elements that are defined in SVG
+          // spec. All others are disallowed in SVG namespace.
           return Boolean(ALL_SVG_TAGS[tagName]);
         }
         if (element.namespaceURI === MATHML_NAMESPACE) {
+          // The only way to switch from HTML namespace to MathML
+          // is via <math>. If it happens via any other tag, then
+          // it should be killed.
           if (parent.namespaceURI === HTML_NAMESPACE) {
             return tagName === 'math';
           }
+          // The only way to switch from SVG to MathML is via
+          // <math> and HTML integration points
           if (parent.namespaceURI === SVG_NAMESPACE) {
             return tagName === 'math' && HTML_INTEGRATION_POINTS[parentTagName];
           }
+          // We only allow elements that are defined in MathML
+          // spec. All others are disallowed in MathML namespace.
           return Boolean(ALL_MATHML_TAGS[tagName]);
         }
         if (element.namespaceURI === HTML_NAMESPACE) {
+          // The only way to switch from SVG to HTML is via
+          // HTML integration points, and from MathML to HTML
+          // is via MathML text integration points
           if (parent.namespaceURI === SVG_NAMESPACE && !HTML_INTEGRATION_POINTS[parentTagName]) {
             return false;
           }
           if (parent.namespaceURI === MATHML_NAMESPACE && !MATHML_TEXT_INTEGRATION_POINTS[parentTagName]) {
             return false;
           }
+          // We disallow tags that are specific for MathML
+          // or SVG and should never appear in HTML namespace
           return !ALL_MATHML_TAGS[tagName] && (COMMON_SVG_AND_HTML_ELEMENTS[tagName] || !ALL_SVG_TAGS[tagName]);
         }
+        // For XHTML and XML documents that support custom namespaces
         if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && ALLOWED_NAMESPACES[element.namespaceURI]) {
           return true;
         }
+        // The code should never reach this place (this means
+        // that the element somehow got namespace that is not
+        // HTML, SVG, MathML or allowed via ALLOWED_NAMESPACES).
+        // Return false just in case.
         return false;
       };
+      /**
+       * _forceRemove
+       *
+       * @param node a DOM node
+       */
       const _forceRemove = function _forceRemove(node) {
-        arrayPush(DOMPurify.removed, { element: node });
+        arrayPush(DOMPurify.removed, {
+          element: node
+        });
         try {
-          node.parentNode.removeChild(node);
+          // eslint-disable-next-line unicorn/prefer-dom-node-remove
+          getParentNode(node).removeChild(node);
         } catch (_) {
-          node.remove();
+          remove(node);
         }
       };
-      const _removeAttribute = function _removeAttribute(name, node) {
+      /**
+       * _removeAttribute
+       *
+       * @param name an Attribute name
+       * @param element a DOM node
+       */
+      const _removeAttribute = function _removeAttribute(name, element) {
         try {
           arrayPush(DOMPurify.removed, {
-            attribute: node.getAttributeNode(name),
-            from: node
+            attribute: element.getAttributeNode(name),
+            from: element
           });
         } catch (_) {
           arrayPush(DOMPurify.removed, {
             attribute: null,
-            from: node
+            from: element
           });
         }
-        node.removeAttribute(name);
-        if (name === 'is' && !ALLOWED_ATTR[name]) {
+        element.removeAttribute(name);
+        // We void attribute values for unremovable "is" attributes
+        if (name === 'is') {
           if (RETURN_DOM || RETURN_DOM_FRAGMENT) {
             try {
-              _forceRemove(node);
-            } catch (_) {
-            }
+              _forceRemove(element);
+            } catch (_) {}
           } else {
             try {
-              node.setAttribute(name, '');
-            } catch (_) {
-            }
+              element.setAttribute(name, '');
+            } catch (_) {}
           }
         }
       };
+      /**
+       * _initDocument
+       *
+       * @param dirty - a string of dirty markup
+       * @return a DOM, filled with the dirty markup
+       */
       const _initDocument = function _initDocument(dirty) {
-        let doc;
-        let leadingWhitespace;
+        /* Create a HTML document */
+        let doc = null;
+        let leadingWhitespace = null;
         if (FORCE_BODY) {
           dirty = '<remove></remove>' + dirty;
         } else {
+          /* If FORCE_BODY isn't used, leading whitespace needs to be preserved manually */
           const matches = stringMatch(dirty, /^[\r\n\t ]+/);
           leadingWhitespace = matches && matches[0];
         }
         if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && NAMESPACE === HTML_NAMESPACE) {
+          // Root of XHTML doc must contain xmlns declaration (see https://www.w3.org/TR/xhtml1/normative.html#strict)
           dirty = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + dirty + '</body></html>';
         }
         const dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
+        /*
+         * Use the DOMParser API by default, fallback later if needs be
+         * DOMParser not work for svg when has multiple root element.
+         */
         if (NAMESPACE === HTML_NAMESPACE) {
           try {
             doc = new DOMParser().parseFromString(dirtyPayload, PARSER_MEDIA_TYPE);
-          } catch (_) {
-          }
+          } catch (_) {}
         }
+        /* Use createHTMLDocument in case DOMParser is not available */
         if (!doc || !doc.documentElement) {
           doc = implementation.createDocument(NAMESPACE, 'template', null);
           try {
             doc.documentElement.innerHTML = IS_EMPTY_INPUT ? emptyHTML : dirtyPayload;
           } catch (_) {
+            // Syntax error if dirtyPayload is invalid xml
           }
         }
         const body = doc.body || doc.documentElement;
         if (dirty && leadingWhitespace) {
           body.insertBefore(document.createTextNode(leadingWhitespace), body.childNodes[0] || null);
         }
+        /* Work on whole document or just its body */
         if (NAMESPACE === HTML_NAMESPACE) {
           return getElementsByTagName.call(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
         }
         return WHOLE_DOCUMENT ? doc.documentElement : body;
       };
-      const _createIterator = function _createIterator(root) {
-        return createNodeIterator.call(root.ownerDocument || root, root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null, false);
+      /**
+       * Creates a NodeIterator object that you can use to traverse filtered lists of nodes or elements in a document.
+       *
+       * @param root The root element or node to start traversing on.
+       * @return The created NodeIterator
+       */
+      const _createNodeIterator = function _createNodeIterator(root) {
+        return createNodeIterator.call(root.ownerDocument || root, root,
+        // eslint-disable-next-line no-bitwise
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_PROCESSING_INSTRUCTION | NodeFilter.SHOW_CDATA_SECTION, null);
       };
-      const _isClobbered = function _isClobbered(elm) {
-        return elm instanceof HTMLFormElement && (typeof elm.nodeName !== 'string' || typeof elm.textContent !== 'string' || typeof elm.removeChild !== 'function' || !(elm.attributes instanceof NamedNodeMap) || typeof elm.removeAttribute !== 'function' || typeof elm.setAttribute !== 'function' || typeof elm.namespaceURI !== 'string' || typeof elm.insertBefore !== 'function' || typeof elm.hasChildNodes !== 'function');
+      /**
+       * _isClobbered
+       *
+       * @param element element to check for clobbering attacks
+       * @return true if clobbered, false if safe
+       */
+      const _isClobbered = function _isClobbered(element) {
+        return element instanceof HTMLFormElement && (typeof element.nodeName !== 'string' || typeof element.textContent !== 'string' || typeof element.removeChild !== 'function' || !(element.attributes instanceof NamedNodeMap) || typeof element.removeAttribute !== 'function' || typeof element.setAttribute !== 'function' || typeof element.namespaceURI !== 'string' || typeof element.insertBefore !== 'function' || typeof element.hasChildNodes !== 'function');
       };
-      const _isNode = function _isNode(object) {
-        return typeof Node === 'object' ? object instanceof Node : object && typeof object === 'object' && typeof object.nodeType === 'number' && typeof object.nodeName === 'string';
+      /**
+       * Checks whether the given object is a DOM node.
+       *
+       * @param value object to check whether it's a DOM node
+       * @return true is object is a DOM node
+       */
+      const _isNode = function _isNode(value) {
+        return typeof Node === 'function' && value instanceof Node;
       };
-      const _executeHook = function _executeHook(entryPoint, currentNode, data) {
-        if (!hooks[entryPoint]) {
-          return;
-        }
-        arrayForEach(hooks[entryPoint], hook => {
+      function _executeHooks(hooks, currentNode, data) {
+        arrayForEach(hooks, hook => {
           hook.call(DOMPurify, currentNode, data, CONFIG);
         });
-      };
+      }
+      /**
+       * _sanitizeElements
+       *
+       * @protect nodeName
+       * @protect textContent
+       * @protect removeChild
+       * @param currentNode to check for permission to exist
+       * @return true if node was killed, false if left alive
+       */
       const _sanitizeElements = function _sanitizeElements(currentNode) {
-        let content;
-        _executeHook('beforeSanitizeElements', currentNode, null);
+        let content = null;
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeElements, currentNode, null);
+        /* Check if element is clobbered or can clobber */
         if (_isClobbered(currentNode)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Now let's check the element's type and name */
         const tagName = transformCaseFunc(currentNode.nodeName);
-        _executeHook('uponSanitizeElement', currentNode, {
+        /* Execute a hook if present */
+        _executeHooks(hooks.uponSanitizeElement, currentNode, {
           tagName,
           allowedTags: ALLOWED_TAGS
         });
-        if (currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && (!_isNode(currentNode.content) || !_isNode(currentNode.content.firstElementChild)) && regExpTest(/<[/\w]/g, currentNode.innerHTML) && regExpTest(/<[/\w]/g, currentNode.textContent)) {
+        /* Detect mXSS attempts abusing namespace confusion */
+        if (currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && regExpTest(/<[/\w]/g, currentNode.innerHTML) && regExpTest(/<[/\w]/g, currentNode.textContent)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Remove any occurrence of processing instructions */
+        if (currentNode.nodeType === NODE_TYPE.progressingInstruction) {
+          _forceRemove(currentNode);
+          return true;
+        }
+        /* Remove any kind of possibly harmful comments */
+        if (SAFE_FOR_XML && currentNode.nodeType === NODE_TYPE.comment && regExpTest(/<[/\w]/g, currentNode.data)) {
+          _forceRemove(currentNode);
+          return true;
+        }
+        /* Remove element if anything forbids its presence */
         if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
-          if (!FORBID_TAGS[tagName] && _basicCustomElementTest(tagName)) {
-            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName))
+          /* Check if we have a custom element to handle */
+          if (!FORBID_TAGS[tagName] && _isBasicCustomElement(tagName)) {
+            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) {
               return false;
-            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName))
+            }
+            if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName)) {
               return false;
+            }
           }
+          /* Keep content except for bad-listed elements */
           if (KEEP_CONTENT && !FORBID_CONTENTS[tagName]) {
             const parentNode = getParentNode(currentNode) || currentNode.parentNode;
             const childNodes = getChildNodes(currentNode) || currentNode.childNodes;
             if (childNodes && parentNode) {
               const childCount = childNodes.length;
               for (let i = childCount - 1; i >= 0; --i) {
-                parentNode.insertBefore(cloneNode(childNodes[i], true), getNextSibling(currentNode));
+                const childClone = cloneNode(childNodes[i], true);
+                childClone.__removalCount = (currentNode.__removalCount || 0) + 1;
+                parentNode.insertBefore(childClone, getNextSibling(currentNode));
               }
             }
           }
           _forceRemove(currentNode);
           return true;
         }
+        /* Check whether element has a valid namespace */
         if (currentNode instanceof Element && !_checkValidNamespace(currentNode)) {
           _forceRemove(currentNode);
           return true;
         }
+        /* Make sure that older browsers don't get fallback-tag mXSS */
         if ((tagName === 'noscript' || tagName === 'noembed' || tagName === 'noframes') && regExpTest(/<\/no(script|embed|frames)/i, currentNode.innerHTML)) {
           _forceRemove(currentNode);
           return true;
         }
-        if (SAFE_FOR_TEMPLATES && currentNode.nodeType === 3) {
+        /* Sanitize element content to be template-safe */
+        if (SAFE_FOR_TEMPLATES && currentNode.nodeType === NODE_TYPE.text) {
+          /* Get the element's text content */
           content = currentNode.textContent;
-          content = stringReplace(content, MUSTACHE_EXPR, ' ');
-          content = stringReplace(content, ERB_EXPR, ' ');
-          content = stringReplace(content, TMPLIT_EXPR, ' ');
+          arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+            content = stringReplace(content, expr, ' ');
+          });
           if (currentNode.textContent !== content) {
-            arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+            arrayPush(DOMPurify.removed, {
+              element: currentNode.cloneNode()
+            });
             currentNode.textContent = content;
           }
         }
-        _executeHook('afterSanitizeElements', currentNode, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeElements, currentNode, null);
         return false;
       };
+      /**
+       * _isValidAttribute
+       *
+       * @param lcTag Lowercase tag name of containing element.
+       * @param lcName Lowercase attribute name.
+       * @param value Attribute value.
+       * @return Returns true if `value` is valid, otherwise false.
+       */
+      // eslint-disable-next-line complexity
       const _isValidAttribute = function _isValidAttribute(lcTag, lcName, value) {
+        /* Make sure attribute cannot clobber */
         if (SANITIZE_DOM && (lcName === 'id' || lcName === 'name') && (value in document || value in formElement)) {
           return false;
         }
-        if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName));
-        else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName));
-        else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
-          if (_basicCustomElementTest(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) || lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value)));
-          else {
+        /* Allow valid data-* attributes: At least one character after "-"
+            (https://html.spec.whatwg.org/multipage/dom.html#embedding-custom-non-visible-data-with-the-data-*-attributes)
+            XML-compatible (https://html.spec.whatwg.org/multipage/infrastructure.html#xml-compatible and http://www.w3.org/TR/xml/#d0e804)
+            We don't need to check the value; it's always URI safe. */
+        if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
+          if (
+          // First condition does a very basic check if a) it's basically a valid custom element tagname AND
+          // b) if the tagName passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+          // and c) if the attribute name passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.attributeNameCheck
+          _isBasicCustomElement(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) ||
+          // Alternative, second condition checks if it's an `is`-attribute, AND
+          // the value passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+          lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value))) ; else {
             return false;
           }
-        } else if (URI_SAFE_ATTRIBUTES[lcName]);
-        else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE, '')));
-        else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]);
-        else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA, stringReplace(value, ATTR_WHITESPACE, '')));
-        else if (value) {
+          /* Check value is safe. First, is attr inert? If so, is safe */
+        } else if (URI_SAFE_ATTRIBUTES[lcName]) ; else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE, ''))) ; else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]) ; else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA, stringReplace(value, ATTR_WHITESPACE, ''))) ; else if (value) {
           return false;
         } else ;
         return true;
       };
-      const _basicCustomElementTest = function _basicCustomElementTest(tagName) {
-        return tagName.indexOf('-') > 0;
+      /**
+       * _isBasicCustomElement
+       * checks if at least one dash is included in tagName, and it's not the first char
+       * for more sophisticated checking see https://github.com/sindresorhus/validate-element-name
+       *
+       * @param tagName name of the tag of the node to sanitize
+       * @returns Returns true if the tag name meets the basic criteria for a custom element, otherwise false.
+       */
+      const _isBasicCustomElement = function _isBasicCustomElement(tagName) {
+        return tagName !== 'annotation-xml' && stringMatch(tagName, CUSTOM_ELEMENT);
       };
+      /**
+       * _sanitizeAttributes
+       *
+       * @protect attributes
+       * @protect nodeName
+       * @protect removeAttribute
+       * @protect setAttribute
+       *
+       * @param currentNode to sanitize
+       */
       const _sanitizeAttributes = function _sanitizeAttributes(currentNode) {
-        let attr;
-        let value;
-        let lcName;
-        let l;
-        _executeHook('beforeSanitizeAttributes', currentNode, null);
-        const {attributes} = currentNode;
-        if (!attributes) {
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeAttributes, currentNode, null);
+        const {
+          attributes
+        } = currentNode;
+        /* Check if we have attributes; if not we might have a text node */
+        if (!attributes || _isClobbered(currentNode)) {
           return;
         }
         const hookEvent = {
           attrName: '',
           attrValue: '',
           keepAttr: true,
-          allowedAttributes: ALLOWED_ATTR
+          allowedAttributes: ALLOWED_ATTR,
+          forceKeepAttr: undefined
         };
-        l = attributes.length;
+        let l = attributes.length;
+        /* Go backwards over all attributes; safely remove bad ones */
         while (l--) {
-          attr = attributes[l];
-          const {name, namespaceURI} = attr;
-          value = name === 'value' ? attr.value : stringTrim(attr.value);
+          const attr = attributes[l];
+          const {
+            name,
+            namespaceURI,
+            value: attrValue
+          } = attr;
+          const lcName = transformCaseFunc(name);
+          let value = name === 'value' ? attrValue : stringTrim(attrValue);
           const initValue = value;
-          lcName = transformCaseFunc(name);
+          /* Execute a hook if present */
           hookEvent.attrName = lcName;
           hookEvent.attrValue = value;
           hookEvent.keepAttr = true;
-          hookEvent.forceKeepAttr = undefined;
-          _executeHook('uponSanitizeAttribute', currentNode, hookEvent);
+          hookEvent.forceKeepAttr = undefined; // Allows developers to see this is a property they can set
+          _executeHooks(hooks.uponSanitizeAttribute, currentNode, hookEvent);
           value = hookEvent.attrValue;
+          /* Full DOM Clobbering protection via namespace isolation,
+           * Prefix id and name attributes with `user-content-`
+           */
+          if (SANITIZE_NAMED_PROPS && (lcName === 'id' || lcName === 'name')) {
+            // Remove the attribute with this value
+            _removeAttribute(name, currentNode);
+            // Prefix the value and later re-create the attribute with the sanitized value
+            value = SANITIZE_NAMED_PROPS_PREFIX + value;
+          }
+          /* Work around a security issue with comments inside attributes */
+          if (SAFE_FOR_XML && regExpTest(/((--!?|])>)|<\/(style|title)/i, value)) {
+            _removeAttribute(name, currentNode);
+            continue;
+          }
+          /* Did the hooks approve of the attribute? */
           if (hookEvent.forceKeepAttr) {
             continue;
           }
+          /* Remove attribute */
+          /* Did the hooks approve of the attribute? */
           if (!hookEvent.keepAttr) {
             _removeAttribute(name, currentNode);
             continue;
           }
+          /* Work around a security issue in jQuery 3.0 */
           if (!ALLOW_SELF_CLOSE_IN_ATTR && regExpTest(/\/>/i, value)) {
             _removeAttribute(name, currentNode);
             continue;
           }
+          /* Sanitize attribute content to be template-safe */
           if (SAFE_FOR_TEMPLATES) {
-            value = stringReplace(value, MUSTACHE_EXPR, ' ');
-            value = stringReplace(value, ERB_EXPR, ' ');
-            value = stringReplace(value, TMPLIT_EXPR, ' ');
+            arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+              value = stringReplace(value, expr, ' ');
+            });
           }
+          /* Is `value` valid for this attribute? */
           const lcTag = transformCaseFunc(currentNode.nodeName);
           if (!_isValidAttribute(lcTag, lcName, value)) {
             _removeAttribute(name, currentNode);
             continue;
           }
-          if (SANITIZE_NAMED_PROPS && (lcName === 'id' || lcName === 'name')) {
-            _removeAttribute(name, currentNode);
-            value = SANITIZE_NAMED_PROPS_PREFIX + value;
-          }
+          /* Handle attributes that require Trusted Types */
           if (trustedTypesPolicy && typeof trustedTypes === 'object' && typeof trustedTypes.getAttributeType === 'function') {
-            if (namespaceURI);
-            else {
+            if (namespaceURI) ; else {
               switch (trustedTypes.getAttributeType(lcTag, lcName)) {
-              case 'TrustedHTML': {
-                  value = trustedTypesPolicy.createHTML(value);
-                  break;
-                }
-              case 'TrustedScriptURL': {
-                  value = trustedTypesPolicy.createScriptURL(value);
-                  break;
-                }
+                case 'TrustedHTML':
+                  {
+                    value = trustedTypesPolicy.createHTML(value);
+                    break;
+                  }
+                case 'TrustedScriptURL':
+                  {
+                    value = trustedTypesPolicy.createScriptURL(value);
+                    break;
+                  }
               }
             }
           }
+          /* Handle invalid data-* attribute set by try-catching it */
           if (value !== initValue) {
             try {
               if (namespaceURI) {
                 currentNode.setAttributeNS(namespaceURI, name, value);
               } else {
+                /* Fallback to setAttribute() for browser-unrecognized namespaces e.g. "x-schema". */
                 currentNode.setAttribute(name, value);
               }
-            } catch (_) {
-              _removeAttribute(name, currentNode);
-            }
+              if (_isClobbered(currentNode)) {
+                _forceRemove(currentNode);
+              } else {
+                arrayPop(DOMPurify.removed);
+              }
+            } catch (_) {}
           }
         }
-        _executeHook('afterSanitizeAttributes', currentNode, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeAttributes, currentNode, null);
       };
+      /**
+       * _sanitizeShadowDOM
+       *
+       * @param fragment to iterate over recursively
+       */
       const _sanitizeShadowDOM = function _sanitizeShadowDOM(fragment) {
-        let shadowNode;
-        const shadowIterator = _createIterator(fragment);
-        _executeHook('beforeSanitizeShadowDOM', fragment, null);
+        let shadowNode = null;
+        const shadowIterator = _createNodeIterator(fragment);
+        /* Execute a hook if present */
+        _executeHooks(hooks.beforeSanitizeShadowDOM, fragment, null);
         while (shadowNode = shadowIterator.nextNode()) {
-          _executeHook('uponSanitizeShadowNode', shadowNode, null);
-          if (_sanitizeElements(shadowNode)) {
-            continue;
-          }
+          /* Execute a hook if present */
+          _executeHooks(hooks.uponSanitizeShadowNode, shadowNode, null);
+          /* Sanitize tags and elements */
+          _sanitizeElements(shadowNode);
+          /* Check attributes next */
+          _sanitizeAttributes(shadowNode);
+          /* Deep shadow DOM detected */
           if (shadowNode.content instanceof DocumentFragment) {
             _sanitizeShadowDOM(shadowNode.content);
           }
-          _sanitizeAttributes(shadowNode);
         }
-        _executeHook('afterSanitizeShadowDOM', fragment, null);
+        /* Execute a hook if present */
+        _executeHooks(hooks.afterSanitizeShadowDOM, fragment, null);
       };
+      // eslint-disable-next-line complexity
       DOMPurify.sanitize = function (dirty) {
         let cfg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-        let body;
-        let importedNode;
-        let currentNode;
-        let returnNode;
+        let body = null;
+        let importedNode = null;
+        let currentNode = null;
+        let returnNode = null;
+        /* Make sure we have a string to sanitize.
+          DO NOT return early, as this will return the wrong type if
+          the user has requested a DOM object rather than a string */
         IS_EMPTY_INPUT = !dirty;
         if (IS_EMPTY_INPUT) {
           dirty = '<!-->';
         }
+        /* Stringify, in case dirty is an object */
         if (typeof dirty !== 'string' && !_isNode(dirty)) {
           if (typeof dirty.toString === 'function') {
             dirty = dirty.toString();
@@ -51003,17 +51060,22 @@ __webpack_require__(4);
             throw typeErrorCreate('toString is not a function');
           }
         }
+        /* Return dirty HTML if DOMPurify cannot run */
         if (!DOMPurify.isSupported) {
           return dirty;
         }
+        /* Assign config vars */
         if (!SET_CONFIG) {
           _parseConfig(cfg);
         }
+        /* Clean up removed elements */
         DOMPurify.removed = [];
+        /* Check if dirty is correctly typed for IN_PLACE */
         if (typeof dirty === 'string') {
           IN_PLACE = false;
         }
         if (IN_PLACE) {
+          /* Do some early pre-sanitization to avoid unsafe root nodes */
           if (dirty.nodeName) {
             const tagName = transformCaseFunc(dirty.nodeName);
             if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
@@ -51021,66 +51083,92 @@ __webpack_require__(4);
             }
           }
         } else if (dirty instanceof Node) {
+          /* If dirty is a DOM element, append to an empty document to avoid
+             elements being stripped by the parser */
           body = _initDocument('<!---->');
           importedNode = body.ownerDocument.importNode(dirty, true);
-          if (importedNode.nodeType === 1 && importedNode.nodeName === 'BODY') {
+          if (importedNode.nodeType === NODE_TYPE.element && importedNode.nodeName === 'BODY') {
+            /* Node is already a body, use as is */
             body = importedNode;
           } else if (importedNode.nodeName === 'HTML') {
             body = importedNode;
           } else {
+            // eslint-disable-next-line unicorn/prefer-dom-node-append
             body.appendChild(importedNode);
           }
         } else {
-          if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && dirty.indexOf('<') === -1) {
+          /* Exit directly if we have nothing to do */
+          if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT &&
+          // eslint-disable-next-line unicorn/prefer-includes
+          dirty.indexOf('<') === -1) {
             return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(dirty) : dirty;
           }
+          /* Initialize the document to work on */
           body = _initDocument(dirty);
+          /* Check we have a DOM node from the data */
           if (!body) {
             return RETURN_DOM ? null : RETURN_TRUSTED_TYPE ? emptyHTML : '';
           }
         }
+        /* Remove first element node (ours) if FORCE_BODY is set */
         if (body && FORCE_BODY) {
           _forceRemove(body.firstChild);
         }
-        const nodeIterator = _createIterator(IN_PLACE ? dirty : body);
+        /* Get node iterator */
+        const nodeIterator = _createNodeIterator(IN_PLACE ? dirty : body);
+        /* Now start iterating over the created document */
         while (currentNode = nodeIterator.nextNode()) {
-          if (_sanitizeElements(currentNode)) {
-            continue;
-          }
+          /* Sanitize tags and elements */
+          _sanitizeElements(currentNode);
+          /* Check attributes next */
+          _sanitizeAttributes(currentNode);
+          /* Shadow DOM detected, sanitize it */
           if (currentNode.content instanceof DocumentFragment) {
             _sanitizeShadowDOM(currentNode.content);
           }
-          _sanitizeAttributes(currentNode);
         }
+        /* If we sanitized `dirty` in-place, return it. */
         if (IN_PLACE) {
           return dirty;
         }
+        /* Return sanitized string or DOM */
         if (RETURN_DOM) {
           if (RETURN_DOM_FRAGMENT) {
             returnNode = createDocumentFragment.call(body.ownerDocument);
             while (body.firstChild) {
+              // eslint-disable-next-line unicorn/prefer-dom-node-append
               returnNode.appendChild(body.firstChild);
             }
           } else {
             returnNode = body;
           }
           if (ALLOWED_ATTR.shadowroot || ALLOWED_ATTR.shadowrootmode) {
+            /*
+              AdoptNode() is not used because internal state is not reset
+              (e.g. the past names map of a HTMLFormElement), this is safe
+              in theory but we would rather not risk another attack vector.
+              The state that is cloned by importNode() is explicitly defined
+              by the specs.
+            */
             returnNode = importNode.call(originalDocument, returnNode, true);
           }
           return returnNode;
         }
         let serializedHTML = WHOLE_DOCUMENT ? body.outerHTML : body.innerHTML;
+        /* Serialize doctype if allowed */
         if (WHOLE_DOCUMENT && ALLOWED_TAGS['!doctype'] && body.ownerDocument && body.ownerDocument.doctype && body.ownerDocument.doctype.name && regExpTest(DOCTYPE_NAME, body.ownerDocument.doctype.name)) {
           serializedHTML = '<!DOCTYPE ' + body.ownerDocument.doctype.name + '>\n' + serializedHTML;
         }
+        /* Sanitize final string template-safe */
         if (SAFE_FOR_TEMPLATES) {
-          serializedHTML = stringReplace(serializedHTML, MUSTACHE_EXPR, ' ');
-          serializedHTML = stringReplace(serializedHTML, ERB_EXPR, ' ');
-          serializedHTML = stringReplace(serializedHTML, TMPLIT_EXPR, ' ');
+          arrayForEach([MUSTACHE_EXPR, ERB_EXPR, TMPLIT_EXPR], expr => {
+            serializedHTML = stringReplace(serializedHTML, expr, ' ');
+          });
         }
         return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
       };
-      DOMPurify.setConfig = function (cfg) {
+      DOMPurify.setConfig = function () {
+        let cfg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
         _parseConfig(cfg);
         SET_CONFIG = true;
       };
@@ -51089,6 +51177,7 @@ __webpack_require__(4);
         SET_CONFIG = false;
       };
       DOMPurify.isValidAttribute = function (tag, attr, value) {
+        /* Initialize shared config vars if necessary. */
         if (!CONFIG) {
           _parseConfig({});
         }
@@ -51100,21 +51189,20 @@ __webpack_require__(4);
         if (typeof hookFunction !== 'function') {
           return;
         }
-        hooks[entryPoint] = hooks[entryPoint] || [];
         arrayPush(hooks[entryPoint], hookFunction);
       };
-      DOMPurify.removeHook = function (entryPoint) {
-        if (hooks[entryPoint]) {
-          return arrayPop(hooks[entryPoint]);
+      DOMPurify.removeHook = function (entryPoint, hookFunction) {
+        if (hookFunction !== undefined) {
+          const index = arrayLastIndexOf(hooks[entryPoint], hookFunction);
+          return index === -1 ? undefined : arraySplice(hooks[entryPoint], index, 1)[0];
         }
+        return arrayPop(hooks[entryPoint]);
       };
       DOMPurify.removeHooks = function (entryPoint) {
-        if (hooks[entryPoint]) {
-          hooks[entryPoint] = [];
-        }
+        hooks[entryPoint] = [];
       };
       DOMPurify.removeAllHooks = function () {
-        hooks = {};
+        hooks = _createHooksMap();
       };
       return DOMPurify;
     }
@@ -51260,8 +51348,8 @@ __webpack_require__(4);
       };
       const iconChoices = flatten([
         detail.icon.toArray(),
-        detail.level.toArray(),
-        detail.level.bind(level => Optional.from(notificationIconMap[level])).toArray()
+        [detail.level],
+        Optional.from(notificationIconMap[detail.level]).toArray()
       ]);
       const memButton = record(Button.sketch({
         dom: {
@@ -51310,14 +51398,11 @@ __webpack_require__(4);
             'role': 'alert',
             'aria-labelledby': notificationTextId
           },
-          classes: detail.level.map(level => [
+          classes: [
             'tox-notification',
             'tox-notification--in',
-            `tox-notification--${ level }`
-          ]).getOr([
-            'tox-notification',
-            'tox-notification--in'
-          ])
+            `tox-notification--${ detail.level }`
+          ]
         },
         behaviours: derive$1([
           Tabstopping.config({}),
@@ -51338,7 +51423,13 @@ __webpack_require__(4);
       name: 'Notification',
       factory: factory$m,
       configFields: [
-        option$3('level'),
+        defaultedStringEnum('level', 'info', [
+          'success',
+          'error',
+          'warning',
+          'warn',
+          'info'
+        ]),
         required$1('progress'),
         option$3('icon'),
         required$1('onAction'),
@@ -51358,13 +51449,15 @@ __webpack_require__(4);
 
     var NotificationManagerImpl = (editor, extras, uiMothership, notificationRegion) => {
       const sharedBackstage = extras.backstage.shared;
+      const getBoundsContainer = () => SugarElement.fromDom(editor.queryCommandValue('ToggleView') === '' ? editor.getContentAreaContainer() : editor.getContainer());
       const getBounds = () => {
-        const contentArea = box$1(SugarElement.fromDom(editor.getContentAreaContainer()));
+        const contentArea = box$1(getBoundsContainer());
         return Optional.some(contentArea);
       };
       const clampComponentsToBounds = components => {
         getBounds().each(bounds => {
           each$1(components, comp => {
+            remove$7(comp.element, 'width');
             if (get$d(comp.element) > bounds.width) {
               set$8(comp.element, 'width', bounds.width + 'px');
             }
@@ -51403,6 +51496,7 @@ __webpack_require__(4);
             manageRegionVisibility(region, editorOrUIFocused);
           });
         };
+        const shouldApplyDocking = () => !isStickyToolbar(editor) || !sharedBackstage.header.isPositionedAtTop();
         const notification = build$1(Notification.sketch({
           text: settings.text,
           level: contains$2([
@@ -51437,9 +51531,9 @@ __webpack_require__(4);
                 selector: '.tox-notification, .tox-notification a, .tox-notification button'
               }),
               Replacing.config({}),
-              ...isStickyToolbar(editor) && !sharedBackstage.header.isPositionedAtTop() ? [] : [Docking.config({
+              ...shouldApplyDocking() ? [Docking.config({
                   contextual: {
-                    lazyContext: () => Optional.some(box$1(SugarElement.fromDom(editor.getContentAreaContainer()))),
+                    lazyContext: () => Optional.some(box$1(getBoundsContainer())),
                     fadeInClass: 'tox-notification-container-dock-fadein',
                     fadeOutClass: 'tox-notification-container-dock-fadeout',
                     transitionClass: 'tox-notification-container-dock-transition'
@@ -51461,7 +51555,7 @@ __webpack_require__(4);
                       optScrollEnv: Optional.none()
                     }));
                   }
-                })]
+                })] : []
             ])
           }));
           const notificationSpec = premade(notification);
@@ -51478,7 +51572,9 @@ __webpack_require__(4);
           notificationRegion.on(notificationWrapper => {
             Replacing.append(notificationWrapper, notificationSpec);
             InlineView.reposition(notificationWrapper);
-            Docking.refresh(notificationWrapper);
+            if (notification.hasConfigured(Docking)) {
+              Docking.refresh(notificationWrapper);
+            }
             clampComponentsToBounds(notificationWrapper.components());
           });
         }
@@ -51490,7 +51586,9 @@ __webpack_require__(4);
         const reposition = () => {
           notificationRegion.on(region => {
             InlineView.reposition(region);
-            Docking.refresh(region);
+            if (region.hasConfigured(Docking)) {
+              Docking.refresh(region);
+            }
             clampComponentsToBounds(region.components());
           });
         };
@@ -51651,12 +51749,15 @@ __webpack_require__(4);
     };
 
     const schema$l = constant$1([
+      defaultedString('type', 'text'),
       option$3('data'),
       defaulted('inputAttributes', {}),
       defaulted('inputStyles', {}),
       defaulted('tag', 'input'),
       defaulted('inputClasses', []),
       onHandler('onSetValue'),
+      defaultedFunction('fromInputValue', identity),
+      defaultedFunction('toInputValue', identity),
       defaulted('styles', {}),
       defaulted('eventOrder', {}),
       field('inputBehaviours', [
@@ -51669,7 +51770,9 @@ __webpack_require__(4);
         onFocus: !detail.selectOnFocus ? noop : component => {
           const input = component.element;
           const value = get$7(input);
-          input.dom.setSelectionRange(0, value.length);
+          if (detail.type !== 'range') {
+            input.dom.setSelectionRange(0, value.length);
+          }
         }
       })]);
     const behaviours = detail => ({
@@ -51679,12 +51782,12 @@ __webpack_require__(4);
             mode: 'manual',
             ...detail.data.map(data => ({ initialValue: data })).getOr({}),
             getValue: input => {
-              return get$7(input.element);
+              return detail.fromInputValue(get$7(input.element));
             },
             setValue: (input, data) => {
               const current = get$7(input.element);
               if (current !== data) {
-                set$5(input.element, data);
+                set$5(input.element, detail.toInputValue(data));
               }
             }
           },
@@ -51694,7 +51797,7 @@ __webpack_require__(4);
     const dom = detail => ({
       tag: detail.tag,
       attributes: {
-        type: 'text',
+        type: detail.type,
         ...detail.inputAttributes
       },
       styles: detail.inputStyles,
@@ -52092,7 +52195,8 @@ __webpack_require__(4);
       optionalTooltip,
       optionalIcon,
       optionalText,
-      onSetup
+      onSetup,
+      defaultedString('context', 'mode:design')
     ];
     const toolbarButtonSchema = objOf([
       type,
@@ -52124,12 +52228,14 @@ __webpack_require__(4);
 
     const contextButtonFields = baseToolbarButtonFields.concat([
       defaultedType('contextformbutton'),
+      defaultedString('align', 'end'),
       primary,
       onAction,
       customField('original', identity)
     ]);
     const contextToggleButtonFields = baseToolbarToggleButtonFields.concat([
       defaultedType('contextformbutton'),
+      defaultedString('align', 'end'),
       primary,
       onAction,
       customField('original', identity)
@@ -52140,22 +52246,67 @@ __webpack_require__(4);
       contextformbutton: contextButtonFields,
       contextformtogglebutton: contextToggleButtonFields
     });
-    const contextFormSchema = objOf([
-      defaultedType('contextform'),
-      defaultedFunction('initValue', constant$1('')),
+    const baseContextFormFields = [
       optionalLabel,
       requiredArrayOf('commands', toggleOrNormal),
       optionOf('launch', choose$1('type', {
         contextformbutton: launchButtonFields,
         contextformtogglebutton: launchToggleButtonFields
+      })),
+      defaultedFunction('onInput', noop),
+      defaultedFunction('onSetup', noop)
+    ];
+    const contextFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextform']),
+      defaultedFunction('initValue', constant$1('')),
+      optionString('placeholder')
+    ];
+    const contextSliderFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextsliderform']),
+      defaultedFunction('initValue', constant$1(0)),
+      defaultedFunction('min', constant$1(0)),
+      defaultedFunction('max', constant$1(100))
+    ];
+    const contextSizeInputFormFields = [
+      ...contextBarFields,
+      ...baseContextFormFields,
+      requiredStringEnum('type', ['contextsizeinputform']),
+      defaultedFunction('initValue', constant$1({
+        width: '',
+        height: ''
       }))
-    ].concat(contextBarFields));
+    ];
+    const contextFormSchema = choose$1('type', {
+      contextform: contextFormFields,
+      contextsliderform: contextSliderFormFields,
+      contextsizeinputform: contextSizeInputFormFields
+    });
     const createContextForm = spec => asRaw('ContextForm', contextFormSchema, spec);
 
     const contextToolbarSchema = objOf([
       defaultedType('contexttoolbar'),
-      requiredString('items')
+      requiredOf('items', oneOf([
+        string,
+        arrOfObj([
+          optionString('name'),
+          optionString('label'),
+          requiredArrayOf('items', string)
+        ])
+      ]))
     ].concat(contextBarFields));
+    const toolbarGroupBackToSpec = toolbarGroup => ({
+      name: toolbarGroup.name.getOrUndefined(),
+      label: toolbarGroup.label.getOrUndefined(),
+      items: toolbarGroup.items
+    });
+    const contextToolbarToSpec = contextToolbar => ({
+      ...contextToolbar,
+      items: isString(contextToolbar.items) ? contextToolbar.items : map$2(contextToolbar.items, toolbarGroupBackToSpec)
+    });
     const createContextToolbar = spec => asRaw('ContextToolbar', contextToolbarSchema, spec);
 
     const cardImageFields = [
@@ -52193,7 +52344,8 @@ __webpack_require__(4);
       optionalRole,
       optionalShortcut,
       generatedValue('menuitem'),
-      defaultedMeta
+      defaultedMeta,
+      defaultedString('context', 'mode:design')
     ];
 
     const cardMenuItemSchema = objOf([
@@ -52283,46 +52435,6 @@ __webpack_require__(4);
 
     const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    const ReadOnlyChannel = 'silver.readonly';
-    const ReadOnlyDataSchema = objOf([requiredBoolean('readonly')]);
-    const broadcastReadonly = (uiRefs, readonly) => {
-      const outerContainer = uiRefs.mainUi.outerContainer;
-      const target = outerContainer.element;
-      const motherships = [
-        uiRefs.mainUi.mothership,
-        ...uiRefs.uiMotherships
-      ];
-      if (readonly) {
-        each$1(motherships, m => {
-          m.broadcastOn([dismissPopups()], { target });
-        });
-      }
-      each$1(motherships, m => {
-        m.broadcastOn([ReadOnlyChannel], { readonly });
-      });
-    };
-    const setupReadonlyModeSwitch = (editor, uiRefs) => {
-      editor.on('init', () => {
-        if (editor.mode.isReadOnly()) {
-          broadcastReadonly(uiRefs, true);
-        }
-      });
-      editor.on('SwitchMode', () => broadcastReadonly(uiRefs, editor.mode.isReadOnly()));
-      if (isReadOnly(editor)) {
-        editor.mode.set('readonly');
-      }
-    };
-    const receivingConfig = () => Receiving.config({
-      channels: {
-        [ReadOnlyChannel]: {
-          schema: ReadOnlyDataSchema,
-          onReceive: (comp, data) => {
-            Disabling.set(comp, data.readonly);
-          }
-        }
-      }
-    });
-
     const item = disabled => Disabling.config({
       disabled,
       disableClass: 'tox-collection__item--state-disabled'
@@ -52351,6 +52463,9 @@ __webpack_require__(4);
       };
     };
     const onControlAttached = (info, editorOffCell) => runOnAttached(comp => {
+      if (isFunction(info.onBeforeSetup)) {
+        info.onBeforeSetup(comp);
+      }
       const run = runWithApi(info, comp);
       run(api => {
         const onDestroy = info.onSetup(api);
@@ -52360,6 +52475,73 @@ __webpack_require__(4);
       });
     });
     const onControlDetached = (getApi, editorOffCell) => runOnDetached(comp => runWithApi(getApi, comp)(editorOffCell.get()));
+    const onContextFormControlDetached = (getApi, editorOffCell, valueState) => runOnDetached(comp => {
+      valueState.set(Representing.getValue(comp));
+      return runWithApi(getApi, comp)(editorOffCell.get());
+    });
+
+    const UiStateChannel = 'silver.uistate';
+    const messageSetDisabled = 'setDisabled';
+    const messageSetEnabled = 'setEnabled';
+    const messageInit = 'init';
+    const messageSwitchMode = 'switchmode';
+    const modeContextMessages = [
+      messageSwitchMode,
+      messageInit
+    ];
+    const broadcastEvents = (uiRefs, messageType) => {
+      const outerContainer = uiRefs.mainUi.outerContainer;
+      const motherships = [
+        uiRefs.mainUi.mothership,
+        ...uiRefs.uiMotherships
+      ];
+      if (messageType === messageSetDisabled) {
+        each$1(motherships, m => {
+          m.broadcastOn([dismissPopups()], { target: outerContainer.element });
+        });
+      }
+      each$1(motherships, m => {
+        m.broadcastOn([UiStateChannel], messageType);
+      });
+    };
+    const setupEventsForUi = (editor, uiRefs) => {
+      editor.on('init SwitchMode', event => {
+        broadcastEvents(uiRefs, event.type);
+      });
+      editor.on('DisabledStateChange', event => {
+        if (!event.isDefaultPrevented()) {
+          const messageType = event.state ? messageSetDisabled : messageInit;
+          broadcastEvents(uiRefs, messageType);
+          if (!event.state) {
+            editor.nodeChanged();
+          }
+        }
+      });
+      editor.on('NodeChange', e => {
+        const messageType = editor.ui.isEnabled() ? e.type : messageSetDisabled;
+        broadcastEvents(uiRefs, messageType);
+      });
+      if (isReadOnly(editor)) {
+        editor.mode.set('readonly');
+      }
+    };
+    const toggleOnReceive = getContext => Receiving.config({
+      channels: {
+        [UiStateChannel]: {
+          onReceive: (comp, messageType) => {
+            if (messageType === messageSetDisabled || messageType === messageSetEnabled) {
+              Disabling.set(comp, messageType === messageSetDisabled);
+              return;
+            }
+            const {contextType, shouldDisable} = getContext();
+            if (contextType === 'mode' && !contains$2(modeContextMessages, messageType)) {
+              return;
+            }
+            Disabling.set(comp, shouldDisable);
+          }
+        }
+      }
+    });
 
     const onMenuItemExecute = (info, itemResponse) => runOnExecute$1((comp, simulatedEvent) => {
       runWithApi(info, comp)(info.onAction);
@@ -52395,8 +52577,8 @@ __webpack_require__(4);
             onControlAttached(spec, editorOffCell),
             onControlDetached(spec, editorOffCell)
           ]),
-          DisablingConfigs.item(() => !spec.enabled || providersBackstage.isDisabled()),
-          receivingConfig(),
+          DisablingConfigs.item(() => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
           Replacing.config({})
         ].concat(spec.itemBehaviours))
       };
@@ -52660,6 +52842,7 @@ __webpack_require__(4);
       }, sharedBackstage.providers, renderIcons, spec.icon);
       const tooltipString = spec.text.filter(text => !useText && text !== '');
       return renderCommonItem({
+        context: 'mode:design',
         data: buildData(spec),
         enabled: spec.enabled,
         getApi: constant$1({}),
@@ -52710,6 +52893,7 @@ __webpack_require__(4);
           })]
       };
       return renderCommonItem({
+        context: 'mode:design',
         data: buildData({
           text: Optional.none(),
           ...spec
@@ -52745,6 +52929,7 @@ __webpack_require__(4);
       }, providersBackstage, renderIcons);
       const optTooltipping = spec.text.filter(constant$1(!useText)).map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) })));
       return deepMerge(renderCommonItem({
+        context: spec.context,
         data: buildData(spec),
         enabled: spec.enabled,
         getApi,
@@ -52941,6 +53126,18 @@ __webpack_require__(4);
     const fireFontFamilyTextUpdate = (editor, data) => {
       editor.dispatch('FontFamilyTextUpdate', data);
     };
+    const fireToggleSidebar = editor => {
+      editor.dispatch('ToggleSidebar');
+    };
+    const fireToggleView = editor => {
+      editor.dispatch('ToggleView');
+    };
+    const fireContextToolbarClose = editor => {
+      editor.dispatch('ContextToolbarClose');
+    };
+    const fireContextFormSlideBack = editor => {
+      editor.dispatch('ContextFormSlideBack');
+    };
 
     const composeUnbinders = (f, g) => () => {
       f();
@@ -53087,12 +53284,18 @@ __webpack_require__(4);
     const foregroundId = 'forecolor';
     const backgroundId = 'hilitecolor';
     const fallbackCols = 5;
-    const mapColors = colorMap => {
+    const mapColors = colorMap => mapColorsRaw(colorMap.map((color, index) => {
+      if (index % 2 === 0) {
+        return '#' + anyToHex(color).value;
+      }
+      return color;
+    }));
+    const mapColorsRaw = colorMap => {
       const colors = [];
       for (let i = 0; i < colorMap.length; i += 2) {
         colors.push({
           text: colorMap[i + 1],
-          value: '#' + anyToHex(colorMap[i]).value,
+          value: colorMap[i],
           icon: 'checkmark',
           type: 'choiceitem'
         });
@@ -53101,12 +53304,25 @@ __webpack_require__(4);
     };
     const option$1 = name => editor => editor.options.get(name);
     const fallbackColor = '#000000';
-    const register$d = editor => {
+    const register$e = editor => {
       const registerOption = editor.options.register;
       const colorProcessor = value => {
         if (isArrayOf(value, isString)) {
           return {
             value: mapColors(value),
+            valid: true
+          };
+        } else {
+          return {
+            valid: false,
+            message: 'Must be an array of strings.'
+          };
+        }
+      };
+      const colorProcessorRaw = value => {
+        if (isArrayOf(value, isString)) {
+          return {
+            value: mapColorsRaw(value),
             valid: true
           };
         } else {
@@ -53178,6 +53394,7 @@ __webpack_require__(4);
           'White'
         ]
       });
+      registerOption('color_map_raw', { processor: colorProcessorRaw });
       registerOption('color_map_background', { processor: colorProcessor });
       registerOption('color_map_foreground', { processor: colorProcessor });
       registerOption('color_cols', {
@@ -53210,6 +53427,8 @@ __webpack_require__(4);
         return option$1('color_map_foreground')(editor);
       } else if (id === backgroundId && editor.options.isSet('color_map_background')) {
         return option$1('color_map_background')(editor);
+      } else if (editor.options.isSet('color_map_raw')) {
+        return option$1('color_map_raw')(editor);
       } else {
         return option$1('color_map')(editor);
       }
@@ -53458,7 +53677,7 @@ __webpack_require__(4);
         }
       });
     };
-    const register$c = editor => {
+    const register$d = editor => {
       registerCommands(editor);
       const fallbackColorForeground = getDefaultForegroundColor(editor);
       const fallbackColorBackground = getDefaultBackgroundColor(editor);
@@ -53672,11 +53891,11 @@ __webpack_require__(4);
                 }),
                 runWithTarget(cellExecuteEvent, (c, _, e) => {
                   const {row, col} = e.event;
+                  emit(c, sandboxClose());
                   spec.onAction({
                     numRows: row + 1,
                     numColumns: col + 1
                   });
-                  emit(c, sandboxClose());
                 })
               ]),
               Keying.config({
@@ -53724,6 +53943,7 @@ __webpack_require__(4);
         shortcutContent: spec.shortcut
       }, providersBackstage, renderIcons);
       return renderCommonItem({
+        context: spec.context,
         data: buildData(spec),
         getApi,
         enabled: spec.enabled,
@@ -53750,6 +53970,7 @@ __webpack_require__(4);
         shortcutContent: spec.shortcut
       }, providersBackstage, renderIcons);
       return renderCommonItem({
+        context: spec.context,
         data: buildData(spec),
         getApi,
         enabled: spec.enabled,
@@ -53793,6 +54014,7 @@ __webpack_require__(4);
         meta: spec.meta
       }, providersBackstage, renderIcons);
       return deepMerge(renderCommonItem({
+        context: spec.context,
         data: buildData(spec),
         enabled: spec.enabled,
         getApi,
@@ -54482,7 +54704,7 @@ __webpack_require__(4);
     };
 
     const rangeToSimRange = r => SimRange.create(SugarElement.fromDom(r.startContainer), r.startOffset, SugarElement.fromDom(r.endContainer), r.endOffset);
-    const register$b = (editor, sharedBackstage) => {
+    const register$c = (editor, sharedBackstage) => {
       const autocompleterId = generate$6('autocompleter');
       const processingAction = Cell(false);
       const activeState = Cell(false);
@@ -54611,7 +54833,7 @@ __webpack_require__(4);
       };
       AutocompleterEditorEvents.setup(autocompleterUiApi, editor);
     };
-    const Autocompleter = { register: register$b };
+    const Autocompleter = { register: register$c };
 
     const closest = (scope, selector, isRoot) => closest$1(scope, selector, isRoot).isSome();
 
@@ -55293,6 +55515,7 @@ __webpack_require__(4);
     });
 
     const formChangeEvent = generate$6('form-component-change');
+    const formInputEvent = generate$6('form-component-input');
     const formCloseEvent = generate$6('form-close');
     const formCancelEvent = generate$6('form-cancel');
     const formActionEvent = generate$6('form-action');
@@ -55315,6 +55538,8 @@ __webpack_require__(4);
         });
       };
       const setContents = (comp, items) => {
+        const disabled = providersBackstage.checkUiComponentContext('mode:design').shouldDisable || providersBackstage.isDisabled();
+        const disabledClass = disabled ? ' tox-collection__item--state-disabled' : '';
         const htmlLines = map$2(items, item => {
           const itemText = global$5.translate(item.text);
           const textContent = spec.columns === 1 ? `<div class="tox-collection__item-label">${ itemText }</div>` : '';
@@ -55325,7 +55550,6 @@ __webpack_require__(4);
             '-': ' '
           };
           const ariaLabel = itemText.replace(/\_| \- |\-/g, match => mapItemName[match]);
-          const disabledClass = providersBackstage.isDisabled() ? ' tox-collection__item--state-disabled' : '';
           return `<div data-mce-tooltip="${ ariaLabel }" class="tox-collection__item${ disabledClass }" tabindex="-1" data-collection-item-value="${ global$3.encodeAllRaw(item.value) }" aria-label="${ ariaLabel }">${ iconContent }${ textContent }</div>`;
         });
         const chunks = spec.columns !== 'auto' && spec.columns > 1 ? chunk$1(htmlLines, spec.columns) : [htmlLines];
@@ -55334,7 +55558,7 @@ __webpack_require__(4);
       };
       const onClick = runOnItem((comp, se, tgt, itemValue) => {
         se.stop();
-        if (!providersBackstage.isDisabled()) {
+        if (!(providersBackstage.checkUiComponentContext('mode:design').shouldDisable || providersBackstage.isDisabled())) {
           emitWith(comp, formActionEvent, {
             name: spec.name,
             value: itemValue
@@ -55343,7 +55567,7 @@ __webpack_require__(4);
       });
       const collectionEvents = [
         run$1(mouseover(), runOnItem((comp, se, tgt) => {
-          focus$3(tgt);
+          focus$3(tgt, true);
         })),
         run$1(click(), onClick),
         run$1(tap(), onClick),
@@ -55376,7 +55600,7 @@ __webpack_require__(4);
         factory: { sketch: identity },
         behaviours: derive$1([
           Disabling.config({
-            disabled: providersBackstage.isDisabled,
+            disabled: () => providersBackstage.checkUiComponentContext(spec.context).shouldDisable,
             onDisabled: comp => {
               iterCollectionItems(comp, childElm => {
                 add$2(childElm, 'tox-collection__item--state-disabled');
@@ -55390,7 +55614,7 @@ __webpack_require__(4);
               });
             }
           }),
-          receivingConfig(),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
           Replacing.config({}),
           Tooltipping.config({
             ...providersBackstage.tooltips.getConfig({
@@ -55603,8 +55827,8 @@ __webpack_require__(4);
       components: spec.components,
       toggleClass: 'mce-active',
       dropdownBehaviours: derive$1([
-        DisablingConfigs.button(sharedBackstage.providers.isDisabled),
-        receivingConfig(),
+        DisablingConfigs.button(() => sharedBackstage.providers.isDisabled() || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable),
+        toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
         Unselecting.config({}),
         Tabstopping.config({})
       ]),
@@ -55627,8 +55851,8 @@ __webpack_require__(4);
         data: initialData,
         onSetValue: c => Invalidating.run(c).get(noop),
         inputBehaviours: derive$1([
-          Disabling.config({ disabled: sharedBackstage.providers.isDisabled }),
-          receivingConfig(),
+          Disabling.config({ disabled: () => sharedBackstage.providers.isDisabled() || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable }),
+          toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
           Tabstopping.config({}),
           Invalidating.config({
             invalidClass: 'tox-textbox-field-invalid',
@@ -55698,7 +55922,8 @@ __webpack_require__(4);
         fetch: getFetch$1(colorInputBackstage.getColors(spec.storageKey), spec.storageKey, colorInputBackstage.hasCustomColors()),
         columns: colorInputBackstage.getColorCols(spec.storageKey),
         presets: 'color',
-        onItemAction
+        onItemAction,
+        context: spec.context
       }, sharedBackstage));
       return FormField.sketch({
         dom: {
@@ -56603,20 +56828,40 @@ __webpack_require__(4);
     const invalidInput = generate$6('invalid-input');
     const validatingInput = generate$6('validating-input');
     const translatePrefix = 'colorcustom.rgb.';
-    const rgbFormFactory = (translate, getClass, onValidHexx, onInvalidHexx) => {
-      const invalidation = (label, isValid) => Invalidating.config({
+    const uninitiatedTooltipApi = {
+      isEnabled: always,
+      setEnabled: noop,
+      immediatelyShow: noop,
+      immediatelyHide: noop
+    };
+    const rgbFormFactory = (translate, getClass, onValidHexx, onInvalidHexx, tooltipGetConfig, makeIcon) => {
+      const setTooltipEnabled = (enabled, tooltipApi) => {
+        const api = tooltipApi.get();
+        if (enabled === api.isEnabled()) {
+          return;
+        }
+        api.setEnabled(enabled);
+        if (enabled) {
+          api.immediatelyShow();
+        } else {
+          api.immediatelyHide();
+        }
+      };
+      const invalidation = (label, isValid, tooltipApi) => Invalidating.config({
         invalidClass: getClass('invalid'),
         notify: {
           onValidate: comp => {
             emitWith(comp, validatingInput, { type: label });
           },
           onValid: comp => {
+            setTooltipEnabled(false, tooltipApi);
             emitWith(comp, validInput, {
               type: label,
               value: Representing.getValue(comp)
             });
           },
           onInvalid: comp => {
+            setTooltipEnabled(true, tooltipApi);
             emitWith(comp, invalidInput, {
               type: label,
               value: Representing.getValue(comp)
@@ -56633,25 +56878,55 @@ __webpack_require__(4);
         }
       });
       const renderTextField = (isValid, name, label, description, data) => {
+        const tooltipApi = Cell(uninitiatedTooltipApi);
         const helptext = translate(translatePrefix + 'range');
         const pLabel = FormField.parts.label({
-          dom: {
-            tag: 'label',
-            attributes: { 'aria-label': description }
-          },
+          dom: { tag: 'label' },
           components: [text$2(label)]
         });
         const pField = FormField.parts.field({
           data,
           factory: Input,
           inputAttributes: {
-            type: 'text',
+            'type': 'text',
+            'aria-label': description,
             ...name === 'hex' ? { 'aria-live': 'polite' } : {}
           },
           inputClasses: [getClass('textfield')],
           inputBehaviours: derive$1([
-            invalidation(name, isValid),
-            Tabstopping.config({})
+            invalidation(name, isValid, tooltipApi),
+            Tabstopping.config({}),
+            Tooltipping.config({
+              ...tooltipGetConfig({
+                tooltipText: '',
+                onSetup: comp => {
+                  tooltipApi.set({
+                    isEnabled: () => {
+                      return Tooltipping.isEnabled(comp);
+                    },
+                    setEnabled: enabled => {
+                      return Tooltipping.setEnabled(comp, enabled);
+                    },
+                    immediatelyShow: () => {
+                      return Tooltipping.immediateOpenClose(comp, true);
+                    },
+                    immediatelyHide: () => {
+                      return Tooltipping.immediateOpenClose(comp, false);
+                    }
+                  });
+                  Tooltipping.setEnabled(comp, false);
+                },
+                onShow: (component, _tooltip) => {
+                  Tooltipping.setComponents(component, [{
+                      dom: {
+                        tag: 'p',
+                        classes: [getClass('rgb-warning-note')]
+                      },
+                      components: [text$2(translate(name === 'hex' ? 'colorcustom.rgb.invalidHex' : 'colorcustom.rgb.invalid'))]
+                    }]);
+                }
+              })
+            })
           ]),
           onSetValue: input => {
             if (Invalidating.isInvalid(input)) {
@@ -56660,16 +56935,27 @@ __webpack_require__(4);
             }
           }
         });
+        const errorId = generate$6('aria-invalid');
+        const memInvalidIcon = record(makeIcon('invalid', Optional.some(errorId), 'warning'));
+        const memStatus = record({
+          dom: {
+            tag: 'div',
+            classes: [getClass('invalid-icon')]
+          },
+          components: [memInvalidIcon.asSpec()]
+        });
         const comps = [
           pLabel,
-          pField
+          pField,
+          memStatus.asSpec()
         ];
         const concats = name !== 'hex' ? [FormField.parts['aria-descriptor']({ text: helptext })] : [];
         const components = comps.concat(concats);
         return {
           dom: {
             tag: 'div',
-            attributes: { role: 'presentation' }
+            attributes: { role: 'presentation' },
+            classes: [getClass('rgb-container')]
           },
           components
         };
@@ -56939,9 +57225,9 @@ __webpack_require__(4);
       return saturationBrightnessPaletteSketcher;
     };
 
-    const makeFactory = (translate, getClass) => {
+    const makeFactory = (translate, getClass, tooltipConfig, makeIcon) => {
       const factory = detail => {
-        const rgbForm = rgbFormFactory(translate, getClass, detail.onValidHex, detail.onInvalidHex);
+        const rgbForm = rgbFormFactory(translate, getClass, detail.onValidHex, detail.onInvalidHex, tooltipConfig, makeIcon);
         const sbPalette = paletteFactory(translate, getClass);
         const hueSliderToDegrees = hue => (100 - hue) / 100 * 360;
         const hueDegreesToSlider = hue => 100 - hue / 360 * 100;
@@ -57100,14 +57386,16 @@ __webpack_require__(4);
 
     const english = {
       'colorcustom.rgb.red.label': 'R',
-      'colorcustom.rgb.red.description': 'Red component',
+      'colorcustom.rgb.red.description': 'Red channel',
       'colorcustom.rgb.green.label': 'G',
-      'colorcustom.rgb.green.description': 'Green component',
+      'colorcustom.rgb.green.description': 'Green channel',
       'colorcustom.rgb.blue.label': 'B',
-      'colorcustom.rgb.blue.description': 'Blue component',
+      'colorcustom.rgb.blue.description': 'Blue channel',
       'colorcustom.rgb.hex.label': '#',
       'colorcustom.rgb.hex.description': 'Hex color code',
       'colorcustom.rgb.range': 'Range 0 to 255',
+      'colorcustom.rgb.invalid': 'Numbers only, 0 to 255',
+      'colorcustom.rgb.invalidHex': 'Hexadecimal only, 000000 to FFFFFF',
       'aria.color.picker': 'Color Picker',
       'aria.input.invalid': 'Invalid input'
     };
@@ -57120,7 +57408,19 @@ __webpack_require__(4);
     };
     const renderColorPicker = (_spec, providerBackstage, initialData) => {
       const getClass = key => 'tox-' + key;
-      const colourPickerFactory = makeFactory(translate$1(providerBackstage), getClass);
+      const renderIcon = (name, errId, icon = name, label = name) => render$3(icon, {
+        tag: 'div',
+        classes: [
+          'tox-icon',
+          'tox-control-wrap__status-icon-' + name
+        ],
+        attributes: {
+          'title': providerBackstage.translate(label),
+          'aria-live': 'polite',
+          ...errId.fold(() => ({}), id => ({ id }))
+        }
+      }, providerBackstage.icons);
+      const colourPickerFactory = makeFactory(translate$1(providerBackstage), getClass, providerBackstage.tooltips.getConfig, renderIcon);
       const onValidHex = form => {
         emitWith(form, formActionEvent, {
           name: 'hex-valid',
@@ -57218,6 +57518,7 @@ __webpack_require__(4);
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.util.Tools');
 
+    const browseFilesEvent = generate$6('browse.files.event');
     const filterByExtension = (files, providersBackstage) => {
       const allowedImageFileTypes = global$1.explode(providersBackstage.getOption('images_file_types'));
       const isFileInAllowedTypes = file => exists(allowedImageFileTypes, type => endsWith(file.name.toLowerCase(), `.${ type.toLowerCase() }`));
@@ -57236,12 +57537,12 @@ __webpack_require__(4);
         var _a;
         if (!Disabling.isDisabled(comp)) {
           const transferEvent = se.event.raw;
-          handleFiles(comp, (_a = transferEvent.dataTransfer) === null || _a === void 0 ? void 0 : _a.files);
+          emitWith(comp, browseFilesEvent, { files: (_a = transferEvent.dataTransfer) === null || _a === void 0 ? void 0 : _a.files });
         }
       };
       const onSelect = (component, simulatedEvent) => {
         const input = simulatedEvent.event.raw.target;
-        handleFiles(component, input.files);
+        emitWith(component, browseFilesEvent, { files: input.files });
       };
       const handleFiles = (component, files) => {
         if (files) {
@@ -57263,16 +57564,41 @@ __webpack_require__(4);
             cutter(tap())
           ])])
       });
-      const renderField = s => ({
-        uid: s.uid,
+      const pLabel = spec.label.map(label => renderLabel$3(label, providersBackstage));
+      const pField = FormField.parts.field({
+        factory: Button,
+        dom: {
+          tag: 'button',
+          styles: { position: 'relative' },
+          classes: [
+            'tox-button',
+            'tox-button--secondary'
+          ]
+        },
+        components: [
+          text$2(providersBackstage.translate('Browse for an image')),
+          memInput.asSpec()
+        ],
+        action: comp => {
+          const inputComp = memInput.get(comp);
+          inputComp.element.dom.click();
+        },
+        buttonBehaviours: derive$1([
+          ComposingConfigs.self(),
+          memory(initialData.getOr([])),
+          Tabstopping.config({}),
+          DisablingConfigs.button(() => providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
+        ])
+      });
+      const wrapper = {
         dom: {
           tag: 'div',
           classes: ['tox-dropzone-container']
         },
         behaviours: derive$1([
-          memory(initialData.getOr([])),
-          ComposingConfigs.self(),
-          Disabling.config({}),
+          Disabling.config({ disabled: () => providersBackstage.checkUiComponentContext(spec.context).shouldDisable }),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
           Toggling.config({
             toggleClass: 'dragenter',
             toggleOnExecute: false
@@ -57305,35 +57631,15 @@ __webpack_require__(4);
                 dom: { tag: 'p' },
                 components: [text$2(providersBackstage.translate('Drop an image here'))]
               },
-              Button.sketch({
-                dom: {
-                  tag: 'button',
-                  styles: { position: 'relative' },
-                  classes: [
-                    'tox-button',
-                    'tox-button--secondary'
-                  ]
-                },
-                components: [
-                  text$2(providersBackstage.translate('Browse for an image')),
-                  memInput.asSpec()
-                ],
-                action: comp => {
-                  const inputComp = memInput.get(comp);
-                  inputComp.element.dom.click();
-                },
-                buttonBehaviours: derive$1([
-                  Tabstopping.config({}),
-                  DisablingConfigs.button(providersBackstage.isDisabled),
-                  receivingConfig()
-                ])
-              })
+              pField
             ]
           }]
-      });
-      const pLabel = spec.label.map(label => renderLabel$3(label, providersBackstage));
-      const pField = FormField.parts.field({ factory: { sketch: renderField } });
-      return renderFormFieldWith(pLabel, pField, ['tox-form__group--stretched'], []);
+      };
+      return renderFormFieldWith(pLabel, wrapper, ['tox-form__group--stretched'], [config('handle-files', [run$1(browseFilesEvent, (comp, se) => {
+            FormField.getField(comp).each(field => {
+              handleFiles(field, se.event.files);
+            });
+          })])]);
     };
 
     const renderGrid = (spec, backstage) => ({
@@ -57851,8 +58157,8 @@ __webpack_require__(4);
         },
         dropdownBehaviours: derive$1([
           ...spec.dropdownBehaviours,
-          DisablingConfigs.button(() => spec.disabled || sharedBackstage.providers.isDisabled()),
-          receivingConfig(),
+          DisablingConfigs.button(() => spec.disabled || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
           Unselecting.config({}),
           Replacing.config({}),
           ...spec.tooltip.map(t => Tooltipping.config(sharedBackstage.providers.tooltips.getConfig({ tooltipText: sharedBackstage.providers.translate(t) }))).toArray(),
@@ -57860,7 +58166,12 @@ __webpack_require__(4);
             onControlAttached(spec, editorOffCell),
             onControlDetached(spec, editorOffCell)
           ]),
-          config(fixWidthBehaviourName, [runOnAttached((comp, _se) => forceInitialSize(comp))]),
+          config(fixWidthBehaviourName, [runOnAttached((comp, _se) => {
+              if (spec.listRole !== 'listbox') {
+                forceInitialSize(comp);
+              }
+            })]),
+          config('update-dropdown-width-variable', [run$1(windowResize(), (comp, _se) => Dropdown.close(comp))]),
           config('menubutton-update-display-text', [
             run$1(updateMenuText, (comp, se) => {
               optMemDisplayText.bind(mem => mem.getOpt(comp)).each(displayText => {
@@ -58067,6 +58378,7 @@ __webpack_require__(4);
         dom: {},
         factory: {
           sketch: sketchSpec => renderCommonDropdown({
+            context: spec.context,
             uid: sketchSpec.uid,
             text: initialItem.map(item => item.text),
             icon: Optional.none(),
@@ -58115,7 +58427,7 @@ __webpack_require__(4);
           [listBoxWrap]
         ]),
         fieldBehaviours: derive$1([Disabling.config({
-            disabled: constant$1(!spec.enabled),
+            disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable,
             onDisabled: comp => {
               FormField.getField(comp).each(Disabling.disable);
             },
@@ -58202,7 +58514,7 @@ __webpack_require__(4);
         options: translatedOptions,
         factory: HtmlSelect,
         selectBehaviours: derive$1([
-          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.isDisabled() }),
+          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable }),
           Tabstopping.config({}),
           config('selectbox-change', [run$1(change(), (component, _) => {
               emitWith(component, formChangeEvent, { name: spec.name });
@@ -58234,7 +58546,7 @@ __webpack_require__(4);
         ]),
         fieldBehaviours: derive$1([
           Disabling.config({
-            disabled: () => !spec.enabled || providersBackstage.isDisabled(),
+            disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable,
             onDisabled: comp => {
               FormField.getField(comp).each(Disabling.disable);
             },
@@ -58242,7 +58554,7 @@ __webpack_require__(4);
               FormField.getField(comp).each(Disabling.enable);
             }
           }),
-          receivingConfig()
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
         ])
       });
     };
@@ -58256,7 +58568,8 @@ __webpack_require__(4);
       SketchBehaviours.field('coupledFieldBehaviours', [
         Composing,
         Representing
-      ])
+      ]),
+      defaultedFunction('onInput', noop)
     ]);
     const getField = (comp, detail, partName) => getPart(comp, detail, partName).bind(Composing.getCurrent);
     const coupledPart = (selfName, otherName) => required({
@@ -58270,6 +58583,7 @@ __webpack_require__(4);
                     if (Toggling.isOn(lock)) {
                       detail.onLockedChange(me, other, lock);
                     }
+                    detail.onInput(me);
                   });
                 });
               })])])
@@ -58427,6 +58741,8 @@ __webpack_require__(4);
           'tox-lock-icon__' + iconName
         ]
       }, providersBackstage.icons);
+      const disabled = () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable;
+      const toggleOnReceive$1 = toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context));
       const label = spec.label.getOr('Constrain proportions');
       const translatedLabel = providersBackstage.translate(label);
       const pLock = FormCoupledInputs.parts.lock({
@@ -58448,8 +58764,8 @@ __webpack_require__(4);
           makeIcon('unlock')
         ],
         buttonBehaviours: derive$1([
-          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.isDisabled() }),
-          receivingConfig(),
+          Disabling.config({ disabled }),
+          toggleOnReceive$1,
           Tabstopping.config({}),
           Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: translatedLabel }))
         ])
@@ -58465,8 +58781,8 @@ __webpack_require__(4);
         factory: Input,
         inputClasses: ['tox-textfield'],
         inputBehaviours: derive$1([
-          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.isDisabled() }),
-          receivingConfig(),
+          Disabling.config({ disabled }),
+          toggleOnReceive$1,
           Tabstopping.config({}),
           config('size-input-events', [
             run$1(focusin(), (component, _simulatedEvent) => {
@@ -58526,7 +58842,7 @@ __webpack_require__(4);
         },
         coupledFieldBehaviours: derive$1([
           Disabling.config({
-            disabled: () => !spec.enabled || providersBackstage.isDisabled(),
+            disabled,
             onDisabled: comp => {
               FormCoupledInputs.getField1(comp).bind(FormField.getField).each(Disabling.disable);
               FormCoupledInputs.getField2(comp).bind(FormField.getField).each(Disabling.disable);
@@ -58538,7 +58854,7 @@ __webpack_require__(4);
               FormCoupledInputs.getLock(comp).each(Disabling.enable);
             }
           }),
-          receivingConfig(),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext('mode:design')),
           config('size-input-events2', [run$1(ratioEvent, (component, simulatedEvent) => {
               const isField1 = simulatedEvent.event.isField1;
               const optCurrent = isField1 ? FormCoupledInputs.getField1(component) : FormCoupledInputs.getField2(component);
@@ -58656,8 +58972,8 @@ __webpack_require__(4);
     const renderTextField = (spec, providersBackstage) => {
       const pLabel = spec.label.map(label => renderLabel$3(label, providersBackstage));
       const baseInputBehaviours = [
-        Disabling.config({ disabled: () => spec.disabled || providersBackstage.isDisabled() }),
-        receivingConfig(),
+        Disabling.config({ disabled: () => spec.disabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable }),
+        toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
         Keying.config({
           mode: 'execution',
           useEnter: spec.multiline !== true,
@@ -58695,7 +59011,8 @@ __webpack_require__(4);
       const inputMode = spec.inputMode.fold(constant$1({}), mode => ({ inputmode: mode }));
       const inputAttributes = {
         ...placeholder,
-        ...inputMode
+        ...inputMode,
+        'data-mce-name': spec.name
       };
       const pField = FormField.parts.field({
         tag: spec.multiline === true ? 'textarea' : 'input',
@@ -58720,7 +59037,7 @@ __webpack_require__(4);
       const extraClasses2 = extraClasses.concat(spec.maximized ? ['tox-form-group--maximize'] : []);
       const extraBehaviours = [
         Disabling.config({
-          disabled: () => spec.disabled || providersBackstage.isDisabled(),
+          disabled: () => spec.disabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable,
           onDisabled: comp => {
             FormField.getField(comp).each(Disabling.disable);
           },
@@ -58728,7 +59045,7 @@ __webpack_require__(4);
             FormField.getField(comp).each(Disabling.enable);
           }
         }),
-        receivingConfig()
+        toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
       ];
       return renderFormFieldWith(pLabel, pTextField, extraClasses2, extraBehaviours);
     };
@@ -58743,7 +59060,8 @@ __webpack_require__(4);
       classname: 'tox-textfield',
       validation: Optional.none(),
       maximized: spec.maximized,
-      data: initialData
+      data: initialData,
+      context: spec.context
     }, providersBackstage);
     const renderTextarea = (spec, providersBackstage, initialData) => renderTextField({
       name: spec.name,
@@ -58756,7 +59074,8 @@ __webpack_require__(4);
       classname: 'tox-textarea',
       validation: Optional.none(),
       maximized: spec.maximized,
-      data: initialData
+      data: initialData,
+      context: spec.context
     }, providersBackstage);
 
     const getAnimationRoot = (component, slideConfig) => slideConfig.getAnimationRoot.fold(() => component.element, get => get(component));
@@ -59008,7 +59327,8 @@ __webpack_require__(4);
         columns: 1,
         presets: 'normal',
         classes: [],
-        dropdownBehaviours: [...tabstopping ? [Tabstopping.config({})] : []]
+        dropdownBehaviours: [...tabstopping ? [Tabstopping.config({})] : []],
+        context: spec.context
       }, prefix, backstage.shared, btnName);
     };
     const getFetch = (items, getButton, backstage) => {
@@ -59036,6 +59356,7 @@ __webpack_require__(4);
             type: item.type,
             active: false,
             ...text,
+            context: item.context,
             onAction: getMenuItemAction(item),
             onSetup: getMenuItemSetup(item)
           };
@@ -59051,10 +59372,14 @@ __webpack_require__(4);
       },
       components: [text$2(text)]
     });
+    const renderCustomStateIcon = (container, components, backstage) => {
+      container.customStateIcon.each(icon => components.push(renderIcon(icon, backstage.shared.providers.icons, container.customStateIconTooltip.fold(() => [], tooltip => [Tooltipping.config(backstage.shared.providers.tooltips.getConfig({ tooltipText: tooltip }))]), ['tox-icon-custom-state'])));
+    };
     const leafLabelEventsId = generate$6('leaf-label-event-id');
     const renderLeafLabel = ({leaf, onLeafAction, visible, treeId, selectedId, backstage}) => {
       const internalMenuButton = leaf.menu.map(btn => renderMenuButton(btn, 'tox-mbtn', backstage, Optional.none(), visible));
       const components = [renderLabel(leaf.title)];
+      renderCustomStateIcon(leaf, components, backstage);
       internalMenuButton.each(btn => components.push(btn));
       return Button.sketch({
         dom: {
@@ -59119,13 +59444,14 @@ __webpack_require__(4);
         ])
       });
     };
-    const renderIcon = (iconName, iconsProvider, behaviours) => render$3(iconName, {
+    const renderIcon = (iconName, iconsProvider, behaviours, extraClasses, extraAttributes) => render$3(iconName, {
       tag: 'span',
       classes: [
         'tox-tree__icon-wrap',
         'tox-icon'
-      ],
-      behaviours
+      ].concat(extraClasses || []),
+      behaviours,
+      attributes: extraAttributes
     }, iconsProvider);
     const renderIconFromPack = (iconName, iconsProvider) => renderIcon(iconName, iconsProvider, []);
     const directoryLabelEventsId = generate$6('directory-label-event-id');
@@ -59141,6 +59467,7 @@ __webpack_require__(4);
         },
         renderLabel(directory.title)
       ];
+      renderCustomStateIcon(directory, components, backstage);
       internalMenuButton.each(btn => {
         components.push(btn);
       });
@@ -59854,14 +60181,11 @@ __webpack_require__(4);
       const action = actionOpt.fold(() => ({}), action => ({ action }));
       const common = {
         buttonBehaviours: derive$1([
-          DisablingConfigs.button(() => !spec.enabled || providersBackstage.isDisabled()),
-          receivingConfig(),
+          DisablingConfigs.item(() => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
           Tabstopping.config({}),
           ...tooltip.map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) }))).toArray(),
-          config('button press', [
-            preventDefault('click'),
-            preventDefault('mousedown')
-          ])
+          config('button press', [preventDefault('click')])
         ].concat(extraBehaviours)),
         eventOrder: {
           click: [
@@ -60020,6 +60344,7 @@ __webpack_require__(4);
         const action = getAction(spec.name, buttonType);
         const buttonSpec = {
           ...spec,
+          context: buttonType === 'cancel' ? 'any' : spec.context,
           borderless: false
         };
         return renderButton$1(buttonSpec, action, backstage.shared.providers, []);
@@ -60162,7 +60487,7 @@ __webpack_require__(4);
               validateOnLoad: false
             }
           })).toArray(),
-          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.isDisabled() }),
+          Disabling.config({ disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable }),
           Tabstopping.config({}),
           config('urlinput-events', [
             run$1(input(), comp => {
@@ -60244,9 +60569,10 @@ __webpack_require__(4);
           pField,
           memStatus.asSpec()
         ],
-        behaviours: derive$1([Disabling.config({ disabled: () => !spec.enabled || providersBackstage.isDisabled() })])
+        behaviours: derive$1([Disabling.config({ disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable })])
       });
       const memUrlPickerButton = record(renderButton$1({
+        context: spec.context,
         name: spec.name,
         icon: Optional.some('browse'),
         text: spec.picker_text.or(spec.label).getOr(''),
@@ -60285,7 +60611,7 @@ __webpack_require__(4);
         components: pLabel.toArray().concat([controlHWrapper()]),
         fieldBehaviours: derive$1([
           Disabling.config({
-            disabled: () => !spec.enabled || providersBackstage.isDisabled(),
+            disabled: () => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable,
             onDisabled: comp => {
               FormField.getField(comp).each(Disabling.disable);
               memUrlPickerButton.getOpt(comp).each(Disabling.disable);
@@ -60295,7 +60621,7 @@ __webpack_require__(4);
               memUrlPickerButton.getOpt(comp).each(Disabling.enable);
             }
           }),
-          receivingConfig(),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context)),
           config('url-input-events', [run$1(browseUrlEvent, openUrlPicker)])
         ])
       });
@@ -60369,7 +60695,7 @@ __webpack_require__(4);
         behaviours: derive$1([
           ComposingConfigs.self(),
           Disabling.config({
-            disabled: () => !spec.enabled || providerBackstage.isDisabled(),
+            disabled: () => !spec.enabled || providerBackstage.checkUiComponentContext(spec.context).shouldDisable,
             onDisabled: component => {
               parentElement(component.element).each(element => add$2(element, 'tox-checkbox--disabled'));
             },
@@ -60430,8 +60756,8 @@ __webpack_require__(4);
           pLabel
         ],
         fieldBehaviours: derive$1([
-          Disabling.config({ disabled: () => !spec.enabled || providerBackstage.isDisabled() }),
-          receivingConfig()
+          Disabling.config({ disabled: () => !spec.enabled || providerBackstage.checkUiComponentContext(spec.context).shouldDisable }),
+          toggleOnReceive(() => providerBackstage.checkUiComponentContext(spec.context))
         ])
       });
     };
@@ -60974,7 +61300,7 @@ __webpack_require__(4);
       isSelected: isSelectedFor(item.format),
       getStylePreview: getPreviewFor(item.format)
     });
-    const register$a = (editor, formats, isSelectedFor, getPreviewFor) => {
+    const register$b = (editor, formats, isSelectedFor, getPreviewFor) => {
       const enrichSupported = item => processBasic(item, isSelectedFor, getPreviewFor);
       const enrichMenu = item => {
         const newItems = doEnrich(item.items);
@@ -61028,11 +61354,11 @@ __webpack_require__(4);
       const replaceSettings = Cell(false);
       editor.on('PreInit', _e => {
         const formats = getStyleFormats(editor);
-        const enriched = register$a(editor, formats, isSelectedFor, getPreviewFor);
+        const enriched = register$b(editor, formats, isSelectedFor, getPreviewFor);
         settingsFormats.set(enriched);
       });
       editor.on('addStyleModifications', e => {
-        const modifications = register$a(editor, e.items, isSelectedFor, getPreviewFor);
+        const modifications = register$b(editor, e.items, isSelectedFor, getPreviewFor);
         eventsFormats.set(modifications);
         replaceSettings.set(e.replace);
       });
@@ -61083,7 +61409,8 @@ __webpack_require__(4);
             if (spec.onHide) {
               spec.onHide(comp, tooltip);
             }
-          }
+          },
+          onSetup: spec.onSetup
         };
       };
       return {
@@ -61297,9 +61624,24 @@ __webpack_require__(4);
         icons: () => editor.ui.registry.getAll().icons,
         menuItems: () => editor.ui.registry.getAll().menuItems,
         translate: global$5.translate,
-        isDisabled: () => editor.mode.isReadOnly() || !editor.ui.isEnabled(),
+        isDisabled: () => !editor.ui.isEnabled(),
         getOption: editor.options.get,
-        tooltips: TooltipsBackstage(lazySinks.dialog)
+        tooltips: TooltipsBackstage(lazySinks.dialog),
+        checkUiComponentContext: specContext => {
+          if (isDisabled(editor)) {
+            return {
+              contextType: 'disabled',
+              shouldDisable: true
+            };
+          }
+          const [key, value = ''] = specContext.split(':');
+          const contexts = editor.ui.registry.getAll().contexts;
+          const enabledInContext = get$h(contexts, key).fold(() => get$h(contexts, 'mode').map(pred => pred('design')).getOr(false), pred => value.charAt(0) === '!' ? !pred(value.slice(1)) : pred(value));
+          return {
+            contextType: key,
+            shouldDisable: !enabledInContext
+          };
+        }
       };
       const urlinput = UrlInputBackstage(editor);
       const styles = init$6(editor);
@@ -61773,7 +62115,7 @@ __webpack_require__(4);
             return optScrollingContext.fold(() => {
               const boundsWithoutOffset = win();
               const offset = getStickyToolbarOffset(editor);
-              const top = boundsWithoutOffset.y + (isDockedMode(comp, 'top') ? offset : 0);
+              const top = boundsWithoutOffset.y + (isDockedMode(comp, 'top') && !isFullscreen(editor) ? offset : 0);
               const height = boundsWithoutOffset.height - (isDockedMode(comp, 'bottom') ? offset : 0);
               return {
                 bounds: bounds(boundsWithoutOffset.x, top, boundsWithoutOffset.width, height),
@@ -61843,7 +62185,8 @@ __webpack_require__(4);
         }
       })),
       requiredFunction('fetch'),
-      defaultedFunction('onSetup', () => noop)
+      defaultedFunction('onSetup', () => noop),
+      defaultedString('context', 'mode:design')
     ];
 
     const MenuButtonSchema = objOf([
@@ -61867,7 +62210,8 @@ __webpack_require__(4);
       ]),
       defaultedColumns(1),
       onAction,
-      onItemAction
+      onItemAction,
+      defaultedString('context', 'mode:design')
     ]);
     const createSplitButton = spec => asRaw('SplitButton', splitButtonSchema, spec);
 
@@ -61879,7 +62223,8 @@ __webpack_require__(4);
             text: m.text,
             fetch: callback => {
               callback(m.getItems());
-            }
+            },
+            context: 'any'
           };
           const internal = createMenuButton(buttonSpec).mapError(errInfo => formatError(errInfo)).getOrDie();
           return renderMenuButton(internal, 'tox-mbtn', spec.backstage, Optional.some('menuitem'));
@@ -62097,7 +62442,8 @@ __webpack_require__(4);
             return () => {
               editor.off('ToggleSidebar', handleToggle);
             };
-          }
+          },
+          context: 'any'
         });
       });
     };
@@ -63071,19 +63417,33 @@ __webpack_require__(4);
     });
 
     const renderToolbarGroupCommon = toolbarGroup => {
-      const attributes = toolbarGroup.title.fold(() => ({}), title => ({ attributes: { title } }));
+      const attributes = toolbarGroup.label.isNone() ? toolbarGroup.title.fold(() => ({}), title => ({ attributes: { 'aria-label': title } })) : toolbarGroup.label.fold(() => ({}), label => ({ attributes: { 'aria-label': label } }));
       return {
         dom: {
           tag: 'div',
-          classes: ['tox-toolbar__group'],
+          classes: ['tox-toolbar__group'].concat(toolbarGroup.label.isSome() ? ['tox-toolbar__group_with_label'] : []),
           ...attributes
         },
-        components: [ToolbarGroup.parts.items({})],
+        components: [
+          ...toolbarGroup.label.map(label => {
+            return {
+              dom: {
+                tag: 'span',
+                classes: [
+                  'tox-label',
+                  'tox-label--context-toolbar'
+                ]
+              },
+              components: [text$2(label)]
+            };
+          }).toArray(),
+          ToolbarGroup.parts.items({})
+        ],
         items: toolbarGroup.items,
-        markers: { itemSelector: '*:not(.tox-split-button) > .tox-tbtn:not([disabled]), ' + '.tox-split-button:not([disabled]), ' + '.tox-toolbar-nav-js:not([disabled]), ' + '.tox-number-input:not([disabled])' },
+        markers: { itemSelector: '*:not(.tox-split-button) > .tox-tbtn:not([disabled]), ' + '.tox-split-button:not([disabled]), ' + '.tox-toolbar-nav-item:not([disabled]), ' + '.tox-number-input:not([disabled])' },
         tgroupBehaviours: derive$1([
           Tabstopping.config({}),
-          Focusing.config({})
+          Focusing.config({ ignore: true })
         ])
       };
     };
@@ -63094,11 +63454,12 @@ __webpack_require__(4);
         Toolbar.setGroups(component, groups);
       });
       return derive$1([
-        DisablingConfigs.toolbarButton(toolbarSpec.providers.isDisabled),
-        receivingConfig(),
+        DisablingConfigs.toolbarButton(() => toolbarSpec.providers.checkUiComponentContext('any').shouldDisable),
+        toggleOnReceive(() => toolbarSpec.providers.checkUiComponentContext('any')),
         Keying.config({
           mode: modeName,
           onEscape: toolbarSpec.onEscape,
+          visibilitySelector: '.tox-toolbar__overflow',
           selector: '.tox-toolbar__group'
         }),
         config('toolbar-events', [onAttached])
@@ -63115,9 +63476,11 @@ __webpack_require__(4);
         parts: {
           'overflow-group': renderToolbarGroupCommon({
             title: Optional.none(),
+            label: Optional.none(),
             items: []
           }),
           'overflow-button': renderIconButtonSpec({
+            context: 'any',
             name: 'more',
             icon: Optional.some('more-drawer'),
             enabled: true,
@@ -63225,7 +63588,8 @@ __webpack_require__(4);
         'secondary'
       ]),
       defaultedBoolean('borderless', false),
-      requiredFunction('onAction')
+      requiredFunction('onAction'),
+      defaultedString('context', 'mode:design')
     ];
     const normalButtonFields = [
       ...baseButtonFields,
@@ -63278,11 +63642,13 @@ __webpack_require__(4);
           }
         };
         const isActive = () => has(comp.element, 'tox-button--enabled');
+        const focus = () => focus$3(comp.element);
         if (isToggleButton) {
           return spec.onAction({
             setIcon,
             setActive,
-            isActive
+            isActive,
+            focus
           });
         }
         if (spec.type === 'button') {
@@ -63981,6 +64347,14 @@ __webpack_require__(4);
     };
     const fireSkinLoadError = (editor, err) => () => fireSkinLoadError$1(editor, { message: err });
 
+    const getSkinResourceIdentifier = editor => {
+      const skin = getSkin(editor);
+      if (!skin) {
+        return Optional.none();
+      } else {
+        return Optional.from(skin);
+      }
+    };
     const loadStylesheet = (editor, stylesheetUrl, styleSheetLoader) => {
       editor.on('remove', () => styleSheetLoader.unload(stylesheetUrl));
       return styleSheetLoader.load(stylesheetUrl);
@@ -63989,51 +64363,88 @@ __webpack_require__(4);
       editor.on('remove', () => styleSheetLoader.unloadRawCss(key));
       return styleSheetLoader.loadRawCss(key, css);
     };
-    const loadUiSkins = async (editor, skinUrl) => {
-      const skinResourceIdentifier = getSkinUrlOption(editor).getOr('default');
-      const skinUiCss = 'ui/' + skinResourceIdentifier + '/skin.css';
-      const css = tinymce.Resource.get(skinUiCss);
-      if (isString(css)) {
-        loadRawCss(editor, skinUiCss, css, editor.ui.styleSheetLoader);
-      } else {
+    const skinIdentifierToResourceKey = (identifier, filename) => 'ui/' + identifier + '/' + filename;
+    const getResourceValue = resourceKey => Optional.from(tinymce.Resource.get(resourceKey)).filter(isString);
+    const determineCSSDecision = (editor, filenameBase, skinUrl = '') => {
+      const resourceKey = getSkinResourceIdentifier(editor).map(identifier => skinIdentifierToResourceKey(identifier, `${ filenameBase }.css`));
+      const resourceValue = resourceKey.bind(getResourceValue);
+      return lift2(resourceKey, resourceValue, (key, css) => {
+        return {
+          _kind: 'load-raw',
+          key,
+          css
+        };
+      }).getOrThunk(() => {
         const suffix = editor.editorManager.suffix;
-        const skinUiCss = skinUrl + `/skin${ suffix }.css`;
-        return loadStylesheet(editor, skinUiCss, editor.ui.styleSheetLoader);
+        const skinUiCssUrl = skinUrl + `/${ filenameBase }${ suffix }.css`;
+        return {
+          _kind: 'load-stylesheet',
+          url: skinUiCssUrl
+        };
+      });
+    };
+    const loadUiSkins = (editor, skinUrl) => {
+      const loader = editor.ui.styleSheetLoader;
+      const decision = determineCSSDecision(editor, 'skin', skinUrl);
+      switch (decision._kind) {
+      case 'load-raw':
+        const {key, css} = decision;
+        loadRawCss(editor, key, css, loader);
+        return Promise.resolve();
+      case 'load-stylesheet':
+        const {url} = decision;
+        return loadStylesheet(editor, url, loader);
+      default:
+        return Promise.resolve();
       }
     };
-    const loadShadowDomUiSkins = async (editor, skinUrl) => {
+    const loadShadowDomUiSkins = (editor, skinUrl) => {
       const isInShadowRoot$1 = isInShadowRoot(SugarElement.fromDom(editor.getElement()));
-      if (isInShadowRoot$1) {
-        const skinResourceIdentifier = getSkinUrlOption(editor).getOr('default');
-        const shadowDomSkinCss = 'ui/' + skinResourceIdentifier + '/skin.shadowdom.css';
-        const css = tinymce.Resource.get(shadowDomSkinCss);
-        if (isString(css)) {
-          loadRawCss(editor, shadowDomSkinCss, css, global$8.DOM.styleSheetLoader);
-        } else {
-          const suffix = editor.editorManager.suffix;
-          const shadowDomSkinCss = skinUrl + `/skin.shadowdom${ suffix }.css`;
-          return loadStylesheet(editor, shadowDomSkinCss, global$8.DOM.styleSheetLoader);
+      if (!isInShadowRoot$1) {
+        return Promise.resolve();
+      } else {
+        const loader = global$8.DOM.styleSheetLoader;
+        const decision = determineCSSDecision(editor, 'skin.shadowdom', skinUrl);
+        switch (decision._kind) {
+        case 'load-raw':
+          const {key, css} = decision;
+          loadRawCss(editor, key, css, loader);
+          return Promise.resolve();
+        case 'load-stylesheet':
+          const {url} = decision;
+          return loadStylesheet(editor, url, loader);
+        default:
+          return Promise.resolve();
         }
+      }
+    };
+    const loadUiContentCSS = (editor, isInline, skinUrl) => {
+      const filenameBase = isInline ? 'content.inline' : 'content';
+      const decision = determineCSSDecision(editor, filenameBase, skinUrl);
+      switch (decision._kind) {
+      case 'load-raw':
+        const {key, css} = decision;
+        if (isInline) {
+          loadRawCss(editor, key, css, editor.ui.styleSheetLoader);
+        } else {
+          editor.on('PostRender', () => {
+            loadRawCss(editor, key, css, editor.dom.styleSheetLoader);
+          });
+        }
+        return Promise.resolve();
+      case 'load-stylesheet':
+        const {url} = decision;
+        if (skinUrl) {
+          editor.contentCSS.push(url);
+        }
+        return Promise.resolve();
+      default:
+        return Promise.resolve();
       }
     };
     const loadUrlSkin = async (isInline, editor) => {
-      const unbundled = () => {
-        const skinResourceIdentifier = getSkinUrl(editor);
-        const suffix = editor.editorManager.suffix;
-        if (skinResourceIdentifier) {
-          editor.contentCSS.push(skinResourceIdentifier + (isInline ? '/content.inline' : '/content') + `${ suffix }.css`);
-        }
-      };
-      getSkinUrlOption(editor).fold(unbundled, skinUrl => {
-        const skinContentCss = 'ui/' + skinUrl + (isInline ? '/content.inline' : '/content') + '.css';
-        const css = tinymce.Resource.get(skinContentCss);
-        if (isString(css)) {
-          loadRawCss(editor, skinContentCss, css, editor.ui.styleSheetLoader);
-        } else {
-          unbundled();
-        }
-      });
       const skinUrl = getSkinUrl(editor);
+      await loadUiContentCSS(editor, isInline, skinUrl);
       if (!isSkinDisabled(editor) && isString(skinUrl)) {
         return Promise.all([
           loadUiSkins(editor, skinUrl),
@@ -64140,6 +64551,7 @@ __webpack_require__(4);
         })(api), () => editor.off(textUpdateEventName, handler));
       };
       return renderCommonDropdown({
+        context: 'mode:design',
         text: spec.icon.isSome() ? Optional.none() : spec.text,
         icon: spec.icon,
         ariaLabel: Optional.some(spec.tooltip),
@@ -64494,11 +64906,11 @@ __webpack_require__(4);
     const createBespokeNumberInput = (editor, backstage, spec, btnName) => {
       let currentComp = Optional.none();
       const getValueFromCurrentComp = comp => comp.map(alloyComp => Representing.getValue(alloyComp)).getOr('');
-      const onSetup = onSetupEvent(editor, 'NodeChange SwitchMode', api => {
+      const onSetup = onSetupEvent(editor, 'NodeChange SwitchMode DisabledStateChange', api => {
         const comp = api.getComponent();
         currentComp = Optional.some(comp);
         spec.updateInputValue(comp);
-        Disabling.set(comp, !editor.selection.isEditable());
+        Disabling.set(comp, !editor.selection.isEditable() || isDisabled(editor));
       });
       const getApi = comp => ({ getComponent: constant$1(comp) });
       const editorOffCell = Cell(noop);
@@ -64536,8 +64948,8 @@ __webpack_require__(4);
         const editorOffCellStepButton = Cell(noop);
         const translatedTooltip = backstage.shared.providers.translate(tooltip);
         const altExecuting = generate$6('altExecuting');
-        const onSetup = onSetupEvent(editor, 'NodeChange SwitchMode', api => {
-          Disabling.set(api.getComponent(), !editor.selection.isEditable());
+        const onSetup = onSetupEvent(editor, 'NodeChange SwitchMode DisabledStateChange', api => {
+          Disabling.set(api.getComponent(), !editor.selection.isEditable() || isDisabled(editor));
         });
         const onClick = comp => {
           if (!Disabling.isDisabled(comp)) {
@@ -65135,7 +65547,7 @@ __webpack_require__(4);
     });
     const getTooltipAttributes = (tooltip, providersBackstage) => tooltip.map(tooltip => ({ 'aria-label': providersBackstage.translate(tooltip) })).getOr({});
     const focusButtonEvent = generate$6('focus-button');
-    const renderCommonStructure = (optIcon, optText, tooltip, behaviours, providersBackstage, btnName) => {
+    const renderCommonStructure = (optIcon, optText, tooltip, behaviours, providersBackstage, context, btnName) => {
       const optMemDisplayText = optText.map(text => record(renderLabel$1(text, 'tox-tbtn', providersBackstage)));
       const optMemDisplayIcon = optIcon.map(icon => record(renderReplaceableIconFromPack(icon, providersBackstage.icons)));
       return {
@@ -65160,11 +65572,16 @@ __webpack_require__(4);
           [attachedToDom()]: [
             commonButtonDisplayEvent,
             'toolbar-group-button-events'
+          ],
+          [detachedFromDom()]: [
+            commonButtonDisplayEvent,
+            'toolbar-group-button-events',
+            'tooltipping'
           ]
         },
         buttonBehaviours: derive$1([
-          DisablingConfigs.toolbarButton(providersBackstage.isDisabled),
-          receivingConfig(),
+          DisablingConfigs.toolbarButton(() => providersBackstage.checkUiComponentContext(context).shouldDisable),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(context)),
           config(commonButtonDisplayEvent, [
             runOnAttached((comp, _se) => forceInitialSize(comp)),
             run$1(updateMenuText, (comp, se) => {
@@ -65193,10 +65610,13 @@ __webpack_require__(4);
         getApi: getButtonApi,
         onSetup: spec.onSetup
       };
-      const behaviours = [config('toolbar-group-button-events', [
+      const behaviours = [
+        config('toolbar-group-button-events', [
           onControlAttached(specialisation, editorOffCell),
           onControlDetached(specialisation, editorOffCell)
-        ])];
+        ]),
+        ...spec.tooltip.map(t => Tooltipping.config(backstage.shared.providers.tooltips.getConfig({ tooltipText: backstage.shared.providers.translate(t) }))).toArray()
+      ];
       return FloatingToolbarButton.sketch({
         lazySink: sharedBackstage.getSink,
         fetch: () => Future.nu(resolve => {
@@ -65204,7 +65624,7 @@ __webpack_require__(4);
         }),
         markers: { toggledClass: 'tox-tbtn--enabled' },
         parts: {
-          button: renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.some(behaviours), sharedBackstage.providers, btnName),
+          button: renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.some(behaviours), sharedBackstage.providers, spec.context, btnName),
           toolbar: {
             dom: {
               tag: 'div',
@@ -65218,7 +65638,7 @@ __webpack_require__(4);
     const renderCommonToolbarButton = (spec, specialisation, providersBackstage, btnName) => {
       var _d;
       const editorOffCell = Cell(noop);
-      const structure = renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.none(), providersBackstage, btnName);
+      const structure = renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.none(), providersBackstage, spec.context, btnName);
       return Button.sketch({
         dom: structure.dom,
         components: structure.components,
@@ -65234,8 +65654,8 @@ __webpack_require__(4);
               onControlDetached(specialisation, editorOffCell)
             ]),
             ...spec.tooltip.map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) + spec.shortcut.map(shortcut => ` (${ convertText(shortcut) })`).getOr('') }))).toArray(),
-            DisablingConfigs.toolbarButton(() => !spec.enabled || providersBackstage.isDisabled()),
-            receivingConfig()
+            DisablingConfigs.toolbarButton(() => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
+            toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
           ].concat(specialisation.toolbarButtonBehaviours)),
           [commonButtonDisplayEvent]: (_d = structure.buttonBehaviours) === null || _d === void 0 ? void 0 : _d[commonButtonDisplayEvent]
         }
@@ -65319,14 +65739,14 @@ __webpack_require__(4);
         onItemExecute: (_a, _b, _c) => {
         },
         splitDropdownBehaviours: derive$1([
-          DisablingConfigs.splitButton(sharedBackstage.providers.isDisabled),
-          receivingConfig(),
           config('split-dropdown-events', [
             runOnAttached((comp, _se) => forceInitialSize(comp)),
             run$1(focusButtonEvent, Focusing.focus),
             onControlAttached(specialisation, editorOffCell),
             onControlDetached(specialisation, editorOffCell)
           ]),
+          DisablingConfigs.splitButton(() => sharedBackstage.providers.isDisabled() || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
           Unselecting.config({}),
           ...spec.tooltip.map(tooltip => {
             return Tooltipping.config({
@@ -65358,10 +65778,17 @@ __webpack_require__(4);
         fetch: fetchChoices(getApi, spec, sharedBackstage.providers),
         parts: { menu: part(false, spec.columns, spec.presets) },
         components: [
-          SplitDropdown.parts.button(renderCommonStructure(spec.icon, spec.text, Optional.none(), Optional.some([Toggling.config({
+          SplitDropdown.parts.button(renderCommonStructure(spec.icon, spec.text, Optional.none(), Optional.some([
+            Toggling.config({
               toggleClass: 'tox-tbtn--enabled',
               toggleOnExecute: false
-            })]), sharedBackstage.providers)),
+            }),
+            DisablingConfigs.toolbarButton(never),
+            toggleOnReceive(constant$1({
+              contextType: 'any',
+              shouldDisable: false
+            }))
+          ]), sharedBackstage.providers, spec.context)),
           SplitDropdown.parts.arrow({
             dom: {
               tag: 'button',
@@ -65372,9 +65799,11 @@ __webpack_require__(4);
               innerHtml: get$3('chevron-down', sharedBackstage.providers.icons)
             },
             buttonBehaviours: derive$1([
-              DisablingConfigs.splitButton(sharedBackstage.providers.isDisabled),
-              receivingConfig(),
-              addFocusableBehaviour()
+              DisablingConfigs.splitButton(never),
+              toggleOnReceive(constant$1({
+                contextType: 'any',
+                shouldDisable: false
+              }))
             ])
           }),
           SplitDropdown.parts['aria-descriptor']({ text: sharedBackstage.providers.translate('To open the popup, press Shift+Enter') })
@@ -65484,7 +65913,7 @@ __webpack_require__(4);
       const groupsStrings = strToolbar.split('|');
       return map$2(groupsStrings, g => ({ items: g.trim().split(' ') }));
     };
-    const isToolbarGroupSettingArray = toolbar => isArrayOf(toolbar, t => has$2(t, 'name') && has$2(t, 'items'));
+    const isToolbarGroupSettingArray = toolbar => isArrayOf(toolbar, t => (has$2(t, 'name') || has$2(t, 'label')) && has$2(t, 'items'));
     const createToolbar = toolbarConfig => {
       const toolbar = toolbarConfig.toolbar;
       const buttons = toolbarConfig.buttons;
@@ -65517,6 +65946,7 @@ __webpack_require__(4);
         });
         return {
           title: Optional.from(editor.translate(group.name)),
+          label: someIf(group.label !== undefined, editor.translate(group.label)),
           items
         };
       });
@@ -65605,8 +66035,10 @@ __webpack_require__(4);
       const uiRoot = getContentContainer(getRootNode(eTargetNode));
       attachSystemAfter(eTargetNode, mainUi.mothership);
       attachUiMotherships(editor, uiRoot, uiRefs);
-      editor.on('SkinLoaded', () => {
+      editor.on('PostRender', () => {
         OuterContainer.setSidebar(outerContainer, rawUiConfig.sidebar, getSidebarShow(editor));
+      });
+      editor.on('SkinLoaded', () => {
         setToolbar(editor, uiRefs, rawUiConfig, backstage);
         lastToolbarWidth.set(editor.getWin().innerWidth);
         OuterContainer.setMenubar(outerContainer, identifyMenus(editor, rawUiConfig));
@@ -65625,10 +66057,10 @@ __webpack_require__(4);
         const unbinder = bind(socket.element, 'scroll', limit.throttle);
         editor.on('remove', unbinder.unbind);
       }
-      setupReadonlyModeSwitch(editor, uiRefs);
+      setupEventsForUi(editor, uiRefs);
       editor.addCommand('ToggleSidebar', (_ui, value) => {
         OuterContainer.toggleSidebar(outerContainer, value);
-        editor.dispatch('ToggleSidebar');
+        fireToggleSidebar(editor);
       });
       editor.addQueryValueHandler('ToggleSidebar', () => {
         var _a;
@@ -65646,6 +66078,7 @@ __webpack_require__(4);
             editor.nodeChanged();
             OuterContainer.refreshToolbar(outerContainer);
           }
+          fireToggleView(editor);
         }
       });
       editor.addQueryValueHandler('ToggleView', () => {
@@ -65667,7 +66100,8 @@ __webpack_require__(4);
       }
       const api = {
         setEnabled: state => {
-          broadcastReadonly(uiRefs, !state);
+          const eventType = state ? 'setEnabled' : 'setDisabled';
+          broadcastEvents(uiRefs, eventType);
         },
         isEnabled: () => !Disabling.isDisabled(outerContainer)
       };
@@ -66022,12 +66456,13 @@ __webpack_require__(4);
           render();
         }
       });
-      setupReadonlyModeSwitch(editor, uiRefs);
+      setupEventsForUi(editor, uiRefs);
       const api = {
         show: render,
         hide: ui.hide,
         setEnabled: state => {
-          broadcastReadonly(uiRefs, !state);
+          const eventType = state ? 'setEnabled' : 'setDisabled';
+          broadcastEvents(uiRefs, eventType);
         },
         isEnabled: () => !Disabling.isDisabled(mainUi.outerContainer)
       };
@@ -66067,43 +66502,169 @@ __webpack_require__(4);
     const showContextToolbarEvent = 'contexttoolbar-show';
     const hideContextToolbarEvent = 'contexttoolbar-hide';
 
-    const getFormApi = input => ({
-      hide: () => emit(input, sandboxClose()),
-      getValue: () => Representing.getValue(input)
+    const contextFormInputSelector = '.tox-toolbar-slider__input,.tox-toolbar-textfield';
+    const focusIn = contextbar => {
+      InlineView.getContent(contextbar).each(comp => {
+        descendant(comp.element, contextFormInputSelector).fold(() => Keying.focusIn(comp), focus$3);
+      });
+    };
+    const focusParent = comp => search(comp.element).each(focus => {
+      ancestor(focus, '[tabindex="-1"]').each(parent => {
+        focus$3(parent);
+      });
     });
-    const runOnExecute = (memInput, original) => run$1(internalToolbarButtonExecute, (comp, se) => {
+
+    const forwardSlideEvent = generate$6('forward-slide');
+    const backSlideEvent = generate$6('backward-slide');
+    const changeSlideEvent = generate$6('change-slide-event');
+    const resizingClass = 'tox-pop--resizing';
+    const renderContextToolbar = spec => {
+      const stack = Cell([]);
+      return InlineView.sketch({
+        dom: {
+          tag: 'div',
+          classes: ['tox-pop']
+        },
+        fireDismissalEventInstead: { event: 'doNotDismissYet' },
+        onShow: comp => {
+          stack.set([]);
+          InlineView.getContent(comp).each(c => {
+            remove$7(c.element, 'visibility');
+          });
+          remove$3(comp.element, resizingClass);
+          remove$7(comp.element, 'width');
+        },
+        onHide: () => {
+          spec.onHide();
+        },
+        inlineBehaviours: derive$1([
+          config('context-toolbar-events', [
+            runOnSource(transitionend(), (comp, se) => {
+              if (se.event.raw.propertyName === 'width') {
+                remove$3(comp.element, resizingClass);
+                remove$7(comp.element, 'width');
+              }
+            }),
+            run$1(changeSlideEvent, (comp, se) => {
+              const elem = comp.element;
+              remove$7(elem, 'width');
+              const currentWidth = get$d(elem);
+              remove$7(elem, 'left');
+              remove$7(elem, 'right');
+              remove$7(elem, 'max-width');
+              InlineView.setContent(comp, se.event.contents);
+              add$2(elem, resizingClass);
+              const newWidth = get$d(elem);
+              set$8(elem, 'transition', 'none');
+              InlineView.reposition(comp);
+              remove$7(elem, 'transition');
+              set$8(elem, 'width', currentWidth + 'px');
+              se.event.focus.fold(() => focusIn(comp), f => {
+                focus$3(f);
+                if (search(elem).isNone()) {
+                  focusIn(comp);
+                }
+              });
+              setTimeout(() => {
+                set$8(comp.element, 'width', newWidth + 'px');
+              }, 0);
+            }),
+            run$1(forwardSlideEvent, (comp, se) => {
+              InlineView.getContent(comp).each(oldContents => {
+                stack.set(stack.get().concat([{
+                    bar: oldContents,
+                    focus: active$1(getRootNode(comp.element))
+                  }]));
+              });
+              emitWith(comp, changeSlideEvent, {
+                contents: se.event.forwardContents,
+                focus: Optional.none()
+              });
+            }),
+            run$1(backSlideEvent, (comp, _se) => {
+              spec.onBack();
+              last$1(stack.get()).each(last => {
+                stack.set(stack.get().slice(0, stack.get().length - 1));
+                emitWith(comp, changeSlideEvent, {
+                  contents: premade(last.bar),
+                  focus: last.focus
+                });
+              });
+            })
+          ]),
+          Keying.config({
+            mode: 'special',
+            onEscape: comp => last$1(stack.get()).fold(() => spec.onEscape(), _ => {
+              emit(comp, backSlideEvent);
+              return Optional.some(true);
+            })
+          })
+        ]),
+        lazySink: () => Result.value(spec.sink)
+      });
+    };
+
+    const getFormApi = (input, valueState, focusfallbackElement) => {
+      return {
+        setInputEnabled: state => {
+          if (!state && focusfallbackElement) {
+            focus$3(focusfallbackElement);
+          }
+          Disabling.set(input, !state);
+        },
+        isInputEnabled: () => !Disabling.isDisabled(input),
+        hide: () => {
+          emit(input, sandboxClose());
+        },
+        back: () => {
+          emit(input, backSlideEvent);
+        },
+        getValue: () => {
+          return valueState.get().getOrThunk(() => Representing.getValue(input));
+        },
+        setValue: value => {
+          if (input.getSystem().isConnected()) {
+            Representing.setValue(input, value);
+          } else {
+            valueState.set(value);
+          }
+        }
+      };
+    };
+
+    const runOnExecute = (memInput, original, valueState) => run$1(internalToolbarButtonExecute, (comp, se) => {
       const input = memInput.get(comp);
-      const formApi = getFormApi(input);
+      const formApi = getFormApi(input, valueState, comp.element);
       original.onAction(formApi, se.event.buttonApi);
     });
-    const renderContextButton = (memInput, button, providers) => {
+    const renderContextButton = (memInput, button, providers, valueState) => {
       const {primary, ...rest} = button.original;
       const bridged = getOrDie(createToolbarButton({
         ...rest,
         type: 'button',
         onAction: noop
       }));
-      return renderToolbarButtonWith(bridged, providers, [runOnExecute(memInput, button)]);
+      return renderToolbarButtonWith(bridged, providers, [runOnExecute(memInput, button, valueState)]);
     };
-    const renderContextToggleButton = (memInput, button, providers) => {
+    const renderContextToggleButton = (memInput, button, providers, valueState) => {
       const {primary, ...rest} = button.original;
       const bridged = getOrDie(createToggleButton({
         ...rest,
         type: 'togglebutton',
         onAction: noop
       }));
-      return renderToolbarToggleButtonWith(bridged, providers, [runOnExecute(memInput, button)]);
+      return renderToolbarToggleButtonWith(bridged, providers, [runOnExecute(memInput, button, valueState)]);
     };
     const isToggleButton = button => button.type === 'contextformtogglebutton';
-    const generateOne = (memInput, button, providersBackstage) => {
+    const generateOne = (memInput, button, providersBackstage, valueState) => {
       if (isToggleButton(button)) {
-        return renderContextToggleButton(memInput, button, providersBackstage);
+        return renderContextToggleButton(memInput, button, providersBackstage, valueState);
       } else {
-        return renderContextButton(memInput, button, providersBackstage);
+        return renderContextButton(memInput, button, providersBackstage, valueState);
       }
     };
-    const generate = (memInput, buttons, providersBackstage) => {
-      const mementos = map$2(buttons, button => record(generateOne(memInput, button, providersBackstage)));
+    const generate = (memInput, buttons, providersBackstage, valueState) => {
+      const mementos = map$2(buttons, button => record(generateOne(memInput, button, providersBackstage, valueState)));
       const asSpecs = () => map$2(mementos, mem => mem.asSpec());
       const findPrimary = compInSystem => findMap(buttons, (button, i) => {
         if (button.primary) {
@@ -66118,22 +66679,243 @@ __webpack_require__(4);
       };
     };
 
-    const buildInitGroups = (ctx, providers) => {
-      const inputAttributes = ctx.label.fold(() => ({}), label => ({ 'aria-label': label }));
-      const memInput = record(Input.sketch({
-        inputClasses: [
-          'tox-toolbar-textfield',
-          'tox-toolbar-nav-js'
+    const renderContextFormSizeInput = (ctx, providersBackstage, onEnter, valueState) => {
+      const {width, height} = ctx.initValue();
+      let converter = noSizeConversion;
+      const enabled = true;
+      const ratioEvent = generate$6('ratio-event');
+      const getApi = comp => getFormApi(comp, valueState);
+      const makeIcon = iconName => render$3(iconName, {
+        tag: 'span',
+        classes: [
+          'tox-icon',
+          'tox-lock-icon__' + iconName
+        ]
+      }, providersBackstage.icons);
+      const disabled = () => !enabled;
+      const label = ctx.label.getOr('Constrain proportions');
+      const translatedLabel = providersBackstage.translate(label);
+      const pLock = FormCoupledInputs.parts.lock({
+        dom: {
+          tag: 'button',
+          classes: [
+            'tox-lock',
+            'tox-button',
+            'tox-button--naked',
+            'tox-button--icon'
+          ],
+          attributes: {
+            'aria-label': translatedLabel,
+            'data-mce-name': label
+          }
+        },
+        components: [
+          makeIcon('lock'),
+          makeIcon('unlock')
         ],
-        data: ctx.initValue(),
-        inputAttributes,
-        selectOnFocus: true,
-        inputBehaviours: derive$1([Keying.config({
+        buttonBehaviours: derive$1([
+          Disabling.config({ disabled }),
+          Tabstopping.config({}),
+          Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: translatedLabel }))
+        ])
+      });
+      const formGroup = components => ({
+        dom: {
+          tag: 'div',
+          classes: ['tox-context-form__group']
+        },
+        components
+      });
+      const goToParent = comp => {
+        const focussableWrapperOpt = ancestor(comp.element, 'div.tox-focusable-wrapper');
+        return focussableWrapperOpt.fold(Optional.none, focussableWrapper => {
+          focus$3(focussableWrapper);
+          return Optional.some(true);
+        });
+      };
+      const getFieldPart = isField1 => FormField.parts.field({
+        factory: Input,
+        inputClasses: [
+          'tox-textfield',
+          'tox-toolbar-textfield',
+          'tox-textfield-size'
+        ],
+        data: isField1 ? width : height,
+        inputBehaviours: derive$1([
+          Disabling.config({ disabled }),
+          Tabstopping.config({}),
+          config('size-input-toolbar-events', [run$1(focusin(), (component, _simulatedEvent) => {
+              emitWith(component, ratioEvent, { isField1 });
+            })]),
+          Keying.config({
             mode: 'special',
-            onEnter: input => commands.findPrimary(input).map(primary => {
-              emitExecute(primary);
-              return true;
+            onEnter,
+            onEscape: goToParent
+          })
+        ]),
+        selectOnFocus: false
+      });
+      const getLabel = label => ({
+        dom: {
+          tag: 'label',
+          classes: ['tox-label']
+        },
+        components: [text$2(providersBackstage.translate(label))]
+      });
+      const focusableWrapper = field => ({
+        dom: {
+          tag: 'div',
+          classes: [
+            'tox-focusable-wrapper',
+            'tox-toolbar-nav-item'
+          ]
+        },
+        components: [field],
+        behaviours: derive$1([
+          Tabstopping.config({}),
+          Focusing.config({}),
+          Keying.config({
+            mode: 'special',
+            onEnter: comp => {
+              const focussableInputOpt = descendant(comp.element, 'input');
+              return focussableInputOpt.fold(Optional.none, focussableInput => {
+                focus$3(focussableInput);
+                return Optional.some(true);
+              });
+            }
+          })
+        ])
+      });
+      const widthField = focusableWrapper(FormCoupledInputs.parts.field1(formGroup([
+        FormField.parts.label(getLabel('Width:')),
+        getFieldPart(true)
+      ])));
+      const heightField = focusableWrapper(FormCoupledInputs.parts.field2(formGroup([
+        FormField.parts.label(getLabel('Height:')),
+        getFieldPart(false)
+      ])));
+      const editorOffCell = Cell(noop);
+      const controlLifecycleHandlers = [
+        onControlAttached({
+          onSetup: ctx.onSetup,
+          getApi
+        }, editorOffCell),
+        onContextFormControlDetached({ getApi }, editorOffCell, valueState)
+      ];
+      return FormCoupledInputs.sketch({
+        dom: {
+          tag: 'div',
+          classes: ['tox-context-form__group']
+        },
+        components: [
+          widthField,
+          heightField,
+          formGroup([
+            getLabel(nbsp),
+            pLock
+          ])
+        ],
+        field1Name: 'width',
+        field2Name: 'height',
+        locked: true,
+        markers: { lockClass: 'tox-locked' },
+        onLockedChange: (current, other, _lock) => {
+          parseSize(Representing.getValue(current)).each(size => {
+            converter(size).each(newSize => {
+              Representing.setValue(other, formatSize(newSize));
+            });
+          });
+        },
+        onInput: current => emit(current, formInputEvent),
+        coupledFieldBehaviours: derive$1([
+          Focusing.config({}),
+          Keying.config({
+            mode: 'flow',
+            focusInside: FocusInsideModes.OnEnterOrSpaceMode,
+            cycles: false,
+            selector: 'button, .tox-focusable-wrapper'
+          }),
+          Disabling.config({
+            disabled,
+            onDisabled: comp => {
+              FormCoupledInputs.getField1(comp).bind(FormField.getField).each(Disabling.disable);
+              FormCoupledInputs.getField2(comp).bind(FormField.getField).each(Disabling.disable);
+              FormCoupledInputs.getLock(comp).each(Disabling.disable);
+            },
+            onEnabled: comp => {
+              FormCoupledInputs.getField1(comp).bind(FormField.getField).each(Disabling.enable);
+              FormCoupledInputs.getField2(comp).bind(FormField.getField).each(Disabling.enable);
+              FormCoupledInputs.getLock(comp).each(Disabling.enable);
+            }
+          }),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext('mode:design')),
+          config('size-input-toolbar-events2', [
+            run$1(ratioEvent, (component, simulatedEvent) => {
+              const isField1 = simulatedEvent.event.isField1;
+              const optCurrent = isField1 ? FormCoupledInputs.getField1(component) : FormCoupledInputs.getField2(component);
+              const optOther = isField1 ? FormCoupledInputs.getField2(component) : FormCoupledInputs.getField1(component);
+              const value1 = optCurrent.map(Representing.getValue).getOr('');
+              const value2 = optOther.map(Representing.getValue).getOr('');
+              converter = makeRatioConverter(value1, value2);
             }),
+            run$1(formInputEvent, input => ctx.onInput(getApi(input))),
+            ...controlLifecycleHandlers
+          ])
+        ])
+      });
+    };
+
+    const createContextFormFieldFromParts = (pLabel, pField, providers) => FormField.sketch({
+      dom: {
+        tag: 'div',
+        classes: ['tox-context-form__group']
+      },
+      components: [
+        ...pLabel.toArray(),
+        pField
+      ],
+      fieldBehaviours: derive$1([Disabling.config({
+          disabled: () => providers.checkUiComponentContext('mode:design').shouldDisable,
+          onDisabled: comp => {
+            focusParent(comp);
+            FormField.getField(comp).each(Disabling.disable);
+          },
+          onEnabled: comp => {
+            FormField.getField(comp).each(Disabling.enable);
+          }
+        })])
+    });
+
+    const renderContextFormSliderInput = (ctx, providers, onEnter, valueState) => {
+      const editorOffCell = Cell(noop);
+      const getApi = comp => getFormApi(comp, valueState);
+      const pLabel = ctx.label.map(label => FormField.parts.label({
+        dom: {
+          tag: 'label',
+          classes: ['tox-label']
+        },
+        components: [text$2(providers.translate(label))]
+      }));
+      const pField = FormField.parts.field({
+        factory: Input,
+        type: 'range',
+        inputClasses: [
+          'tox-toolbar-slider__input',
+          'tox-toolbar-nav-item'
+        ],
+        inputAttributes: {
+          min: String(ctx.min()),
+          max: String(ctx.max())
+        },
+        data: ctx.initValue().toString(),
+        fromInputValue: value => toFloat(value).getOr(ctx.min()),
+        toInputValue: value => String(value),
+        inputBehaviours: derive$1([
+          Disabling.config({ disabled: () => providers.checkUiComponentContext('mode:design').shouldDisable }),
+          toggleOnReceive(() => providers.checkUiComponentContext('mode:design')),
+          Keying.config({
+            mode: 'special',
+            onEnter,
             onLeft: (comp, se) => {
               se.cut();
               return Optional.none();
@@ -66142,19 +66924,117 @@ __webpack_require__(4);
               se.cut();
               return Optional.none();
             }
-          })])
+          }),
+          config('slider-events', [
+            onControlAttached({
+              onSetup: ctx.onSetup,
+              getApi,
+              onBeforeSetup: Keying.focusIn
+            }, editorOffCell),
+            onContextFormControlDetached({ getApi }, editorOffCell, valueState),
+            run$1(input(), comp => {
+              ctx.onInput(getApi(comp));
+            })
+          ])
+        ])
+      });
+      return createContextFormFieldFromParts(pLabel, pField, providers);
+    };
+
+    const renderContextFormTextInput = (ctx, providers, onEnter, valueState) => {
+      const editorOffCell = Cell(noop);
+      const getFormApi$1 = comp => getFormApi(comp, valueState);
+      const pLabel = ctx.label.map(label => FormField.parts.label({
+        dom: {
+          tag: 'label',
+          classes: ['tox-label']
+        },
+        components: [text$2(providers.translate(label))]
       }));
-      const commands = generate(memInput, ctx.commands, providers);
-      return [
+      const placeholder = ctx.placeholder.map(p => ({ placeholder: providers.translate(p) })).getOr({});
+      const inputAttributes = { ...placeholder };
+      const pField = FormField.parts.field({
+        factory: Input,
+        inputClasses: [
+          'tox-toolbar-textfield',
+          'tox-toolbar-nav-item'
+        ],
+        inputAttributes,
+        data: ctx.initValue(),
+        selectOnFocus: true,
+        inputBehaviours: derive$1([
+          Disabling.config({ disabled: () => providers.checkUiComponentContext('mode:design').shouldDisable }),
+          toggleOnReceive(() => providers.checkUiComponentContext('mode:design')),
+          Keying.config({
+            mode: 'special',
+            onEnter,
+            onLeft: (comp, se) => {
+              se.cut();
+              return Optional.none();
+            },
+            onRight: (comp, se) => {
+              se.cut();
+              return Optional.none();
+            }
+          }),
+          config('input-events', [
+            onControlAttached({
+              onSetup: ctx.onSetup,
+              getApi: comp => {
+                const closestFocussableOpt = ancestor(comp.element, '.tox-toolbar').bind(toolbar => descendant(toolbar, 'button:enabled'));
+                return closestFocussableOpt.fold(() => getFormApi(comp, valueState), closestFocussable => getFormApi(comp, valueState, closestFocussable));
+              },
+              onBeforeSetup: Keying.focusIn
+            }, editorOffCell),
+            onContextFormControlDetached({ getApi: getFormApi$1 }, editorOffCell, valueState),
+            run$1(input(), comp => {
+              ctx.onInput(getFormApi$1(comp));
+            })
+          ])
+        ])
+      });
+      return createContextFormFieldFromParts(pLabel, pField, providers);
+    };
+
+    const buildInitGroup = (f, ctx, providers) => {
+      const valueState = value$4();
+      const onEnter = input => {
+        return startCommands.findPrimary(input).orThunk(() => endCommands.findPrimary(input)).map(primary => {
+          emitExecute(primary);
+          return true;
+        });
+      };
+      const memInput = record(f(providers, onEnter, valueState));
+      const commandParts = partition$3(ctx.commands, command => command.align === 'start');
+      const startCommands = generate(memInput, commandParts.pass, providers, valueState);
+      const endCommands = generate(memInput, commandParts.fail, providers, valueState);
+      return filter$2([
         {
           title: Optional.none(),
+          label: Optional.none(),
+          items: startCommands.asSpecs()
+        },
+        {
+          title: Optional.none(),
+          label: Optional.none(),
           items: [memInput.asSpec()]
         },
         {
           title: Optional.none(),
-          items: commands.asSpecs()
+          label: Optional.none(),
+          items: endCommands.asSpecs()
         }
-      ];
+      ], group => group.items.length > 0);
+    };
+    const buildInitGroups = (ctx, providers) => {
+      switch (ctx.type) {
+      case 'contextform':
+        return buildInitGroup(curry(renderContextFormTextInput, ctx), ctx, providers);
+      case 'contextsliderform':
+        return buildInitGroup(curry(renderContextFormSliderInput, ctx), ctx, providers);
+      case 'contextsizeinputform':
+        return buildInitGroup(curry(renderContextFormSizeInput, ctx), ctx, providers);
+      }
     };
     const renderContextForm = (toolbarType, ctx, providers) => renderToolbar({
       type: toolbarType,
@@ -66493,7 +67373,7 @@ __webpack_require__(4);
       const keys$1 = keys(contextToolbars);
       each$1(keys$1, key => {
         const toolbarApi = contextToolbars[key];
-        if (toolbarApi.type === 'contextform') {
+        if (toolbarApi.type === 'contextform' || toolbarApi.type === 'contextsliderform' || toolbarApi.type === 'contextsizeinputform') {
           registerForm(key, toolbarApi);
         } else if (toolbarApi.type === 'contexttoolbar') {
           registerToolbar(key, toolbarApi);
@@ -66508,91 +67388,8 @@ __webpack_require__(4);
       };
     };
 
-    const forwardSlideEvent = generate$6('forward-slide');
-    const backSlideEvent = generate$6('backward-slide');
-    const changeSlideEvent = generate$6('change-slide-event');
-    const resizingClass = 'tox-pop--resizing';
-    const renderContextToolbar = spec => {
-      const stack = Cell([]);
-      return InlineView.sketch({
-        dom: {
-          tag: 'div',
-          classes: ['tox-pop']
-        },
-        fireDismissalEventInstead: { event: 'doNotDismissYet' },
-        onShow: comp => {
-          stack.set([]);
-          InlineView.getContent(comp).each(c => {
-            remove$7(c.element, 'visibility');
-          });
-          remove$3(comp.element, resizingClass);
-          remove$7(comp.element, 'width');
-        },
-        inlineBehaviours: derive$1([
-          config('context-toolbar-events', [
-            runOnSource(transitionend(), (comp, se) => {
-              if (se.event.raw.propertyName === 'width') {
-                remove$3(comp.element, resizingClass);
-                remove$7(comp.element, 'width');
-              }
-            }),
-            run$1(changeSlideEvent, (comp, se) => {
-              const elem = comp.element;
-              remove$7(elem, 'width');
-              const currentWidth = get$d(elem);
-              InlineView.setContent(comp, se.event.contents);
-              add$2(elem, resizingClass);
-              const newWidth = get$d(elem);
-              set$8(elem, 'width', currentWidth + 'px');
-              InlineView.getContent(comp).each(newContents => {
-                se.event.focus.bind(f => {
-                  focus$3(f);
-                  return search(elem);
-                }).orThunk(() => {
-                  Keying.focusIn(newContents);
-                  return active$1(getRootNode(elem));
-                });
-              });
-              setTimeout(() => {
-                set$8(comp.element, 'width', newWidth + 'px');
-              }, 0);
-            }),
-            run$1(forwardSlideEvent, (comp, se) => {
-              InlineView.getContent(comp).each(oldContents => {
-                stack.set(stack.get().concat([{
-                    bar: oldContents,
-                    focus: active$1(getRootNode(comp.element))
-                  }]));
-              });
-              emitWith(comp, changeSlideEvent, {
-                contents: se.event.forwardContents,
-                focus: Optional.none()
-              });
-            }),
-            run$1(backSlideEvent, (comp, _se) => {
-              last$1(stack.get()).each(last => {
-                stack.set(stack.get().slice(0, stack.get().length - 1));
-                emitWith(comp, changeSlideEvent, {
-                  contents: premade(last.bar),
-                  focus: last.focus
-                });
-              });
-            })
-          ]),
-          Keying.config({
-            mode: 'special',
-            onEscape: comp => last$1(stack.get()).fold(() => spec.onEscape(), _ => {
-              emit(comp, backSlideEvent);
-              return Optional.some(true);
-            })
-          })
-        ]),
-        lazySink: () => Result.value(spec.sink)
-      });
-    };
-
     const transitionClass = 'tox-pop--transition';
-    const register$9 = (editor, registryContextToolbars, sink, extras) => {
+    const register$a = (editor, registryContextToolbars, sink, extras) => {
       const backstage = extras.backstage;
       const sharedBackstage = backstage.shared;
       const isTouch = detect$1().deviceType.isTouch;
@@ -66603,7 +67400,14 @@ __webpack_require__(4);
         sink,
         onEscape: () => {
           editor.focus();
+          fireContextToolbarClose(editor);
           return Optional.some(true);
+        },
+        onHide: () => {
+          fireContextToolbarClose(editor);
+        },
+        onBack: () => {
+          fireContextFormSlideBack(editor);
         }
       }));
       const getBounds = () => {
@@ -66664,11 +67468,13 @@ __webpack_require__(4);
         const alloySpec = buildToolbar([toolbarApi]);
         emitWith(contextbar, forwardSlideEvent, { forwardContents: wrapInPopDialog(alloySpec) });
       }));
-      const buildContextToolbarGroups = (allButtons, ctx) => identifyButtons(editor, {
-        buttons: allButtons,
-        toolbar: ctx.items,
-        allowToolbarGroups: false
-      }, extras.backstage, Optional.some(['form:']));
+      const buildContextToolbarGroups = (allButtons, ctx) => {
+        return identifyButtons(editor, {
+          buttons: allButtons,
+          toolbar: ctx.items,
+          allowToolbarGroups: false
+        }, extras.backstage, Optional.some(['form:']));
+      };
       const buildContextFormGroups = (ctx, providers) => ContextForm.buildInitGroups(ctx, providers);
       const buildToolbar = toolbars => {
         const {buttons} = editor.ui.registry.getAll();
@@ -66678,7 +67484,7 @@ __webpack_require__(4);
           ...scopes.formNavigators
         };
         const toolbarType = getToolbarMode(editor) === ToolbarMode$1.scrolling ? ToolbarMode$1.scrolling : ToolbarMode$1.default;
-        const initGroups = flatten(map$2(toolbars, ctx => ctx.type === 'contexttoolbar' ? buildContextToolbarGroups(allButtons, ctx) : buildContextFormGroups(ctx, sharedBackstage.providers)));
+        const initGroups = flatten(map$2(toolbars, ctx => ctx.type === 'contexttoolbar' ? buildContextToolbarGroups(allButtons, contextToolbarToSpec(ctx)) : buildContextFormGroups(ctx, sharedBackstage.providers)));
         return renderToolbar({
           type: toolbarType,
           uid: generate$6('context-toolbar'),
@@ -66748,7 +67554,7 @@ __webpack_require__(4);
           const scopes = getScopes();
           get$h(scopes.lookupTable, e.toolbarKey).each(ctx => {
             launchContext([ctx], someIf(e.target !== editor, e.target));
-            InlineView.getContent(contextbar).each(Keying.focusIn);
+            focusIn(contextbar);
           });
         });
         editor.on('focusout', _e => {
@@ -66760,6 +67566,11 @@ __webpack_require__(4);
         });
         editor.on('SwitchMode', () => {
           if (editor.mode.isReadOnly()) {
+            close();
+          }
+        });
+        editor.on('DisabledStateChange', e => {
+          if (e.state) {
             close();
           }
         });
@@ -66787,7 +67598,7 @@ __webpack_require__(4);
       });
     };
 
-    const register$8 = editor => {
+    const register$9 = editor => {
       const alignToolbarButtons = [
         {
           name: 'alignleft',
@@ -66926,17 +67737,33 @@ __webpack_require__(4);
         onMenuSetup: onSetupEditableToggle(editor)
       }));
     };
-    const register$7 = editor => {
+    const register$8 = editor => {
       registerController(editor, lineHeightSpec(editor));
       languageSpec(editor).each(spec => registerController(editor, spec));
     };
 
-    const register$6 = (editor, backstage) => {
+    const register$7 = (editor, backstage) => {
       createAlignMenu(editor, backstage);
       createFontFamilyMenu(editor, backstage);
       createStylesMenu(editor, backstage);
       createBlocksMenu(editor, backstage);
       createFontSizeMenu(editor, backstage);
+    };
+
+    const register$6 = editor => {
+      editor.ui.registry.addContext('editable', () => {
+        return editor.selection.isEditable();
+      });
+      editor.ui.registry.addContext('mode', mode => {
+        return editor.mode.get() === mode;
+      });
+      editor.ui.registry.addContext('any', always);
+      editor.ui.registry.addContext('formatting', format => {
+        return editor.formatter.canApply(format);
+      });
+      editor.ui.registry.addContext('insert', child => {
+        return editor.schema.isValidChild(editor.selection.getNode().tagName, child);
+      });
     };
 
     const onSetupOutdentState = editor => onSetupEvent(editor, 'NodeChange', api => {
@@ -67052,21 +67879,24 @@ __webpack_require__(4);
           name: 'copy',
           text: 'Copy',
           action: 'Copy',
-          icon: 'copy'
+          icon: 'copy',
+          context: 'any'
         },
         {
           name: 'help',
           text: 'Help',
           action: 'mceHelp',
           icon: 'help',
-          shortcut: 'Alt+0'
+          shortcut: 'Alt+0',
+          context: 'any'
         },
         {
           name: 'selectall',
           text: 'Select all',
           action: 'SelectAll',
           icon: 'select-all',
-          shortcut: 'Meta+A'
+          shortcut: 'Meta+A',
+          context: 'any'
         },
         {
           name: 'newdocument',
@@ -67079,14 +67909,16 @@ __webpack_require__(4);
           text: 'Print',
           action: 'mcePrint',
           icon: 'print',
-          shortcut: 'Meta+P'
+          shortcut: 'Meta+P',
+          context: 'any'
         }
       ], btn => {
         editor.ui.registry.addButton(btn.name, {
           tooltip: btn.text,
           icon: btn.icon,
           onAction: onActionExecCommand(editor, btn.action),
-          shortcut: btn.shortcut
+          shortcut: btn.shortcut,
+          context: btn.context
         });
       });
       global$1.each([
@@ -67162,28 +67994,32 @@ __webpack_require__(4);
           text: 'Copy',
           action: 'Copy',
           icon: 'copy',
-          shortcut: 'Meta+C'
+          shortcut: 'Meta+C',
+          context: 'any'
         },
         {
           name: 'selectall',
           text: 'Select all',
           action: 'SelectAll',
           icon: 'select-all',
-          shortcut: 'Meta+A'
+          shortcut: 'Meta+A',
+          context: 'any'
         },
         {
           name: 'print',
           text: 'Print...',
           action: 'mcePrint',
           icon: 'print',
-          shortcut: 'Meta+P'
+          shortcut: 'Meta+P',
+          context: 'any'
         }
       ], menuitem => {
         editor.ui.registry.addMenuItem(menuitem.name, {
           text: menuitem.text,
           icon: menuitem.icon,
           shortcut: menuitem.shortcut,
-          onAction: onActionExecCommand(editor, menuitem.action)
+          onAction: onActionExecCommand(editor, menuitem.action),
+          context: menuitem.context
         });
       });
       global$1.each([
@@ -67322,14 +68158,16 @@ __webpack_require__(4);
       editor.ui.registry.addToggleMenuItem('visualaid', {
         text: 'Visual aids',
         onSetup: onSetupVisualAidState(editor),
-        onAction: onActionExecCommand(editor, 'mceToggleVisualAid')
+        onAction: onActionExecCommand(editor, 'mceToggleVisualAid'),
+        context: 'any'
       });
     };
     const registerToolbarButton = editor => {
       editor.ui.registry.addButton('visualaid', {
         tooltip: 'Visual aids',
         text: 'Visual aids',
-        onAction: onActionExecCommand(editor, 'mceToggleVisualAid')
+        onAction: onActionExecCommand(editor, 'mceToggleVisualAid'),
+        context: 'any'
       });
     };
     const register$1 = editor => {
@@ -67338,15 +68176,16 @@ __webpack_require__(4);
     };
 
     const setup$6 = (editor, backstage) => {
-      register$8(editor);
+      register$9(editor);
       register$3(editor);
-      register$6(editor, backstage);
+      register$7(editor, backstage);
       register$2(editor);
-      register$c(editor);
+      register$d(editor);
       register$1(editor);
       register$5(editor);
-      register$7(editor);
+      register$8(editor);
       register$4(editor);
+      register$6(editor);
     };
 
     const patchPipeConfig = config => isString(config) ? config.split(/[ ,]/) : config;
@@ -68433,7 +69272,7 @@ __webpack_require__(4);
             })
           }),
           DisablingConfigs.button(providersBackstage.isDisabled),
-          receivingConfig()
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext('any'))
         ])
       });
       const renderDivider = () => ({
@@ -68487,7 +69326,7 @@ __webpack_require__(4);
             selector: 'div[role=button]'
           }),
           Disabling.config({ disabled: providersBackstage.isDisabled }),
-          receivingConfig(),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext('any')),
           Tabstopping.config({}),
           Replacing.config({}),
           config('elementPathEvents', [runOnAttached((comp, _e) => {
@@ -68590,7 +69429,7 @@ __webpack_require__(4);
         components: [],
         buttonBehaviours: derive$1([
           DisablingConfigs.button(providersBackstage.isDisabled),
-          receivingConfig(),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext('any')),
           Tabstopping.config({}),
           Replacing.config({}),
           Representing.config({
@@ -69016,7 +69855,7 @@ __webpack_require__(4);
             partThrobber
           ],
           behaviours: derive$1([
-            receivingConfig(),
+            toggleOnReceive(() => backstages.popup.shared.providers.checkUiComponentContext('any')),
             Disabling.config({ disableClass: 'tox-tinymce--disabled' }),
             Keying.config({
               mode: 'cyclic',
@@ -69086,7 +69925,7 @@ __webpack_require__(4);
         setup$5(editor, backstages.popup.shared.getSink, backstages.popup);
         setup$8(editor);
         setup$7(editor, lazyThrobber, backstages.popup.shared);
-        register$9(editor, contextToolbars, popupUi.sink, { backstage: backstages.popup });
+        register$a(editor, contextToolbars, popupUi.sink, { backstage: backstages.popup });
         setup$4(editor, popupUi.sink);
         const elm = editor.getElement();
         const height = setEditorSize(mainUi.outerContainer);
@@ -69334,7 +70173,8 @@ __webpack_require__(4);
       optionStringEnum('buttonType', [
         'primary',
         'secondary'
-      ])
+      ]),
+      defaultedString('context', 'mode:design')
     ];
     const dialogFooterButtonFields = [
       ...baseFooterButtonFields,
@@ -69403,7 +70243,8 @@ __webpack_require__(4);
         'secondary',
         'toolbar'
       ]),
-      primary
+      primary,
+      defaultedString('context', 'mode:design')
     ];
     const buttonSchema = objOf(buttonFields);
 
@@ -69415,12 +70256,16 @@ __webpack_require__(4);
 
     const checkboxFields = formComponentFields.concat([
       label,
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const checkboxSchema = objOf(checkboxFields);
     const checkboxDataProcessor = boolean;
 
-    const collectionFields = formComponentWithLabelFields.concat([defaultedColumns('auto')]);
+    const collectionFields = formComponentWithLabelFields.concat([
+      defaultedColumns('auto'),
+      defaultedString('context', 'mode:design')
+    ]);
     const collectionSchema = objOf(collectionFields);
     const collectionDataProcessor = arrOfObj([
       value$1,
@@ -69428,7 +70273,10 @@ __webpack_require__(4);
       icon
     ]);
 
-    const colorInputFields = formComponentWithLabelFields.concat([defaultedString('storageKey', 'default')]);
+    const colorInputFields = formComponentWithLabelFields.concat([
+      defaultedString('storageKey', 'default'),
+      defaultedString('context', 'mode:design')
+    ]);
     const colorInputSchema = objOf(colorInputFields);
     const colorInputDataProcessor = string;
 
@@ -69450,7 +70298,7 @@ __webpack_require__(4);
     const customEditorSchema = valueOf(v => asRaw('customeditor.old', objOfOnly(customEditorFieldsOld), v).orThunk(() => asRaw('customeditor.new', objOfOnly(customEditorFields), v)));
     const customEditorDataProcessor = string;
 
-    const dropZoneFields = formComponentWithLabelFields;
+    const dropZoneFields = formComponentWithLabelFields.concat([defaultedString('context', 'mode:design')]);
     const dropZoneSchema = objOf(dropZoneFields);
     const dropZoneDataProcessor = arrOfVal();
 
@@ -69493,7 +70341,8 @@ __webpack_require__(4);
       optionString('inputMode'),
       optionString('placeholder'),
       defaultedBoolean('maximized', false),
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const inputSchema = objOf(inputFields);
     const inputDataProcessor = string;
@@ -69524,7 +70373,8 @@ __webpack_require__(4);
     ]);
     const listBoxFields = formComponentWithLabelFields.concat([
       requiredArrayOf('items', listBoxItemSchema),
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const listBoxSchema = objOf(listBoxFields);
     const listBoxDataProcessor = string;
@@ -69535,14 +70385,16 @@ __webpack_require__(4);
         value$1
       ]),
       defaultedNumber('size', 1),
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const selectBoxSchema = objOf(selectBoxFields);
     const selectBoxDataProcessor = string;
 
     const sizeInputFields = formComponentWithLabelFields.concat([
       defaultedBoolean('constrain', true),
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const sizeInputSchema = objOf(sizeInputFields);
     const sizeInputDataProcessor = objOf([
@@ -69568,7 +70420,8 @@ __webpack_require__(4);
     const textAreaFields = formComponentWithLabelFields.concat([
       optionString('placeholder'),
       defaultedBoolean('maximized', false),
-      enabled
+      enabled,
+      defaultedString('context', 'mode:design')
     ]);
     const textAreaSchema = objOf(textAreaFields);
     const textAreaDataProcessor = string;
@@ -69580,7 +70433,9 @@ __webpack_require__(4);
       ]),
       title,
       requiredString('id'),
-      optionOf('menu', MenuButtonSchema)
+      optionOf('menu', MenuButtonSchema),
+      optionString('customStateIcon'),
+      optionString('customStateIconTooltip')
     ];
     const treeItemLeafFields = baseTreeItemFields;
     const treeItemLeafSchema = objOf(treeItemLeafFields);
@@ -69612,7 +70467,8 @@ __webpack_require__(4);
         'file'
       ]),
       enabled,
-      optionString('picker_text')
+      optionString('picker_text'),
+      defaultedString('context', 'mode:design')
     ]);
     const urlInputSchema = objOf(urlInputFields);
     const urlInputDataProcessor = objOf([
@@ -70776,7 +71632,9 @@ __webpack_require__(4);
     const initCommonEvents = (fireApiEvent, extras) => [
       runWithTarget(focusin(), onFocus),
       fireApiEvent(formCloseEvent, (_api, spec, _event, self) => {
-        active$1(getRootNode(self.element)).fold(noop, blur$1);
+        if (hasFocus(self.element)) {
+          active$1(getRootNode(self.element)).each(blur$1);
+        }
         extras.onClose();
         spec.onClose();
       }),
@@ -71353,6 +72211,7 @@ __webpack_require__(4);
           callback();
         };
         const memFooterClose = record(renderFooterButton({
+          context: 'any',
           name: 'close-alert',
           text: 'OK',
           primary: true,
@@ -71390,6 +72249,7 @@ __webpack_require__(4);
           callback(state);
         };
         const memFooterYes = record(renderFooterButton({
+          context: 'any',
           name: 'yes',
           text: 'Yes',
           primary: true,
@@ -71399,6 +72259,7 @@ __webpack_require__(4);
           icon: Optional.none()
         }, 'submit', backstage));
         const footerNo = renderFooterButton({
+          context: 'any',
           name: 'no',
           text: 'No',
           primary: false,
@@ -71682,8 +72543,8 @@ __webpack_require__(4);
     };
 
     const registerOptions = editor => {
+      register$f(editor);
       register$e(editor);
-      register$d(editor);
       register(editor);
     };
     var Theme = () => {
@@ -71732,12 +72593,12 @@ __webpack_require__(4);
 /* 6 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
-// Exports the "autoresize" plugin for usage with module loaders
+// Exports the "autolink" plugin for usage with module loaders
 // Usage:
 //   CommonJS:
-//     require('tinymce/plugins/autoresize')
+//     require('tinymce/plugins/autolink')
 //   ES2015:
-//     import 'tinymce/plugins/autoresize'
+//     import 'tinymce/plugins/autolink'
 __webpack_require__(7);
 
 /***/ }),
@@ -71745,7 +72606,253 @@ __webpack_require__(7);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
+ */
+
+(function () {
+  'use strict';
+
+  var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+  const link = () => /(?:[A-Za-z][A-Za-z\d.+-]{0,14}:\/\/(?:[-.~*+=!&;:'%@?^${}(),\w]+@)?|www\.|[-;:&=+$,.\w]+@)[A-Za-z\d-]+(?:\.[A-Za-z\d-]+)*(?::\d+)?(?:\/(?:[-.~*+=!;:'%@$(),\/\w]*[-~*+=%@$()\/\w])?)?(?:\?(?:[-.~*+=!&;:'%@?^${}(),\/\w]+))?(?:#(?:[-.~*+=!&;:'%@?^${}(),\/\w]+))?/g;
+
+  const option = name => editor => editor.options.get(name);
+  const register = editor => {
+    const registerOption = editor.options.register;
+    registerOption('autolink_pattern', {
+      processor: 'regexp',
+      default: new RegExp('^' + link().source + '$', 'i')
+    });
+    registerOption('link_default_target', { processor: 'string' });
+    registerOption('link_default_protocol', {
+      processor: 'string',
+      default: 'https'
+    });
+  };
+  const getAutoLinkPattern = option('autolink_pattern');
+  const getDefaultLinkTarget = option('link_default_target');
+  const getDefaultLinkProtocol = option('link_default_protocol');
+  const allowUnsafeLinkTarget = option('allow_unsafe_link_target');
+
+  const hasProto = (v, constructor, predicate) => {
+    var _a;
+    if (predicate(v, constructor.prototype)) {
+      return true;
+    } else {
+      return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+    }
+  };
+  const typeOf = x => {
+    const t = typeof x;
+    if (x === null) {
+      return 'null';
+    } else if (t === 'object' && Array.isArray(x)) {
+      return 'array';
+    } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+      return 'string';
+    } else {
+      return t;
+    }
+  };
+  const isType = type => value => typeOf(value) === type;
+  const eq = t => a => t === a;
+  const isString = isType('string');
+  const isUndefined = eq(undefined);
+  const isNullable = a => a === null || a === undefined;
+  const isNonNullable = a => !isNullable(a);
+
+  const not = f => t => !f(t);
+
+  const hasOwnProperty = Object.hasOwnProperty;
+  const has = (obj, key) => hasOwnProperty.call(obj, key);
+
+  const checkRange = (str, substr, start) => substr === '' || str.length >= substr.length && str.substr(start, start + substr.length) === substr;
+  const contains = (str, substr, start = 0, end) => {
+    const idx = str.indexOf(substr, start);
+    if (idx !== -1) {
+      return isUndefined(end) ? true : idx + substr.length <= end;
+    } else {
+      return false;
+    }
+  };
+  const startsWith = (str, prefix) => {
+    return checkRange(str, prefix, 0);
+  };
+
+  const zeroWidth = '\uFEFF';
+  const isZwsp = char => char === zeroWidth;
+  const removeZwsp = s => s.replace(/\uFEFF/g, '');
+
+  var global = tinymce.util.Tools.resolve('tinymce.dom.TextSeeker');
+
+  const isTextNode = node => node.nodeType === 3;
+  const isElement = node => node.nodeType === 1;
+  const isBracketOrSpace = char => /^[(\[{ \u00a0]$/.test(char);
+  const hasProtocol = url => /^([A-Za-z][A-Za-z\d.+-]*:\/\/)|mailto:/.test(url);
+  const isPunctuation = char => /[?!,.;:]/.test(char);
+  const findChar = (text, index, predicate) => {
+    for (let i = index - 1; i >= 0; i--) {
+      const char = text.charAt(i);
+      if (!isZwsp(char) && predicate(char)) {
+        return i;
+      }
+    }
+    return -1;
+  };
+  const freefallRtl = (container, offset) => {
+    let tempNode = container;
+    let tempOffset = offset;
+    while (isElement(tempNode) && tempNode.childNodes[tempOffset]) {
+      tempNode = tempNode.childNodes[tempOffset];
+      tempOffset = isTextNode(tempNode) ? tempNode.data.length : tempNode.childNodes.length;
+    }
+    return {
+      container: tempNode,
+      offset: tempOffset
+    };
+  };
+
+  const parseCurrentLine = (editor, offset) => {
+    var _a;
+    const voidElements = editor.schema.getVoidElements();
+    const autoLinkPattern = getAutoLinkPattern(editor);
+    const {dom, selection} = editor;
+    if (dom.getParent(selection.getNode(), 'a[href]') !== null || editor.mode.isReadOnly()) {
+      return null;
+    }
+    const rng = selection.getRng();
+    const textSeeker = global(dom, node => {
+      return dom.isBlock(node) || has(voidElements, node.nodeName.toLowerCase()) || dom.getContentEditable(node) === 'false';
+    });
+    const {
+      container: endContainer,
+      offset: endOffset
+    } = freefallRtl(rng.endContainer, rng.endOffset);
+    const root = (_a = dom.getParent(endContainer, dom.isBlock)) !== null && _a !== void 0 ? _a : dom.getRoot();
+    const endSpot = textSeeker.backwards(endContainer, endOffset + offset, (node, offset) => {
+      const text = node.data;
+      const idx = findChar(text, offset, not(isBracketOrSpace));
+      return idx === -1 || isPunctuation(text[idx]) ? idx : idx + 1;
+    }, root);
+    if (!endSpot) {
+      return null;
+    }
+    let lastTextNode = endSpot.container;
+    const startSpot = textSeeker.backwards(endSpot.container, endSpot.offset, (node, offset) => {
+      lastTextNode = node;
+      const idx = findChar(node.data, offset, isBracketOrSpace);
+      return idx === -1 ? idx : idx + 1;
+    }, root);
+    const newRng = dom.createRng();
+    if (!startSpot) {
+      newRng.setStart(lastTextNode, 0);
+    } else {
+      newRng.setStart(startSpot.container, startSpot.offset);
+    }
+    newRng.setEnd(endSpot.container, endSpot.offset);
+    const rngText = removeZwsp(newRng.toString());
+    const matches = rngText.match(autoLinkPattern);
+    if (matches) {
+      let url = matches[0];
+      if (startsWith(url, 'www.')) {
+        const protocol = getDefaultLinkProtocol(editor);
+        url = protocol + '://' + url;
+      } else if (contains(url, '@') && !hasProtocol(url)) {
+        url = 'mailto:' + url;
+      }
+      return {
+        rng: newRng,
+        url
+      };
+    } else {
+      return null;
+    }
+  };
+  const convertToLink = (editor, result) => {
+    const {dom, selection} = editor;
+    const {rng, url} = result;
+    const bookmark = selection.getBookmark();
+    selection.setRng(rng);
+    const command = 'createlink';
+    const args = {
+      command,
+      ui: false,
+      value: url
+    };
+    const beforeExecEvent = editor.dispatch('BeforeExecCommand', args);
+    if (!beforeExecEvent.isDefaultPrevented()) {
+      editor.getDoc().execCommand(command, false, url);
+      editor.dispatch('ExecCommand', args);
+      const defaultLinkTarget = getDefaultLinkTarget(editor);
+      if (isString(defaultLinkTarget)) {
+        const anchor = selection.getNode();
+        dom.setAttrib(anchor, 'target', defaultLinkTarget);
+        if (defaultLinkTarget === '_blank' && !allowUnsafeLinkTarget(editor)) {
+          dom.setAttrib(anchor, 'rel', 'noopener');
+        }
+      }
+    }
+    selection.moveToBookmark(bookmark);
+    editor.nodeChanged();
+  };
+  const handleSpacebar = editor => {
+    const result = parseCurrentLine(editor, -1);
+    if (isNonNullable(result)) {
+      convertToLink(editor, result);
+    }
+  };
+  const handleBracket = handleSpacebar;
+  const handleEnter = editor => {
+    const result = parseCurrentLine(editor, 0);
+    if (isNonNullable(result)) {
+      convertToLink(editor, result);
+    }
+  };
+  const setup = editor => {
+    editor.on('keydown', e => {
+      if (e.keyCode === 13 && !e.isDefaultPrevented()) {
+        handleEnter(editor);
+      }
+    });
+    editor.on('keyup', e => {
+      if (e.keyCode === 32) {
+        handleSpacebar(editor);
+      } else if (e.keyCode === 48 && e.shiftKey || e.keyCode === 221) {
+        handleBracket(editor);
+      }
+    });
+  };
+
+  var Plugin = () => {
+    global$1.add('autolink', editor => {
+      register(editor);
+      setup(editor);
+    });
+  };
+
+  Plugin();
+
+})();
+
+
+/***/ }),
+/* 8 */
+/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+
+// Exports the "autoresize" plugin for usage with module loaders
+// Usage:
+//   CommonJS:
+//     require('tinymce/plugins/autoresize')
+//   ES2015:
+//     import 'tinymce/plugins/autoresize'
+__webpack_require__(9);
+
+/***/ }),
+/* 9 */
+/***/ (() => {
+
+/**
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -71926,7 +73033,7 @@ __webpack_require__(7);
 
 
 /***/ }),
-/* 8 */
+/* 10 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "code" plugin for usage with module loaders
@@ -71935,14 +73042,14 @@ __webpack_require__(7);
 //     require('tinymce/plugins/code')
 //   ES2015:
 //     import 'tinymce/plugins/code'
-__webpack_require__(9);
+__webpack_require__(11);
 
 /***/ }),
-/* 9 */
+/* 11 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -72029,7 +73136,7 @@ __webpack_require__(9);
 
 
 /***/ }),
-/* 10 */
+/* 12 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "directionality" plugin for usage with module loaders
@@ -72038,14 +73145,14 @@ __webpack_require__(9);
 //     require('tinymce/plugins/directionality')
 //   ES2015:
 //     import 'tinymce/plugins/directionality'
-__webpack_require__(11);
+__webpack_require__(13);
 
 /***/ }),
-/* 11 */
+/* 13 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -72209,7 +73316,6 @@ __webpack_require__(11);
       return r;
     };
 
-    const DOCUMENT = 9;
     const DOCUMENT_FRAGMENT = 11;
     const ELEMENT = 1;
     const TEXT = 3;
@@ -72280,12 +73386,9 @@ __webpack_require__(11);
     const isType = t => element => type(element) === t;
     const isElement = isType(ELEMENT);
     const isText = isType(TEXT);
-    const isDocument = isType(DOCUMENT);
     const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
     const isTag = tag => e => isElement(e) && name(e) === tag;
 
-    const owner = element => SugarElement.fromDom(element.dom.ownerDocument);
-    const documentOrOwner = dos => isDocument(dos) ? dos : owner(dos);
     const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
     const children$2 = element => map(element.dom.childNodes, SugarElement.fromDom);
 
@@ -72305,8 +73408,7 @@ __webpack_require__(11);
     };
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getShadowRoot = e => {
       const r = getRootNode(e);
       return isShadowRoot(r) ? Optional.some(r) : Optional.none();
@@ -72442,7 +73544,7 @@ __webpack_require__(11);
 
 
 /***/ }),
-/* 12 */
+/* 14 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "emoticons" plugin for usage with module loaders
@@ -72451,14 +73553,14 @@ __webpack_require__(11);
 //     require('tinymce/plugins/emoticons')
 //   ES2015:
 //     import 'tinymce/plugins/emoticons'
-__webpack_require__(13);
+__webpack_require__(15);
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -73056,13 +74158,13 @@ __webpack_require__(13);
 
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (() => {
 
 window.tinymce.Resource.add("tinymce.plugins.emoticons",{grinning:{keywords:["face","smile","happy","joy",":D","grin"],char:"😀",fitzpatrick_scale:false,category:"people"},grimacing:{keywords:["face","grimace","teeth"],char:"😬",fitzpatrick_scale:false,category:"people"},grin:{keywords:["face","happy","smile","joy","kawaii"],char:"😁",fitzpatrick_scale:false,category:"people"},joy:{keywords:["face","cry","tears","weep","happy","happytears","haha"],char:"😂",fitzpatrick_scale:false,category:"people"},rofl:{keywords:["face","rolling","floor","laughing","lol","haha"],char:"🤣",fitzpatrick_scale:false,category:"people"},partying:{keywords:["face","celebration","woohoo"],char:"🥳",fitzpatrick_scale:false,category:"people"},smiley:{keywords:["face","happy","joy","haha",":D",":)","smile","funny"],char:"😃",fitzpatrick_scale:false,category:"people"},smile:{keywords:["face","happy","joy","funny","haha","laugh","like",":D",":)"],char:"😄",fitzpatrick_scale:false,category:"people"},sweat_smile:{keywords:["face","hot","happy","laugh","sweat","smile","relief"],char:"😅",fitzpatrick_scale:false,category:"people"},laughing:{keywords:["happy","joy","lol","satisfied","haha","face","glad","XD","laugh"],char:"😆",fitzpatrick_scale:false,category:"people"},innocent:{keywords:["face","angel","heaven","halo"],char:"😇",fitzpatrick_scale:false,category:"people"},wink:{keywords:["face","happy","mischievous","secret",";)","smile","eye"],char:"😉",fitzpatrick_scale:false,category:"people"},blush:{keywords:["face","smile","happy","flushed","crush","embarrassed","shy","joy"],char:"😊",fitzpatrick_scale:false,category:"people"},slightly_smiling_face:{keywords:["face","smile"],char:"🙂",fitzpatrick_scale:false,category:"people"},upside_down_face:{keywords:["face","flipped","silly","smile"],char:"🙃",fitzpatrick_scale:false,category:"people"},relaxed:{keywords:["face","blush","massage","happiness"],char:"☺️",fitzpatrick_scale:false,category:"people"},yum:{keywords:["happy","joy","tongue","smile","face","silly","yummy","nom","delicious","savouring"],char:"😋",fitzpatrick_scale:false,category:"people"},relieved:{keywords:["face","relaxed","phew","massage","happiness"],char:"😌",fitzpatrick_scale:false,category:"people"},heart_eyes:{keywords:["face","love","like","affection","valentines","infatuation","crush","heart"],char:"😍",fitzpatrick_scale:false,category:"people"},smiling_face_with_three_hearts:{keywords:["face","love","like","affection","valentines","infatuation","crush","hearts","adore"],char:"🥰",fitzpatrick_scale:false,category:"people"},kissing_heart:{keywords:["face","love","like","affection","valentines","infatuation","kiss"],char:"😘",fitzpatrick_scale:false,category:"people"},kissing:{keywords:["love","like","face","3","valentines","infatuation","kiss"],char:"😗",fitzpatrick_scale:false,category:"people"},kissing_smiling_eyes:{keywords:["face","affection","valentines","infatuation","kiss"],char:"😙",fitzpatrick_scale:false,category:"people"},kissing_closed_eyes:{keywords:["face","love","like","affection","valentines","infatuation","kiss"],char:"😚",fitzpatrick_scale:false,category:"people"},stuck_out_tongue_winking_eye:{keywords:["face","prank","childish","playful","mischievous","smile","wink","tongue"],char:"😜",fitzpatrick_scale:false,category:"people"},zany:{keywords:["face","goofy","crazy"],char:"🤪",fitzpatrick_scale:false,category:"people"},raised_eyebrow:{keywords:["face","distrust","scepticism","disapproval","disbelief","surprise"],char:"🤨",fitzpatrick_scale:false,category:"people"},monocle:{keywords:["face","stuffy","wealthy"],char:"🧐",fitzpatrick_scale:false,category:"people"},stuck_out_tongue_closed_eyes:{keywords:["face","prank","playful","mischievous","smile","tongue"],char:"😝",fitzpatrick_scale:false,category:"people"},stuck_out_tongue:{keywords:["face","prank","childish","playful","mischievous","smile","tongue"],char:"😛",fitzpatrick_scale:false,category:"people"},money_mouth_face:{keywords:["face","rich","dollar","money"],char:"🤑",fitzpatrick_scale:false,category:"people"},nerd_face:{keywords:["face","nerdy","geek","dork"],char:"🤓",fitzpatrick_scale:false,category:"people"},sunglasses:{keywords:["face","cool","smile","summer","beach","sunglass"],char:"😎",fitzpatrick_scale:false,category:"people"},star_struck:{keywords:["face","smile","starry","eyes","grinning"],char:"🤩",fitzpatrick_scale:false,category:"people"},clown_face:{keywords:["face"],char:"🤡",fitzpatrick_scale:false,category:"people"},cowboy_hat_face:{keywords:["face","cowgirl","hat"],char:"🤠",fitzpatrick_scale:false,category:"people"},hugs:{keywords:["face","smile","hug"],char:"🤗",fitzpatrick_scale:false,category:"people"},smirk:{keywords:["face","smile","mean","prank","smug","sarcasm"],char:"😏",fitzpatrick_scale:false,category:"people"},no_mouth:{keywords:["face","hellokitty"],char:"😶",fitzpatrick_scale:false,category:"people"},neutral_face:{keywords:["indifference","meh",":|","neutral"],char:"😐",fitzpatrick_scale:false,category:"people"},expressionless:{keywords:["face","indifferent","-_-","meh","deadpan"],char:"😑",fitzpatrick_scale:false,category:"people"},unamused:{keywords:["indifference","bored","straight face","serious","sarcasm","unimpressed","skeptical","dubious","side_eye"],char:"😒",fitzpatrick_scale:false,category:"people"},roll_eyes:{keywords:["face","eyeroll","frustrated"],char:"🙄",fitzpatrick_scale:false,category:"people"},thinking:{keywords:["face","hmmm","think","consider"],char:"🤔",fitzpatrick_scale:false,category:"people"},lying_face:{keywords:["face","lie","pinocchio"],char:"🤥",fitzpatrick_scale:false,category:"people"},hand_over_mouth:{keywords:["face","whoops","shock","surprise"],char:"🤭",fitzpatrick_scale:false,category:"people"},shushing:{keywords:["face","quiet","shhh"],char:"🤫",fitzpatrick_scale:false,category:"people"},symbols_over_mouth:{keywords:["face","swearing","cursing","cussing","profanity","expletive"],char:"🤬",fitzpatrick_scale:false,category:"people"},exploding_head:{keywords:["face","shocked","mind","blown"],char:"🤯",fitzpatrick_scale:false,category:"people"},flushed:{keywords:["face","blush","shy","flattered"],char:"😳",fitzpatrick_scale:false,category:"people"},disappointed:{keywords:["face","sad","upset","depressed",":("],char:"😞",fitzpatrick_scale:false,category:"people"},worried:{keywords:["face","concern","nervous",":("],char:"😟",fitzpatrick_scale:false,category:"people"},angry:{keywords:["mad","face","annoyed","frustrated"],char:"😠",fitzpatrick_scale:false,category:"people"},rage:{keywords:["angry","mad","hate","despise"],char:"😡",fitzpatrick_scale:false,category:"people"},pensive:{keywords:["face","sad","depressed","upset"],char:"😔",fitzpatrick_scale:false,category:"people"},confused:{keywords:["face","indifference","huh","weird","hmmm",":/"],char:"😕",fitzpatrick_scale:false,category:"people"},slightly_frowning_face:{keywords:["face","frowning","disappointed","sad","upset"],char:"🙁",fitzpatrick_scale:false,category:"people"},frowning_face:{keywords:["face","sad","upset","frown"],char:"☹",fitzpatrick_scale:false,category:"people"},persevere:{keywords:["face","sick","no","upset","oops"],char:"😣",fitzpatrick_scale:false,category:"people"},confounded:{keywords:["face","confused","sick","unwell","oops",":S"],char:"😖",fitzpatrick_scale:false,category:"people"},tired_face:{keywords:["sick","whine","upset","frustrated"],char:"😫",fitzpatrick_scale:false,category:"people"},weary:{keywords:["face","tired","sleepy","sad","frustrated","upset"],char:"😩",fitzpatrick_scale:false,category:"people"},pleading:{keywords:["face","begging","mercy"],char:"🥺",fitzpatrick_scale:false,category:"people"},triumph:{keywords:["face","gas","phew","proud","pride"],char:"😤",fitzpatrick_scale:false,category:"people"},open_mouth:{keywords:["face","surprise","impressed","wow","whoa",":O"],char:"😮",fitzpatrick_scale:false,category:"people"},scream:{keywords:["face","munch","scared","omg"],char:"😱",fitzpatrick_scale:false,category:"people"},fearful:{keywords:["face","scared","terrified","nervous","oops","huh"],char:"😨",fitzpatrick_scale:false,category:"people"},cold_sweat:{keywords:["face","nervous","sweat"],char:"😰",fitzpatrick_scale:false,category:"people"},hushed:{keywords:["face","woo","shh"],char:"😯",fitzpatrick_scale:false,category:"people"},frowning:{keywords:["face","aw","what"],char:"😦",fitzpatrick_scale:false,category:"people"},anguished:{keywords:["face","stunned","nervous"],char:"😧",fitzpatrick_scale:false,category:"people"},cry:{keywords:["face","tears","sad","depressed","upset",":'("],char:"😢",fitzpatrick_scale:false,category:"people"},disappointed_relieved:{keywords:["face","phew","sweat","nervous"],char:"😥",fitzpatrick_scale:false,category:"people"},drooling_face:{keywords:["face"],char:"🤤",fitzpatrick_scale:false,category:"people"},sleepy:{keywords:["face","tired","rest","nap"],char:"😪",fitzpatrick_scale:false,category:"people"},sweat:{keywords:["face","hot","sad","tired","exercise"],char:"😓",fitzpatrick_scale:false,category:"people"},hot:{keywords:["face","feverish","heat","red","sweating"],char:"🥵",fitzpatrick_scale:false,category:"people"},cold:{keywords:["face","blue","freezing","frozen","frostbite","icicles"],char:"🥶",fitzpatrick_scale:false,category:"people"},sob:{keywords:["face","cry","tears","sad","upset","depressed"],char:"😭",fitzpatrick_scale:false,category:"people"},dizzy_face:{keywords:["spent","unconscious","xox","dizzy"],char:"😵",fitzpatrick_scale:false,category:"people"},astonished:{keywords:["face","xox","surprised","poisoned"],char:"😲",fitzpatrick_scale:false,category:"people"},zipper_mouth_face:{keywords:["face","sealed","zipper","secret"],char:"🤐",fitzpatrick_scale:false,category:"people"},nauseated_face:{keywords:["face","vomit","gross","green","sick","throw up","ill"],char:"🤢",fitzpatrick_scale:false,category:"people"},sneezing_face:{keywords:["face","gesundheit","sneeze","sick","allergy"],char:"🤧",fitzpatrick_scale:false,category:"people"},vomiting:{keywords:["face","sick"],char:"🤮",fitzpatrick_scale:false,category:"people"},mask:{keywords:["face","sick","ill","disease"],char:"😷",fitzpatrick_scale:false,category:"people"},face_with_thermometer:{keywords:["sick","temperature","thermometer","cold","fever"],char:"🤒",fitzpatrick_scale:false,category:"people"},face_with_head_bandage:{keywords:["injured","clumsy","bandage","hurt"],char:"🤕",fitzpatrick_scale:false,category:"people"},woozy:{keywords:["face","dizzy","intoxicated","tipsy","wavy"],char:"🥴",fitzpatrick_scale:false,category:"people"},sleeping:{keywords:["face","tired","sleepy","night","zzz"],char:"😴",fitzpatrick_scale:false,category:"people"},zzz:{keywords:["sleepy","tired","dream"],char:"💤",fitzpatrick_scale:false,category:"people"},poop:{keywords:["hankey","shitface","fail","turd","shit"],char:"💩",fitzpatrick_scale:false,category:"people"},smiling_imp:{keywords:["devil","horns"],char:"😈",fitzpatrick_scale:false,category:"people"},imp:{keywords:["devil","angry","horns"],char:"👿",fitzpatrick_scale:false,category:"people"},japanese_ogre:{keywords:["monster","red","mask","halloween","scary","creepy","devil","demon","japanese","ogre"],char:"👹",fitzpatrick_scale:false,category:"people"},japanese_goblin:{keywords:["red","evil","mask","monster","scary","creepy","japanese","goblin"],char:"👺",fitzpatrick_scale:false,category:"people"},skull:{keywords:["dead","skeleton","creepy","death"],char:"💀",fitzpatrick_scale:false,category:"people"},ghost:{keywords:["halloween","spooky","scary"],char:"👻",fitzpatrick_scale:false,category:"people"},alien:{keywords:["UFO","paul","weird","outer_space"],char:"👽",fitzpatrick_scale:false,category:"people"},robot:{keywords:["computer","machine","bot"],char:"🤖",fitzpatrick_scale:false,category:"people"},smiley_cat:{keywords:["animal","cats","happy","smile"],char:"😺",fitzpatrick_scale:false,category:"people"},smile_cat:{keywords:["animal","cats","smile"],char:"😸",fitzpatrick_scale:false,category:"people"},joy_cat:{keywords:["animal","cats","haha","happy","tears"],char:"😹",fitzpatrick_scale:false,category:"people"},heart_eyes_cat:{keywords:["animal","love","like","affection","cats","valentines","heart"],char:"😻",fitzpatrick_scale:false,category:"people"},smirk_cat:{keywords:["animal","cats","smirk"],char:"😼",fitzpatrick_scale:false,category:"people"},kissing_cat:{keywords:["animal","cats","kiss"],char:"😽",fitzpatrick_scale:false,category:"people"},scream_cat:{keywords:["animal","cats","munch","scared","scream"],char:"🙀",fitzpatrick_scale:false,category:"people"},crying_cat_face:{keywords:["animal","tears","weep","sad","cats","upset","cry"],char:"😿",fitzpatrick_scale:false,category:"people"},pouting_cat:{keywords:["animal","cats"],char:"😾",fitzpatrick_scale:false,category:"people"},palms_up:{keywords:["hands","gesture","cupped","prayer"],char:"🤲",fitzpatrick_scale:true,category:"people"},raised_hands:{keywords:["gesture","hooray","yea","celebration","hands"],char:"🙌",fitzpatrick_scale:true,category:"people"},clap:{keywords:["hands","praise","applause","congrats","yay"],char:"👏",fitzpatrick_scale:true,category:"people"},wave:{keywords:["hands","gesture","goodbye","solong","farewell","hello","hi","palm"],char:"👋",fitzpatrick_scale:true,category:"people"},call_me_hand:{keywords:["hands","gesture"],char:"🤙",fitzpatrick_scale:true,category:"people"},"+1":{keywords:["thumbsup","yes","awesome","good","agree","accept","cool","hand","like"],char:"👍",fitzpatrick_scale:true,category:"people"},"-1":{keywords:["thumbsdown","no","dislike","hand"],char:"👎",fitzpatrick_scale:true,category:"people"},facepunch:{keywords:["angry","violence","fist","hit","attack","hand"],char:"👊",fitzpatrick_scale:true,category:"people"},fist:{keywords:["fingers","hand","grasp"],char:"✊",fitzpatrick_scale:true,category:"people"},fist_left:{keywords:["hand","fistbump"],char:"🤛",fitzpatrick_scale:true,category:"people"},fist_right:{keywords:["hand","fistbump"],char:"🤜",fitzpatrick_scale:true,category:"people"},v:{keywords:["fingers","ohyeah","hand","peace","victory","two"],char:"✌",fitzpatrick_scale:true,category:"people"},ok_hand:{keywords:["fingers","limbs","perfect","ok","okay"],char:"👌",fitzpatrick_scale:true,category:"people"},raised_hand:{keywords:["fingers","stop","highfive","palm","ban"],char:"✋",fitzpatrick_scale:true,category:"people"},raised_back_of_hand:{keywords:["fingers","raised","backhand"],char:"🤚",fitzpatrick_scale:true,category:"people"},open_hands:{keywords:["fingers","butterfly","hands","open"],char:"👐",fitzpatrick_scale:true,category:"people"},muscle:{keywords:["arm","flex","hand","summer","strong","biceps"],char:"💪",fitzpatrick_scale:true,category:"people"},pray:{keywords:["please","hope","wish","namaste","highfive"],char:"🙏",fitzpatrick_scale:true,category:"people"},foot:{keywords:["kick","stomp"],char:"🦶",fitzpatrick_scale:true,category:"people"},leg:{keywords:["kick","limb"],char:"🦵",fitzpatrick_scale:true,category:"people"},handshake:{keywords:["agreement","shake"],char:"🤝",fitzpatrick_scale:false,category:"people"},point_up:{keywords:["hand","fingers","direction","up"],char:"☝",fitzpatrick_scale:true,category:"people"},point_up_2:{keywords:["fingers","hand","direction","up"],char:"👆",fitzpatrick_scale:true,category:"people"},point_down:{keywords:["fingers","hand","direction","down"],char:"👇",fitzpatrick_scale:true,category:"people"},point_left:{keywords:["direction","fingers","hand","left"],char:"👈",fitzpatrick_scale:true,category:"people"},point_right:{keywords:["fingers","hand","direction","right"],char:"👉",fitzpatrick_scale:true,category:"people"},fu:{keywords:["hand","fingers","rude","middle","flipping"],char:"🖕",fitzpatrick_scale:true,category:"people"},raised_hand_with_fingers_splayed:{keywords:["hand","fingers","palm"],char:"🖐",fitzpatrick_scale:true,category:"people"},love_you:{keywords:["hand","fingers","gesture"],char:"🤟",fitzpatrick_scale:true,category:"people"},metal:{keywords:["hand","fingers","evil_eye","sign_of_horns","rock_on"],char:"🤘",fitzpatrick_scale:true,category:"people"},crossed_fingers:{keywords:["good","lucky"],char:"🤞",fitzpatrick_scale:true,category:"people"},vulcan_salute:{keywords:["hand","fingers","spock","star trek"],char:"🖖",fitzpatrick_scale:true,category:"people"},writing_hand:{keywords:["lower_left_ballpoint_pen","stationery","write","compose"],char:"✍",fitzpatrick_scale:true,category:"people"},selfie:{keywords:["camera","phone"],char:"🤳",fitzpatrick_scale:true,category:"people"},nail_care:{keywords:["beauty","manicure","finger","fashion","nail"],char:"💅",fitzpatrick_scale:true,category:"people"},lips:{keywords:["mouth","kiss"],char:"👄",fitzpatrick_scale:false,category:"people"},tooth:{keywords:["teeth","dentist"],char:"🦷",fitzpatrick_scale:false,category:"people"},tongue:{keywords:["mouth","playful"],char:"👅",fitzpatrick_scale:false,category:"people"},ear:{keywords:["face","hear","sound","listen"],char:"👂",fitzpatrick_scale:true,category:"people"},nose:{keywords:["smell","sniff"],char:"👃",fitzpatrick_scale:true,category:"people"},eye:{keywords:["face","look","see","watch","stare"],char:"👁",fitzpatrick_scale:false,category:"people"},eyes:{keywords:["look","watch","stalk","peek","see"],char:"👀",fitzpatrick_scale:false,category:"people"},brain:{keywords:["smart","intelligent"],char:"🧠",fitzpatrick_scale:false,category:"people"},bust_in_silhouette:{keywords:["user","person","human"],char:"👤",fitzpatrick_scale:false,category:"people"},busts_in_silhouette:{keywords:["user","person","human","group","team"],char:"👥",fitzpatrick_scale:false,category:"people"},speaking_head:{keywords:["user","person","human","sing","say","talk"],char:"🗣",fitzpatrick_scale:false,category:"people"},baby:{keywords:["child","boy","girl","toddler"],char:"👶",fitzpatrick_scale:true,category:"people"},child:{keywords:["gender-neutral","young"],char:"🧒",fitzpatrick_scale:true,category:"people"},boy:{keywords:["man","male","guy","teenager"],char:"👦",fitzpatrick_scale:true,category:"people"},girl:{keywords:["female","woman","teenager"],char:"👧",fitzpatrick_scale:true,category:"people"},adult:{keywords:["gender-neutral","person"],char:"🧑",fitzpatrick_scale:true,category:"people"},man:{keywords:["mustache","father","dad","guy","classy","sir","moustache"],char:"👨",fitzpatrick_scale:true,category:"people"},woman:{keywords:["female","girls","lady"],char:"👩",fitzpatrick_scale:true,category:"people"},blonde_woman:{keywords:["woman","female","girl","blonde","person"],char:"👱‍♀️",fitzpatrick_scale:true,category:"people"},blonde_man:{keywords:["man","male","boy","blonde","guy","person"],char:"👱",fitzpatrick_scale:true,category:"people"},bearded_person:{keywords:["person","bewhiskered"],char:"🧔",fitzpatrick_scale:true,category:"people"},older_adult:{keywords:["human","elder","senior","gender-neutral"],char:"🧓",fitzpatrick_scale:true,category:"people"},older_man:{keywords:["human","male","men","old","elder","senior"],char:"👴",fitzpatrick_scale:true,category:"people"},older_woman:{keywords:["human","female","women","lady","old","elder","senior"],char:"👵",fitzpatrick_scale:true,category:"people"},man_with_gua_pi_mao:{keywords:["male","boy","chinese"],char:"👲",fitzpatrick_scale:true,category:"people"},woman_with_headscarf:{keywords:["female","hijab","mantilla","tichel"],char:"🧕",fitzpatrick_scale:true,category:"people"},woman_with_turban:{keywords:["female","indian","hinduism","arabs","woman"],char:"👳‍♀️",fitzpatrick_scale:true,category:"people"},man_with_turban:{keywords:["male","indian","hinduism","arabs"],char:"👳",fitzpatrick_scale:true,category:"people"},policewoman:{keywords:["woman","police","law","legal","enforcement","arrest","911","female"],char:"👮‍♀️",fitzpatrick_scale:true,category:"people"},policeman:{keywords:["man","police","law","legal","enforcement","arrest","911"],char:"👮",fitzpatrick_scale:true,category:"people"},construction_worker_woman:{keywords:["female","human","wip","build","construction","worker","labor","woman"],char:"👷‍♀️",fitzpatrick_scale:true,category:"people"},construction_worker_man:{keywords:["male","human","wip","guy","build","construction","worker","labor"],char:"👷",fitzpatrick_scale:true,category:"people"},guardswoman:{keywords:["uk","gb","british","female","royal","woman"],char:"💂‍♀️",fitzpatrick_scale:true,category:"people"},guardsman:{keywords:["uk","gb","british","male","guy","royal"],char:"💂",fitzpatrick_scale:true,category:"people"},female_detective:{keywords:["human","spy","detective","female","woman"],char:"🕵️‍♀️",fitzpatrick_scale:true,category:"people"},male_detective:{keywords:["human","spy","detective"],char:"🕵",fitzpatrick_scale:true,category:"people"},woman_health_worker:{keywords:["doctor","nurse","therapist","healthcare","woman","human"],char:"👩‍⚕️",fitzpatrick_scale:true,category:"people"},man_health_worker:{keywords:["doctor","nurse","therapist","healthcare","man","human"],char:"👨‍⚕️",fitzpatrick_scale:true,category:"people"},woman_farmer:{keywords:["rancher","gardener","woman","human"],char:"👩‍🌾",fitzpatrick_scale:true,category:"people"},man_farmer:{keywords:["rancher","gardener","man","human"],char:"👨‍🌾",fitzpatrick_scale:true,category:"people"},woman_cook:{keywords:["chef","woman","human"],char:"👩‍🍳",fitzpatrick_scale:true,category:"people"},man_cook:{keywords:["chef","man","human"],char:"👨‍🍳",fitzpatrick_scale:true,category:"people"},woman_student:{keywords:["graduate","woman","human"],char:"👩‍🎓",fitzpatrick_scale:true,category:"people"},man_student:{keywords:["graduate","man","human"],char:"👨‍🎓",fitzpatrick_scale:true,category:"people"},woman_singer:{keywords:["rockstar","entertainer","woman","human"],char:"👩‍🎤",fitzpatrick_scale:true,category:"people"},man_singer:{keywords:["rockstar","entertainer","man","human"],char:"👨‍🎤",fitzpatrick_scale:true,category:"people"},woman_teacher:{keywords:["instructor","professor","woman","human"],char:"👩‍🏫",fitzpatrick_scale:true,category:"people"},man_teacher:{keywords:["instructor","professor","man","human"],char:"👨‍🏫",fitzpatrick_scale:true,category:"people"},woman_factory_worker:{keywords:["assembly","industrial","woman","human"],char:"👩‍🏭",fitzpatrick_scale:true,category:"people"},man_factory_worker:{keywords:["assembly","industrial","man","human"],char:"👨‍🏭",fitzpatrick_scale:true,category:"people"},woman_technologist:{keywords:["coder","developer","engineer","programmer","software","woman","human","laptop","computer"],char:"👩‍💻",fitzpatrick_scale:true,category:"people"},man_technologist:{keywords:["coder","developer","engineer","programmer","software","man","human","laptop","computer"],char:"👨‍💻",fitzpatrick_scale:true,category:"people"},woman_office_worker:{keywords:["business","manager","woman","human"],char:"👩‍💼",fitzpatrick_scale:true,category:"people"},man_office_worker:{keywords:["business","manager","man","human"],char:"👨‍💼",fitzpatrick_scale:true,category:"people"},woman_mechanic:{keywords:["plumber","woman","human","wrench"],char:"👩‍🔧",fitzpatrick_scale:true,category:"people"},man_mechanic:{keywords:["plumber","man","human","wrench"],char:"👨‍🔧",fitzpatrick_scale:true,category:"people"},woman_scientist:{keywords:["biologist","chemist","engineer","physicist","woman","human"],char:"👩‍🔬",fitzpatrick_scale:true,category:"people"},man_scientist:{keywords:["biologist","chemist","engineer","physicist","man","human"],char:"👨‍🔬",fitzpatrick_scale:true,category:"people"},woman_artist:{keywords:["painter","woman","human"],char:"👩‍🎨",fitzpatrick_scale:true,category:"people"},man_artist:{keywords:["painter","man","human"],char:"👨‍🎨",fitzpatrick_scale:true,category:"people"},woman_firefighter:{keywords:["fireman","woman","human"],char:"👩‍🚒",fitzpatrick_scale:true,category:"people"},man_firefighter:{keywords:["fireman","man","human"],char:"👨‍🚒",fitzpatrick_scale:true,category:"people"},woman_pilot:{keywords:["aviator","plane","woman","human"],char:"👩‍✈️",fitzpatrick_scale:true,category:"people"},man_pilot:{keywords:["aviator","plane","man","human"],char:"👨‍✈️",fitzpatrick_scale:true,category:"people"},woman_astronaut:{keywords:["space","rocket","woman","human"],char:"👩‍🚀",fitzpatrick_scale:true,category:"people"},man_astronaut:{keywords:["space","rocket","man","human"],char:"👨‍🚀",fitzpatrick_scale:true,category:"people"},woman_judge:{keywords:["justice","court","woman","human"],char:"👩‍⚖️",fitzpatrick_scale:true,category:"people"},man_judge:{keywords:["justice","court","man","human"],char:"👨‍⚖️",fitzpatrick_scale:true,category:"people"},woman_superhero:{keywords:["woman","female","good","heroine","superpowers"],char:"🦸‍♀️",fitzpatrick_scale:true,category:"people"},man_superhero:{keywords:["man","male","good","hero","superpowers"],char:"🦸‍♂️",fitzpatrick_scale:true,category:"people"},woman_supervillain:{keywords:["woman","female","evil","bad","criminal","heroine","superpowers"],char:"🦹‍♀️",fitzpatrick_scale:true,category:"people"},man_supervillain:{keywords:["man","male","evil","bad","criminal","hero","superpowers"],char:"🦹‍♂️",fitzpatrick_scale:true,category:"people"},mrs_claus:{keywords:["woman","female","xmas","mother christmas"],char:"🤶",fitzpatrick_scale:true,category:"people"},santa:{keywords:["festival","man","male","xmas","father christmas"],char:"🎅",fitzpatrick_scale:true,category:"people"},sorceress:{keywords:["woman","female","mage","witch"],char:"🧙‍♀️",fitzpatrick_scale:true,category:"people"},wizard:{keywords:["man","male","mage","sorcerer"],char:"🧙‍♂️",fitzpatrick_scale:true,category:"people"},woman_elf:{keywords:["woman","female"],char:"🧝‍♀️",fitzpatrick_scale:true,category:"people"},man_elf:{keywords:["man","male"],char:"🧝‍♂️",fitzpatrick_scale:true,category:"people"},woman_vampire:{keywords:["woman","female"],char:"🧛‍♀️",fitzpatrick_scale:true,category:"people"},man_vampire:{keywords:["man","male","dracula"],char:"🧛‍♂️",fitzpatrick_scale:true,category:"people"},woman_zombie:{keywords:["woman","female","undead","walking dead"],char:"🧟‍♀️",fitzpatrick_scale:false,category:"people"},man_zombie:{keywords:["man","male","dracula","undead","walking dead"],char:"🧟‍♂️",fitzpatrick_scale:false,category:"people"},woman_genie:{keywords:["woman","female"],char:"🧞‍♀️",fitzpatrick_scale:false,category:"people"},man_genie:{keywords:["man","male"],char:"🧞‍♂️",fitzpatrick_scale:false,category:"people"},mermaid:{keywords:["woman","female","merwoman","ariel"],char:"🧜‍♀️",fitzpatrick_scale:true,category:"people"},merman:{keywords:["man","male","triton"],char:"🧜‍♂️",fitzpatrick_scale:true,category:"people"},woman_fairy:{keywords:["woman","female"],char:"🧚‍♀️",fitzpatrick_scale:true,category:"people"},man_fairy:{keywords:["man","male"],char:"🧚‍♂️",fitzpatrick_scale:true,category:"people"},angel:{keywords:["heaven","wings","halo"],char:"👼",fitzpatrick_scale:true,category:"people"},pregnant_woman:{keywords:["baby"],char:"🤰",fitzpatrick_scale:true,category:"people"},breastfeeding:{keywords:["nursing","baby"],char:"🤱",fitzpatrick_scale:true,category:"people"},princess:{keywords:["girl","woman","female","blond","crown","royal","queen"],char:"👸",fitzpatrick_scale:true,category:"people"},prince:{keywords:["boy","man","male","crown","royal","king"],char:"🤴",fitzpatrick_scale:true,category:"people"},bride_with_veil:{keywords:["couple","marriage","wedding","woman","bride"],char:"👰",fitzpatrick_scale:true,category:"people"},man_in_tuxedo:{keywords:["couple","marriage","wedding","groom"],char:"🤵",fitzpatrick_scale:true,category:"people"},running_woman:{keywords:["woman","walking","exercise","race","running","female"],char:"🏃‍♀️",fitzpatrick_scale:true,category:"people"},running_man:{keywords:["man","walking","exercise","race","running"],char:"🏃",fitzpatrick_scale:true,category:"people"},walking_woman:{keywords:["human","feet","steps","woman","female"],char:"🚶‍♀️",fitzpatrick_scale:true,category:"people"},walking_man:{keywords:["human","feet","steps"],char:"🚶",fitzpatrick_scale:true,category:"people"},dancer:{keywords:["female","girl","woman","fun"],char:"💃",fitzpatrick_scale:true,category:"people"},man_dancing:{keywords:["male","boy","fun","dancer"],char:"🕺",fitzpatrick_scale:true,category:"people"},dancing_women:{keywords:["female","bunny","women","girls"],char:"👯",fitzpatrick_scale:false,category:"people"},dancing_men:{keywords:["male","bunny","men","boys"],char:"👯‍♂️",fitzpatrick_scale:false,category:"people"},couple:{keywords:["pair","people","human","love","date","dating","like","affection","valentines","marriage"],char:"👫",fitzpatrick_scale:false,category:"people"},two_men_holding_hands:{keywords:["pair","couple","love","like","bromance","friendship","people","human"],char:"👬",fitzpatrick_scale:false,category:"people"},two_women_holding_hands:{keywords:["pair","friendship","couple","love","like","female","people","human"],char:"👭",fitzpatrick_scale:false,category:"people"},bowing_woman:{keywords:["woman","female","girl"],char:"🙇‍♀️",fitzpatrick_scale:true,category:"people"},bowing_man:{keywords:["man","male","boy"],char:"🙇",fitzpatrick_scale:true,category:"people"},man_facepalming:{keywords:["man","male","boy","disbelief"],char:"🤦‍♂️",fitzpatrick_scale:true,category:"people"},woman_facepalming:{keywords:["woman","female","girl","disbelief"],char:"🤦‍♀️",fitzpatrick_scale:true,category:"people"},woman_shrugging:{keywords:["woman","female","girl","confused","indifferent","doubt"],char:"🤷",fitzpatrick_scale:true,category:"people"},man_shrugging:{keywords:["man","male","boy","confused","indifferent","doubt"],char:"🤷‍♂️",fitzpatrick_scale:true,category:"people"},tipping_hand_woman:{keywords:["female","girl","woman","human","information"],char:"💁",fitzpatrick_scale:true,category:"people"},tipping_hand_man:{keywords:["male","boy","man","human","information"],char:"💁‍♂️",fitzpatrick_scale:true,category:"people"},no_good_woman:{keywords:["female","girl","woman","nope"],char:"🙅",fitzpatrick_scale:true,category:"people"},no_good_man:{keywords:["male","boy","man","nope"],char:"🙅‍♂️",fitzpatrick_scale:true,category:"people"},ok_woman:{keywords:["women","girl","female","pink","human","woman"],char:"🙆",fitzpatrick_scale:true,category:"people"},ok_man:{keywords:["men","boy","male","blue","human","man"],char:"🙆‍♂️",fitzpatrick_scale:true,category:"people"},raising_hand_woman:{keywords:["female","girl","woman"],char:"🙋",fitzpatrick_scale:true,category:"people"},raising_hand_man:{keywords:["male","boy","man"],char:"🙋‍♂️",fitzpatrick_scale:true,category:"people"},pouting_woman:{keywords:["female","girl","woman"],char:"🙎",fitzpatrick_scale:true,category:"people"},pouting_man:{keywords:["male","boy","man"],char:"🙎‍♂️",fitzpatrick_scale:true,category:"people"},frowning_woman:{keywords:["female","girl","woman","sad","depressed","discouraged","unhappy"],char:"🙍",fitzpatrick_scale:true,category:"people"},frowning_man:{keywords:["male","boy","man","sad","depressed","discouraged","unhappy"],char:"🙍‍♂️",fitzpatrick_scale:true,category:"people"},haircut_woman:{keywords:["female","girl","woman"],char:"💇",fitzpatrick_scale:true,category:"people"},haircut_man:{keywords:["male","boy","man"],char:"💇‍♂️",fitzpatrick_scale:true,category:"people"},massage_woman:{keywords:["female","girl","woman","head"],char:"💆",fitzpatrick_scale:true,category:"people"},massage_man:{keywords:["male","boy","man","head"],char:"💆‍♂️",fitzpatrick_scale:true,category:"people"},woman_in_steamy_room:{keywords:["female","woman","spa","steamroom","sauna"],char:"🧖‍♀️",fitzpatrick_scale:true,category:"people"},man_in_steamy_room:{keywords:["male","man","spa","steamroom","sauna"],char:"🧖‍♂️",fitzpatrick_scale:true,category:"people"},couple_with_heart_woman_man:{keywords:["pair","love","like","affection","human","dating","valentines","marriage"],char:"💑",fitzpatrick_scale:false,category:"people"},couple_with_heart_woman_woman:{keywords:["pair","love","like","affection","human","dating","valentines","marriage"],char:"👩‍❤️‍👩",fitzpatrick_scale:false,category:"people"},couple_with_heart_man_man:{keywords:["pair","love","like","affection","human","dating","valentines","marriage"],char:"👨‍❤️‍👨",fitzpatrick_scale:false,category:"people"},couplekiss_man_woman:{keywords:["pair","valentines","love","like","dating","marriage"],char:"💏",fitzpatrick_scale:false,category:"people"},couplekiss_woman_woman:{keywords:["pair","valentines","love","like","dating","marriage"],char:"👩‍❤️‍💋‍👩",fitzpatrick_scale:false,category:"people"},couplekiss_man_man:{keywords:["pair","valentines","love","like","dating","marriage"],char:"👨‍❤️‍💋‍👨",fitzpatrick_scale:false,category:"people"},family_man_woman_boy:{keywords:["home","parents","child","mom","dad","father","mother","people","human"],char:"👪",fitzpatrick_scale:false,category:"people"},family_man_woman_girl:{keywords:["home","parents","people","human","child"],char:"👨‍👩‍👧",fitzpatrick_scale:false,category:"people"},family_man_woman_girl_boy:{keywords:["home","parents","people","human","children"],char:"👨‍👩‍👧‍👦",fitzpatrick_scale:false,category:"people"},family_man_woman_boy_boy:{keywords:["home","parents","people","human","children"],char:"👨‍👩‍👦‍👦",fitzpatrick_scale:false,category:"people"},family_man_woman_girl_girl:{keywords:["home","parents","people","human","children"],char:"👨‍👩‍👧‍👧",fitzpatrick_scale:false,category:"people"},family_woman_woman_boy:{keywords:["home","parents","people","human","children"],char:"👩‍👩‍👦",fitzpatrick_scale:false,category:"people"},family_woman_woman_girl:{keywords:["home","parents","people","human","children"],char:"👩‍👩‍👧",fitzpatrick_scale:false,category:"people"},family_woman_woman_girl_boy:{keywords:["home","parents","people","human","children"],char:"👩‍👩‍👧‍👦",fitzpatrick_scale:false,category:"people"},family_woman_woman_boy_boy:{keywords:["home","parents","people","human","children"],char:"👩‍👩‍👦‍👦",fitzpatrick_scale:false,category:"people"},family_woman_woman_girl_girl:{keywords:["home","parents","people","human","children"],char:"👩‍👩‍👧‍👧",fitzpatrick_scale:false,category:"people"},family_man_man_boy:{keywords:["home","parents","people","human","children"],char:"👨‍👨‍👦",fitzpatrick_scale:false,category:"people"},family_man_man_girl:{keywords:["home","parents","people","human","children"],char:"👨‍👨‍👧",fitzpatrick_scale:false,category:"people"},family_man_man_girl_boy:{keywords:["home","parents","people","human","children"],char:"👨‍👨‍👧‍👦",fitzpatrick_scale:false,category:"people"},family_man_man_boy_boy:{keywords:["home","parents","people","human","children"],char:"👨‍👨‍👦‍👦",fitzpatrick_scale:false,category:"people"},family_man_man_girl_girl:{keywords:["home","parents","people","human","children"],char:"👨‍👨‍👧‍👧",fitzpatrick_scale:false,category:"people"},family_woman_boy:{keywords:["home","parent","people","human","child"],char:"👩‍👦",fitzpatrick_scale:false,category:"people"},family_woman_girl:{keywords:["home","parent","people","human","child"],char:"👩‍👧",fitzpatrick_scale:false,category:"people"},family_woman_girl_boy:{keywords:["home","parent","people","human","children"],char:"👩‍👧‍👦",fitzpatrick_scale:false,category:"people"},family_woman_boy_boy:{keywords:["home","parent","people","human","children"],char:"👩‍👦‍👦",fitzpatrick_scale:false,category:"people"},family_woman_girl_girl:{keywords:["home","parent","people","human","children"],char:"👩‍👧‍👧",fitzpatrick_scale:false,category:"people"},family_man_boy:{keywords:["home","parent","people","human","child"],char:"👨‍👦",fitzpatrick_scale:false,category:"people"},family_man_girl:{keywords:["home","parent","people","human","child"],char:"👨‍👧",fitzpatrick_scale:false,category:"people"},family_man_girl_boy:{keywords:["home","parent","people","human","children"],char:"👨‍👧‍👦",fitzpatrick_scale:false,category:"people"},family_man_boy_boy:{keywords:["home","parent","people","human","children"],char:"👨‍👦‍👦",fitzpatrick_scale:false,category:"people"},family_man_girl_girl:{keywords:["home","parent","people","human","children"],char:"👨‍👧‍👧",fitzpatrick_scale:false,category:"people"},yarn:{keywords:["ball","crochet","knit"],char:"🧶",fitzpatrick_scale:false,category:"people"},thread:{keywords:["needle","sewing","spool","string"],char:"🧵",fitzpatrick_scale:false,category:"people"},coat:{keywords:["jacket"],char:"🧥",fitzpatrick_scale:false,category:"people"},labcoat:{keywords:["doctor","experiment","scientist","chemist"],char:"🥼",fitzpatrick_scale:false,category:"people"},womans_clothes:{keywords:["fashion","shopping_bags","female"],char:"👚",fitzpatrick_scale:false,category:"people"},tshirt:{keywords:["fashion","cloth","casual","shirt","tee"],char:"👕",fitzpatrick_scale:false,category:"people"},jeans:{keywords:["fashion","shopping"],char:"👖",fitzpatrick_scale:false,category:"people"},necktie:{keywords:["shirt","suitup","formal","fashion","cloth","business"],char:"👔",fitzpatrick_scale:false,category:"people"},dress:{keywords:["clothes","fashion","shopping"],char:"👗",fitzpatrick_scale:false,category:"people"},bikini:{keywords:["swimming","female","woman","girl","fashion","beach","summer"],char:"👙",fitzpatrick_scale:false,category:"people"},kimono:{keywords:["dress","fashion","women","female","japanese"],char:"👘",fitzpatrick_scale:false,category:"people"},lipstick:{keywords:["female","girl","fashion","woman"],char:"💄",fitzpatrick_scale:false,category:"people"},kiss:{keywords:["face","lips","love","like","affection","valentines"],char:"💋",fitzpatrick_scale:false,category:"people"},footprints:{keywords:["feet","tracking","walking","beach"],char:"👣",fitzpatrick_scale:false,category:"people"},flat_shoe:{keywords:["ballet","slip-on","slipper"],char:"🥿",fitzpatrick_scale:false,category:"people"},high_heel:{keywords:["fashion","shoes","female","pumps","stiletto"],char:"👠",fitzpatrick_scale:false,category:"people"},sandal:{keywords:["shoes","fashion","flip flops"],char:"👡",fitzpatrick_scale:false,category:"people"},boot:{keywords:["shoes","fashion"],char:"👢",fitzpatrick_scale:false,category:"people"},mans_shoe:{keywords:["fashion","male"],char:"👞",fitzpatrick_scale:false,category:"people"},athletic_shoe:{keywords:["shoes","sports","sneakers"],char:"👟",fitzpatrick_scale:false,category:"people"},hiking_boot:{keywords:["backpacking","camping","hiking"],char:"🥾",fitzpatrick_scale:false,category:"people"},socks:{keywords:["stockings","clothes"],char:"🧦",fitzpatrick_scale:false,category:"people"},gloves:{keywords:["hands","winter","clothes"],char:"🧤",fitzpatrick_scale:false,category:"people"},scarf:{keywords:["neck","winter","clothes"],char:"🧣",fitzpatrick_scale:false,category:"people"},womans_hat:{keywords:["fashion","accessories","female","lady","spring"],char:"👒",fitzpatrick_scale:false,category:"people"},tophat:{keywords:["magic","gentleman","classy","circus"],char:"🎩",fitzpatrick_scale:false,category:"people"},billed_hat:{keywords:["cap","baseball"],char:"🧢",fitzpatrick_scale:false,category:"people"},rescue_worker_helmet:{keywords:["construction","build"],char:"⛑",fitzpatrick_scale:false,category:"people"},mortar_board:{keywords:["school","college","degree","university","graduation","cap","hat","legal","learn","education"],char:"🎓",fitzpatrick_scale:false,category:"people"},crown:{keywords:["king","kod","leader","royalty","lord"],char:"👑",fitzpatrick_scale:false,category:"people"},school_satchel:{keywords:["student","education","bag","backpack"],char:"🎒",fitzpatrick_scale:false,category:"people"},luggage:{keywords:["packing","travel"],char:"🧳",fitzpatrick_scale:false,category:"people"},pouch:{keywords:["bag","accessories","shopping"],char:"👝",fitzpatrick_scale:false,category:"people"},purse:{keywords:["fashion","accessories","money","sales","shopping"],char:"👛",fitzpatrick_scale:false,category:"people"},handbag:{keywords:["fashion","accessory","accessories","shopping"],char:"👜",fitzpatrick_scale:false,category:"people"},briefcase:{keywords:["business","documents","work","law","legal","job","career"],char:"💼",fitzpatrick_scale:false,category:"people"},eyeglasses:{keywords:["fashion","accessories","eyesight","nerdy","dork","geek"],char:"👓",fitzpatrick_scale:false,category:"people"},dark_sunglasses:{keywords:["face","cool","accessories"],char:"🕶",fitzpatrick_scale:false,category:"people"},goggles:{keywords:["eyes","protection","safety"],char:"🥽",fitzpatrick_scale:false,category:"people"},ring:{keywords:["wedding","propose","marriage","valentines","diamond","fashion","jewelry","gem","engagement"],char:"💍",fitzpatrick_scale:false,category:"people"},closed_umbrella:{keywords:["weather","rain","drizzle"],char:"🌂",fitzpatrick_scale:false,category:"people"},dog:{keywords:["animal","friend","nature","woof","puppy","pet","faithful"],char:"🐶",fitzpatrick_scale:false,category:"animals_and_nature"},cat:{keywords:["animal","meow","nature","pet","kitten"],char:"🐱",fitzpatrick_scale:false,category:"animals_and_nature"},mouse:{keywords:["animal","nature","cheese_wedge","rodent"],char:"🐭",fitzpatrick_scale:false,category:"animals_and_nature"},hamster:{keywords:["animal","nature"],char:"🐹",fitzpatrick_scale:false,category:"animals_and_nature"},rabbit:{keywords:["animal","nature","pet","spring","magic","bunny"],char:"🐰",fitzpatrick_scale:false,category:"animals_and_nature"},fox_face:{keywords:["animal","nature","face"],char:"🦊",fitzpatrick_scale:false,category:"animals_and_nature"},bear:{keywords:["animal","nature","wild"],char:"🐻",fitzpatrick_scale:false,category:"animals_and_nature"},panda_face:{keywords:["animal","nature","panda"],char:"🐼",fitzpatrick_scale:false,category:"animals_and_nature"},koala:{keywords:["animal","nature"],char:"🐨",fitzpatrick_scale:false,category:"animals_and_nature"},tiger:{keywords:["animal","cat","danger","wild","nature","roar"],char:"🐯",fitzpatrick_scale:false,category:"animals_and_nature"},lion:{keywords:["animal","nature"],char:"🦁",fitzpatrick_scale:false,category:"animals_and_nature"},cow:{keywords:["beef","ox","animal","nature","moo","milk"],char:"🐮",fitzpatrick_scale:false,category:"animals_and_nature"},pig:{keywords:["animal","oink","nature"],char:"🐷",fitzpatrick_scale:false,category:"animals_and_nature"},pig_nose:{keywords:["animal","oink"],char:"🐽",fitzpatrick_scale:false,category:"animals_and_nature"},frog:{keywords:["animal","nature","croak","toad"],char:"🐸",fitzpatrick_scale:false,category:"animals_and_nature"},squid:{keywords:["animal","nature","ocean","sea"],char:"🦑",fitzpatrick_scale:false,category:"animals_and_nature"},octopus:{keywords:["animal","creature","ocean","sea","nature","beach"],char:"🐙",fitzpatrick_scale:false,category:"animals_and_nature"},shrimp:{keywords:["animal","ocean","nature","seafood"],char:"🦐",fitzpatrick_scale:false,category:"animals_and_nature"},monkey_face:{keywords:["animal","nature","circus"],char:"🐵",fitzpatrick_scale:false,category:"animals_and_nature"},gorilla:{keywords:["animal","nature","circus"],char:"🦍",fitzpatrick_scale:false,category:"animals_and_nature"},see_no_evil:{keywords:["monkey","animal","nature","haha"],char:"🙈",fitzpatrick_scale:false,category:"animals_and_nature"},hear_no_evil:{keywords:["animal","monkey","nature"],char:"🙉",fitzpatrick_scale:false,category:"animals_and_nature"},speak_no_evil:{keywords:["monkey","animal","nature","omg"],char:"🙊",fitzpatrick_scale:false,category:"animals_and_nature"},monkey:{keywords:["animal","nature","banana","circus"],char:"🐒",fitzpatrick_scale:false,category:"animals_and_nature"},chicken:{keywords:["animal","cluck","nature","bird"],char:"🐔",fitzpatrick_scale:false,category:"animals_and_nature"},penguin:{keywords:["animal","nature"],char:"🐧",fitzpatrick_scale:false,category:"animals_and_nature"},bird:{keywords:["animal","nature","fly","tweet","spring"],char:"🐦",fitzpatrick_scale:false,category:"animals_and_nature"},baby_chick:{keywords:["animal","chicken","bird"],char:"🐤",fitzpatrick_scale:false,category:"animals_and_nature"},hatching_chick:{keywords:["animal","chicken","egg","born","baby","bird"],char:"🐣",fitzpatrick_scale:false,category:"animals_and_nature"},hatched_chick:{keywords:["animal","chicken","baby","bird"],char:"🐥",fitzpatrick_scale:false,category:"animals_and_nature"},duck:{keywords:["animal","nature","bird","mallard"],char:"🦆",fitzpatrick_scale:false,category:"animals_and_nature"},eagle:{keywords:["animal","nature","bird"],char:"🦅",fitzpatrick_scale:false,category:"animals_and_nature"},owl:{keywords:["animal","nature","bird","hoot"],char:"🦉",fitzpatrick_scale:false,category:"animals_and_nature"},bat:{keywords:["animal","nature","blind","vampire"],char:"🦇",fitzpatrick_scale:false,category:"animals_and_nature"},wolf:{keywords:["animal","nature","wild"],char:"🐺",fitzpatrick_scale:false,category:"animals_and_nature"},boar:{keywords:["animal","nature"],char:"🐗",fitzpatrick_scale:false,category:"animals_and_nature"},horse:{keywords:["animal","brown","nature"],char:"🐴",fitzpatrick_scale:false,category:"animals_and_nature"},unicorn:{keywords:["animal","nature","mystical"],char:"🦄",fitzpatrick_scale:false,category:"animals_and_nature"},honeybee:{keywords:["animal","insect","nature","bug","spring","honey"],char:"🐝",fitzpatrick_scale:false,category:"animals_and_nature"},bug:{keywords:["animal","insect","nature","worm"],char:"🐛",fitzpatrick_scale:false,category:"animals_and_nature"},butterfly:{keywords:["animal","insect","nature","caterpillar"],char:"🦋",fitzpatrick_scale:false,category:"animals_and_nature"},snail:{keywords:["slow","animal","shell"],char:"🐌",fitzpatrick_scale:false,category:"animals_and_nature"},beetle:{keywords:["animal","insect","nature","ladybug"],char:"🐞",fitzpatrick_scale:false,category:"animals_and_nature"},ant:{keywords:["animal","insect","nature","bug"],char:"🐜",fitzpatrick_scale:false,category:"animals_and_nature"},grasshopper:{keywords:["animal","cricket","chirp"],char:"🦗",fitzpatrick_scale:false,category:"animals_and_nature"},spider:{keywords:["animal","arachnid"],char:"🕷",fitzpatrick_scale:false,category:"animals_and_nature"},scorpion:{keywords:["animal","arachnid"],char:"🦂",fitzpatrick_scale:false,category:"animals_and_nature"},crab:{keywords:["animal","crustacean"],char:"🦀",fitzpatrick_scale:false,category:"animals_and_nature"},snake:{keywords:["animal","evil","nature","hiss","python"],char:"🐍",fitzpatrick_scale:false,category:"animals_and_nature"},lizard:{keywords:["animal","nature","reptile"],char:"🦎",fitzpatrick_scale:false,category:"animals_and_nature"},"t-rex":{keywords:["animal","nature","dinosaur","tyrannosaurus","extinct"],char:"🦖",fitzpatrick_scale:false,category:"animals_and_nature"},sauropod:{keywords:["animal","nature","dinosaur","brachiosaurus","brontosaurus","diplodocus","extinct"],char:"🦕",fitzpatrick_scale:false,category:"animals_and_nature"},turtle:{keywords:["animal","slow","nature","tortoise"],char:"🐢",fitzpatrick_scale:false,category:"animals_and_nature"},tropical_fish:{keywords:["animal","swim","ocean","beach","nemo"],char:"🐠",fitzpatrick_scale:false,category:"animals_and_nature"},fish:{keywords:["animal","food","nature"],char:"🐟",fitzpatrick_scale:false,category:"animals_and_nature"},blowfish:{keywords:["animal","nature","food","sea","ocean"],char:"🐡",fitzpatrick_scale:false,category:"animals_and_nature"},dolphin:{keywords:["animal","nature","fish","sea","ocean","flipper","fins","beach"],char:"🐬",fitzpatrick_scale:false,category:"animals_and_nature"},shark:{keywords:["animal","nature","fish","sea","ocean","jaws","fins","beach"],char:"🦈",fitzpatrick_scale:false,category:"animals_and_nature"},whale:{keywords:["animal","nature","sea","ocean"],char:"🐳",fitzpatrick_scale:false,category:"animals_and_nature"},whale2:{keywords:["animal","nature","sea","ocean"],char:"🐋",fitzpatrick_scale:false,category:"animals_and_nature"},crocodile:{keywords:["animal","nature","reptile","lizard","alligator"],char:"🐊",fitzpatrick_scale:false,category:"animals_and_nature"},leopard:{keywords:["animal","nature"],char:"🐆",fitzpatrick_scale:false,category:"animals_and_nature"},zebra:{keywords:["animal","nature","stripes","safari"],char:"🦓",fitzpatrick_scale:false,category:"animals_and_nature"},tiger2:{keywords:["animal","nature","roar"],char:"🐅",fitzpatrick_scale:false,category:"animals_and_nature"},water_buffalo:{keywords:["animal","nature","ox","cow"],char:"🐃",fitzpatrick_scale:false,category:"animals_and_nature"},ox:{keywords:["animal","cow","beef"],char:"🐂",fitzpatrick_scale:false,category:"animals_and_nature"},cow2:{keywords:["beef","ox","animal","nature","moo","milk"],char:"🐄",fitzpatrick_scale:false,category:"animals_and_nature"},deer:{keywords:["animal","nature","horns","venison"],char:"🦌",fitzpatrick_scale:false,category:"animals_and_nature"},dromedary_camel:{keywords:["animal","hot","desert","hump"],char:"🐪",fitzpatrick_scale:false,category:"animals_and_nature"},camel:{keywords:["animal","nature","hot","desert","hump"],char:"🐫",fitzpatrick_scale:false,category:"animals_and_nature"},giraffe:{keywords:["animal","nature","spots","safari"],char:"🦒",fitzpatrick_scale:false,category:"animals_and_nature"},elephant:{keywords:["animal","nature","nose","th","circus"],char:"🐘",fitzpatrick_scale:false,category:"animals_and_nature"},rhinoceros:{keywords:["animal","nature","horn"],char:"🦏",fitzpatrick_scale:false,category:"animals_and_nature"},goat:{keywords:["animal","nature"],char:"🐐",fitzpatrick_scale:false,category:"animals_and_nature"},ram:{keywords:["animal","sheep","nature"],char:"🐏",fitzpatrick_scale:false,category:"animals_and_nature"},sheep:{keywords:["animal","nature","wool","shipit"],char:"🐑",fitzpatrick_scale:false,category:"animals_and_nature"},racehorse:{keywords:["animal","gamble","luck"],char:"🐎",fitzpatrick_scale:false,category:"animals_and_nature"},pig2:{keywords:["animal","nature"],char:"🐖",fitzpatrick_scale:false,category:"animals_and_nature"},rat:{keywords:["animal","mouse","rodent"],char:"🐀",fitzpatrick_scale:false,category:"animals_and_nature"},mouse2:{keywords:["animal","nature","rodent"],char:"🐁",fitzpatrick_scale:false,category:"animals_and_nature"},rooster:{keywords:["animal","nature","chicken"],char:"🐓",fitzpatrick_scale:false,category:"animals_and_nature"},turkey:{keywords:["animal","bird"],char:"🦃",fitzpatrick_scale:false,category:"animals_and_nature"},dove:{keywords:["animal","bird"],char:"🕊",fitzpatrick_scale:false,category:"animals_and_nature"},dog2:{keywords:["animal","nature","friend","doge","pet","faithful"],char:"🐕",fitzpatrick_scale:false,category:"animals_and_nature"},poodle:{keywords:["dog","animal","101","nature","pet"],char:"🐩",fitzpatrick_scale:false,category:"animals_and_nature"},cat2:{keywords:["animal","meow","pet","cats"],char:"🐈",fitzpatrick_scale:false,category:"animals_and_nature"},rabbit2:{keywords:["animal","nature","pet","magic","spring"],char:"🐇",fitzpatrick_scale:false,category:"animals_and_nature"},chipmunk:{keywords:["animal","nature","rodent","squirrel"],char:"🐿",fitzpatrick_scale:false,category:"animals_and_nature"},hedgehog:{keywords:["animal","nature","spiny"],char:"🦔",fitzpatrick_scale:false,category:"animals_and_nature"},raccoon:{keywords:["animal","nature"],char:"🦝",fitzpatrick_scale:false,category:"animals_and_nature"},llama:{keywords:["animal","nature","alpaca"],char:"🦙",fitzpatrick_scale:false,category:"animals_and_nature"},hippopotamus:{keywords:["animal","nature"],char:"🦛",fitzpatrick_scale:false,category:"animals_and_nature"},kangaroo:{keywords:["animal","nature","australia","joey","hop","marsupial"],char:"🦘",fitzpatrick_scale:false,category:"animals_and_nature"},badger:{keywords:["animal","nature","honey"],char:"🦡",fitzpatrick_scale:false,category:"animals_and_nature"},swan:{keywords:["animal","nature","bird"],char:"🦢",fitzpatrick_scale:false,category:"animals_and_nature"},peacock:{keywords:["animal","nature","peahen","bird"],char:"🦚",fitzpatrick_scale:false,category:"animals_and_nature"},parrot:{keywords:["animal","nature","bird","pirate","talk"],char:"🦜",fitzpatrick_scale:false,category:"animals_and_nature"},lobster:{keywords:["animal","nature","bisque","claws","seafood"],char:"🦞",fitzpatrick_scale:false,category:"animals_and_nature"},mosquito:{keywords:["animal","nature","insect","malaria"],char:"🦟",fitzpatrick_scale:false,category:"animals_and_nature"},paw_prints:{keywords:["animal","tracking","footprints","dog","cat","pet","feet"],char:"🐾",fitzpatrick_scale:false,category:"animals_and_nature"},dragon:{keywords:["animal","myth","nature","chinese","green"],char:"🐉",fitzpatrick_scale:false,category:"animals_and_nature"},dragon_face:{keywords:["animal","myth","nature","chinese","green"],char:"🐲",fitzpatrick_scale:false,category:"animals_and_nature"},cactus:{keywords:["vegetable","plant","nature"],char:"🌵",fitzpatrick_scale:false,category:"animals_and_nature"},christmas_tree:{keywords:["festival","vacation","december","xmas","celebration"],char:"🎄",fitzpatrick_scale:false,category:"animals_and_nature"},evergreen_tree:{keywords:["plant","nature"],char:"🌲",fitzpatrick_scale:false,category:"animals_and_nature"},deciduous_tree:{keywords:["plant","nature"],char:"🌳",fitzpatrick_scale:false,category:"animals_and_nature"},palm_tree:{keywords:["plant","vegetable","nature","summer","beach","mojito","tropical"],char:"🌴",fitzpatrick_scale:false,category:"animals_and_nature"},seedling:{keywords:["plant","nature","grass","lawn","spring"],char:"🌱",fitzpatrick_scale:false,category:"animals_and_nature"},herb:{keywords:["vegetable","plant","medicine","weed","grass","lawn"],char:"🌿",fitzpatrick_scale:false,category:"animals_and_nature"},shamrock:{keywords:["vegetable","plant","nature","irish","clover"],char:"☘",fitzpatrick_scale:false,category:"animals_and_nature"},four_leaf_clover:{keywords:["vegetable","plant","nature","lucky","irish"],char:"🍀",fitzpatrick_scale:false,category:"animals_and_nature"},bamboo:{keywords:["plant","nature","vegetable","panda","pine_decoration"],char:"🎍",fitzpatrick_scale:false,category:"animals_and_nature"},tanabata_tree:{keywords:["plant","nature","branch","summer"],char:"🎋",fitzpatrick_scale:false,category:"animals_and_nature"},leaves:{keywords:["nature","plant","tree","vegetable","grass","lawn","spring"],char:"🍃",fitzpatrick_scale:false,category:"animals_and_nature"},fallen_leaf:{keywords:["nature","plant","vegetable","leaves"],char:"🍂",fitzpatrick_scale:false,category:"animals_and_nature"},maple_leaf:{keywords:["nature","plant","vegetable","ca","fall"],char:"🍁",fitzpatrick_scale:false,category:"animals_and_nature"},ear_of_rice:{keywords:["nature","plant"],char:"🌾",fitzpatrick_scale:false,category:"animals_and_nature"},hibiscus:{keywords:["plant","vegetable","flowers","beach"],char:"🌺",fitzpatrick_scale:false,category:"animals_and_nature"},sunflower:{keywords:["nature","plant","fall"],char:"🌻",fitzpatrick_scale:false,category:"animals_and_nature"},rose:{keywords:["flowers","valentines","love","spring"],char:"🌹",fitzpatrick_scale:false,category:"animals_and_nature"},wilted_flower:{keywords:["plant","nature","flower"],char:"🥀",fitzpatrick_scale:false,category:"animals_and_nature"},tulip:{keywords:["flowers","plant","nature","summer","spring"],char:"🌷",fitzpatrick_scale:false,category:"animals_and_nature"},blossom:{keywords:["nature","flowers","yellow"],char:"🌼",fitzpatrick_scale:false,category:"animals_and_nature"},cherry_blossom:{keywords:["nature","plant","spring","flower"],char:"🌸",fitzpatrick_scale:false,category:"animals_and_nature"},bouquet:{keywords:["flowers","nature","spring"],char:"💐",fitzpatrick_scale:false,category:"animals_and_nature"},mushroom:{keywords:["plant","vegetable"],char:"🍄",fitzpatrick_scale:false,category:"animals_and_nature"},chestnut:{keywords:["food","squirrel"],char:"🌰",fitzpatrick_scale:false,category:"animals_and_nature"},jack_o_lantern:{keywords:["halloween","light","pumpkin","creepy","fall"],char:"🎃",fitzpatrick_scale:false,category:"animals_and_nature"},shell:{keywords:["nature","sea","beach"],char:"🐚",fitzpatrick_scale:false,category:"animals_and_nature"},spider_web:{keywords:["animal","insect","arachnid","silk"],char:"🕸",fitzpatrick_scale:false,category:"animals_and_nature"},earth_americas:{keywords:["globe","world","USA","international"],char:"🌎",fitzpatrick_scale:false,category:"animals_and_nature"},earth_africa:{keywords:["globe","world","international"],char:"🌍",fitzpatrick_scale:false,category:"animals_and_nature"},earth_asia:{keywords:["globe","world","east","international"],char:"🌏",fitzpatrick_scale:false,category:"animals_and_nature"},full_moon:{keywords:["nature","yellow","twilight","planet","space","night","evening","sleep"],char:"🌕",fitzpatrick_scale:false,category:"animals_and_nature"},waning_gibbous_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep","waxing_gibbous_moon"],char:"🌖",fitzpatrick_scale:false,category:"animals_and_nature"},last_quarter_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌗",fitzpatrick_scale:false,category:"animals_and_nature"},waning_crescent_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌘",fitzpatrick_scale:false,category:"animals_and_nature"},new_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌑",fitzpatrick_scale:false,category:"animals_and_nature"},waxing_crescent_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌒",fitzpatrick_scale:false,category:"animals_and_nature"},first_quarter_moon:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌓",fitzpatrick_scale:false,category:"animals_and_nature"},waxing_gibbous_moon:{keywords:["nature","night","sky","gray","twilight","planet","space","evening","sleep"],char:"🌔",fitzpatrick_scale:false,category:"animals_and_nature"},new_moon_with_face:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌚",fitzpatrick_scale:false,category:"animals_and_nature"},full_moon_with_face:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌝",fitzpatrick_scale:false,category:"animals_and_nature"},first_quarter_moon_with_face:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌛",fitzpatrick_scale:false,category:"animals_and_nature"},last_quarter_moon_with_face:{keywords:["nature","twilight","planet","space","night","evening","sleep"],char:"🌜",fitzpatrick_scale:false,category:"animals_and_nature"},sun_with_face:{keywords:["nature","morning","sky"],char:"🌞",fitzpatrick_scale:false,category:"animals_and_nature"},crescent_moon:{keywords:["night","sleep","sky","evening","magic"],char:"🌙",fitzpatrick_scale:false,category:"animals_and_nature"},star:{keywords:["night","yellow"],char:"⭐",fitzpatrick_scale:false,category:"animals_and_nature"},star2:{keywords:["night","sparkle","awesome","good","magic"],char:"🌟",fitzpatrick_scale:false,category:"animals_and_nature"},dizzy:{keywords:["star","sparkle","shoot","magic"],char:"💫",fitzpatrick_scale:false,category:"animals_and_nature"},sparkles:{keywords:["stars","shine","shiny","cool","awesome","good","magic"],char:"✨",fitzpatrick_scale:false,category:"animals_and_nature"},comet:{keywords:["space"],char:"☄",fitzpatrick_scale:false,category:"animals_and_nature"},sunny:{keywords:["weather","nature","brightness","summer","beach","spring"],char:"☀️",fitzpatrick_scale:false,category:"animals_and_nature"},sun_behind_small_cloud:{keywords:["weather"],char:"🌤",fitzpatrick_scale:false,category:"animals_and_nature"},partly_sunny:{keywords:["weather","nature","cloudy","morning","fall","spring"],char:"⛅",fitzpatrick_scale:false,category:"animals_and_nature"},sun_behind_large_cloud:{keywords:["weather"],char:"🌥",fitzpatrick_scale:false,category:"animals_and_nature"},sun_behind_rain_cloud:{keywords:["weather"],char:"🌦",fitzpatrick_scale:false,category:"animals_and_nature"},cloud:{keywords:["weather","sky"],char:"☁️",fitzpatrick_scale:false,category:"animals_and_nature"},cloud_with_rain:{keywords:["weather"],char:"🌧",fitzpatrick_scale:false,category:"animals_and_nature"},cloud_with_lightning_and_rain:{keywords:["weather","lightning"],char:"⛈",fitzpatrick_scale:false,category:"animals_and_nature"},cloud_with_lightning:{keywords:["weather","thunder"],char:"🌩",fitzpatrick_scale:false,category:"animals_and_nature"},zap:{keywords:["thunder","weather","lightning bolt","fast"],char:"⚡",fitzpatrick_scale:false,category:"animals_and_nature"},fire:{keywords:["hot","cook","flame"],char:"🔥",fitzpatrick_scale:false,category:"animals_and_nature"},boom:{keywords:["bomb","explode","explosion","collision","blown"],char:"💥",fitzpatrick_scale:false,category:"animals_and_nature"},snowflake:{keywords:["winter","season","cold","weather","christmas","xmas"],char:"❄️",fitzpatrick_scale:false,category:"animals_and_nature"},cloud_with_snow:{keywords:["weather"],char:"🌨",fitzpatrick_scale:false,category:"animals_and_nature"},snowman:{keywords:["winter","season","cold","weather","christmas","xmas","frozen","without_snow"],char:"⛄",fitzpatrick_scale:false,category:"animals_and_nature"},snowman_with_snow:{keywords:["winter","season","cold","weather","christmas","xmas","frozen"],char:"☃",fitzpatrick_scale:false,category:"animals_and_nature"},wind_face:{keywords:["gust","air"],char:"🌬",fitzpatrick_scale:false,category:"animals_and_nature"},dash:{keywords:["wind","air","fast","shoo","fart","smoke","puff"],char:"💨",fitzpatrick_scale:false,category:"animals_and_nature"},tornado:{keywords:["weather","cyclone","twister"],char:"🌪",fitzpatrick_scale:false,category:"animals_and_nature"},fog:{keywords:["weather"],char:"🌫",fitzpatrick_scale:false,category:"animals_and_nature"},open_umbrella:{keywords:["weather","spring"],char:"☂",fitzpatrick_scale:false,category:"animals_and_nature"},umbrella:{keywords:["rainy","weather","spring"],char:"☔",fitzpatrick_scale:false,category:"animals_and_nature"},droplet:{keywords:["water","drip","faucet","spring"],char:"💧",fitzpatrick_scale:false,category:"animals_and_nature"},sweat_drops:{keywords:["water","drip","oops"],char:"💦",fitzpatrick_scale:false,category:"animals_and_nature"},ocean:{keywords:["sea","water","wave","nature","tsunami","disaster"],char:"🌊",fitzpatrick_scale:false,category:"animals_and_nature"},green_apple:{keywords:["fruit","nature"],char:"🍏",fitzpatrick_scale:false,category:"food_and_drink"},apple:{keywords:["fruit","mac","school"],char:"🍎",fitzpatrick_scale:false,category:"food_and_drink"},pear:{keywords:["fruit","nature","food"],char:"🍐",fitzpatrick_scale:false,category:"food_and_drink"},tangerine:{keywords:["food","fruit","nature","orange"],char:"🍊",fitzpatrick_scale:false,category:"food_and_drink"},lemon:{keywords:["fruit","nature"],char:"🍋",fitzpatrick_scale:false,category:"food_and_drink"},banana:{keywords:["fruit","food","monkey"],char:"🍌",fitzpatrick_scale:false,category:"food_and_drink"},watermelon:{keywords:["fruit","food","picnic","summer"],char:"🍉",fitzpatrick_scale:false,category:"food_and_drink"},grapes:{keywords:["fruit","food","wine"],char:"🍇",fitzpatrick_scale:false,category:"food_and_drink"},strawberry:{keywords:["fruit","food","nature"],char:"🍓",fitzpatrick_scale:false,category:"food_and_drink"},melon:{keywords:["fruit","nature","food"],char:"🍈",fitzpatrick_scale:false,category:"food_and_drink"},cherries:{keywords:["food","fruit"],char:"🍒",fitzpatrick_scale:false,category:"food_and_drink"},peach:{keywords:["fruit","nature","food"],char:"🍑",fitzpatrick_scale:false,category:"food_and_drink"},pineapple:{keywords:["fruit","nature","food"],char:"🍍",fitzpatrick_scale:false,category:"food_and_drink"},coconut:{keywords:["fruit","nature","food","palm"],char:"🥥",fitzpatrick_scale:false,category:"food_and_drink"},kiwi_fruit:{keywords:["fruit","food"],char:"🥝",fitzpatrick_scale:false,category:"food_and_drink"},mango:{keywords:["fruit","food","tropical"],char:"🥭",fitzpatrick_scale:false,category:"food_and_drink"},avocado:{keywords:["fruit","food"],char:"🥑",fitzpatrick_scale:false,category:"food_and_drink"},broccoli:{keywords:["fruit","food","vegetable"],char:"🥦",fitzpatrick_scale:false,category:"food_and_drink"},tomato:{keywords:["fruit","vegetable","nature","food"],char:"🍅",fitzpatrick_scale:false,category:"food_and_drink"},eggplant:{keywords:["vegetable","nature","food","aubergine"],char:"🍆",fitzpatrick_scale:false,category:"food_and_drink"},cucumber:{keywords:["fruit","food","pickle"],char:"🥒",fitzpatrick_scale:false,category:"food_and_drink"},carrot:{keywords:["vegetable","food","orange"],char:"🥕",fitzpatrick_scale:false,category:"food_and_drink"},hot_pepper:{keywords:["food","spicy","chilli","chili"],char:"🌶",fitzpatrick_scale:false,category:"food_and_drink"},potato:{keywords:["food","tuber","vegatable","starch"],char:"🥔",fitzpatrick_scale:false,category:"food_and_drink"},corn:{keywords:["food","vegetable","plant"],char:"🌽",fitzpatrick_scale:false,category:"food_and_drink"},leafy_greens:{keywords:["food","vegetable","plant","bok choy","cabbage","kale","lettuce"],char:"🥬",fitzpatrick_scale:false,category:"food_and_drink"},sweet_potato:{keywords:["food","nature"],char:"🍠",fitzpatrick_scale:false,category:"food_and_drink"},peanuts:{keywords:["food","nut"],char:"🥜",fitzpatrick_scale:false,category:"food_and_drink"},honey_pot:{keywords:["bees","sweet","kitchen"],char:"🍯",fitzpatrick_scale:false,category:"food_and_drink"},croissant:{keywords:["food","bread","french"],char:"🥐",fitzpatrick_scale:false,category:"food_and_drink"},bread:{keywords:["food","wheat","breakfast","toast"],char:"🍞",fitzpatrick_scale:false,category:"food_and_drink"},baguette_bread:{keywords:["food","bread","french"],char:"🥖",fitzpatrick_scale:false,category:"food_and_drink"},bagel:{keywords:["food","bread","bakery","schmear"],char:"🥯",fitzpatrick_scale:false,category:"food_and_drink"},pretzel:{keywords:["food","bread","twisted"],char:"🥨",fitzpatrick_scale:false,category:"food_and_drink"},cheese:{keywords:["food","chadder"],char:"🧀",fitzpatrick_scale:false,category:"food_and_drink"},egg:{keywords:["food","chicken","breakfast"],char:"🥚",fitzpatrick_scale:false,category:"food_and_drink"},bacon:{keywords:["food","breakfast","pork","pig","meat"],char:"🥓",fitzpatrick_scale:false,category:"food_and_drink"},steak:{keywords:["food","cow","meat","cut","chop","lambchop","porkchop"],char:"🥩",fitzpatrick_scale:false,category:"food_and_drink"},pancakes:{keywords:["food","breakfast","flapjacks","hotcakes"],char:"🥞",fitzpatrick_scale:false,category:"food_and_drink"},poultry_leg:{keywords:["food","meat","drumstick","bird","chicken","turkey"],char:"🍗",fitzpatrick_scale:false,category:"food_and_drink"},meat_on_bone:{keywords:["good","food","drumstick"],char:"🍖",fitzpatrick_scale:false,category:"food_and_drink"},bone:{keywords:["skeleton"],char:"🦴",fitzpatrick_scale:false,category:"food_and_drink"},fried_shrimp:{keywords:["food","animal","appetizer","summer"],char:"🍤",fitzpatrick_scale:false,category:"food_and_drink"},fried_egg:{keywords:["food","breakfast","kitchen","egg"],char:"🍳",fitzpatrick_scale:false,category:"food_and_drink"},hamburger:{keywords:["meat","fast food","beef","cheeseburger","mcdonalds","burger king"],char:"🍔",fitzpatrick_scale:false,category:"food_and_drink"},fries:{keywords:["chips","snack","fast food"],char:"🍟",fitzpatrick_scale:false,category:"food_and_drink"},stuffed_flatbread:{keywords:["food","flatbread","stuffed","gyro"],char:"🥙",fitzpatrick_scale:false,category:"food_and_drink"},hotdog:{keywords:["food","frankfurter"],char:"🌭",fitzpatrick_scale:false,category:"food_and_drink"},pizza:{keywords:["food","party"],char:"🍕",fitzpatrick_scale:false,category:"food_and_drink"},sandwich:{keywords:["food","lunch","bread"],char:"🥪",fitzpatrick_scale:false,category:"food_and_drink"},canned_food:{keywords:["food","soup"],char:"🥫",fitzpatrick_scale:false,category:"food_and_drink"},spaghetti:{keywords:["food","italian","noodle"],char:"🍝",fitzpatrick_scale:false,category:"food_and_drink"},taco:{keywords:["food","mexican"],char:"🌮",fitzpatrick_scale:false,category:"food_and_drink"},burrito:{keywords:["food","mexican"],char:"🌯",fitzpatrick_scale:false,category:"food_and_drink"},green_salad:{keywords:["food","healthy","lettuce"],char:"🥗",fitzpatrick_scale:false,category:"food_and_drink"},shallow_pan_of_food:{keywords:["food","cooking","casserole","paella"],char:"🥘",fitzpatrick_scale:false,category:"food_and_drink"},ramen:{keywords:["food","japanese","noodle","chopsticks"],char:"🍜",fitzpatrick_scale:false,category:"food_and_drink"},stew:{keywords:["food","meat","soup"],char:"🍲",fitzpatrick_scale:false,category:"food_and_drink"},fish_cake:{keywords:["food","japan","sea","beach","narutomaki","pink","swirl","kamaboko","surimi","ramen"],char:"🍥",fitzpatrick_scale:false,category:"food_and_drink"},fortune_cookie:{keywords:["food","prophecy"],char:"🥠",fitzpatrick_scale:false,category:"food_and_drink"},sushi:{keywords:["food","fish","japanese","rice"],char:"🍣",fitzpatrick_scale:false,category:"food_and_drink"},bento:{keywords:["food","japanese","box"],char:"🍱",fitzpatrick_scale:false,category:"food_and_drink"},curry:{keywords:["food","spicy","hot","indian"],char:"🍛",fitzpatrick_scale:false,category:"food_and_drink"},rice_ball:{keywords:["food","japanese"],char:"🍙",fitzpatrick_scale:false,category:"food_and_drink"},rice:{keywords:["food","china","asian"],char:"🍚",fitzpatrick_scale:false,category:"food_and_drink"},rice_cracker:{keywords:["food","japanese"],char:"🍘",fitzpatrick_scale:false,category:"food_and_drink"},oden:{keywords:["food","japanese"],char:"🍢",fitzpatrick_scale:false,category:"food_and_drink"},dango:{keywords:["food","dessert","sweet","japanese","barbecue","meat"],char:"🍡",fitzpatrick_scale:false,category:"food_and_drink"},shaved_ice:{keywords:["hot","dessert","summer"],char:"🍧",fitzpatrick_scale:false,category:"food_and_drink"},ice_cream:{keywords:["food","hot","dessert"],char:"🍨",fitzpatrick_scale:false,category:"food_and_drink"},icecream:{keywords:["food","hot","dessert","summer"],char:"🍦",fitzpatrick_scale:false,category:"food_and_drink"},pie:{keywords:["food","dessert","pastry"],char:"🥧",fitzpatrick_scale:false,category:"food_and_drink"},cake:{keywords:["food","dessert"],char:"🍰",fitzpatrick_scale:false,category:"food_and_drink"},cupcake:{keywords:["food","dessert","bakery","sweet"],char:"🧁",fitzpatrick_scale:false,category:"food_and_drink"},moon_cake:{keywords:["food","autumn"],char:"🥮",fitzpatrick_scale:false,category:"food_and_drink"},birthday:{keywords:["food","dessert","cake"],char:"🎂",fitzpatrick_scale:false,category:"food_and_drink"},custard:{keywords:["dessert","food"],char:"🍮",fitzpatrick_scale:false,category:"food_and_drink"},candy:{keywords:["snack","dessert","sweet","lolly"],char:"🍬",fitzpatrick_scale:false,category:"food_and_drink"},lollipop:{keywords:["food","snack","candy","sweet"],char:"🍭",fitzpatrick_scale:false,category:"food_and_drink"},chocolate_bar:{keywords:["food","snack","dessert","sweet"],char:"🍫",fitzpatrick_scale:false,category:"food_and_drink"},popcorn:{keywords:["food","movie theater","films","snack"],char:"🍿",fitzpatrick_scale:false,category:"food_and_drink"},dumpling:{keywords:["food","empanada","pierogi","potsticker"],char:"🥟",fitzpatrick_scale:false,category:"food_and_drink"},doughnut:{keywords:["food","dessert","snack","sweet","donut"],char:"🍩",fitzpatrick_scale:false,category:"food_and_drink"},cookie:{keywords:["food","snack","oreo","chocolate","sweet","dessert"],char:"🍪",fitzpatrick_scale:false,category:"food_and_drink"},milk_glass:{keywords:["beverage","drink","cow"],char:"🥛",fitzpatrick_scale:false,category:"food_and_drink"},beer:{keywords:["relax","beverage","drink","drunk","party","pub","summer","alcohol","booze"],char:"🍺",fitzpatrick_scale:false,category:"food_and_drink"},beers:{keywords:["relax","beverage","drink","drunk","party","pub","summer","alcohol","booze"],char:"🍻",fitzpatrick_scale:false,category:"food_and_drink"},clinking_glasses:{keywords:["beverage","drink","party","alcohol","celebrate","cheers","wine","champagne","toast"],char:"🥂",fitzpatrick_scale:false,category:"food_and_drink"},wine_glass:{keywords:["drink","beverage","drunk","alcohol","booze"],char:"🍷",fitzpatrick_scale:false,category:"food_and_drink"},tumbler_glass:{keywords:["drink","beverage","drunk","alcohol","liquor","booze","bourbon","scotch","whisky","glass","shot"],char:"🥃",fitzpatrick_scale:false,category:"food_and_drink"},cocktail:{keywords:["drink","drunk","alcohol","beverage","booze","mojito"],char:"🍸",fitzpatrick_scale:false,category:"food_and_drink"},tropical_drink:{keywords:["beverage","cocktail","summer","beach","alcohol","booze","mojito"],char:"🍹",fitzpatrick_scale:false,category:"food_and_drink"},champagne:{keywords:["drink","wine","bottle","celebration"],char:"🍾",fitzpatrick_scale:false,category:"food_and_drink"},sake:{keywords:["wine","drink","drunk","beverage","japanese","alcohol","booze"],char:"🍶",fitzpatrick_scale:false,category:"food_and_drink"},tea:{keywords:["drink","bowl","breakfast","green","british"],char:"🍵",fitzpatrick_scale:false,category:"food_and_drink"},cup_with_straw:{keywords:["drink","soda"],char:"🥤",fitzpatrick_scale:false,category:"food_and_drink"},coffee:{keywords:["beverage","caffeine","latte","espresso"],char:"☕",fitzpatrick_scale:false,category:"food_and_drink"},baby_bottle:{keywords:["food","container","milk"],char:"🍼",fitzpatrick_scale:false,category:"food_and_drink"},salt:{keywords:["condiment","shaker"],char:"🧂",fitzpatrick_scale:false,category:"food_and_drink"},spoon:{keywords:["cutlery","kitchen","tableware"],char:"🥄",fitzpatrick_scale:false,category:"food_and_drink"},fork_and_knife:{keywords:["cutlery","kitchen"],char:"🍴",fitzpatrick_scale:false,category:"food_and_drink"},plate_with_cutlery:{keywords:["food","eat","meal","lunch","dinner","restaurant"],char:"🍽",fitzpatrick_scale:false,category:"food_and_drink"},bowl_with_spoon:{keywords:["food","breakfast","cereal","oatmeal","porridge"],char:"🥣",fitzpatrick_scale:false,category:"food_and_drink"},takeout_box:{keywords:["food","leftovers"],char:"🥡",fitzpatrick_scale:false,category:"food_and_drink"},chopsticks:{keywords:["food"],char:"🥢",fitzpatrick_scale:false,category:"food_and_drink"},soccer:{keywords:["sports","football"],char:"⚽",fitzpatrick_scale:false,category:"activity"},basketball:{keywords:["sports","balls","NBA"],char:"🏀",fitzpatrick_scale:false,category:"activity"},football:{keywords:["sports","balls","NFL"],char:"🏈",fitzpatrick_scale:false,category:"activity"},baseball:{keywords:["sports","balls"],char:"⚾",fitzpatrick_scale:false,category:"activity"},softball:{keywords:["sports","balls"],char:"🥎",fitzpatrick_scale:false,category:"activity"},tennis:{keywords:["sports","balls","green"],char:"🎾",fitzpatrick_scale:false,category:"activity"},volleyball:{keywords:["sports","balls"],char:"🏐",fitzpatrick_scale:false,category:"activity"},rugby_football:{keywords:["sports","team"],char:"🏉",fitzpatrick_scale:false,category:"activity"},flying_disc:{keywords:["sports","frisbee","ultimate"],char:"🥏",fitzpatrick_scale:false,category:"activity"},"8ball":{keywords:["pool","hobby","game","luck","magic"],char:"🎱",fitzpatrick_scale:false,category:"activity"},golf:{keywords:["sports","business","flag","hole","summer"],char:"⛳",fitzpatrick_scale:false,category:"activity"},golfing_woman:{keywords:["sports","business","woman","female"],char:"🏌️‍♀️",fitzpatrick_scale:false,category:"activity"},golfing_man:{keywords:["sports","business"],char:"🏌",fitzpatrick_scale:true,category:"activity"},ping_pong:{keywords:["sports","pingpong"],char:"🏓",fitzpatrick_scale:false,category:"activity"},badminton:{keywords:["sports"],char:"🏸",fitzpatrick_scale:false,category:"activity"},goal_net:{keywords:["sports"],char:"🥅",fitzpatrick_scale:false,category:"activity"},ice_hockey:{keywords:["sports"],char:"🏒",fitzpatrick_scale:false,category:"activity"},field_hockey:{keywords:["sports"],char:"🏑",fitzpatrick_scale:false,category:"activity"},lacrosse:{keywords:["sports","ball","stick"],char:"🥍",fitzpatrick_scale:false,category:"activity"},cricket:{keywords:["sports"],char:"🏏",fitzpatrick_scale:false,category:"activity"},ski:{keywords:["sports","winter","cold","snow"],char:"🎿",fitzpatrick_scale:false,category:"activity"},skier:{keywords:["sports","winter","snow"],char:"⛷",fitzpatrick_scale:false,category:"activity"},snowboarder:{keywords:["sports","winter"],char:"🏂",fitzpatrick_scale:true,category:"activity"},person_fencing:{keywords:["sports","fencing","sword"],char:"🤺",fitzpatrick_scale:false,category:"activity"},women_wrestling:{keywords:["sports","wrestlers"],char:"🤼‍♀️",fitzpatrick_scale:false,category:"activity"},men_wrestling:{keywords:["sports","wrestlers"],char:"🤼‍♂️",fitzpatrick_scale:false,category:"activity"},woman_cartwheeling:{keywords:["gymnastics"],char:"🤸‍♀️",fitzpatrick_scale:true,category:"activity"},man_cartwheeling:{keywords:["gymnastics"],char:"🤸‍♂️",fitzpatrick_scale:true,category:"activity"},woman_playing_handball:{keywords:["sports"],char:"🤾‍♀️",fitzpatrick_scale:true,category:"activity"},man_playing_handball:{keywords:["sports"],char:"🤾‍♂️",fitzpatrick_scale:true,category:"activity"},ice_skate:{keywords:["sports"],char:"⛸",fitzpatrick_scale:false,category:"activity"},curling_stone:{keywords:["sports"],char:"🥌",fitzpatrick_scale:false,category:"activity"},skateboard:{keywords:["board"],char:"🛹",fitzpatrick_scale:false,category:"activity"},sled:{keywords:["sleigh","luge","toboggan"],char:"🛷",fitzpatrick_scale:false,category:"activity"},bow_and_arrow:{keywords:["sports"],char:"🏹",fitzpatrick_scale:false,category:"activity"},fishing_pole_and_fish:{keywords:["food","hobby","summer"],char:"🎣",fitzpatrick_scale:false,category:"activity"},boxing_glove:{keywords:["sports","fighting"],char:"🥊",fitzpatrick_scale:false,category:"activity"},martial_arts_uniform:{keywords:["judo","karate","taekwondo"],char:"🥋",fitzpatrick_scale:false,category:"activity"},rowing_woman:{keywords:["sports","hobby","water","ship","woman","female"],char:"🚣‍♀️",fitzpatrick_scale:true,category:"activity"},rowing_man:{keywords:["sports","hobby","water","ship"],char:"🚣",fitzpatrick_scale:true,category:"activity"},climbing_woman:{keywords:["sports","hobby","woman","female","rock"],char:"🧗‍♀️",fitzpatrick_scale:true,category:"activity"},climbing_man:{keywords:["sports","hobby","man","male","rock"],char:"🧗‍♂️",fitzpatrick_scale:true,category:"activity"},swimming_woman:{keywords:["sports","exercise","human","athlete","water","summer","woman","female"],char:"🏊‍♀️",fitzpatrick_scale:true,category:"activity"},swimming_man:{keywords:["sports","exercise","human","athlete","water","summer"],char:"🏊",fitzpatrick_scale:true,category:"activity"},woman_playing_water_polo:{keywords:["sports","pool"],char:"🤽‍♀️",fitzpatrick_scale:true,category:"activity"},man_playing_water_polo:{keywords:["sports","pool"],char:"🤽‍♂️",fitzpatrick_scale:true,category:"activity"},woman_in_lotus_position:{keywords:["woman","female","meditation","yoga","serenity","zen","mindfulness"],char:"🧘‍♀️",fitzpatrick_scale:true,category:"activity"},man_in_lotus_position:{keywords:["man","male","meditation","yoga","serenity","zen","mindfulness"],char:"🧘‍♂️",fitzpatrick_scale:true,category:"activity"},surfing_woman:{keywords:["sports","ocean","sea","summer","beach","woman","female"],char:"🏄‍♀️",fitzpatrick_scale:true,category:"activity"},surfing_man:{keywords:["sports","ocean","sea","summer","beach"],char:"🏄",fitzpatrick_scale:true,category:"activity"},bath:{keywords:["clean","shower","bathroom"],char:"🛀",fitzpatrick_scale:true,category:"activity"},basketball_woman:{keywords:["sports","human","woman","female"],char:"⛹️‍♀️",fitzpatrick_scale:true,category:"activity"},basketball_man:{keywords:["sports","human"],char:"⛹",fitzpatrick_scale:true,category:"activity"},weight_lifting_woman:{keywords:["sports","training","exercise","woman","female"],char:"🏋️‍♀️",fitzpatrick_scale:true,category:"activity"},weight_lifting_man:{keywords:["sports","training","exercise"],char:"🏋",fitzpatrick_scale:true,category:"activity"},biking_woman:{keywords:["sports","bike","exercise","hipster","woman","female"],char:"🚴‍♀️",fitzpatrick_scale:true,category:"activity"},biking_man:{keywords:["sports","bike","exercise","hipster"],char:"🚴",fitzpatrick_scale:true,category:"activity"},mountain_biking_woman:{keywords:["transportation","sports","human","race","bike","woman","female"],char:"🚵‍♀️",fitzpatrick_scale:true,category:"activity"},mountain_biking_man:{keywords:["transportation","sports","human","race","bike"],char:"🚵",fitzpatrick_scale:true,category:"activity"},horse_racing:{keywords:["animal","betting","competition","gambling","luck"],char:"🏇",fitzpatrick_scale:true,category:"activity"},business_suit_levitating:{keywords:["suit","business","levitate","hover","jump"],char:"🕴",fitzpatrick_scale:true,category:"activity"},trophy:{keywords:["win","award","contest","place","ftw","ceremony"],char:"🏆",fitzpatrick_scale:false,category:"activity"},running_shirt_with_sash:{keywords:["play","pageant"],char:"🎽",fitzpatrick_scale:false,category:"activity"},medal_sports:{keywords:["award","winning"],char:"🏅",fitzpatrick_scale:false,category:"activity"},medal_military:{keywords:["award","winning","army"],char:"🎖",fitzpatrick_scale:false,category:"activity"},"1st_place_medal":{keywords:["award","winning","first"],char:"🥇",fitzpatrick_scale:false,category:"activity"},"2nd_place_medal":{keywords:["award","second"],char:"🥈",fitzpatrick_scale:false,category:"activity"},"3rd_place_medal":{keywords:["award","third"],char:"🥉",fitzpatrick_scale:false,category:"activity"},reminder_ribbon:{keywords:["sports","cause","support","awareness"],char:"🎗",fitzpatrick_scale:false,category:"activity"},rosette:{keywords:["flower","decoration","military"],char:"🏵",fitzpatrick_scale:false,category:"activity"},ticket:{keywords:["event","concert","pass"],char:"🎫",fitzpatrick_scale:false,category:"activity"},tickets:{keywords:["sports","concert","entrance"],char:"🎟",fitzpatrick_scale:false,category:"activity"},performing_arts:{keywords:["acting","theater","drama"],char:"🎭",fitzpatrick_scale:false,category:"activity"},art:{keywords:["design","paint","draw","colors"],char:"🎨",fitzpatrick_scale:false,category:"activity"},circus_tent:{keywords:["festival","carnival","party"],char:"🎪",fitzpatrick_scale:false,category:"activity"},woman_juggling:{keywords:["juggle","balance","skill","multitask"],char:"🤹‍♀️",fitzpatrick_scale:true,category:"activity"},man_juggling:{keywords:["juggle","balance","skill","multitask"],char:"🤹‍♂️",fitzpatrick_scale:true,category:"activity"},microphone:{keywords:["sound","music","PA","sing","talkshow"],char:"🎤",fitzpatrick_scale:false,category:"activity"},headphones:{keywords:["music","score","gadgets"],char:"🎧",fitzpatrick_scale:false,category:"activity"},musical_score:{keywords:["treble","clef","compose"],char:"🎼",fitzpatrick_scale:false,category:"activity"},musical_keyboard:{keywords:["piano","instrument","compose"],char:"🎹",fitzpatrick_scale:false,category:"activity"},drum:{keywords:["music","instrument","drumsticks","snare"],char:"🥁",fitzpatrick_scale:false,category:"activity"},saxophone:{keywords:["music","instrument","jazz","blues"],char:"🎷",fitzpatrick_scale:false,category:"activity"},trumpet:{keywords:["music","brass"],char:"🎺",fitzpatrick_scale:false,category:"activity"},guitar:{keywords:["music","instrument"],char:"🎸",fitzpatrick_scale:false,category:"activity"},violin:{keywords:["music","instrument","orchestra","symphony"],char:"🎻",fitzpatrick_scale:false,category:"activity"},clapper:{keywords:["movie","film","record"],char:"🎬",fitzpatrick_scale:false,category:"activity"},video_game:{keywords:["play","console","PS4","controller"],char:"🎮",fitzpatrick_scale:false,category:"activity"},space_invader:{keywords:["game","arcade","play"],char:"👾",fitzpatrick_scale:false,category:"activity"},dart:{keywords:["game","play","bar","target","bullseye"],char:"🎯",fitzpatrick_scale:false,category:"activity"},game_die:{keywords:["dice","random","tabletop","play","luck"],char:"🎲",fitzpatrick_scale:false,category:"activity"},chess_pawn:{keywords:["expendable"],char:"♟",fitzpatrick_scale:false,category:"activity"},slot_machine:{keywords:["bet","gamble","vegas","fruit machine","luck","casino"],char:"🎰",fitzpatrick_scale:false,category:"activity"},jigsaw:{keywords:["interlocking","puzzle","piece"],char:"🧩",fitzpatrick_scale:false,category:"activity"},bowling:{keywords:["sports","fun","play"],char:"🎳",fitzpatrick_scale:false,category:"activity"},red_car:{keywords:["red","transportation","vehicle"],char:"🚗",fitzpatrick_scale:false,category:"travel_and_places"},taxi:{keywords:["uber","vehicle","cars","transportation"],char:"🚕",fitzpatrick_scale:false,category:"travel_and_places"},blue_car:{keywords:["transportation","vehicle"],char:"🚙",fitzpatrick_scale:false,category:"travel_and_places"},bus:{keywords:["car","vehicle","transportation"],char:"🚌",fitzpatrick_scale:false,category:"travel_and_places"},trolleybus:{keywords:["bart","transportation","vehicle"],char:"🚎",fitzpatrick_scale:false,category:"travel_and_places"},racing_car:{keywords:["sports","race","fast","formula","f1"],char:"🏎",fitzpatrick_scale:false,category:"travel_and_places"},police_car:{keywords:["vehicle","cars","transportation","law","legal","enforcement"],char:"🚓",fitzpatrick_scale:false,category:"travel_and_places"},ambulance:{keywords:["health","911","hospital"],char:"🚑",fitzpatrick_scale:false,category:"travel_and_places"},fire_engine:{keywords:["transportation","cars","vehicle"],char:"🚒",fitzpatrick_scale:false,category:"travel_and_places"},minibus:{keywords:["vehicle","car","transportation"],char:"🚐",fitzpatrick_scale:false,category:"travel_and_places"},truck:{keywords:["cars","transportation"],char:"🚚",fitzpatrick_scale:false,category:"travel_and_places"},articulated_lorry:{keywords:["vehicle","cars","transportation","express"],char:"🚛",fitzpatrick_scale:false,category:"travel_and_places"},tractor:{keywords:["vehicle","car","farming","agriculture"],char:"🚜",fitzpatrick_scale:false,category:"travel_and_places"},kick_scooter:{keywords:["vehicle","kick","razor"],char:"🛴",fitzpatrick_scale:false,category:"travel_and_places"},motorcycle:{keywords:["race","sports","fast"],char:"🏍",fitzpatrick_scale:false,category:"travel_and_places"},bike:{keywords:["sports","bicycle","exercise","hipster"],char:"🚲",fitzpatrick_scale:false,category:"travel_and_places"},motor_scooter:{keywords:["vehicle","vespa","sasha"],char:"🛵",fitzpatrick_scale:false,category:"travel_and_places"},rotating_light:{keywords:["police","ambulance","911","emergency","alert","error","pinged","law","legal"],char:"🚨",fitzpatrick_scale:false,category:"travel_and_places"},oncoming_police_car:{keywords:["vehicle","law","legal","enforcement","911"],char:"🚔",fitzpatrick_scale:false,category:"travel_and_places"},oncoming_bus:{keywords:["vehicle","transportation"],char:"🚍",fitzpatrick_scale:false,category:"travel_and_places"},oncoming_automobile:{keywords:["car","vehicle","transportation"],char:"🚘",fitzpatrick_scale:false,category:"travel_and_places"},oncoming_taxi:{keywords:["vehicle","cars","uber"],char:"🚖",fitzpatrick_scale:false,category:"travel_and_places"},aerial_tramway:{keywords:["transportation","vehicle","ski"],char:"🚡",fitzpatrick_scale:false,category:"travel_and_places"},mountain_cableway:{keywords:["transportation","vehicle","ski"],char:"🚠",fitzpatrick_scale:false,category:"travel_and_places"},suspension_railway:{keywords:["vehicle","transportation"],char:"🚟",fitzpatrick_scale:false,category:"travel_and_places"},railway_car:{keywords:["transportation","vehicle"],char:"🚃",fitzpatrick_scale:false,category:"travel_and_places"},train:{keywords:["transportation","vehicle","carriage","public","travel"],char:"🚋",fitzpatrick_scale:false,category:"travel_and_places"},monorail:{keywords:["transportation","vehicle"],char:"🚝",fitzpatrick_scale:false,category:"travel_and_places"},bullettrain_side:{keywords:["transportation","vehicle"],char:"🚄",fitzpatrick_scale:false,category:"travel_and_places"},bullettrain_front:{keywords:["transportation","vehicle","speed","fast","public","travel"],char:"🚅",fitzpatrick_scale:false,category:"travel_and_places"},light_rail:{keywords:["transportation","vehicle"],char:"🚈",fitzpatrick_scale:false,category:"travel_and_places"},mountain_railway:{keywords:["transportation","vehicle"],char:"🚞",fitzpatrick_scale:false,category:"travel_and_places"},steam_locomotive:{keywords:["transportation","vehicle","train"],char:"🚂",fitzpatrick_scale:false,category:"travel_and_places"},train2:{keywords:["transportation","vehicle"],char:"🚆",fitzpatrick_scale:false,category:"travel_and_places"},metro:{keywords:["transportation","blue-square","mrt","underground","tube"],char:"🚇",fitzpatrick_scale:false,category:"travel_and_places"},tram:{keywords:["transportation","vehicle"],char:"🚊",fitzpatrick_scale:false,category:"travel_and_places"},station:{keywords:["transportation","vehicle","public"],char:"🚉",fitzpatrick_scale:false,category:"travel_and_places"},flying_saucer:{keywords:["transportation","vehicle","ufo"],char:"🛸",fitzpatrick_scale:false,category:"travel_and_places"},helicopter:{keywords:["transportation","vehicle","fly"],char:"🚁",fitzpatrick_scale:false,category:"travel_and_places"},small_airplane:{keywords:["flight","transportation","fly","vehicle"],char:"🛩",fitzpatrick_scale:false,category:"travel_and_places"},airplane:{keywords:["vehicle","transportation","flight","fly"],char:"✈️",fitzpatrick_scale:false,category:"travel_and_places"},flight_departure:{keywords:["airport","flight","landing"],char:"🛫",fitzpatrick_scale:false,category:"travel_and_places"},flight_arrival:{keywords:["airport","flight","boarding"],char:"🛬",fitzpatrick_scale:false,category:"travel_and_places"},sailboat:{keywords:["ship","summer","transportation","water","sailing"],char:"⛵",fitzpatrick_scale:false,category:"travel_and_places"},motor_boat:{keywords:["ship"],char:"🛥",fitzpatrick_scale:false,category:"travel_and_places"},speedboat:{keywords:["ship","transportation","vehicle","summer"],char:"🚤",fitzpatrick_scale:false,category:"travel_and_places"},ferry:{keywords:["boat","ship","yacht"],char:"⛴",fitzpatrick_scale:false,category:"travel_and_places"},passenger_ship:{keywords:["yacht","cruise","ferry"],char:"🛳",fitzpatrick_scale:false,category:"travel_and_places"},rocket:{keywords:["launch","ship","staffmode","NASA","outer space","outer_space","fly"],char:"🚀",fitzpatrick_scale:false,category:"travel_and_places"},artificial_satellite:{keywords:["communication","gps","orbit","spaceflight","NASA","ISS"],char:"🛰",fitzpatrick_scale:false,category:"travel_and_places"},seat:{keywords:["sit","airplane","transport","bus","flight","fly"],char:"💺",fitzpatrick_scale:false,category:"travel_and_places"},canoe:{keywords:["boat","paddle","water","ship"],char:"🛶",fitzpatrick_scale:false,category:"travel_and_places"},anchor:{keywords:["ship","ferry","sea","boat"],char:"⚓",fitzpatrick_scale:false,category:"travel_and_places"},construction:{keywords:["wip","progress","caution","warning"],char:"🚧",fitzpatrick_scale:false,category:"travel_and_places"},fuelpump:{keywords:["gas station","petroleum"],char:"⛽",fitzpatrick_scale:false,category:"travel_and_places"},busstop:{keywords:["transportation","wait"],char:"🚏",fitzpatrick_scale:false,category:"travel_and_places"},vertical_traffic_light:{keywords:["transportation","driving"],char:"🚦",fitzpatrick_scale:false,category:"travel_and_places"},traffic_light:{keywords:["transportation","signal"],char:"🚥",fitzpatrick_scale:false,category:"travel_and_places"},checkered_flag:{keywords:["contest","finishline","race","gokart"],char:"🏁",fitzpatrick_scale:false,category:"travel_and_places"},ship:{keywords:["transportation","titanic","deploy"],char:"🚢",fitzpatrick_scale:false,category:"travel_and_places"},ferris_wheel:{keywords:["photo","carnival","londoneye"],char:"🎡",fitzpatrick_scale:false,category:"travel_and_places"},roller_coaster:{keywords:["carnival","playground","photo","fun"],char:"🎢",fitzpatrick_scale:false,category:"travel_and_places"},carousel_horse:{keywords:["photo","carnival"],char:"🎠",fitzpatrick_scale:false,category:"travel_and_places"},building_construction:{keywords:["wip","working","progress"],char:"🏗",fitzpatrick_scale:false,category:"travel_and_places"},foggy:{keywords:["photo","mountain"],char:"🌁",fitzpatrick_scale:false,category:"travel_and_places"},tokyo_tower:{keywords:["photo","japanese"],char:"🗼",fitzpatrick_scale:false,category:"travel_and_places"},factory:{keywords:["building","industry","pollution","smoke"],char:"🏭",fitzpatrick_scale:false,category:"travel_and_places"},fountain:{keywords:["photo","summer","water","fresh"],char:"⛲",fitzpatrick_scale:false,category:"travel_and_places"},rice_scene:{keywords:["photo","japan","asia","tsukimi"],char:"🎑",fitzpatrick_scale:false,category:"travel_and_places"},mountain:{keywords:["photo","nature","environment"],char:"⛰",fitzpatrick_scale:false,category:"travel_and_places"},mountain_snow:{keywords:["photo","nature","environment","winter","cold"],char:"🏔",fitzpatrick_scale:false,category:"travel_and_places"},mount_fuji:{keywords:["photo","mountain","nature","japanese"],char:"🗻",fitzpatrick_scale:false,category:"travel_and_places"},volcano:{keywords:["photo","nature","disaster"],char:"🌋",fitzpatrick_scale:false,category:"travel_and_places"},japan:{keywords:["nation","country","japanese","asia"],char:"🗾",fitzpatrick_scale:false,category:"travel_and_places"},camping:{keywords:["photo","outdoors","tent"],char:"🏕",fitzpatrick_scale:false,category:"travel_and_places"},tent:{keywords:["photo","camping","outdoors"],char:"⛺",fitzpatrick_scale:false,category:"travel_and_places"},national_park:{keywords:["photo","environment","nature"],char:"🏞",fitzpatrick_scale:false,category:"travel_and_places"},motorway:{keywords:["road","cupertino","interstate","highway"],char:"🛣",fitzpatrick_scale:false,category:"travel_and_places"},railway_track:{keywords:["train","transportation"],char:"🛤",fitzpatrick_scale:false,category:"travel_and_places"},sunrise:{keywords:["morning","view","vacation","photo"],char:"🌅",fitzpatrick_scale:false,category:"travel_and_places"},sunrise_over_mountains:{keywords:["view","vacation","photo"],char:"🌄",fitzpatrick_scale:false,category:"travel_and_places"},desert:{keywords:["photo","warm","saharah"],char:"🏜",fitzpatrick_scale:false,category:"travel_and_places"},beach_umbrella:{keywords:["weather","summer","sunny","sand","mojito"],char:"🏖",fitzpatrick_scale:false,category:"travel_and_places"},desert_island:{keywords:["photo","tropical","mojito"],char:"🏝",fitzpatrick_scale:false,category:"travel_and_places"},city_sunrise:{keywords:["photo","good morning","dawn"],char:"🌇",fitzpatrick_scale:false,category:"travel_and_places"},city_sunset:{keywords:["photo","evening","sky","buildings"],char:"🌆",fitzpatrick_scale:false,category:"travel_and_places"},cityscape:{keywords:["photo","night life","urban"],char:"🏙",fitzpatrick_scale:false,category:"travel_and_places"},night_with_stars:{keywords:["evening","city","downtown"],char:"🌃",fitzpatrick_scale:false,category:"travel_and_places"},bridge_at_night:{keywords:["photo","sanfrancisco"],char:"🌉",fitzpatrick_scale:false,category:"travel_and_places"},milky_way:{keywords:["photo","space","stars"],char:"🌌",fitzpatrick_scale:false,category:"travel_and_places"},stars:{keywords:["night","photo"],char:"🌠",fitzpatrick_scale:false,category:"travel_and_places"},sparkler:{keywords:["stars","night","shine"],char:"🎇",fitzpatrick_scale:false,category:"travel_and_places"},fireworks:{keywords:["photo","festival","carnival","congratulations"],char:"🎆",fitzpatrick_scale:false,category:"travel_and_places"},rainbow:{keywords:["nature","happy","unicorn_face","photo","sky","spring"],char:"🌈",fitzpatrick_scale:false,category:"travel_and_places"},houses:{keywords:["buildings","photo"],char:"🏘",fitzpatrick_scale:false,category:"travel_and_places"},european_castle:{keywords:["building","royalty","history"],char:"🏰",fitzpatrick_scale:false,category:"travel_and_places"},japanese_castle:{keywords:["photo","building"],char:"🏯",fitzpatrick_scale:false,category:"travel_and_places"},stadium:{keywords:["photo","place","sports","concert","venue"],char:"🏟",fitzpatrick_scale:false,category:"travel_and_places"},statue_of_liberty:{keywords:["american","newyork"],char:"🗽",fitzpatrick_scale:false,category:"travel_and_places"},house:{keywords:["building","home"],char:"🏠",fitzpatrick_scale:false,category:"travel_and_places"},house_with_garden:{keywords:["home","plant","nature"],char:"🏡",fitzpatrick_scale:false,category:"travel_and_places"},derelict_house:{keywords:["abandon","evict","broken","building"],char:"🏚",fitzpatrick_scale:false,category:"travel_and_places"},office:{keywords:["building","bureau","work"],char:"🏢",fitzpatrick_scale:false,category:"travel_and_places"},department_store:{keywords:["building","shopping","mall"],char:"🏬",fitzpatrick_scale:false,category:"travel_and_places"},post_office:{keywords:["building","envelope","communication"],char:"🏣",fitzpatrick_scale:false,category:"travel_and_places"},european_post_office:{keywords:["building","email"],char:"🏤",fitzpatrick_scale:false,category:"travel_and_places"},hospital:{keywords:["building","health","surgery","doctor"],char:"🏥",fitzpatrick_scale:false,category:"travel_and_places"},bank:{keywords:["building","money","sales","cash","business","enterprise"],char:"🏦",fitzpatrick_scale:false,category:"travel_and_places"},hotel:{keywords:["building","accomodation","checkin"],char:"🏨",fitzpatrick_scale:false,category:"travel_and_places"},convenience_store:{keywords:["building","shopping","groceries"],char:"🏪",fitzpatrick_scale:false,category:"travel_and_places"},school:{keywords:["building","student","education","learn","teach"],char:"🏫",fitzpatrick_scale:false,category:"travel_and_places"},love_hotel:{keywords:["like","affection","dating"],char:"🏩",fitzpatrick_scale:false,category:"travel_and_places"},wedding:{keywords:["love","like","affection","couple","marriage","bride","groom"],char:"💒",fitzpatrick_scale:false,category:"travel_and_places"},classical_building:{keywords:["art","culture","history"],char:"🏛",fitzpatrick_scale:false,category:"travel_and_places"},church:{keywords:["building","religion","christ"],char:"⛪",fitzpatrick_scale:false,category:"travel_and_places"},mosque:{keywords:["islam","worship","minaret"],char:"🕌",fitzpatrick_scale:false,category:"travel_and_places"},synagogue:{keywords:["judaism","worship","temple","jewish"],char:"🕍",fitzpatrick_scale:false,category:"travel_and_places"},kaaba:{keywords:["mecca","mosque","islam"],char:"🕋",fitzpatrick_scale:false,category:"travel_and_places"},shinto_shrine:{keywords:["temple","japan","kyoto"],char:"⛩",fitzpatrick_scale:false,category:"travel_and_places"},watch:{keywords:["time","accessories"],char:"⌚",fitzpatrick_scale:false,category:"objects"},iphone:{keywords:["technology","apple","gadgets","dial"],char:"📱",fitzpatrick_scale:false,category:"objects"},calling:{keywords:["iphone","incoming"],char:"📲",fitzpatrick_scale:false,category:"objects"},computer:{keywords:["technology","laptop","screen","display","monitor"],char:"💻",fitzpatrick_scale:false,category:"objects"},keyboard:{keywords:["technology","computer","type","input","text"],char:"⌨",fitzpatrick_scale:false,category:"objects"},desktop_computer:{keywords:["technology","computing","screen"],char:"🖥",fitzpatrick_scale:false,category:"objects"},printer:{keywords:["paper","ink"],char:"🖨",fitzpatrick_scale:false,category:"objects"},computer_mouse:{keywords:["click"],char:"🖱",fitzpatrick_scale:false,category:"objects"},trackball:{keywords:["technology","trackpad"],char:"🖲",fitzpatrick_scale:false,category:"objects"},joystick:{keywords:["game","play"],char:"🕹",fitzpatrick_scale:false,category:"objects"},clamp:{keywords:["tool"],char:"🗜",fitzpatrick_scale:false,category:"objects"},minidisc:{keywords:["technology","record","data","disk","90s"],char:"💽",fitzpatrick_scale:false,category:"objects"},floppy_disk:{keywords:["oldschool","technology","save","90s","80s"],char:"💾",fitzpatrick_scale:false,category:"objects"},cd:{keywords:["technology","dvd","disk","disc","90s"],char:"💿",fitzpatrick_scale:false,category:"objects"},dvd:{keywords:["cd","disk","disc"],char:"📀",fitzpatrick_scale:false,category:"objects"},vhs:{keywords:["record","video","oldschool","90s","80s"],char:"📼",fitzpatrick_scale:false,category:"objects"},camera:{keywords:["gadgets","photography"],char:"📷",fitzpatrick_scale:false,category:"objects"},camera_flash:{keywords:["photography","gadgets"],char:"📸",fitzpatrick_scale:false,category:"objects"},video_camera:{keywords:["film","record"],char:"📹",fitzpatrick_scale:false,category:"objects"},movie_camera:{keywords:["film","record"],char:"🎥",fitzpatrick_scale:false,category:"objects"},film_projector:{keywords:["video","tape","record","movie"],char:"📽",fitzpatrick_scale:false,category:"objects"},film_strip:{keywords:["movie"],char:"🎞",fitzpatrick_scale:false,category:"objects"},telephone_receiver:{keywords:["technology","communication","dial"],char:"📞",fitzpatrick_scale:false,category:"objects"},phone:{keywords:["technology","communication","dial","telephone"],char:"☎️",fitzpatrick_scale:false,category:"objects"},pager:{keywords:["bbcall","oldschool","90s"],char:"📟",fitzpatrick_scale:false,category:"objects"},fax:{keywords:["communication","technology"],char:"📠",fitzpatrick_scale:false,category:"objects"},tv:{keywords:["technology","program","oldschool","show","television"],char:"📺",fitzpatrick_scale:false,category:"objects"},radio:{keywords:["communication","music","podcast","program"],char:"📻",fitzpatrick_scale:false,category:"objects"},studio_microphone:{keywords:["sing","recording","artist","talkshow"],char:"🎙",fitzpatrick_scale:false,category:"objects"},level_slider:{keywords:["scale"],char:"🎚",fitzpatrick_scale:false,category:"objects"},control_knobs:{keywords:["dial"],char:"🎛",fitzpatrick_scale:false,category:"objects"},compass:{keywords:["magnetic","navigation","orienteering"],char:"🧭",fitzpatrick_scale:false,category:"objects"},stopwatch:{keywords:["time","deadline"],char:"⏱",fitzpatrick_scale:false,category:"objects"},timer_clock:{keywords:["alarm"],char:"⏲",fitzpatrick_scale:false,category:"objects"},alarm_clock:{keywords:["time","wake"],char:"⏰",fitzpatrick_scale:false,category:"objects"},mantelpiece_clock:{keywords:["time"],char:"🕰",fitzpatrick_scale:false,category:"objects"},hourglass_flowing_sand:{keywords:["oldschool","time","countdown"],char:"⏳",fitzpatrick_scale:false,category:"objects"},hourglass:{keywords:["time","clock","oldschool","limit","exam","quiz","test"],char:"⌛",fitzpatrick_scale:false,category:"objects"},satellite:{keywords:["communication","future","radio","space"],char:"📡",fitzpatrick_scale:false,category:"objects"},battery:{keywords:["power","energy","sustain"],char:"🔋",fitzpatrick_scale:false,category:"objects"},electric_plug:{keywords:["charger","power"],char:"🔌",fitzpatrick_scale:false,category:"objects"},bulb:{keywords:["light","electricity","idea"],char:"💡",fitzpatrick_scale:false,category:"objects"},flashlight:{keywords:["dark","camping","sight","night"],char:"🔦",fitzpatrick_scale:false,category:"objects"},candle:{keywords:["fire","wax"],char:"🕯",fitzpatrick_scale:false,category:"objects"},fire_extinguisher:{keywords:["quench"],char:"🧯",fitzpatrick_scale:false,category:"objects"},wastebasket:{keywords:["bin","trash","rubbish","garbage","toss"],char:"🗑",fitzpatrick_scale:false,category:"objects"},oil_drum:{keywords:["barrell"],char:"🛢",fitzpatrick_scale:false,category:"objects"},money_with_wings:{keywords:["dollar","bills","payment","sale"],char:"💸",fitzpatrick_scale:false,category:"objects"},dollar:{keywords:["money","sales","bill","currency"],char:"💵",fitzpatrick_scale:false,category:"objects"},yen:{keywords:["money","sales","japanese","dollar","currency"],char:"💴",fitzpatrick_scale:false,category:"objects"},euro:{keywords:["money","sales","dollar","currency"],char:"💶",fitzpatrick_scale:false,category:"objects"},pound:{keywords:["british","sterling","money","sales","bills","uk","england","currency"],char:"💷",fitzpatrick_scale:false,category:"objects"},moneybag:{keywords:["dollar","payment","coins","sale"],char:"💰",fitzpatrick_scale:false,category:"objects"},credit_card:{keywords:["money","sales","dollar","bill","payment","shopping"],char:"💳",fitzpatrick_scale:false,category:"objects"},gem:{keywords:["blue","ruby","diamond","jewelry"],char:"💎",fitzpatrick_scale:false,category:"objects"},balance_scale:{keywords:["law","fairness","weight"],char:"⚖",fitzpatrick_scale:false,category:"objects"},toolbox:{keywords:["tools","diy","fix","maintainer","mechanic"],char:"🧰",fitzpatrick_scale:false,category:"objects"},wrench:{keywords:["tools","diy","ikea","fix","maintainer"],char:"🔧",fitzpatrick_scale:false,category:"objects"},hammer:{keywords:["tools","build","create"],char:"🔨",fitzpatrick_scale:false,category:"objects"},hammer_and_pick:{keywords:["tools","build","create"],char:"⚒",fitzpatrick_scale:false,category:"objects"},hammer_and_wrench:{keywords:["tools","build","create"],char:"🛠",fitzpatrick_scale:false,category:"objects"},pick:{keywords:["tools","dig"],char:"⛏",fitzpatrick_scale:false,category:"objects"},nut_and_bolt:{keywords:["handy","tools","fix"],char:"🔩",fitzpatrick_scale:false,category:"objects"},gear:{keywords:["cog"],char:"⚙",fitzpatrick_scale:false,category:"objects"},brick:{keywords:["bricks"],char:"🧱",fitzpatrick_scale:false,category:"objects"},chains:{keywords:["lock","arrest"],char:"⛓",fitzpatrick_scale:false,category:"objects"},magnet:{keywords:["attraction","magnetic"],char:"🧲",fitzpatrick_scale:false,category:"objects"},gun:{keywords:["violence","weapon","pistol","revolver"],char:"🔫",fitzpatrick_scale:false,category:"objects"},bomb:{keywords:["boom","explode","explosion","terrorism"],char:"💣",fitzpatrick_scale:false,category:"objects"},firecracker:{keywords:["dynamite","boom","explode","explosion","explosive"],char:"🧨",fitzpatrick_scale:false,category:"objects"},hocho:{keywords:["knife","blade","cutlery","kitchen","weapon"],char:"🔪",fitzpatrick_scale:false,category:"objects"},dagger:{keywords:["weapon"],char:"🗡",fitzpatrick_scale:false,category:"objects"},crossed_swords:{keywords:["weapon"],char:"⚔",fitzpatrick_scale:false,category:"objects"},shield:{keywords:["protection","security"],char:"🛡",fitzpatrick_scale:false,category:"objects"},smoking:{keywords:["kills","tobacco","cigarette","joint","smoke"],char:"🚬",fitzpatrick_scale:false,category:"objects"},skull_and_crossbones:{keywords:["poison","danger","deadly","scary","death","pirate","evil"],char:"☠",fitzpatrick_scale:false,category:"objects"},coffin:{keywords:["vampire","dead","die","death","rip","graveyard","cemetery","casket","funeral","box"],char:"⚰",fitzpatrick_scale:false,category:"objects"},funeral_urn:{keywords:["dead","die","death","rip","ashes"],char:"⚱",fitzpatrick_scale:false,category:"objects"},amphora:{keywords:["vase","jar"],char:"🏺",fitzpatrick_scale:false,category:"objects"},crystal_ball:{keywords:["disco","party","magic","circus","fortune_teller"],char:"🔮",fitzpatrick_scale:false,category:"objects"},prayer_beads:{keywords:["dhikr","religious"],char:"📿",fitzpatrick_scale:false,category:"objects"},nazar_amulet:{keywords:["bead","charm"],char:"🧿",fitzpatrick_scale:false,category:"objects"},barber:{keywords:["hair","salon","style"],char:"💈",fitzpatrick_scale:false,category:"objects"},alembic:{keywords:["distilling","science","experiment","chemistry"],char:"⚗",fitzpatrick_scale:false,category:"objects"},telescope:{keywords:["stars","space","zoom","science","astronomy"],char:"🔭",fitzpatrick_scale:false,category:"objects"},microscope:{keywords:["laboratory","experiment","zoomin","science","study"],char:"🔬",fitzpatrick_scale:false,category:"objects"},hole:{keywords:["embarrassing"],char:"🕳",fitzpatrick_scale:false,category:"objects"},pill:{keywords:["health","medicine","doctor","pharmacy","drug"],char:"💊",fitzpatrick_scale:false,category:"objects"},syringe:{keywords:["health","hospital","drugs","blood","medicine","needle","doctor","nurse"],char:"💉",fitzpatrick_scale:false,category:"objects"},dna:{keywords:["biologist","genetics","life"],char:"🧬",fitzpatrick_scale:false,category:"objects"},microbe:{keywords:["amoeba","bacteria","germs"],char:"🦠",fitzpatrick_scale:false,category:"objects"},petri_dish:{keywords:["bacteria","biology","culture","lab"],char:"🧫",fitzpatrick_scale:false,category:"objects"},test_tube:{keywords:["chemistry","experiment","lab","science"],char:"🧪",fitzpatrick_scale:false,category:"objects"},thermometer:{keywords:["weather","temperature","hot","cold"],char:"🌡",fitzpatrick_scale:false,category:"objects"},broom:{keywords:["cleaning","sweeping","witch"],char:"🧹",fitzpatrick_scale:false,category:"objects"},basket:{keywords:["laundry"],char:"🧺",fitzpatrick_scale:false,category:"objects"},toilet_paper:{keywords:["roll"],char:"🧻",fitzpatrick_scale:false,category:"objects"},label:{keywords:["sale","tag"],char:"🏷",fitzpatrick_scale:false,category:"objects"},bookmark:{keywords:["favorite","label","save"],char:"🔖",fitzpatrick_scale:false,category:"objects"},toilet:{keywords:["restroom","wc","washroom","bathroom","potty"],char:"🚽",fitzpatrick_scale:false,category:"objects"},shower:{keywords:["clean","water","bathroom"],char:"🚿",fitzpatrick_scale:false,category:"objects"},bathtub:{keywords:["clean","shower","bathroom"],char:"🛁",fitzpatrick_scale:false,category:"objects"},soap:{keywords:["bar","bathing","cleaning","lather"],char:"🧼",fitzpatrick_scale:false,category:"objects"},sponge:{keywords:["absorbing","cleaning","porous"],char:"🧽",fitzpatrick_scale:false,category:"objects"},lotion_bottle:{keywords:["moisturizer","sunscreen"],char:"🧴",fitzpatrick_scale:false,category:"objects"},key:{keywords:["lock","door","password"],char:"🔑",fitzpatrick_scale:false,category:"objects"},old_key:{keywords:["lock","door","password"],char:"🗝",fitzpatrick_scale:false,category:"objects"},couch_and_lamp:{keywords:["read","chill"],char:"🛋",fitzpatrick_scale:false,category:"objects"},sleeping_bed:{keywords:["bed","rest"],char:"🛌",fitzpatrick_scale:true,category:"objects"},bed:{keywords:["sleep","rest"],char:"🛏",fitzpatrick_scale:false,category:"objects"},door:{keywords:["house","entry","exit"],char:"🚪",fitzpatrick_scale:false,category:"objects"},bellhop_bell:{keywords:["service"],char:"🛎",fitzpatrick_scale:false,category:"objects"},teddy_bear:{keywords:["plush","stuffed"],char:"🧸",fitzpatrick_scale:false,category:"objects"},framed_picture:{keywords:["photography"],char:"🖼",fitzpatrick_scale:false,category:"objects"},world_map:{keywords:["location","direction"],char:"🗺",fitzpatrick_scale:false,category:"objects"},parasol_on_ground:{keywords:["weather","summer"],char:"⛱",fitzpatrick_scale:false,category:"objects"},moyai:{keywords:["rock","easter island","moai"],char:"🗿",fitzpatrick_scale:false,category:"objects"},shopping:{keywords:["mall","buy","purchase"],char:"🛍",fitzpatrick_scale:false,category:"objects"},shopping_cart:{keywords:["trolley"],char:"🛒",fitzpatrick_scale:false,category:"objects"},balloon:{keywords:["party","celebration","birthday","circus"],char:"🎈",fitzpatrick_scale:false,category:"objects"},flags:{keywords:["fish","japanese","koinobori","carp","banner"],char:"🎏",fitzpatrick_scale:false,category:"objects"},ribbon:{keywords:["decoration","pink","girl","bowtie"],char:"🎀",fitzpatrick_scale:false,category:"objects"},gift:{keywords:["present","birthday","christmas","xmas"],char:"🎁",fitzpatrick_scale:false,category:"objects"},confetti_ball:{keywords:["festival","party","birthday","circus"],char:"🎊",fitzpatrick_scale:false,category:"objects"},tada:{keywords:["party","congratulations","birthday","magic","circus","celebration"],char:"🎉",fitzpatrick_scale:false,category:"objects"},dolls:{keywords:["japanese","toy","kimono"],char:"🎎",fitzpatrick_scale:false,category:"objects"},wind_chime:{keywords:["nature","ding","spring","bell"],char:"🎐",fitzpatrick_scale:false,category:"objects"},crossed_flags:{keywords:["japanese","nation","country","border"],char:"🎌",fitzpatrick_scale:false,category:"objects"},izakaya_lantern:{keywords:["light","paper","halloween","spooky"],char:"🏮",fitzpatrick_scale:false,category:"objects"},red_envelope:{keywords:["gift"],char:"🧧",fitzpatrick_scale:false,category:"objects"},email:{keywords:["letter","postal","inbox","communication"],char:"✉️",fitzpatrick_scale:false,category:"objects"},envelope_with_arrow:{keywords:["email","communication"],char:"📩",fitzpatrick_scale:false,category:"objects"},incoming_envelope:{keywords:["email","inbox"],char:"📨",fitzpatrick_scale:false,category:"objects"},"e-mail":{keywords:["communication","inbox"],char:"📧",fitzpatrick_scale:false,category:"objects"},love_letter:{keywords:["email","like","affection","envelope","valentines"],char:"💌",fitzpatrick_scale:false,category:"objects"},postbox:{keywords:["email","letter","envelope"],char:"📮",fitzpatrick_scale:false,category:"objects"},mailbox_closed:{keywords:["email","communication","inbox"],char:"📪",fitzpatrick_scale:false,category:"objects"},mailbox:{keywords:["email","inbox","communication"],char:"📫",fitzpatrick_scale:false,category:"objects"},mailbox_with_mail:{keywords:["email","inbox","communication"],char:"📬",fitzpatrick_scale:false,category:"objects"},mailbox_with_no_mail:{keywords:["email","inbox"],char:"📭",fitzpatrick_scale:false,category:"objects"},package:{keywords:["mail","gift","cardboard","box","moving"],char:"📦",fitzpatrick_scale:false,category:"objects"},postal_horn:{keywords:["instrument","music"],char:"📯",fitzpatrick_scale:false,category:"objects"},inbox_tray:{keywords:["email","documents"],char:"📥",fitzpatrick_scale:false,category:"objects"},outbox_tray:{keywords:["inbox","email"],char:"📤",fitzpatrick_scale:false,category:"objects"},scroll:{keywords:["documents","ancient","history","paper"],char:"📜",fitzpatrick_scale:false,category:"objects"},page_with_curl:{keywords:["documents","office","paper"],char:"📃",fitzpatrick_scale:false,category:"objects"},bookmark_tabs:{keywords:["favorite","save","order","tidy"],char:"📑",fitzpatrick_scale:false,category:"objects"},receipt:{keywords:["accounting","expenses"],char:"🧾",fitzpatrick_scale:false,category:"objects"},bar_chart:{keywords:["graph","presentation","stats"],char:"📊",fitzpatrick_scale:false,category:"objects"},chart_with_upwards_trend:{keywords:["graph","presentation","stats","recovery","business","economics","money","sales","good","success"],char:"📈",fitzpatrick_scale:false,category:"objects"},chart_with_downwards_trend:{keywords:["graph","presentation","stats","recession","business","economics","money","sales","bad","failure"],char:"📉",fitzpatrick_scale:false,category:"objects"},page_facing_up:{keywords:["documents","office","paper","information"],char:"📄",fitzpatrick_scale:false,category:"objects"},date:{keywords:["calendar","schedule"],char:"📅",fitzpatrick_scale:false,category:"objects"},calendar:{keywords:["schedule","date","planning"],char:"📆",fitzpatrick_scale:false,category:"objects"},spiral_calendar:{keywords:["date","schedule","planning"],char:"🗓",fitzpatrick_scale:false,category:"objects"},card_index:{keywords:["business","stationery"],char:"📇",fitzpatrick_scale:false,category:"objects"},card_file_box:{keywords:["business","stationery"],char:"🗃",fitzpatrick_scale:false,category:"objects"},ballot_box:{keywords:["election","vote"],char:"🗳",fitzpatrick_scale:false,category:"objects"},file_cabinet:{keywords:["filing","organizing"],char:"🗄",fitzpatrick_scale:false,category:"objects"},clipboard:{keywords:["stationery","documents"],char:"📋",fitzpatrick_scale:false,category:"objects"},spiral_notepad:{keywords:["memo","stationery"],char:"🗒",fitzpatrick_scale:false,category:"objects"},file_folder:{keywords:["documents","business","office"],char:"📁",fitzpatrick_scale:false,category:"objects"},open_file_folder:{keywords:["documents","load"],char:"📂",fitzpatrick_scale:false,category:"objects"},card_index_dividers:{keywords:["organizing","business","stationery"],char:"🗂",fitzpatrick_scale:false,category:"objects"},newspaper_roll:{keywords:["press","headline"],char:"🗞",fitzpatrick_scale:false,category:"objects"},newspaper:{keywords:["press","headline"],char:"📰",fitzpatrick_scale:false,category:"objects"},notebook:{keywords:["stationery","record","notes","paper","study"],char:"📓",fitzpatrick_scale:false,category:"objects"},closed_book:{keywords:["read","library","knowledge","textbook","learn"],char:"📕",fitzpatrick_scale:false,category:"objects"},green_book:{keywords:["read","library","knowledge","study"],char:"📗",fitzpatrick_scale:false,category:"objects"},blue_book:{keywords:["read","library","knowledge","learn","study"],char:"📘",fitzpatrick_scale:false,category:"objects"},orange_book:{keywords:["read","library","knowledge","textbook","study"],char:"📙",fitzpatrick_scale:false,category:"objects"},notebook_with_decorative_cover:{keywords:["classroom","notes","record","paper","study"],char:"📔",fitzpatrick_scale:false,category:"objects"},ledger:{keywords:["notes","paper"],char:"📒",fitzpatrick_scale:false,category:"objects"},books:{keywords:["literature","library","study"],char:"📚",fitzpatrick_scale:false,category:"objects"},open_book:{keywords:["book","read","library","knowledge","literature","learn","study"],char:"📖",fitzpatrick_scale:false,category:"objects"},safety_pin:{keywords:["diaper"],char:"🧷",fitzpatrick_scale:false,category:"objects"},link:{keywords:["rings","url"],char:"🔗",fitzpatrick_scale:false,category:"objects"},paperclip:{keywords:["documents","stationery"],char:"📎",fitzpatrick_scale:false,category:"objects"},paperclips:{keywords:["documents","stationery"],char:"🖇",fitzpatrick_scale:false,category:"objects"},scissors:{keywords:["stationery","cut"],char:"✂️",fitzpatrick_scale:false,category:"objects"},triangular_ruler:{keywords:["stationery","math","architect","sketch"],char:"📐",fitzpatrick_scale:false,category:"objects"},straight_ruler:{keywords:["stationery","calculate","length","math","school","drawing","architect","sketch"],char:"📏",fitzpatrick_scale:false,category:"objects"},abacus:{keywords:["calculation"],char:"🧮",fitzpatrick_scale:false,category:"objects"},pushpin:{keywords:["stationery","mark","here"],char:"📌",fitzpatrick_scale:false,category:"objects"},round_pushpin:{keywords:["stationery","location","map","here"],char:"📍",fitzpatrick_scale:false,category:"objects"},triangular_flag_on_post:{keywords:["mark","milestone","place"],char:"🚩",fitzpatrick_scale:false,category:"objects"},white_flag:{keywords:["losing","loser","lost","surrender","give up","fail"],char:"🏳",fitzpatrick_scale:false,category:"objects"},black_flag:{keywords:["pirate"],char:"🏴",fitzpatrick_scale:false,category:"objects"},rainbow_flag:{keywords:["flag","rainbow","pride","gay","lgbt","glbt","queer","homosexual","lesbian","bisexual","transgender"],char:"🏳️‍🌈",fitzpatrick_scale:false,category:"objects"},closed_lock_with_key:{keywords:["security","privacy"],char:"🔐",fitzpatrick_scale:false,category:"objects"},lock:{keywords:["security","password","padlock"],char:"🔒",fitzpatrick_scale:false,category:"objects"},unlock:{keywords:["privacy","security"],char:"🔓",fitzpatrick_scale:false,category:"objects"},lock_with_ink_pen:{keywords:["security","secret"],char:"🔏",fitzpatrick_scale:false,category:"objects"},pen:{keywords:["stationery","writing","write"],char:"🖊",fitzpatrick_scale:false,category:"objects"},fountain_pen:{keywords:["stationery","writing","write"],char:"🖋",fitzpatrick_scale:false,category:"objects"},black_nib:{keywords:["pen","stationery","writing","write"],char:"✒️",fitzpatrick_scale:false,category:"objects"},memo:{keywords:["write","documents","stationery","pencil","paper","writing","legal","exam","quiz","test","study","compose"],char:"📝",fitzpatrick_scale:false,category:"objects"},pencil2:{keywords:["stationery","write","paper","writing","school","study"],char:"✏️",fitzpatrick_scale:false,category:"objects"},crayon:{keywords:["drawing","creativity"],char:"🖍",fitzpatrick_scale:false,category:"objects"},paintbrush:{keywords:["drawing","creativity","art"],char:"🖌",fitzpatrick_scale:false,category:"objects"},mag:{keywords:["search","zoom","find","detective"],char:"🔍",fitzpatrick_scale:false,category:"objects"},mag_right:{keywords:["search","zoom","find","detective"],char:"🔎",fitzpatrick_scale:false,category:"objects"},heart:{keywords:["love","like","valentines"],char:"❤️",fitzpatrick_scale:false,category:"symbols"},orange_heart:{keywords:["love","like","affection","valentines"],char:"🧡",fitzpatrick_scale:false,category:"symbols"},yellow_heart:{keywords:["love","like","affection","valentines"],char:"💛",fitzpatrick_scale:false,category:"symbols"},green_heart:{keywords:["love","like","affection","valentines"],char:"💚",fitzpatrick_scale:false,category:"symbols"},blue_heart:{keywords:["love","like","affection","valentines"],char:"💙",fitzpatrick_scale:false,category:"symbols"},purple_heart:{keywords:["love","like","affection","valentines"],char:"💜",fitzpatrick_scale:false,category:"symbols"},black_heart:{keywords:["evil"],char:"🖤",fitzpatrick_scale:false,category:"symbols"},broken_heart:{keywords:["sad","sorry","break","heart","heartbreak"],char:"💔",fitzpatrick_scale:false,category:"symbols"},heavy_heart_exclamation:{keywords:["decoration","love"],char:"❣",fitzpatrick_scale:false,category:"symbols"},two_hearts:{keywords:["love","like","affection","valentines","heart"],char:"💕",fitzpatrick_scale:false,category:"symbols"},revolving_hearts:{keywords:["love","like","affection","valentines"],char:"💞",fitzpatrick_scale:false,category:"symbols"},heartbeat:{keywords:["love","like","affection","valentines","pink","heart"],char:"💓",fitzpatrick_scale:false,category:"symbols"},heartpulse:{keywords:["like","love","affection","valentines","pink"],char:"💗",fitzpatrick_scale:false,category:"symbols"},sparkling_heart:{keywords:["love","like","affection","valentines"],char:"💖",fitzpatrick_scale:false,category:"symbols"},cupid:{keywords:["love","like","heart","affection","valentines"],char:"💘",fitzpatrick_scale:false,category:"symbols"},gift_heart:{keywords:["love","valentines"],char:"💝",fitzpatrick_scale:false,category:"symbols"},heart_decoration:{keywords:["purple-square","love","like"],char:"💟",fitzpatrick_scale:false,category:"symbols"},peace_symbol:{keywords:["hippie"],char:"☮",fitzpatrick_scale:false,category:"symbols"},latin_cross:{keywords:["christianity"],char:"✝",fitzpatrick_scale:false,category:"symbols"},star_and_crescent:{keywords:["islam"],char:"☪",fitzpatrick_scale:false,category:"symbols"},om:{keywords:["hinduism","buddhism","sikhism","jainism"],char:"🕉",fitzpatrick_scale:false,category:"symbols"},wheel_of_dharma:{keywords:["hinduism","buddhism","sikhism","jainism"],char:"☸",fitzpatrick_scale:false,category:"symbols"},star_of_david:{keywords:["judaism"],char:"✡",fitzpatrick_scale:false,category:"symbols"},six_pointed_star:{keywords:["purple-square","religion","jewish","hexagram"],char:"🔯",fitzpatrick_scale:false,category:"symbols"},menorah:{keywords:["hanukkah","candles","jewish"],char:"🕎",fitzpatrick_scale:false,category:"symbols"},yin_yang:{keywords:["balance"],char:"☯",fitzpatrick_scale:false,category:"symbols"},orthodox_cross:{keywords:["suppedaneum","religion"],char:"☦",fitzpatrick_scale:false,category:"symbols"},place_of_worship:{keywords:["religion","church","temple","prayer"],char:"🛐",fitzpatrick_scale:false,category:"symbols"},ophiuchus:{keywords:["sign","purple-square","constellation","astrology"],char:"⛎",fitzpatrick_scale:false,category:"symbols"},aries:{keywords:["sign","purple-square","zodiac","astrology"],char:"♈",fitzpatrick_scale:false,category:"symbols"},taurus:{keywords:["purple-square","sign","zodiac","astrology"],char:"♉",fitzpatrick_scale:false,category:"symbols"},gemini:{keywords:["sign","zodiac","purple-square","astrology"],char:"♊",fitzpatrick_scale:false,category:"symbols"},cancer:{keywords:["sign","zodiac","purple-square","astrology"],char:"♋",fitzpatrick_scale:false,category:"symbols"},leo:{keywords:["sign","purple-square","zodiac","astrology"],char:"♌",fitzpatrick_scale:false,category:"symbols"},virgo:{keywords:["sign","zodiac","purple-square","astrology"],char:"♍",fitzpatrick_scale:false,category:"symbols"},libra:{keywords:["sign","purple-square","zodiac","astrology"],char:"♎",fitzpatrick_scale:false,category:"symbols"},scorpius:{keywords:["sign","zodiac","purple-square","astrology","scorpio"],char:"♏",fitzpatrick_scale:false,category:"symbols"},sagittarius:{keywords:["sign","zodiac","purple-square","astrology"],char:"♐",fitzpatrick_scale:false,category:"symbols"},capricorn:{keywords:["sign","zodiac","purple-square","astrology"],char:"♑",fitzpatrick_scale:false,category:"symbols"},aquarius:{keywords:["sign","purple-square","zodiac","astrology"],char:"♒",fitzpatrick_scale:false,category:"symbols"},pisces:{keywords:["purple-square","sign","zodiac","astrology"],char:"♓",fitzpatrick_scale:false,category:"symbols"},id:{keywords:["purple-square","words"],char:"🆔",fitzpatrick_scale:false,category:"symbols"},atom_symbol:{keywords:["science","physics","chemistry"],char:"⚛",fitzpatrick_scale:false,category:"symbols"},u7a7a:{keywords:["kanji","japanese","chinese","empty","sky","blue-square"],char:"🈳",fitzpatrick_scale:false,category:"symbols"},u5272:{keywords:["cut","divide","chinese","kanji","pink-square"],char:"🈹",fitzpatrick_scale:false,category:"symbols"},radioactive:{keywords:["nuclear","danger"],char:"☢",fitzpatrick_scale:false,category:"symbols"},biohazard:{keywords:["danger"],char:"☣",fitzpatrick_scale:false,category:"symbols"},mobile_phone_off:{keywords:["mute","orange-square","silence","quiet"],char:"📴",fitzpatrick_scale:false,category:"symbols"},vibration_mode:{keywords:["orange-square","phone"],char:"📳",fitzpatrick_scale:false,category:"symbols"},u6709:{keywords:["orange-square","chinese","have","kanji"],char:"🈶",fitzpatrick_scale:false,category:"symbols"},u7121:{keywords:["nothing","chinese","kanji","japanese","orange-square"],char:"🈚",fitzpatrick_scale:false,category:"symbols"},u7533:{keywords:["chinese","japanese","kanji","orange-square"],char:"🈸",fitzpatrick_scale:false,category:"symbols"},u55b6:{keywords:["japanese","opening hours","orange-square"],char:"🈺",fitzpatrick_scale:false,category:"symbols"},u6708:{keywords:["chinese","month","moon","japanese","orange-square","kanji"],char:"🈷️",fitzpatrick_scale:false,category:"symbols"},eight_pointed_black_star:{keywords:["orange-square","shape","polygon"],char:"✴️",fitzpatrick_scale:false,category:"symbols"},vs:{keywords:["words","orange-square"],char:"🆚",fitzpatrick_scale:false,category:"symbols"},accept:{keywords:["ok","good","chinese","kanji","agree","yes","orange-circle"],char:"🉑",fitzpatrick_scale:false,category:"symbols"},white_flower:{keywords:["japanese","spring"],char:"💮",fitzpatrick_scale:false,category:"symbols"},ideograph_advantage:{keywords:["chinese","kanji","obtain","get","circle"],char:"🉐",fitzpatrick_scale:false,category:"symbols"},secret:{keywords:["privacy","chinese","sshh","kanji","red-circle"],char:"㊙️",fitzpatrick_scale:false,category:"symbols"},congratulations:{keywords:["chinese","kanji","japanese","red-circle"],char:"㊗️",fitzpatrick_scale:false,category:"symbols"},u5408:{keywords:["japanese","chinese","join","kanji","red-square"],char:"🈴",fitzpatrick_scale:false,category:"symbols"},u6e80:{keywords:["full","chinese","japanese","red-square","kanji"],char:"🈵",fitzpatrick_scale:false,category:"symbols"},u7981:{keywords:["kanji","japanese","chinese","forbidden","limit","restricted","red-square"],char:"🈲",fitzpatrick_scale:false,category:"symbols"},a:{keywords:["red-square","alphabet","letter"],char:"🅰️",fitzpatrick_scale:false,category:"symbols"},b:{keywords:["red-square","alphabet","letter"],char:"🅱️",fitzpatrick_scale:false,category:"symbols"},ab:{keywords:["red-square","alphabet"],char:"🆎",fitzpatrick_scale:false,category:"symbols"},cl:{keywords:["alphabet","words","red-square"],char:"🆑",fitzpatrick_scale:false,category:"symbols"},o2:{keywords:["alphabet","red-square","letter"],char:"🅾️",fitzpatrick_scale:false,category:"symbols"},sos:{keywords:["help","red-square","words","emergency","911"],char:"🆘",fitzpatrick_scale:false,category:"symbols"},no_entry:{keywords:["limit","security","privacy","bad","denied","stop","circle"],char:"⛔",fitzpatrick_scale:false,category:"symbols"},name_badge:{keywords:["fire","forbid"],char:"📛",fitzpatrick_scale:false,category:"symbols"},no_entry_sign:{keywords:["forbid","stop","limit","denied","disallow","circle"],char:"🚫",fitzpatrick_scale:false,category:"symbols"},x:{keywords:["no","delete","remove","cancel","red"],char:"❌",fitzpatrick_scale:false,category:"symbols"},o:{keywords:["circle","round"],char:"⭕",fitzpatrick_scale:false,category:"symbols"},stop_sign:{keywords:["stop"],char:"🛑",fitzpatrick_scale:false,category:"symbols"},anger:{keywords:["angry","mad"],char:"💢",fitzpatrick_scale:false,category:"symbols"},hotsprings:{keywords:["bath","warm","relax"],char:"♨️",fitzpatrick_scale:false,category:"symbols"},no_pedestrians:{keywords:["rules","crossing","walking","circle"],char:"🚷",fitzpatrick_scale:false,category:"symbols"},do_not_litter:{keywords:["trash","bin","garbage","circle"],char:"🚯",fitzpatrick_scale:false,category:"symbols"},no_bicycles:{keywords:["cyclist","prohibited","circle"],char:"🚳",fitzpatrick_scale:false,category:"symbols"},"non-potable_water":{keywords:["drink","faucet","tap","circle"],char:"🚱",fitzpatrick_scale:false,category:"symbols"},underage:{keywords:["18","drink","pub","night","minor","circle"],char:"🔞",fitzpatrick_scale:false,category:"symbols"},no_mobile_phones:{keywords:["iphone","mute","circle"],char:"📵",fitzpatrick_scale:false,category:"symbols"},exclamation:{keywords:["heavy_exclamation_mark","danger","surprise","punctuation","wow","warning"],char:"❗",fitzpatrick_scale:false,category:"symbols"},grey_exclamation:{keywords:["surprise","punctuation","gray","wow","warning"],char:"❕",fitzpatrick_scale:false,category:"symbols"},question:{keywords:["doubt","confused"],char:"❓",fitzpatrick_scale:false,category:"symbols"},grey_question:{keywords:["doubts","gray","huh","confused"],char:"❔",fitzpatrick_scale:false,category:"symbols"},bangbang:{keywords:["exclamation","surprise"],char:"‼️",fitzpatrick_scale:false,category:"symbols"},interrobang:{keywords:["wat","punctuation","surprise"],char:"⁉️",fitzpatrick_scale:false,category:"symbols"},100:{keywords:["score","perfect","numbers","century","exam","quiz","test","pass","hundred"],char:"💯",fitzpatrick_scale:false,category:"symbols"},low_brightness:{keywords:["sun","afternoon","warm","summer"],char:"🔅",fitzpatrick_scale:false,category:"symbols"},high_brightness:{keywords:["sun","light"],char:"🔆",fitzpatrick_scale:false,category:"symbols"},trident:{keywords:["weapon","spear"],char:"🔱",fitzpatrick_scale:false,category:"symbols"},fleur_de_lis:{keywords:["decorative","scout"],char:"⚜",fitzpatrick_scale:false,category:"symbols"},part_alternation_mark:{keywords:["graph","presentation","stats","business","economics","bad"],char:"〽️",fitzpatrick_scale:false,category:"symbols"},warning:{keywords:["exclamation","wip","alert","error","problem","issue"],char:"⚠️",fitzpatrick_scale:false,category:"symbols"},children_crossing:{keywords:["school","warning","danger","sign","driving","yellow-diamond"],char:"🚸",fitzpatrick_scale:false,category:"symbols"},beginner:{keywords:["badge","shield"],char:"🔰",fitzpatrick_scale:false,category:"symbols"},recycle:{keywords:["arrow","environment","garbage","trash"],char:"♻️",fitzpatrick_scale:false,category:"symbols"},u6307:{keywords:["chinese","point","green-square","kanji"],char:"🈯",fitzpatrick_scale:false,category:"symbols"},chart:{keywords:["green-square","graph","presentation","stats"],char:"💹",fitzpatrick_scale:false,category:"symbols"},sparkle:{keywords:["stars","green-square","awesome","good","fireworks"],char:"❇️",fitzpatrick_scale:false,category:"symbols"},eight_spoked_asterisk:{keywords:["star","sparkle","green-square"],char:"✳️",fitzpatrick_scale:false,category:"symbols"},negative_squared_cross_mark:{keywords:["x","green-square","no","deny"],char:"❎",fitzpatrick_scale:false,category:"symbols"},white_check_mark:{keywords:["green-square","ok","agree","vote","election","answer","tick"],char:"✅",fitzpatrick_scale:false,category:"symbols"},diamond_shape_with_a_dot_inside:{keywords:["jewel","blue","gem","crystal","fancy"],char:"💠",fitzpatrick_scale:false,category:"symbols"},cyclone:{keywords:["weather","swirl","blue","cloud","vortex","spiral","whirlpool","spin","tornado","hurricane","typhoon"],char:"🌀",fitzpatrick_scale:false,category:"symbols"},loop:{keywords:["tape","cassette"],char:"➿",fitzpatrick_scale:false,category:"symbols"},globe_with_meridians:{keywords:["earth","international","world","internet","interweb","i18n"],char:"🌐",fitzpatrick_scale:false,category:"symbols"},m:{keywords:["alphabet","blue-circle","letter"],char:"Ⓜ️",fitzpatrick_scale:false,category:"symbols"},atm:{keywords:["money","sales","cash","blue-square","payment","bank"],char:"🏧",fitzpatrick_scale:false,category:"symbols"},sa:{keywords:["japanese","blue-square","katakana"],char:"🈂️",fitzpatrick_scale:false,category:"symbols"},passport_control:{keywords:["custom","blue-square"],char:"🛂",fitzpatrick_scale:false,category:"symbols"},customs:{keywords:["passport","border","blue-square"],char:"🛃",fitzpatrick_scale:false,category:"symbols"},baggage_claim:{keywords:["blue-square","airport","transport"],char:"🛄",fitzpatrick_scale:false,category:"symbols"},left_luggage:{keywords:["blue-square","travel"],char:"🛅",fitzpatrick_scale:false,category:"symbols"},wheelchair:{keywords:["blue-square","disabled","a11y","accessibility"],char:"♿",fitzpatrick_scale:false,category:"symbols"},no_smoking:{keywords:["cigarette","blue-square","smell","smoke"],char:"🚭",fitzpatrick_scale:false,category:"symbols"},wc:{keywords:["toilet","restroom","blue-square"],char:"🚾",fitzpatrick_scale:false,category:"symbols"},parking:{keywords:["cars","blue-square","alphabet","letter"],char:"🅿️",fitzpatrick_scale:false,category:"symbols"},potable_water:{keywords:["blue-square","liquid","restroom","cleaning","faucet"],char:"🚰",fitzpatrick_scale:false,category:"symbols"},mens:{keywords:["toilet","restroom","wc","blue-square","gender","male"],char:"🚹",fitzpatrick_scale:false,category:"symbols"},womens:{keywords:["purple-square","woman","female","toilet","loo","restroom","gender"],char:"🚺",fitzpatrick_scale:false,category:"symbols"},baby_symbol:{keywords:["orange-square","child"],char:"🚼",fitzpatrick_scale:false,category:"symbols"},restroom:{keywords:["blue-square","toilet","refresh","wc","gender"],char:"🚻",fitzpatrick_scale:false,category:"symbols"},put_litter_in_its_place:{keywords:["blue-square","sign","human","info"],char:"🚮",fitzpatrick_scale:false,category:"symbols"},cinema:{keywords:["blue-square","record","film","movie","curtain","stage","theater"],char:"🎦",fitzpatrick_scale:false,category:"symbols"},signal_strength:{keywords:["blue-square","reception","phone","internet","connection","wifi","bluetooth","bars"],char:"📶",fitzpatrick_scale:false,category:"symbols"},koko:{keywords:["blue-square","here","katakana","japanese","destination"],char:"🈁",fitzpatrick_scale:false,category:"symbols"},ng:{keywords:["blue-square","words","shape","icon"],char:"🆖",fitzpatrick_scale:false,category:"symbols"},ok:{keywords:["good","agree","yes","blue-square"],char:"🆗",fitzpatrick_scale:false,category:"symbols"},up:{keywords:["blue-square","above","high"],char:"🆙",fitzpatrick_scale:false,category:"symbols"},cool:{keywords:["words","blue-square"],char:"🆒",fitzpatrick_scale:false,category:"symbols"},new:{keywords:["blue-square","words","start"],char:"🆕",fitzpatrick_scale:false,category:"symbols"},free:{keywords:["blue-square","words"],char:"🆓",fitzpatrick_scale:false,category:"symbols"},zero:{keywords:["0","numbers","blue-square","null"],char:"0️⃣",fitzpatrick_scale:false,category:"symbols"},one:{keywords:["blue-square","numbers","1"],char:"1️⃣",fitzpatrick_scale:false,category:"symbols"},two:{keywords:["numbers","2","prime","blue-square"],char:"2️⃣",fitzpatrick_scale:false,category:"symbols"},three:{keywords:["3","numbers","prime","blue-square"],char:"3️⃣",fitzpatrick_scale:false,category:"symbols"},four:{keywords:["4","numbers","blue-square"],char:"4️⃣",fitzpatrick_scale:false,category:"symbols"},five:{keywords:["5","numbers","blue-square","prime"],char:"5️⃣",fitzpatrick_scale:false,category:"symbols"},six:{keywords:["6","numbers","blue-square"],char:"6️⃣",fitzpatrick_scale:false,category:"symbols"},seven:{keywords:["7","numbers","blue-square","prime"],char:"7️⃣",fitzpatrick_scale:false,category:"symbols"},eight:{keywords:["8","blue-square","numbers"],char:"8️⃣",fitzpatrick_scale:false,category:"symbols"},nine:{keywords:["blue-square","numbers","9"],char:"9️⃣",fitzpatrick_scale:false,category:"symbols"},keycap_ten:{keywords:["numbers","10","blue-square"],char:"🔟",fitzpatrick_scale:false,category:"symbols"},asterisk:{keywords:["star","keycap"],char:"*⃣",fitzpatrick_scale:false,category:"symbols"},1234:{keywords:["numbers","blue-square"],char:"🔢",fitzpatrick_scale:false,category:"symbols"},eject_button:{keywords:["blue-square"],char:"⏏️",fitzpatrick_scale:false,category:"symbols"},arrow_forward:{keywords:["blue-square","right","direction","play"],char:"▶️",fitzpatrick_scale:false,category:"symbols"},pause_button:{keywords:["pause","blue-square"],char:"⏸",fitzpatrick_scale:false,category:"symbols"},next_track_button:{keywords:["forward","next","blue-square"],char:"⏭",fitzpatrick_scale:false,category:"symbols"},stop_button:{keywords:["blue-square"],char:"⏹",fitzpatrick_scale:false,category:"symbols"},record_button:{keywords:["blue-square"],char:"⏺",fitzpatrick_scale:false,category:"symbols"},play_or_pause_button:{keywords:["blue-square","play","pause"],char:"⏯",fitzpatrick_scale:false,category:"symbols"},previous_track_button:{keywords:["backward"],char:"⏮",fitzpatrick_scale:false,category:"symbols"},fast_forward:{keywords:["blue-square","play","speed","continue"],char:"⏩",fitzpatrick_scale:false,category:"symbols"},rewind:{keywords:["play","blue-square"],char:"⏪",fitzpatrick_scale:false,category:"symbols"},twisted_rightwards_arrows:{keywords:["blue-square","shuffle","music","random"],char:"🔀",fitzpatrick_scale:false,category:"symbols"},repeat:{keywords:["loop","record"],char:"🔁",fitzpatrick_scale:false,category:"symbols"},repeat_one:{keywords:["blue-square","loop"],char:"🔂",fitzpatrick_scale:false,category:"symbols"},arrow_backward:{keywords:["blue-square","left","direction"],char:"◀️",fitzpatrick_scale:false,category:"symbols"},arrow_up_small:{keywords:["blue-square","triangle","direction","point","forward","top"],char:"🔼",fitzpatrick_scale:false,category:"symbols"},arrow_down_small:{keywords:["blue-square","direction","bottom"],char:"🔽",fitzpatrick_scale:false,category:"symbols"},arrow_double_up:{keywords:["blue-square","direction","top"],char:"⏫",fitzpatrick_scale:false,category:"symbols"},arrow_double_down:{keywords:["blue-square","direction","bottom"],char:"⏬",fitzpatrick_scale:false,category:"symbols"},arrow_right:{keywords:["blue-square","next"],char:"➡️",fitzpatrick_scale:false,category:"symbols"},arrow_left:{keywords:["blue-square","previous","back"],char:"⬅️",fitzpatrick_scale:false,category:"symbols"},arrow_up:{keywords:["blue-square","continue","top","direction"],char:"⬆️",fitzpatrick_scale:false,category:"symbols"},arrow_down:{keywords:["blue-square","direction","bottom"],char:"⬇️",fitzpatrick_scale:false,category:"symbols"},arrow_upper_right:{keywords:["blue-square","point","direction","diagonal","northeast"],char:"↗️",fitzpatrick_scale:false,category:"symbols"},arrow_lower_right:{keywords:["blue-square","direction","diagonal","southeast"],char:"↘️",fitzpatrick_scale:false,category:"symbols"},arrow_lower_left:{keywords:["blue-square","direction","diagonal","southwest"],char:"↙️",fitzpatrick_scale:false,category:"symbols"},arrow_upper_left:{keywords:["blue-square","point","direction","diagonal","northwest"],char:"↖️",fitzpatrick_scale:false,category:"symbols"},arrow_up_down:{keywords:["blue-square","direction","way","vertical"],char:"↕️",fitzpatrick_scale:false,category:"symbols"},left_right_arrow:{keywords:["shape","direction","horizontal","sideways"],char:"↔️",fitzpatrick_scale:false,category:"symbols"},arrows_counterclockwise:{keywords:["blue-square","sync","cycle"],char:"🔄",fitzpatrick_scale:false,category:"symbols"},arrow_right_hook:{keywords:["blue-square","return","rotate","direction"],char:"↪️",fitzpatrick_scale:false,category:"symbols"},leftwards_arrow_with_hook:{keywords:["back","return","blue-square","undo","enter"],char:"↩️",fitzpatrick_scale:false,category:"symbols"},arrow_heading_up:{keywords:["blue-square","direction","top"],char:"⤴️",fitzpatrick_scale:false,category:"symbols"},arrow_heading_down:{keywords:["blue-square","direction","bottom"],char:"⤵️",fitzpatrick_scale:false,category:"symbols"},hash:{keywords:["symbol","blue-square","twitter"],char:"#️⃣",fitzpatrick_scale:false,category:"symbols"},information_source:{keywords:["blue-square","alphabet","letter"],char:"ℹ️",fitzpatrick_scale:false,category:"symbols"},abc:{keywords:["blue-square","alphabet"],char:"🔤",fitzpatrick_scale:false,category:"symbols"},abcd:{keywords:["blue-square","alphabet"],char:"🔡",fitzpatrick_scale:false,category:"symbols"},capital_abcd:{keywords:["alphabet","words","blue-square"],char:"🔠",fitzpatrick_scale:false,category:"symbols"},symbols:{keywords:["blue-square","music","note","ampersand","percent","glyphs","characters"],char:"🔣",fitzpatrick_scale:false,category:"symbols"},musical_note:{keywords:["score","tone","sound"],char:"🎵",fitzpatrick_scale:false,category:"symbols"},notes:{keywords:["music","score"],char:"🎶",fitzpatrick_scale:false,category:"symbols"},wavy_dash:{keywords:["draw","line","moustache","mustache","squiggle","scribble"],char:"〰️",fitzpatrick_scale:false,category:"symbols"},curly_loop:{keywords:["scribble","draw","shape","squiggle"],char:"➰",fitzpatrick_scale:false,category:"symbols"},heavy_check_mark:{keywords:["ok","nike","answer","yes","tick"],char:"✔️",fitzpatrick_scale:false,category:"symbols"},arrows_clockwise:{keywords:["sync","cycle","round","repeat"],char:"🔃",fitzpatrick_scale:false,category:"symbols"},heavy_plus_sign:{keywords:["math","calculation","addition","more","increase"],char:"➕",fitzpatrick_scale:false,category:"symbols"},heavy_minus_sign:{keywords:["math","calculation","subtract","less"],char:"➖",fitzpatrick_scale:false,category:"symbols"},heavy_division_sign:{keywords:["divide","math","calculation"],char:"➗",fitzpatrick_scale:false,category:"symbols"},heavy_multiplication_x:{keywords:["math","calculation"],char:"✖️",fitzpatrick_scale:false,category:"symbols"},infinity:{keywords:["forever"],char:"♾",fitzpatrick_scale:false,category:"symbols"},heavy_dollar_sign:{keywords:["money","sales","payment","currency","buck"],char:"💲",fitzpatrick_scale:false,category:"symbols"},currency_exchange:{keywords:["money","sales","dollar","travel"],char:"💱",fitzpatrick_scale:false,category:"symbols"},copyright:{keywords:["ip","license","circle","law","legal"],char:"©️",fitzpatrick_scale:false,category:"symbols"},registered:{keywords:["alphabet","circle"],char:"®️",fitzpatrick_scale:false,category:"symbols"},tm:{keywords:["trademark","brand","law","legal"],char:"™️",fitzpatrick_scale:false,category:"symbols"},end:{keywords:["words","arrow"],char:"🔚",fitzpatrick_scale:false,category:"symbols"},back:{keywords:["arrow","words","return"],char:"🔙",fitzpatrick_scale:false,category:"symbols"},on:{keywords:["arrow","words"],char:"🔛",fitzpatrick_scale:false,category:"symbols"},top:{keywords:["words","blue-square"],char:"🔝",fitzpatrick_scale:false,category:"symbols"},soon:{keywords:["arrow","words"],char:"🔜",fitzpatrick_scale:false,category:"symbols"},ballot_box_with_check:{keywords:["ok","agree","confirm","black-square","vote","election","yes","tick"],char:"☑️",fitzpatrick_scale:false,category:"symbols"},radio_button:{keywords:["input","old","music","circle"],char:"🔘",fitzpatrick_scale:false,category:"symbols"},white_circle:{keywords:["shape","round"],char:"⚪",fitzpatrick_scale:false,category:"symbols"},black_circle:{keywords:["shape","button","round"],char:"⚫",fitzpatrick_scale:false,category:"symbols"},red_circle:{keywords:["shape","error","danger"],char:"🔴",fitzpatrick_scale:false,category:"symbols"},large_blue_circle:{keywords:["shape","icon","button"],char:"🔵",fitzpatrick_scale:false,category:"symbols"},small_orange_diamond:{keywords:["shape","jewel","gem"],char:"🔸",fitzpatrick_scale:false,category:"symbols"},small_blue_diamond:{keywords:["shape","jewel","gem"],char:"🔹",fitzpatrick_scale:false,category:"symbols"},large_orange_diamond:{keywords:["shape","jewel","gem"],char:"🔶",fitzpatrick_scale:false,category:"symbols"},large_blue_diamond:{keywords:["shape","jewel","gem"],char:"🔷",fitzpatrick_scale:false,category:"symbols"},small_red_triangle:{keywords:["shape","direction","up","top"],char:"🔺",fitzpatrick_scale:false,category:"symbols"},black_small_square:{keywords:["shape","icon"],char:"▪️",fitzpatrick_scale:false,category:"symbols"},white_small_square:{keywords:["shape","icon"],char:"▫️",fitzpatrick_scale:false,category:"symbols"},black_large_square:{keywords:["shape","icon","button"],char:"⬛",fitzpatrick_scale:false,category:"symbols"},white_large_square:{keywords:["shape","icon","stone","button"],char:"⬜",fitzpatrick_scale:false,category:"symbols"},small_red_triangle_down:{keywords:["shape","direction","bottom"],char:"🔻",fitzpatrick_scale:false,category:"symbols"},black_medium_square:{keywords:["shape","button","icon"],char:"◼️",fitzpatrick_scale:false,category:"symbols"},white_medium_square:{keywords:["shape","stone","icon"],char:"◻️",fitzpatrick_scale:false,category:"symbols"},black_medium_small_square:{keywords:["icon","shape","button"],char:"◾",fitzpatrick_scale:false,category:"symbols"},white_medium_small_square:{keywords:["shape","stone","icon","button"],char:"◽",fitzpatrick_scale:false,category:"symbols"},black_square_button:{keywords:["shape","input","frame"],char:"🔲",fitzpatrick_scale:false,category:"symbols"},white_square_button:{keywords:["shape","input"],char:"🔳",fitzpatrick_scale:false,category:"symbols"},speaker:{keywords:["sound","volume","silence","broadcast"],char:"🔈",fitzpatrick_scale:false,category:"symbols"},sound:{keywords:["volume","speaker","broadcast"],char:"🔉",fitzpatrick_scale:false,category:"symbols"},loud_sound:{keywords:["volume","noise","noisy","speaker","broadcast"],char:"🔊",fitzpatrick_scale:false,category:"symbols"},mute:{keywords:["sound","volume","silence","quiet"],char:"🔇",fitzpatrick_scale:false,category:"symbols"},mega:{keywords:["sound","speaker","volume"],char:"📣",fitzpatrick_scale:false,category:"symbols"},loudspeaker:{keywords:["volume","sound"],char:"📢",fitzpatrick_scale:false,category:"symbols"},bell:{keywords:["sound","notification","christmas","xmas","chime"],char:"🔔",fitzpatrick_scale:false,category:"symbols"},no_bell:{keywords:["sound","volume","mute","quiet","silent"],char:"🔕",fitzpatrick_scale:false,category:"symbols"},black_joker:{keywords:["poker","cards","game","play","magic"],char:"🃏",fitzpatrick_scale:false,category:"symbols"},mahjong:{keywords:["game","play","chinese","kanji"],char:"🀄",fitzpatrick_scale:false,category:"symbols"},spades:{keywords:["poker","cards","suits","magic"],char:"♠️",fitzpatrick_scale:false,category:"symbols"},clubs:{keywords:["poker","cards","magic","suits"],char:"♣️",fitzpatrick_scale:false,category:"symbols"},hearts:{keywords:["poker","cards","magic","suits"],char:"♥️",fitzpatrick_scale:false,category:"symbols"},diamonds:{keywords:["poker","cards","magic","suits"],char:"♦️",fitzpatrick_scale:false,category:"symbols"},flower_playing_cards:{keywords:["game","sunset","red"],char:"🎴",fitzpatrick_scale:false,category:"symbols"},thought_balloon:{keywords:["bubble","cloud","speech","thinking","dream"],char:"💭",fitzpatrick_scale:false,category:"symbols"},right_anger_bubble:{keywords:["caption","speech","thinking","mad"],char:"🗯",fitzpatrick_scale:false,category:"symbols"},speech_balloon:{keywords:["bubble","words","message","talk","chatting"],char:"💬",fitzpatrick_scale:false,category:"symbols"},left_speech_bubble:{keywords:["words","message","talk","chatting"],char:"🗨",fitzpatrick_scale:false,category:"symbols"},clock1:{keywords:["time","late","early","schedule"],char:"🕐",fitzpatrick_scale:false,category:"symbols"},clock2:{keywords:["time","late","early","schedule"],char:"🕑",fitzpatrick_scale:false,category:"symbols"},clock3:{keywords:["time","late","early","schedule"],char:"🕒",fitzpatrick_scale:false,category:"symbols"},clock4:{keywords:["time","late","early","schedule"],char:"🕓",fitzpatrick_scale:false,category:"symbols"},clock5:{keywords:["time","late","early","schedule"],char:"🕔",fitzpatrick_scale:false,category:"symbols"},clock6:{keywords:["time","late","early","schedule","dawn","dusk"],char:"🕕",fitzpatrick_scale:false,category:"symbols"},clock7:{keywords:["time","late","early","schedule"],char:"🕖",fitzpatrick_scale:false,category:"symbols"},clock8:{keywords:["time","late","early","schedule"],char:"🕗",fitzpatrick_scale:false,category:"symbols"},clock9:{keywords:["time","late","early","schedule"],char:"🕘",fitzpatrick_scale:false,category:"symbols"},clock10:{keywords:["time","late","early","schedule"],char:"🕙",fitzpatrick_scale:false,category:"symbols"},clock11:{keywords:["time","late","early","schedule"],char:"🕚",fitzpatrick_scale:false,category:"symbols"},clock12:{keywords:["time","noon","midnight","midday","late","early","schedule"],char:"🕛",fitzpatrick_scale:false,category:"symbols"},clock130:{keywords:["time","late","early","schedule"],char:"🕜",fitzpatrick_scale:false,category:"symbols"},clock230:{keywords:["time","late","early","schedule"],char:"🕝",fitzpatrick_scale:false,category:"symbols"},clock330:{keywords:["time","late","early","schedule"],char:"🕞",fitzpatrick_scale:false,category:"symbols"},clock430:{keywords:["time","late","early","schedule"],char:"🕟",fitzpatrick_scale:false,category:"symbols"},clock530:{keywords:["time","late","early","schedule"],char:"🕠",fitzpatrick_scale:false,category:"symbols"},clock630:{keywords:["time","late","early","schedule"],char:"🕡",fitzpatrick_scale:false,category:"symbols"},clock730:{keywords:["time","late","early","schedule"],char:"🕢",fitzpatrick_scale:false,category:"symbols"},clock830:{keywords:["time","late","early","schedule"],char:"🕣",fitzpatrick_scale:false,category:"symbols"},clock930:{keywords:["time","late","early","schedule"],char:"🕤",fitzpatrick_scale:false,category:"symbols"},clock1030:{keywords:["time","late","early","schedule"],char:"🕥",fitzpatrick_scale:false,category:"symbols"},clock1130:{keywords:["time","late","early","schedule"],char:"🕦",fitzpatrick_scale:false,category:"symbols"},clock1230:{keywords:["time","late","early","schedule"],char:"🕧",fitzpatrick_scale:false,category:"symbols"},afghanistan:{keywords:["af","flag","nation","country","banner"],char:"🇦🇫",fitzpatrick_scale:false,category:"flags"},aland_islands:{keywords:["Åland","islands","flag","nation","country","banner"],char:"🇦🇽",fitzpatrick_scale:false,category:"flags"},albania:{keywords:["al","flag","nation","country","banner"],char:"🇦🇱",fitzpatrick_scale:false,category:"flags"},algeria:{keywords:["dz","flag","nation","country","banner"],char:"🇩🇿",fitzpatrick_scale:false,category:"flags"},american_samoa:{keywords:["american","ws","flag","nation","country","banner"],char:"🇦🇸",fitzpatrick_scale:false,category:"flags"},andorra:{keywords:["ad","flag","nation","country","banner"],char:"🇦🇩",fitzpatrick_scale:false,category:"flags"},angola:{keywords:["ao","flag","nation","country","banner"],char:"🇦🇴",fitzpatrick_scale:false,category:"flags"},anguilla:{keywords:["ai","flag","nation","country","banner"],char:"🇦🇮",fitzpatrick_scale:false,category:"flags"},antarctica:{keywords:["aq","flag","nation","country","banner"],char:"🇦🇶",fitzpatrick_scale:false,category:"flags"},antigua_barbuda:{keywords:["antigua","barbuda","flag","nation","country","banner"],char:"🇦🇬",fitzpatrick_scale:false,category:"flags"},argentina:{keywords:["ar","flag","nation","country","banner"],char:"🇦🇷",fitzpatrick_scale:false,category:"flags"},armenia:{keywords:["am","flag","nation","country","banner"],char:"🇦🇲",fitzpatrick_scale:false,category:"flags"},aruba:{keywords:["aw","flag","nation","country","banner"],char:"🇦🇼",fitzpatrick_scale:false,category:"flags"},australia:{keywords:["au","flag","nation","country","banner"],char:"🇦🇺",fitzpatrick_scale:false,category:"flags"},austria:{keywords:["at","flag","nation","country","banner"],char:"🇦🇹",fitzpatrick_scale:false,category:"flags"},azerbaijan:{keywords:["az","flag","nation","country","banner"],char:"🇦🇿",fitzpatrick_scale:false,category:"flags"},bahamas:{keywords:["bs","flag","nation","country","banner"],char:"🇧🇸",fitzpatrick_scale:false,category:"flags"},bahrain:{keywords:["bh","flag","nation","country","banner"],char:"🇧🇭",fitzpatrick_scale:false,category:"flags"},bangladesh:{keywords:["bd","flag","nation","country","banner"],char:"🇧🇩",fitzpatrick_scale:false,category:"flags"},barbados:{keywords:["bb","flag","nation","country","banner"],char:"🇧🇧",fitzpatrick_scale:false,category:"flags"},belarus:{keywords:["by","flag","nation","country","banner"],char:"🇧🇾",fitzpatrick_scale:false,category:"flags"},belgium:{keywords:["be","flag","nation","country","banner"],char:"🇧🇪",fitzpatrick_scale:false,category:"flags"},belize:{keywords:["bz","flag","nation","country","banner"],char:"🇧🇿",fitzpatrick_scale:false,category:"flags"},benin:{keywords:["bj","flag","nation","country","banner"],char:"🇧🇯",fitzpatrick_scale:false,category:"flags"},bermuda:{keywords:["bm","flag","nation","country","banner"],char:"🇧🇲",fitzpatrick_scale:false,category:"flags"},bhutan:{keywords:["bt","flag","nation","country","banner"],char:"🇧🇹",fitzpatrick_scale:false,category:"flags"},bolivia:{keywords:["bo","flag","nation","country","banner"],char:"🇧🇴",fitzpatrick_scale:false,category:"flags"},caribbean_netherlands:{keywords:["bonaire","flag","nation","country","banner"],char:"🇧🇶",fitzpatrick_scale:false,category:"flags"},bosnia_herzegovina:{keywords:["bosnia","herzegovina","flag","nation","country","banner"],char:"🇧🇦",fitzpatrick_scale:false,category:"flags"},botswana:{keywords:["bw","flag","nation","country","banner"],char:"🇧🇼",fitzpatrick_scale:false,category:"flags"},brazil:{keywords:["br","flag","nation","country","banner"],char:"🇧🇷",fitzpatrick_scale:false,category:"flags"},british_indian_ocean_territory:{keywords:["british","indian","ocean","territory","flag","nation","country","banner"],char:"🇮🇴",fitzpatrick_scale:false,category:"flags"},british_virgin_islands:{keywords:["british","virgin","islands","bvi","flag","nation","country","banner"],char:"🇻🇬",fitzpatrick_scale:false,category:"flags"},brunei:{keywords:["bn","darussalam","flag","nation","country","banner"],char:"🇧🇳",fitzpatrick_scale:false,category:"flags"},bulgaria:{keywords:["bg","flag","nation","country","banner"],char:"🇧🇬",fitzpatrick_scale:false,category:"flags"},burkina_faso:{keywords:["burkina","faso","flag","nation","country","banner"],char:"🇧🇫",fitzpatrick_scale:false,category:"flags"},burundi:{keywords:["bi","flag","nation","country","banner"],char:"🇧🇮",fitzpatrick_scale:false,category:"flags"},cape_verde:{keywords:["cabo","verde","flag","nation","country","banner"],char:"🇨🇻",fitzpatrick_scale:false,category:"flags"},cambodia:{keywords:["kh","flag","nation","country","banner"],char:"🇰🇭",fitzpatrick_scale:false,category:"flags"},cameroon:{keywords:["cm","flag","nation","country","banner"],char:"🇨🇲",fitzpatrick_scale:false,category:"flags"},canada:{keywords:["ca","flag","nation","country","banner"],char:"🇨🇦",fitzpatrick_scale:false,category:"flags"},canary_islands:{keywords:["canary","islands","flag","nation","country","banner"],char:"🇮🇨",fitzpatrick_scale:false,category:"flags"},cayman_islands:{keywords:["cayman","islands","flag","nation","country","banner"],char:"🇰🇾",fitzpatrick_scale:false,category:"flags"},central_african_republic:{keywords:["central","african","republic","flag","nation","country","banner"],char:"🇨🇫",fitzpatrick_scale:false,category:"flags"},chad:{keywords:["td","flag","nation","country","banner"],char:"🇹🇩",fitzpatrick_scale:false,category:"flags"},chile:{keywords:["flag","nation","country","banner"],char:"🇨🇱",fitzpatrick_scale:false,category:"flags"},cn:{keywords:["china","chinese","prc","flag","country","nation","banner"],char:"🇨🇳",fitzpatrick_scale:false,category:"flags"},christmas_island:{keywords:["christmas","island","flag","nation","country","banner"],char:"🇨🇽",fitzpatrick_scale:false,category:"flags"},cocos_islands:{keywords:["cocos","keeling","islands","flag","nation","country","banner"],char:"🇨🇨",fitzpatrick_scale:false,category:"flags"},colombia:{keywords:["co","flag","nation","country","banner"],char:"🇨🇴",fitzpatrick_scale:false,category:"flags"},comoros:{keywords:["km","flag","nation","country","banner"],char:"🇰🇲",fitzpatrick_scale:false,category:"flags"},congo_brazzaville:{keywords:["congo","flag","nation","country","banner"],char:"🇨🇬",fitzpatrick_scale:false,category:"flags"},congo_kinshasa:{keywords:["congo","democratic","republic","flag","nation","country","banner"],char:"🇨🇩",fitzpatrick_scale:false,category:"flags"},cook_islands:{keywords:["cook","islands","flag","nation","country","banner"],char:"🇨🇰",fitzpatrick_scale:false,category:"flags"},costa_rica:{keywords:["costa","rica","flag","nation","country","banner"],char:"🇨🇷",fitzpatrick_scale:false,category:"flags"},croatia:{keywords:["hr","flag","nation","country","banner"],char:"🇭🇷",fitzpatrick_scale:false,category:"flags"},cuba:{keywords:["cu","flag","nation","country","banner"],char:"🇨🇺",fitzpatrick_scale:false,category:"flags"},curacao:{keywords:["curaçao","flag","nation","country","banner"],char:"🇨🇼",fitzpatrick_scale:false,category:"flags"},cyprus:{keywords:["cy","flag","nation","country","banner"],char:"🇨🇾",fitzpatrick_scale:false,category:"flags"},czech_republic:{keywords:["cz","flag","nation","country","banner"],char:"🇨🇿",fitzpatrick_scale:false,category:"flags"},denmark:{keywords:["dk","flag","nation","country","banner"],char:"🇩🇰",fitzpatrick_scale:false,category:"flags"},djibouti:{keywords:["dj","flag","nation","country","banner"],char:"🇩🇯",fitzpatrick_scale:false,category:"flags"},dominica:{keywords:["dm","flag","nation","country","banner"],char:"🇩🇲",fitzpatrick_scale:false,category:"flags"},dominican_republic:{keywords:["dominican","republic","flag","nation","country","banner"],char:"🇩🇴",fitzpatrick_scale:false,category:"flags"},ecuador:{keywords:["ec","flag","nation","country","banner"],char:"🇪🇨",fitzpatrick_scale:false,category:"flags"},egypt:{keywords:["eg","flag","nation","country","banner"],char:"🇪🇬",fitzpatrick_scale:false,category:"flags"},el_salvador:{keywords:["el","salvador","flag","nation","country","banner"],char:"🇸🇻",fitzpatrick_scale:false,category:"flags"},equatorial_guinea:{keywords:["equatorial","gn","flag","nation","country","banner"],char:"🇬🇶",fitzpatrick_scale:false,category:"flags"},eritrea:{keywords:["er","flag","nation","country","banner"],char:"🇪🇷",fitzpatrick_scale:false,category:"flags"},estonia:{keywords:["ee","flag","nation","country","banner"],char:"🇪🇪",fitzpatrick_scale:false,category:"flags"},ethiopia:{keywords:["et","flag","nation","country","banner"],char:"🇪🇹",fitzpatrick_scale:false,category:"flags"},eu:{keywords:["european","union","flag","banner"],char:"🇪🇺",fitzpatrick_scale:false,category:"flags"},falkland_islands:{keywords:["falkland","islands","malvinas","flag","nation","country","banner"],char:"🇫🇰",fitzpatrick_scale:false,category:"flags"},faroe_islands:{keywords:["faroe","islands","flag","nation","country","banner"],char:"🇫🇴",fitzpatrick_scale:false,category:"flags"},fiji:{keywords:["fj","flag","nation","country","banner"],char:"🇫🇯",fitzpatrick_scale:false,category:"flags"},finland:{keywords:["fi","flag","nation","country","banner"],char:"🇫🇮",fitzpatrick_scale:false,category:"flags"},fr:{keywords:["banner","flag","nation","france","french","country"],char:"🇫🇷",fitzpatrick_scale:false,category:"flags"},french_guiana:{keywords:["french","guiana","flag","nation","country","banner"],char:"🇬🇫",fitzpatrick_scale:false,category:"flags"},french_polynesia:{keywords:["french","polynesia","flag","nation","country","banner"],char:"🇵🇫",fitzpatrick_scale:false,category:"flags"},french_southern_territories:{keywords:["french","southern","territories","flag","nation","country","banner"],char:"🇹🇫",fitzpatrick_scale:false,category:"flags"},gabon:{keywords:["ga","flag","nation","country","banner"],char:"🇬🇦",fitzpatrick_scale:false,category:"flags"},gambia:{keywords:["gm","flag","nation","country","banner"],char:"🇬🇲",fitzpatrick_scale:false,category:"flags"},georgia:{keywords:["ge","flag","nation","country","banner"],char:"🇬🇪",fitzpatrick_scale:false,category:"flags"},de:{keywords:["german","nation","flag","country","banner"],char:"🇩🇪",fitzpatrick_scale:false,category:"flags"},ghana:{keywords:["gh","flag","nation","country","banner"],char:"🇬🇭",fitzpatrick_scale:false,category:"flags"},gibraltar:{keywords:["gi","flag","nation","country","banner"],char:"🇬🇮",fitzpatrick_scale:false,category:"flags"},greece:{keywords:["gr","flag","nation","country","banner"],char:"🇬🇷",fitzpatrick_scale:false,category:"flags"},greenland:{keywords:["gl","flag","nation","country","banner"],char:"🇬🇱",fitzpatrick_scale:false,category:"flags"},grenada:{keywords:["gd","flag","nation","country","banner"],char:"🇬🇩",fitzpatrick_scale:false,category:"flags"},guadeloupe:{keywords:["gp","flag","nation","country","banner"],char:"🇬🇵",fitzpatrick_scale:false,category:"flags"},guam:{keywords:["gu","flag","nation","country","banner"],char:"🇬🇺",fitzpatrick_scale:false,category:"flags"},guatemala:{keywords:["gt","flag","nation","country","banner"],char:"🇬🇹",fitzpatrick_scale:false,category:"flags"},guernsey:{keywords:["gg","flag","nation","country","banner"],char:"🇬🇬",fitzpatrick_scale:false,category:"flags"},guinea:{keywords:["gn","flag","nation","country","banner"],char:"🇬🇳",fitzpatrick_scale:false,category:"flags"},guinea_bissau:{keywords:["gw","bissau","flag","nation","country","banner"],char:"🇬🇼",fitzpatrick_scale:false,category:"flags"},guyana:{keywords:["gy","flag","nation","country","banner"],char:"🇬🇾",fitzpatrick_scale:false,category:"flags"},haiti:{keywords:["ht","flag","nation","country","banner"],char:"🇭🇹",fitzpatrick_scale:false,category:"flags"},honduras:{keywords:["hn","flag","nation","country","banner"],char:"🇭🇳",fitzpatrick_scale:false,category:"flags"},hong_kong:{keywords:["hong","kong","flag","nation","country","banner"],char:"🇭🇰",fitzpatrick_scale:false,category:"flags"},hungary:{keywords:["hu","flag","nation","country","banner"],char:"🇭🇺",fitzpatrick_scale:false,category:"flags"},iceland:{keywords:["is","flag","nation","country","banner"],char:"🇮🇸",fitzpatrick_scale:false,category:"flags"},india:{keywords:["in","flag","nation","country","banner"],char:"🇮🇳",fitzpatrick_scale:false,category:"flags"},indonesia:{keywords:["flag","nation","country","banner"],char:"🇮🇩",fitzpatrick_scale:false,category:"flags"},iran:{keywords:["iran,","islamic","republic","flag","nation","country","banner"],char:"🇮🇷",fitzpatrick_scale:false,category:"flags"},iraq:{keywords:["iq","flag","nation","country","banner"],char:"🇮🇶",fitzpatrick_scale:false,category:"flags"},ireland:{keywords:["ie","flag","nation","country","banner"],char:"🇮🇪",fitzpatrick_scale:false,category:"flags"},isle_of_man:{keywords:["isle","man","flag","nation","country","banner"],char:"🇮🇲",fitzpatrick_scale:false,category:"flags"},israel:{keywords:["il","flag","nation","country","banner"],char:"🇮🇱",fitzpatrick_scale:false,category:"flags"},it:{keywords:["italy","flag","nation","country","banner"],char:"🇮🇹",fitzpatrick_scale:false,category:"flags"},cote_divoire:{keywords:["ivory","coast","flag","nation","country","banner"],char:"🇨🇮",fitzpatrick_scale:false,category:"flags"},jamaica:{keywords:["jm","flag","nation","country","banner"],char:"🇯🇲",fitzpatrick_scale:false,category:"flags"},jp:{keywords:["japanese","nation","flag","country","banner"],char:"🇯🇵",fitzpatrick_scale:false,category:"flags"},jersey:{keywords:["je","flag","nation","country","banner"],char:"🇯🇪",fitzpatrick_scale:false,category:"flags"},jordan:{keywords:["jo","flag","nation","country","banner"],char:"🇯🇴",fitzpatrick_scale:false,category:"flags"},kazakhstan:{keywords:["kz","flag","nation","country","banner"],char:"🇰🇿",fitzpatrick_scale:false,category:"flags"},kenya:{keywords:["ke","flag","nation","country","banner"],char:"🇰🇪",fitzpatrick_scale:false,category:"flags"},kiribati:{keywords:["ki","flag","nation","country","banner"],char:"🇰🇮",fitzpatrick_scale:false,category:"flags"},kosovo:{keywords:["xk","flag","nation","country","banner"],char:"🇽🇰",fitzpatrick_scale:false,category:"flags"},kuwait:{keywords:["kw","flag","nation","country","banner"],char:"🇰🇼",fitzpatrick_scale:false,category:"flags"},kyrgyzstan:{keywords:["kg","flag","nation","country","banner"],char:"🇰🇬",fitzpatrick_scale:false,category:"flags"},laos:{keywords:["lao","democratic","republic","flag","nation","country","banner"],char:"🇱🇦",fitzpatrick_scale:false,category:"flags"},latvia:{keywords:["lv","flag","nation","country","banner"],char:"🇱🇻",fitzpatrick_scale:false,category:"flags"},lebanon:{keywords:["lb","flag","nation","country","banner"],char:"🇱🇧",fitzpatrick_scale:false,category:"flags"},lesotho:{keywords:["ls","flag","nation","country","banner"],char:"🇱🇸",fitzpatrick_scale:false,category:"flags"},liberia:{keywords:["lr","flag","nation","country","banner"],char:"🇱🇷",fitzpatrick_scale:false,category:"flags"},libya:{keywords:["ly","flag","nation","country","banner"],char:"🇱🇾",fitzpatrick_scale:false,category:"flags"},liechtenstein:{keywords:["li","flag","nation","country","banner"],char:"🇱🇮",fitzpatrick_scale:false,category:"flags"},lithuania:{keywords:["lt","flag","nation","country","banner"],char:"🇱🇹",fitzpatrick_scale:false,category:"flags"},luxembourg:{keywords:["lu","flag","nation","country","banner"],char:"🇱🇺",fitzpatrick_scale:false,category:"flags"},macau:{keywords:["macao","flag","nation","country","banner"],char:"🇲🇴",fitzpatrick_scale:false,category:"flags"},macedonia:{keywords:["macedonia,","flag","nation","country","banner"],char:"🇲🇰",fitzpatrick_scale:false,category:"flags"},madagascar:{keywords:["mg","flag","nation","country","banner"],char:"🇲🇬",fitzpatrick_scale:false,category:"flags"},malawi:{keywords:["mw","flag","nation","country","banner"],char:"🇲🇼",fitzpatrick_scale:false,category:"flags"},malaysia:{keywords:["my","flag","nation","country","banner"],char:"🇲🇾",fitzpatrick_scale:false,category:"flags"},maldives:{keywords:["mv","flag","nation","country","banner"],char:"🇲🇻",fitzpatrick_scale:false,category:"flags"},mali:{keywords:["ml","flag","nation","country","banner"],char:"🇲🇱",fitzpatrick_scale:false,category:"flags"},malta:{keywords:["mt","flag","nation","country","banner"],char:"🇲🇹",fitzpatrick_scale:false,category:"flags"},marshall_islands:{keywords:["marshall","islands","flag","nation","country","banner"],char:"🇲🇭",fitzpatrick_scale:false,category:"flags"},martinique:{keywords:["mq","flag","nation","country","banner"],char:"🇲🇶",fitzpatrick_scale:false,category:"flags"},mauritania:{keywords:["mr","flag","nation","country","banner"],char:"🇲🇷",fitzpatrick_scale:false,category:"flags"},mauritius:{keywords:["mu","flag","nation","country","banner"],char:"🇲🇺",fitzpatrick_scale:false,category:"flags"},mayotte:{keywords:["yt","flag","nation","country","banner"],char:"🇾🇹",fitzpatrick_scale:false,category:"flags"},mexico:{keywords:["mx","flag","nation","country","banner"],char:"🇲🇽",fitzpatrick_scale:false,category:"flags"},micronesia:{keywords:["micronesia,","federated","states","flag","nation","country","banner"],char:"🇫🇲",fitzpatrick_scale:false,category:"flags"},moldova:{keywords:["moldova,","republic","flag","nation","country","banner"],char:"🇲🇩",fitzpatrick_scale:false,category:"flags"},monaco:{keywords:["mc","flag","nation","country","banner"],char:"🇲🇨",fitzpatrick_scale:false,category:"flags"},mongolia:{keywords:["mn","flag","nation","country","banner"],char:"🇲🇳",fitzpatrick_scale:false,category:"flags"},montenegro:{keywords:["me","flag","nation","country","banner"],char:"🇲🇪",fitzpatrick_scale:false,category:"flags"},montserrat:{keywords:["ms","flag","nation","country","banner"],char:"🇲🇸",fitzpatrick_scale:false,category:"flags"},morocco:{keywords:["ma","flag","nation","country","banner"],char:"🇲🇦",fitzpatrick_scale:false,category:"flags"},mozambique:{keywords:["mz","flag","nation","country","banner"],char:"🇲🇿",fitzpatrick_scale:false,category:"flags"},myanmar:{keywords:["mm","flag","nation","country","banner"],char:"🇲🇲",fitzpatrick_scale:false,category:"flags"},namibia:{keywords:["na","flag","nation","country","banner"],char:"🇳🇦",fitzpatrick_scale:false,category:"flags"},nauru:{keywords:["nr","flag","nation","country","banner"],char:"🇳🇷",fitzpatrick_scale:false,category:"flags"},nepal:{keywords:["np","flag","nation","country","banner"],char:"🇳🇵",fitzpatrick_scale:false,category:"flags"},netherlands:{keywords:["nl","flag","nation","country","banner"],char:"🇳🇱",fitzpatrick_scale:false,category:"flags"},new_caledonia:{keywords:["new","caledonia","flag","nation","country","banner"],char:"🇳🇨",fitzpatrick_scale:false,category:"flags"},new_zealand:{keywords:["new","zealand","flag","nation","country","banner"],char:"🇳🇿",fitzpatrick_scale:false,category:"flags"},nicaragua:{keywords:["ni","flag","nation","country","banner"],char:"🇳🇮",fitzpatrick_scale:false,category:"flags"},niger:{keywords:["ne","flag","nation","country","banner"],char:"🇳🇪",fitzpatrick_scale:false,category:"flags"},nigeria:{keywords:["flag","nation","country","banner"],char:"🇳🇬",fitzpatrick_scale:false,category:"flags"},niue:{keywords:["nu","flag","nation","country","banner"],char:"🇳🇺",fitzpatrick_scale:false,category:"flags"},norfolk_island:{keywords:["norfolk","island","flag","nation","country","banner"],char:"🇳🇫",fitzpatrick_scale:false,category:"flags"},northern_mariana_islands:{keywords:["northern","mariana","islands","flag","nation","country","banner"],char:"🇲🇵",fitzpatrick_scale:false,category:"flags"},north_korea:{keywords:["north","korea","nation","flag","country","banner"],char:"🇰🇵",fitzpatrick_scale:false,category:"flags"},norway:{keywords:["no","flag","nation","country","banner"],char:"🇳🇴",fitzpatrick_scale:false,category:"flags"},oman:{keywords:["om_symbol","flag","nation","country","banner"],char:"🇴🇲",fitzpatrick_scale:false,category:"flags"},pakistan:{keywords:["pk","flag","nation","country","banner"],char:"🇵🇰",fitzpatrick_scale:false,category:"flags"},palau:{keywords:["pw","flag","nation","country","banner"],char:"🇵🇼",fitzpatrick_scale:false,category:"flags"},palestinian_territories:{keywords:["palestine","palestinian","territories","flag","nation","country","banner"],char:"🇵🇸",fitzpatrick_scale:false,category:"flags"},panama:{keywords:["pa","flag","nation","country","banner"],char:"🇵🇦",fitzpatrick_scale:false,category:"flags"},papua_new_guinea:{keywords:["papua","new","guinea","flag","nation","country","banner"],char:"🇵🇬",fitzpatrick_scale:false,category:"flags"},paraguay:{keywords:["py","flag","nation","country","banner"],char:"🇵🇾",fitzpatrick_scale:false,category:"flags"},peru:{keywords:["pe","flag","nation","country","banner"],char:"🇵🇪",fitzpatrick_scale:false,category:"flags"},philippines:{keywords:["ph","flag","nation","country","banner"],char:"🇵🇭",fitzpatrick_scale:false,category:"flags"},pitcairn_islands:{keywords:["pitcairn","flag","nation","country","banner"],char:"🇵🇳",fitzpatrick_scale:false,category:"flags"},poland:{keywords:["pl","flag","nation","country","banner"],char:"🇵🇱",fitzpatrick_scale:false,category:"flags"},portugal:{keywords:["pt","flag","nation","country","banner"],char:"🇵🇹",fitzpatrick_scale:false,category:"flags"},puerto_rico:{keywords:["puerto","rico","flag","nation","country","banner"],char:"🇵🇷",fitzpatrick_scale:false,category:"flags"},qatar:{keywords:["qa","flag","nation","country","banner"],char:"🇶🇦",fitzpatrick_scale:false,category:"flags"},reunion:{keywords:["réunion","flag","nation","country","banner"],char:"🇷🇪",fitzpatrick_scale:false,category:"flags"},romania:{keywords:["ro","flag","nation","country","banner"],char:"🇷🇴",fitzpatrick_scale:false,category:"flags"},ru:{keywords:["russian","federation","flag","nation","country","banner"],char:"🇷🇺",fitzpatrick_scale:false,category:"flags"},rwanda:{keywords:["rw","flag","nation","country","banner"],char:"🇷🇼",fitzpatrick_scale:false,category:"flags"},st_barthelemy:{keywords:["saint","barthélemy","flag","nation","country","banner"],char:"🇧🇱",fitzpatrick_scale:false,category:"flags"},st_helena:{keywords:["saint","helena","ascension","tristan","cunha","flag","nation","country","banner"],char:"🇸🇭",fitzpatrick_scale:false,category:"flags"},st_kitts_nevis:{keywords:["saint","kitts","nevis","flag","nation","country","banner"],char:"🇰🇳",fitzpatrick_scale:false,category:"flags"},st_lucia:{keywords:["saint","lucia","flag","nation","country","banner"],char:"🇱🇨",fitzpatrick_scale:false,category:"flags"},st_pierre_miquelon:{keywords:["saint","pierre","miquelon","flag","nation","country","banner"],char:"🇵🇲",fitzpatrick_scale:false,category:"flags"},st_vincent_grenadines:{keywords:["saint","vincent","grenadines","flag","nation","country","banner"],char:"🇻🇨",fitzpatrick_scale:false,category:"flags"},samoa:{keywords:["ws","flag","nation","country","banner"],char:"🇼🇸",fitzpatrick_scale:false,category:"flags"},san_marino:{keywords:["san","marino","flag","nation","country","banner"],char:"🇸🇲",fitzpatrick_scale:false,category:"flags"},sao_tome_principe:{keywords:["sao","tome","principe","flag","nation","country","banner"],char:"🇸🇹",fitzpatrick_scale:false,category:"flags"},saudi_arabia:{keywords:["flag","nation","country","banner"],char:"🇸🇦",fitzpatrick_scale:false,category:"flags"},senegal:{keywords:["sn","flag","nation","country","banner"],char:"🇸🇳",fitzpatrick_scale:false,category:"flags"},serbia:{keywords:["rs","flag","nation","country","banner"],char:"🇷🇸",fitzpatrick_scale:false,category:"flags"},seychelles:{keywords:["sc","flag","nation","country","banner"],char:"🇸🇨",fitzpatrick_scale:false,category:"flags"},sierra_leone:{keywords:["sierra","leone","flag","nation","country","banner"],char:"🇸🇱",fitzpatrick_scale:false,category:"flags"},singapore:{keywords:["sg","flag","nation","country","banner"],char:"🇸🇬",fitzpatrick_scale:false,category:"flags"},sint_maarten:{keywords:["sint","maarten","dutch","flag","nation","country","banner"],char:"🇸🇽",fitzpatrick_scale:false,category:"flags"},slovakia:{keywords:["sk","flag","nation","country","banner"],char:"🇸🇰",fitzpatrick_scale:false,category:"flags"},slovenia:{keywords:["si","flag","nation","country","banner"],char:"🇸🇮",fitzpatrick_scale:false,category:"flags"},solomon_islands:{keywords:["solomon","islands","flag","nation","country","banner"],char:"🇸🇧",fitzpatrick_scale:false,category:"flags"},somalia:{keywords:["so","flag","nation","country","banner"],char:"🇸🇴",fitzpatrick_scale:false,category:"flags"},south_africa:{keywords:["south","africa","flag","nation","country","banner"],char:"🇿🇦",fitzpatrick_scale:false,category:"flags"},south_georgia_south_sandwich_islands:{keywords:["south","georgia","sandwich","islands","flag","nation","country","banner"],char:"🇬🇸",fitzpatrick_scale:false,category:"flags"},kr:{keywords:["south","korea","nation","flag","country","banner"],char:"🇰🇷",fitzpatrick_scale:false,category:"flags"},south_sudan:{keywords:["south","sd","flag","nation","country","banner"],char:"🇸🇸",fitzpatrick_scale:false,category:"flags"},es:{keywords:["spain","flag","nation","country","banner"],char:"🇪🇸",fitzpatrick_scale:false,category:"flags"},sri_lanka:{keywords:["sri","lanka","flag","nation","country","banner"],char:"🇱🇰",fitzpatrick_scale:false,category:"flags"},sudan:{keywords:["sd","flag","nation","country","banner"],char:"🇸🇩",fitzpatrick_scale:false,category:"flags"},suriname:{keywords:["sr","flag","nation","country","banner"],char:"🇸🇷",fitzpatrick_scale:false,category:"flags"},swaziland:{keywords:["sz","flag","nation","country","banner"],char:"🇸🇿",fitzpatrick_scale:false,category:"flags"},sweden:{keywords:["se","flag","nation","country","banner"],char:"🇸🇪",fitzpatrick_scale:false,category:"flags"},switzerland:{keywords:["ch","flag","nation","country","banner"],char:"🇨🇭",fitzpatrick_scale:false,category:"flags"},syria:{keywords:["syrian","arab","republic","flag","nation","country","banner"],char:"🇸🇾",fitzpatrick_scale:false,category:"flags"},taiwan:{keywords:["tw","flag","nation","country","banner"],char:"🇹🇼",fitzpatrick_scale:false,category:"flags"},tajikistan:{keywords:["tj","flag","nation","country","banner"],char:"🇹🇯",fitzpatrick_scale:false,category:"flags"},tanzania:{keywords:["tanzania,","united","republic","flag","nation","country","banner"],char:"🇹🇿",fitzpatrick_scale:false,category:"flags"},thailand:{keywords:["th","flag","nation","country","banner"],char:"🇹🇭",fitzpatrick_scale:false,category:"flags"},timor_leste:{keywords:["timor","leste","flag","nation","country","banner"],char:"🇹🇱",fitzpatrick_scale:false,category:"flags"},togo:{keywords:["tg","flag","nation","country","banner"],char:"🇹🇬",fitzpatrick_scale:false,category:"flags"},tokelau:{keywords:["tk","flag","nation","country","banner"],char:"🇹🇰",fitzpatrick_scale:false,category:"flags"},tonga:{keywords:["to","flag","nation","country","banner"],char:"🇹🇴",fitzpatrick_scale:false,category:"flags"},trinidad_tobago:{keywords:["trinidad","tobago","flag","nation","country","banner"],char:"🇹🇹",fitzpatrick_scale:false,category:"flags"},tunisia:{keywords:["tn","flag","nation","country","banner"],char:"🇹🇳",fitzpatrick_scale:false,category:"flags"},tr:{keywords:["turkey","flag","nation","country","banner"],char:"🇹🇷",fitzpatrick_scale:false,category:"flags"},turkmenistan:{keywords:["flag","nation","country","banner"],char:"🇹🇲",fitzpatrick_scale:false,category:"flags"},turks_caicos_islands:{keywords:["turks","caicos","islands","flag","nation","country","banner"],char:"🇹🇨",fitzpatrick_scale:false,category:"flags"},tuvalu:{keywords:["flag","nation","country","banner"],char:"🇹🇻",fitzpatrick_scale:false,category:"flags"},uganda:{keywords:["ug","flag","nation","country","banner"],char:"🇺🇬",fitzpatrick_scale:false,category:"flags"},ukraine:{keywords:["ua","flag","nation","country","banner"],char:"🇺🇦",fitzpatrick_scale:false,category:"flags"},united_arab_emirates:{keywords:["united","arab","emirates","flag","nation","country","banner"],char:"🇦🇪",fitzpatrick_scale:false,category:"flags"},uk:{keywords:["united","kingdom","great","britain","northern","ireland","flag","nation","country","banner","british","UK","english","england","union jack"],char:"🇬🇧",fitzpatrick_scale:false,category:"flags"},england:{keywords:["flag","english"],char:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",fitzpatrick_scale:false,category:"flags"},scotland:{keywords:["flag","scottish"],char:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",fitzpatrick_scale:false,category:"flags"},wales:{keywords:["flag","welsh"],char:"🏴󠁧󠁢󠁷󠁬󠁳󠁿",fitzpatrick_scale:false,category:"flags"},us:{keywords:["united","states","america","flag","nation","country","banner"],char:"🇺🇸",fitzpatrick_scale:false,category:"flags"},us_virgin_islands:{keywords:["virgin","islands","us","flag","nation","country","banner"],char:"🇻🇮",fitzpatrick_scale:false,category:"flags"},uruguay:{keywords:["uy","flag","nation","country","banner"],char:"🇺🇾",fitzpatrick_scale:false,category:"flags"},uzbekistan:{keywords:["uz","flag","nation","country","banner"],char:"🇺🇿",fitzpatrick_scale:false,category:"flags"},vanuatu:{keywords:["vu","flag","nation","country","banner"],char:"🇻🇺",fitzpatrick_scale:false,category:"flags"},vatican_city:{keywords:["vatican","city","flag","nation","country","banner"],char:"🇻🇦",fitzpatrick_scale:false,category:"flags"},venezuela:{keywords:["ve","bolivarian","republic","flag","nation","country","banner"],char:"🇻🇪",fitzpatrick_scale:false,category:"flags"},vietnam:{keywords:["viet","nam","flag","nation","country","banner"],char:"🇻🇳",fitzpatrick_scale:false,category:"flags"},wallis_futuna:{keywords:["wallis","futuna","flag","nation","country","banner"],char:"🇼🇫",fitzpatrick_scale:false,category:"flags"},western_sahara:{keywords:["western","sahara","flag","nation","country","banner"],char:"🇪🇭",fitzpatrick_scale:false,category:"flags"},yemen:{keywords:["ye","flag","nation","country","banner"],char:"🇾🇪",fitzpatrick_scale:false,category:"flags"},zambia:{keywords:["zm","flag","nation","country","banner"],char:"🇿🇲",fitzpatrick_scale:false,category:"flags"},zimbabwe:{keywords:["zw","flag","nation","country","banner"],char:"🇿🇼",fitzpatrick_scale:false,category:"flags"},united_nations:{keywords:["un","flag","banner"],char:"🇺🇳",fitzpatrick_scale:false,category:"flags"},pirate_flag:{keywords:["skull","crossbones","flag","banner"],char:"🏴‍☠️",fitzpatrick_scale:false,category:"flags"}});
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "fullscreen" plugin for usage with module loaders
@@ -73071,14 +74173,14 @@ window.tinymce.Resource.add("tinymce.plugins.emoticons",{grinning:{keywords:["fa
 //     require('tinymce/plugins/fullscreen')
 //   ES2015:
 //     import 'tinymce/plugins/fullscreen'
-__webpack_require__(16);
+__webpack_require__(18);
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -73422,7 +74524,6 @@ __webpack_require__(16);
     const isHTMLElement = element => isElement(element) && isPrototypeOf(element.dom);
     const isElement = isType(ELEMENT);
     const isText = isType(TEXT);
-    const isDocument = isType(DOCUMENT);
     const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
 
     const rawSet = (dom, key, value) => {
@@ -73457,7 +74558,7 @@ __webpack_require__(16);
       }
     };
 
-    const isSupported$1 = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
+    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
 
     const fromHtml = (html, scope) => {
       const doc = scope || document;
@@ -73523,7 +74624,6 @@ __webpack_require__(16);
     const eq = (e1, e2) => e1.dom === e2.dom;
 
     const owner = element => SugarElement.fromDom(element.dom.ownerDocument);
-    const documentOrOwner = dos => isDocument(dos) ? dos : owner(dos);
     const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
     const parents = (element, isRoot) => {
       const stop = isFunction(isRoot) ? isRoot : never;
@@ -73549,16 +74649,14 @@ __webpack_require__(16);
     const children = element => map(element.dom.childNodes, SugarElement.fromDom);
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const isSupported = constant(supported);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getShadowRoot = e => {
       const r = getRootNode(e);
       return isShadowRoot(r) ? Optional.some(r) : Optional.none();
     };
     const getShadowHost = e => SugarElement.fromDom(e.dom.host);
     const getOriginalEventTarget = event => {
-      if (isSupported() && isNonNullable(event.target)) {
+      if (isNonNullable(event.target)) {
         const el = SugarElement.fromDom(event.target);
         if (isElement(el) && isOpenShadowHost(el)) {
           if (event.composed && event.composedPath) {
@@ -73594,7 +74692,7 @@ __webpack_require__(16);
         console.error('Invalid call to CSS.set. Property ', property, ':: Value ', value, ':: Element ', dom);
         throw new Error('CSS value must be a string: ' + value);
       }
-      if (isSupported$1(dom)) {
+      if (isSupported(dom)) {
         dom.style.setProperty(property, value);
       }
     };
@@ -73614,7 +74712,7 @@ __webpack_require__(16);
       const r = styles.getPropertyValue(property);
       return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
     };
-    const getUnsafeProperty = (dom, property) => isSupported$1(dom) ? dom.style.getPropertyValue(property) : '';
+    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
 
     const mkEvent = (target, x, y, stop, prevent, kill, raw) => ({
       target,
@@ -73975,7 +75073,7 @@ __webpack_require__(16);
     const PlatformDetection = { detect: detect$1 };
 
     const mediaMatch = query => window.matchMedia(query).matches;
-    let platform = cached(() => PlatformDetection.detect(navigator.userAgent, Optional.from(navigator.userAgentData), mediaMatch));
+    let platform = cached(() => PlatformDetection.detect(window.navigator.userAgent, Optional.from(window.navigator.userAgentData), mediaMatch));
     const detect = () => platform();
 
     const r = (left, top) => {
@@ -74311,14 +75409,16 @@ __webpack_require__(16);
         icon: 'fullscreen',
         shortcut: 'Meta+Shift+F',
         onAction,
-        onSetup: makeSetupHandler(editor, fullscreenState)
+        onSetup: makeSetupHandler(editor, fullscreenState),
+        context: 'any'
       });
       editor.ui.registry.addToggleButton('fullscreen', {
         tooltip: 'Fullscreen',
         icon: 'fullscreen',
         onAction,
         onSetup: makeSetupHandler(editor, fullscreenState),
-        shortcut: 'Meta+Shift+F'
+        shortcut: 'Meta+Shift+F',
+        context: 'any'
       });
     };
 
@@ -74343,7 +75443,7 @@ __webpack_require__(16);
 
 
 /***/ }),
-/* 17 */
+/* 19 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "image" plugin for usage with module loaders
@@ -74352,14 +75452,14 @@ __webpack_require__(16);
 //     require('tinymce/plugins/image')
 //   ES2015:
 //     import 'tinymce/plugins/image'
-__webpack_require__(18);
+__webpack_require__(20);
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -74682,13 +75782,12 @@ __webpack_require__(18);
     const getImageSize = url => new Promise(callback => {
       const img = document.createElement('img');
       const done = dimensions => {
-        img.onload = img.onerror = null;
         if (img.parentNode) {
           img.parentNode.removeChild(img);
         }
         callback(dimensions);
       };
-      img.onload = () => {
+      img.addEventListener('load', () => {
         const width = parseIntAndGetMax(img.width, img.clientWidth);
         const height = parseIntAndGetMax(img.height, img.clientHeight);
         const dimensions = {
@@ -74696,10 +75795,10 @@ __webpack_require__(18);
           height
         };
         done(Promise.resolve(dimensions));
-      };
-      img.onerror = () => {
+      });
+      img.addEventListener('error', () => {
         done(Promise.reject(`Failed to get image dimensions for: ${ url }`));
-      };
+      });
       const style = img.style;
       style.visibility = 'hidden';
       style.position = 'fixed';
@@ -75102,6 +76201,7 @@ __webpack_require__(18);
         write(css => normalizeCss$1(editor, css), data, image);
         syncSrcAttr(editor, image);
         if (isFigure(image.parentNode)) {
+          editor.dom.setStyle(image, 'float', '');
           const figure = image.parentNode;
           splitTextBlock(editor, figure);
           editor.selection.select(image.parentNode);
@@ -75649,7 +76749,9 @@ __webpack_require__(18);
               finalize();
             }).catch(err => {
               finalize();
-              helpers.alertErr(err);
+              helpers.alertErr(err, () => {
+                api.focus('fileinput');
+              });
             });
           } else {
             helpers.addToBlobCache(blobInfo);
@@ -75730,8 +76832,8 @@ __webpack_require__(18);
     const addToBlobCache = editor => blobInfo => {
       editor.editorUpload.blobCache.add(blobInfo);
     };
-    const alertErr = editor => message => {
-      editor.windowManager.alert(message);
+    const alertErr = editor => (message, callback) => {
+      editor.windowManager.alert(message, callback);
     };
     const normalizeCss = editor => cssText => normalizeCss$1(editor, cssText);
     const parseStyle = editor => cssText => editor.dom.parseStyle(cssText);
@@ -75867,7 +76969,7 @@ __webpack_require__(18);
 
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "link" plugin for usage with module loaders
@@ -75876,14 +76978,14 @@ __webpack_require__(18);
 //     require('tinymce/plugins/link')
 //   ES2015:
 //     import 'tinymce/plugins/link'
-__webpack_require__(20);
+__webpack_require__(22);
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -76163,6 +77265,7 @@ __webpack_require__(20);
         processor: 'boolean',
         default: false
       });
+      registerOption('link_attributes_postprocess', { processor: 'function' });
     };
     const assumeExternalTargets = option('link_assume_external_targets');
     const hasContextToolbar = option('link_context_toolbar');
@@ -76175,53 +77278,7 @@ __webpack_require__(20);
     const shouldShowLinkTitle = option('link_title');
     const allowUnsafeLinkTarget = option('allow_unsafe_link_target');
     const useQuickLink = option('link_quicklink');
-
-    var global$4 = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    const getValue = item => isString(item.value) ? item.value : '';
-    const getText = item => {
-      if (isString(item.text)) {
-        return item.text;
-      } else if (isString(item.title)) {
-        return item.title;
-      } else {
-        return '';
-      }
-    };
-    const sanitizeList = (list, extractValue) => {
-      const out = [];
-      global$4.each(list, item => {
-        const text = getText(item);
-        if (item.menu !== undefined) {
-          const items = sanitizeList(item.menu, extractValue);
-          out.push({
-            text,
-            items
-          });
-        } else {
-          const value = extractValue(item);
-          out.push({
-            text,
-            value
-          });
-        }
-      });
-      return out;
-    };
-    const sanitizeWith = (extracter = getValue) => list => Optional.from(list).map(list => sanitizeList(list, extracter));
-    const sanitize = list => sanitizeWith(getValue)(list);
-    const createUi = (name, label) => items => ({
-      name,
-      type: 'listbox',
-      label,
-      items
-    });
-    const ListOptions = {
-      sanitize,
-      sanitizeWith,
-      createUi,
-      getValue
-    };
+    const attributesPostProcess = option('link_attributes_postprocess');
 
     const keys = Object.keys;
     const hasOwnProperty = Object.hasOwnProperty;
@@ -76249,9 +77306,11 @@ __webpack_require__(20);
     const has = (obj, key) => hasOwnProperty.call(obj, key);
     const hasNonNullableKey = (obj, key) => has(obj, key) && obj[key] !== undefined && obj[key] !== null;
 
+    var global$4 = tinymce.util.Tools.resolve('tinymce.util.URI');
+
     var global$3 = tinymce.util.Tools.resolve('tinymce.dom.TreeWalker');
 
-    var global$2 = tinymce.util.Tools.resolve('tinymce.util.URI');
+    var global$2 = tinymce.util.Tools.resolve('tinymce.util.Tools');
 
     const isAnchor = elm => isNonNullable(elm) && elm.nodeName.toLowerCase() === 'a';
     const isLink = elm => isAnchor(elm) && !!getHref(elm);
@@ -76280,12 +77339,12 @@ __webpack_require__(20);
     const applyRelTargetRules = (rel, isUnsafe) => {
       const rules = ['noopener'];
       const rels = rel ? rel.split(/\s+/) : [];
-      const toString = rels => global$4.trim(rels.sort().join(' '));
+      const toString = rels => global$2.trim(rels.sort().join(' '));
       const addTargetRules = rels => {
         rels = removeTargetRules(rels);
         return rels.length > 0 ? rels.concat(rules) : rules;
       };
-      const removeTargetRules = rels => rels.filter(val => global$4.inArray(rules, val) === -1);
+      const removeTargetRules = rels => rels.filter(val => global$2.inArray(rules, val) === -1);
       const newRels = isUnsafe ? addTargetRules(rels) : removeTargetRules(rels);
       return newRels.length > 0 ? toString(newRels) : '';
     };
@@ -76304,8 +77363,8 @@ __webpack_require__(20);
       return trimCaretContainers(text);
     };
     const getLinksInSelection = rng => collectNodesInRange(rng, isLink);
-    const getLinks$2 = elements => global$4.grep(elements, isLink);
-    const hasLinks = elements => getLinks$2(elements).length > 0;
+    const getLinks$1 = elements => global$2.grep(elements, isLink);
+    const hasLinks = elements => getLinks$1(elements).length > 0;
     const hasLinksInSelection = rng => getLinksInSelection(rng).length > 0;
     const isOnlyTextSelected = editor => {
       const inlineTextElements = editor.schema.getTextInlineElements();
@@ -76323,6 +77382,7 @@ __webpack_require__(20);
       }
     };
     const isImageFigure = elm => isNonNullable(elm) && elm.nodeName === 'FIGURE' && /\bimage\b/i.test(elm.className);
+
     const getLinkAttrs = data => {
       const attrs = [
         'title',
@@ -76364,7 +77424,10 @@ __webpack_require__(20);
         }
       });
       editor.dom.setAttribs(anchorElm, linkAttrs);
-      editor.selection.select(anchorElm);
+      const rng = editor.dom.createRng();
+      rng.setStartAfter(anchorElm);
+      rng.setEndAfter(anchorElm);
+      editor.selection.setRng(rng);
     };
     const createLink = (editor, selectedElm, text, linkAttrs) => {
       const dom = editor.dom;
@@ -76373,6 +77436,11 @@ __webpack_require__(20);
       } else {
         text.fold(() => {
           editor.execCommand('mceInsertLink', false, linkAttrs);
+          const end = editor.selection.getEnd();
+          const rng = dom.createRng();
+          rng.setStartAfter(end);
+          rng.setEndAfter(end);
+          editor.selection.setRng(rng);
         }, text => {
           editor.insertContent(dom.createHTML('a', linkAttrs, dom.encode(text)));
         });
@@ -76382,6 +77450,10 @@ __webpack_require__(20);
       const selectedElm = editor.selection.getNode();
       const anchorElm = getAnchorElement(editor, selectedElm);
       const linkAttrs = applyLinkOverrides(editor, getLinkAttrs(data));
+      const attributesPostProcess$1 = attributesPostProcess(editor);
+      if (isNonNullable(attributesPostProcess$1)) {
+        attributesPostProcess$1(linkAttrs);
+      }
       editor.undoManager.transact(() => {
         if (data.href === attachState.href) {
           attachState.attach();
@@ -76449,7 +77521,7 @@ __webpack_require__(20);
       const href = data.href;
       return {
         ...data,
-        href: global$2.isDomSafe(href, 'a', uriOptions) ? href : ''
+        href: global$4.isDomSafe(href, 'a', uriOptions) ? href : ''
       };
     };
     const link = (editor, attachState, data) => {
@@ -76478,6 +77550,51 @@ __webpack_require__(20);
         (_a = img.parentNode) === null || _a === void 0 ? void 0 : _a.insertBefore(a, img);
         a.appendChild(img);
       }
+    };
+
+    const getValue = item => isString(item.value) ? item.value : '';
+    const getText = item => {
+      if (isString(item.text)) {
+        return item.text;
+      } else if (isString(item.title)) {
+        return item.title;
+      } else {
+        return '';
+      }
+    };
+    const sanitizeList = (list, extractValue) => {
+      const out = [];
+      global$2.each(list, item => {
+        const text = getText(item);
+        if (item.menu !== undefined) {
+          const items = sanitizeList(item.menu, extractValue);
+          out.push({
+            text,
+            items
+          });
+        } else {
+          const value = extractValue(item);
+          out.push({
+            text,
+            value
+          });
+        }
+      });
+      return out;
+    };
+    const sanitizeWith = (extracter = getValue) => list => Optional.from(list).map(list => sanitizeList(list, extracter));
+    const sanitize = list => sanitizeWith(getValue)(list);
+    const createUi = (name, label) => items => ({
+      name,
+      type: 'listbox',
+      label,
+      items
+    });
+    const ListOptions = {
+      sanitize,
+      sanitizeWith,
+      createUi,
+      getValue
     };
 
     const isListGroup = item => hasNonNullableKey(item, 'items');
@@ -76634,11 +77751,11 @@ __webpack_require__(20);
     const parseJson = text => {
       try {
         return Optional.some(JSON.parse(text));
-      } catch (err) {
+      } catch (_a) {
         return Optional.none();
       }
     };
-    const getLinks$1 = editor => {
+    const getLinks = editor => {
       const extractor = item => editor.convertURL(item.value || item.url || '', 'href');
       const linkList = getLinkList(editor);
       return new Promise(resolve => {
@@ -76661,7 +77778,7 @@ __webpack_require__(20);
         }
       }));
     };
-    const LinkListOptions = { getLinks: getLinks$1 };
+    const LinkListOptions = { getLinks };
 
     const getRels = (editor, initialTarget) => {
       const list = getRelList(editor);
@@ -76845,7 +77962,7 @@ __webpack_require__(20);
         onSubmit
       };
     };
-    const open$1 = editor => {
+    const open = editor => {
       const data = collectData(editor);
       data.then(info => {
         const onSubmit = handleSubmit(editor, info);
@@ -76858,11 +77975,72 @@ __webpack_require__(20);
     const register = editor => {
       editor.addCommand('mceLink', (_ui, value) => {
         if ((value === null || value === void 0 ? void 0 : value.dialog) === true || !useQuickLink(editor)) {
-          open$1(editor);
+          open(editor);
         } else {
           editor.dispatch('contexttoolbar-show', { toolbarKey: 'quicklink' });
         }
       });
+    };
+
+    const setup$2 = editor => {
+      editor.addShortcut('Meta+K', '', () => {
+        editor.execCommand('mceLink');
+      });
+    };
+
+    const Cell = initial => {
+      let value = initial;
+      const get = () => {
+        return value;
+      };
+      const set = v => {
+        value = v;
+      };
+      return {
+        get,
+        set
+      };
+    };
+
+    const singleton = doRevoke => {
+      const subject = Cell(Optional.none());
+      const revoke = () => subject.get().each(doRevoke);
+      const clear = () => {
+        revoke();
+        subject.set(Optional.none());
+      };
+      const isSet = () => subject.get().isSome();
+      const get = () => subject.get();
+      const set = s => {
+        revoke();
+        subject.set(Optional.some(s));
+      };
+      return {
+        clear,
+        isSet,
+        get,
+        set
+      };
+    };
+    const value = () => {
+      const subject = singleton(noop);
+      const on = f => subject.get().each(f);
+      return {
+        ...subject,
+        on
+      };
+    };
+
+    const removeFromStart = (str, numChars) => {
+      return str.substring(numChars);
+    };
+
+    const checkRange = (str, substr, start) => substr === '' || str.length >= substr.length && str.substr(start, start + substr.length) === substr;
+    const removeLeading = (str, prefix) => {
+      return startsWith(str, prefix) ? removeFromStart(str, prefix.length) : str;
+    };
+    const startsWith = (str, prefix) => {
+      return checkRange(str, prefix, 0);
     };
 
     var global = tinymce.util.Tools.resolve('tinymce.util.VK');
@@ -76872,23 +78050,19 @@ __webpack_require__(20);
       link.dispatchEvent(evt);
       document.body.removeChild(link);
     };
-    const open = url => {
+    const openLink = url => {
       const link = document.createElement('a');
       link.target = '_blank';
       link.href = url;
       link.rel = 'noreferrer noopener';
-      const evt = document.createEvent('MouseEvents');
-      evt.initMouseEvent('click', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+      const evt = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      document.dispatchEvent(evt);
       appendClickRemove(link, evt);
     };
-
-    const isSelectionOnImageWithEmbeddedLink = editor => {
-      const rng = editor.selection.getRng();
-      const node = rng.startContainer;
-      return isLink(node) && rng.startContainer === rng.endContainer && editor.dom.select('img', node).length === 1;
-    };
-    const getLinks = editor => editor.selection.isCollapsed() || isSelectionOnImageWithEmbeddedLink(editor) ? getLinks$2(editor.dom.getParents(editor.selection.getStart())) : getLinksInSelection(editor.selection.getRng());
-    const getSelectedLink = editor => getLinks(editor)[0];
     const hasOnlyAltModifier = e => {
       return e.altKey === true && e.shiftKey === false && e.ctrlKey === false && e.metaKey === false;
     };
@@ -76896,38 +78070,63 @@ __webpack_require__(20);
       if (a) {
         const href = getHref(a);
         if (/^#/.test(href)) {
-          const targetEl = editor.dom.select(href);
+          const targetEl = editor.dom.select(`${ href },[name="${ removeLeading(href, '#') }"]`);
           if (targetEl.length) {
             editor.selection.scrollIntoView(targetEl[0], true);
           }
         } else {
-          open(a.href);
+          openLink(a.href);
         }
       }
     };
-    const openDialog = editor => () => {
-      editor.execCommand('mceLink', false, { dialog: true });
+    const isSelectionOnImageWithEmbeddedLink = editor => {
+      const rng = editor.selection.getRng();
+      const node = rng.startContainer;
+      return isLink(node) && rng.startContainer === rng.endContainer && editor.dom.select('img', node).length === 1;
     };
-    const gotoSelectedLink = editor => () => {
-      gotoLink(editor, getSelectedLink(editor));
+    const getLinkFromElement = (editor, element) => {
+      const links = getLinks$1(editor.dom.getParents(element));
+      return someIf(links.length === 1, links[0]);
     };
-    const setupGotoLinks = editor => {
+    const getLinkInSelection = editor => {
+      const links = getLinksInSelection(editor.selection.getRng());
+      return someIf(links.length > 0, links[0]).or(getLinkFromElement(editor, editor.selection.getNode()));
+    };
+    const getLinkFromSelection = editor => editor.selection.isCollapsed() || isSelectionOnImageWithEmbeddedLink(editor) ? getLinkFromElement(editor, editor.selection.getStart()) : getLinkInSelection(editor);
+    const setup$1 = editor => {
+      const selectedLink = value();
+      const getSelectedLink = () => selectedLink.get().or(getLinkFromSelection(editor));
+      const gotoSelectedLink = () => getSelectedLink().each(link => gotoLink(editor, link));
+      editor.on('contextmenu', e => {
+        getLinkFromElement(editor, e.target).each(selectedLink.set);
+      });
+      editor.on('SelectionChange', () => {
+        if (!selectedLink.isSet()) {
+          getLinkFromSelection(editor).each(selectedLink.set);
+        }
+      });
       editor.on('click', e => {
-        const links = getLinks$2(editor.dom.getParents(e.target));
+        selectedLink.clear();
+        const links = getLinks$1(editor.dom.getParents(e.target));
         if (links.length === 1 && global.metaKeyPressed(e)) {
           e.preventDefault();
           gotoLink(editor, links[0]);
         }
       });
       editor.on('keydown', e => {
+        selectedLink.clear();
         if (!e.isDefaultPrevented() && e.keyCode === 13 && hasOnlyAltModifier(e)) {
-          const link = getSelectedLink(editor);
-          if (link) {
+          getSelectedLink().each(link => {
             e.preventDefault();
             gotoLink(editor, link);
-          }
+          });
         }
       });
+      return { gotoSelectedLink };
+    };
+
+    const openDialog = editor => () => {
+      editor.execCommand('mceLink', false, { dialog: true });
     };
     const toggleState = (editor, toggler) => {
       editor.on('NodeChange', toggler);
@@ -76948,13 +78147,7 @@ __webpack_require__(20);
       updateState();
       return toggleState(editor, updateState);
     };
-    const hasExactlyOneLinkInSelection = editor => getLinks(editor).length === 1;
-    const toggleGotoLinkState = editor => api => {
-      const updateState = () => api.setEnabled(hasExactlyOneLinkInSelection(editor));
-      updateState();
-      return toggleState(editor, updateState);
-    };
-    const toggleUnlinkState = editor => api => {
+    const toggleRequiresLinkState = editor => api => {
       const hasLinks$1 = parents => hasLinks(parents) || hasLinksInSelection(editor.selection.getRng());
       const parents = editor.dom.getParents(editor.selection.getStart());
       const updateEnabled = parents => {
@@ -76963,53 +78156,46 @@ __webpack_require__(20);
       updateEnabled(parents);
       return toggleState(editor, e => updateEnabled(e.parents));
     };
-
-    const setup = editor => {
-      editor.addShortcut('Meta+K', '', () => {
-        editor.execCommand('mceLink');
-      });
-    };
-
-    const setupButtons = editor => {
+    const setupButtons = (editor, openLink) => {
       editor.ui.registry.addToggleButton('link', {
         icon: 'link',
         tooltip: 'Insert/edit link',
+        shortcut: 'Meta+K',
         onAction: openDialog(editor),
-        onSetup: toggleLinkState(editor),
-        shortcut: 'Meta+K'
+        onSetup: toggleLinkState(editor)
       });
       editor.ui.registry.addButton('openlink', {
         icon: 'new-tab',
         tooltip: 'Open link',
-        onAction: gotoSelectedLink(editor),
-        onSetup: toggleGotoLinkState(editor)
+        onAction: openLink.gotoSelectedLink,
+        onSetup: toggleRequiresLinkState(editor)
       });
       editor.ui.registry.addButton('unlink', {
         icon: 'unlink',
         tooltip: 'Remove link',
         onAction: () => unlink(editor),
-        onSetup: toggleUnlinkState(editor)
+        onSetup: toggleRequiresLinkState(editor)
       });
     };
-    const setupMenuItems = editor => {
+    const setupMenuItems = (editor, openLink) => {
       editor.ui.registry.addMenuItem('openlink', {
         text: 'Open link',
         icon: 'new-tab',
-        onAction: gotoSelectedLink(editor),
-        onSetup: toggleGotoLinkState(editor)
+        onAction: openLink.gotoSelectedLink,
+        onSetup: toggleRequiresLinkState(editor)
       });
       editor.ui.registry.addMenuItem('link', {
         icon: 'link',
         text: 'Link...',
         shortcut: 'Meta+K',
-        onSetup: toggleLinkMenuState(editor),
-        onAction: openDialog(editor)
+        onAction: openDialog(editor),
+        onSetup: toggleLinkMenuState(editor)
       });
       editor.ui.registry.addMenuItem('unlink', {
         icon: 'unlink',
         text: 'Remove link',
         onAction: () => unlink(editor),
-        onSetup: toggleUnlinkState(editor)
+        onSetup: toggleRequiresLinkState(editor)
       });
     };
     const setupContextMenu = editor => {
@@ -77025,13 +78211,13 @@ __webpack_require__(20);
         }
       });
     };
-    const setupContextToolbars = editor => {
+    const setupContextToolbars = (editor, openLink) => {
       const collapseSelectionToEnd = editor => {
         editor.selection.collapse(false);
       };
       const onSetupLink = buttonApi => {
         const node = editor.selection.getNode();
-        buttonApi.setEnabled(isInAnchor(editor, node));
+        buttonApi.setEnabled(isInAnchor(editor, node) && editor.selection.isEditable());
         return noop;
       };
       const getLinkText = value => {
@@ -77103,24 +78289,27 @@ __webpack_require__(20);
             tooltip: 'Open link',
             onSetup: onSetupLink,
             onAction: formApi => {
-              gotoSelectedLink(editor)();
+              openLink.gotoSelectedLink();
               formApi.hide();
             }
           }
         ]
       });
     };
+    const setup = editor => {
+      const openLink = setup$1(editor);
+      setupButtons(editor, openLink);
+      setupMenuItems(editor, openLink);
+      setupContextMenu(editor);
+      setupContextToolbars(editor, openLink);
+    };
 
     var Plugin = () => {
       global$5.add('link', editor => {
         register$1(editor);
-        setupButtons(editor);
-        setupMenuItems(editor);
-        setupContextMenu(editor);
-        setupContextToolbars(editor);
-        setupGotoLinks(editor);
         register(editor);
         setup(editor);
+        setup$2(editor);
       });
     };
 
@@ -77130,7 +78319,7 @@ __webpack_require__(20);
 
 
 /***/ }),
-/* 21 */
+/* 23 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "lists" plugin for usage with module loaders
@@ -77139,14 +78328,14 @@ __webpack_require__(20);
 //     require('tinymce/plugins/lists')
 //   ES2015:
 //     import 'tinymce/plugins/lists'
-__webpack_require__(22);
+__webpack_require__(24);
 
 /***/ }),
-/* 22 */
+/* 24 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -77416,7 +78605,6 @@ __webpack_require__(22);
     const lift2 = (oa, ob, f) => oa.isSome() && ob.isSome() ? Optional.some(f(oa.getOrDie(), ob.getOrDie())) : Optional.none();
 
     const COMMENT = 8;
-    const DOCUMENT = 9;
     const DOCUMENT_FRAGMENT = 11;
     const ELEMENT = 1;
     const TEXT = 3;
@@ -77529,12 +78717,9 @@ __webpack_require__(22);
     const isHTMLElement = element => isElement$1(element) && isPrototypeOf(element.dom);
     const isElement$1 = isType(ELEMENT);
     const isText = isType(TEXT);
-    const isDocument = isType(DOCUMENT);
     const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
     const isTag = tag => e => isElement$1(e) && name(e) === tag;
 
-    const owner = element => SugarElement.fromDom(element.dom.ownerDocument);
-    const documentOrOwner = dos => isDocument(dos) ? dos : owner(dos);
     const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
     const parentElement = element => Optional.from(element.dom.parentElement).map(SugarElement.fromDom);
     const nextSibling = element => Optional.from(element.dom.nextSibling).map(SugarElement.fromDom);
@@ -77547,8 +78732,7 @@ __webpack_require__(22);
     const lastChild = element => child(element, element.dom.childNodes.length - 1);
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getShadowRoot = e => {
       const r = getRootNode(e);
       return isShadowRoot(r) ? Optional.some(r) : Optional.none();
@@ -77988,11 +79172,11 @@ __webpack_require__(22);
     const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
     const selectionIsWithinNonEditableList = editor => {
       const parentList = getParentList(editor);
-      return isWithinNonEditable(editor, parentList);
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
     };
     const isWithinNonEditableList = (editor, element) => {
       const parentList = editor.dom.getParent(element, 'ol,ul,dl');
-      return isWithinNonEditable(editor, parentList);
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
     };
     const setNodeChangeHandler = (editor, nodeChangeHandler) => {
       const initialNode = editor.selection.getNode();
@@ -78910,15 +80094,16 @@ __webpack_require__(22);
           });
           return true;
         } else if (willMergeParentIntoChild && !isForward && otherLi !== li) {
+          const commonAncestorParent = rng.commonAncestorContainer.parentElement;
+          if (!commonAncestorParent || dom.isChildOf(otherLi, commonAncestorParent)) {
+            return false;
+          }
           editor.undoManager.transact(() => {
-            if (rng.commonAncestorContainer.parentElement) {
-              const bookmark = createBookmark(rng);
-              const oldParentElRef = rng.commonAncestorContainer.parentElement;
-              moveChildren(dom, rng.commonAncestorContainer.parentElement, otherLi);
-              oldParentElRef.remove();
-              const resolvedBookmark = resolveBookmark(bookmark);
-              editor.selection.setRng(resolvedBookmark);
-            }
+            const bookmark = createBookmark(rng);
+            moveChildren(dom, commonAncestorParent, otherLi);
+            commonAncestorParent.remove();
+            const resolvedBookmark = resolveBookmark(bookmark);
+            editor.selection.setRng(resolvedBookmark);
           });
           return true;
         } else if (!otherLi) {
@@ -78946,8 +80131,9 @@ __webpack_require__(22);
       const block = dom.getParent(selectionStartElm, dom.isBlock, root);
       if (block && dom.isEmpty(block, undefined, { checkRootAsContent: true })) {
         const rng = normalizeRange(editor.selection.getRng());
-        const otherLi = dom.getParent(findNextCaretContainer(editor, rng, isForward, root), 'LI', root);
-        if (otherLi) {
+        const nextCaretContainer = findNextCaretContainer(editor, rng, isForward, root);
+        const otherLi = dom.getParent(nextCaretContainer, 'LI', root);
+        if (nextCaretContainer && otherLi) {
           const findValidElement = element => contains$1([
             'td',
             'th',
@@ -78963,7 +80149,7 @@ __webpack_require__(22);
             const parentNode = otherLi.parentNode;
             removeBlock(dom, block, root);
             mergeWithAdjacentLists(dom, parentNode);
-            editor.selection.select(otherLi, true);
+            editor.selection.select(nextCaretContainer, true);
             editor.selection.collapse(isForward);
           });
           return true;
@@ -78983,7 +80169,14 @@ __webpack_require__(22);
     const backspaceDeleteRange = editor => {
       if (hasListSelection(editor)) {
         editor.undoManager.transact(() => {
+          let shouldFireInput = true;
+          const inputHandler = () => shouldFireInput = false;
+          editor.on('input', inputHandler);
           editor.execCommand('Delete');
+          editor.off('input', inputHandler);
+          if (shouldFireInput) {
+            editor.dispatch('input');
+          }
           normalizeLists(editor.dom, editor.getBody());
         });
         return true;
@@ -79325,7 +80518,7 @@ __webpack_require__(22);
 
 
 /***/ }),
-/* 23 */
+/* 25 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "quickbars" plugin for usage with module loaders
@@ -79334,20 +80527,113 @@ __webpack_require__(22);
 //     require('tinymce/plugins/quickbars')
 //   ES2015:
 //     import 'tinymce/plugins/quickbars'
-__webpack_require__(24);
+__webpack_require__(26);
 
 /***/ }),
-/* 24 */
+/* 26 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
     'use strict';
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
+
+    let unique = 0;
+    const generate = prefix => {
+      const date = new Date();
+      const time = date.getTime();
+      const random$1 = Math.floor(random() * 1000000000);
+      unique++;
+      return prefix + '_' + random$1 + unique + String(time);
+    };
+
+    const insertTable = (editor, columns, rows) => {
+      editor.execCommand('mceInsertTable', false, {
+        rows,
+        columns
+      });
+    };
+    const insertBlob = (editor, base64, blob) => {
+      const blobCache = editor.editorUpload.blobCache;
+      const blobInfo = blobCache.create(generate('mceu'), blob, base64);
+      blobCache.add(blobInfo);
+      editor.insertContent(editor.dom.createHTML('img', { src: blobInfo.blobUri() }));
+    };
+
+    const blobToBase64 = blob => {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Delay');
+
+    const pickFile = editor => new Promise(resolve => {
+      let resolved = false;
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.position = 'fixed';
+      fileInput.style.left = '0';
+      fileInput.style.top = '0';
+      fileInput.style.opacity = '0.001';
+      document.body.appendChild(fileInput);
+      const resolveFileInput = value => {
+        var _a;
+        if (!resolved) {
+          (_a = fileInput.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(fileInput);
+          resolved = true;
+          resolve(value);
+        }
+      };
+      const changeHandler = e => {
+        resolveFileInput(Array.prototype.slice.call(e.target.files));
+      };
+      fileInput.addEventListener('input', changeHandler);
+      fileInput.addEventListener('change', changeHandler);
+      const cancelHandler = e => {
+        const cleanup = () => {
+          resolveFileInput([]);
+        };
+        if (!resolved) {
+          if (e.type === 'focusin') {
+            global.setEditorTimeout(editor, cleanup, 1000);
+          } else {
+            cleanup();
+          }
+        }
+        editor.off('focusin remove', cancelHandler);
+      };
+      editor.on('focusin remove', cancelHandler);
+      fileInput.click();
+    });
+
+    const register$1 = editor => {
+      editor.on('PreInit', () => {
+        if (!editor.queryCommandSupported('QuickbarInsertImage')) {
+          editor.addCommand('QuickbarInsertImage', () => {
+            pickFile(editor).then(files => {
+              if (files.length > 0) {
+                const blob = files[0];
+                blobToBase64(blob).then(base64 => {
+                  insertBlob(editor, base64, blob);
+                });
+              }
+            });
+          });
+        }
+      });
+    };
 
     const hasProto = (v, constructor, predicate) => {
       var _a;
@@ -79421,94 +80707,11 @@ __webpack_require__(24);
     const getInsertToolbarItems = option('quickbars_insert_toolbar');
     const getImageToolbarItems = option('quickbars_image_toolbar');
 
-    let unique = 0;
-    const generate = prefix => {
-      const date = new Date();
-      const time = date.getTime();
-      const random = Math.floor(Math.random() * 1000000000);
-      unique++;
-      return prefix + '_' + random + unique + String(time);
-    };
-
-    const insertTable = (editor, columns, rows) => {
-      editor.execCommand('mceInsertTable', false, {
-        rows,
-        columns
-      });
-    };
-    const insertBlob = (editor, base64, blob) => {
-      const blobCache = editor.editorUpload.blobCache;
-      const blobInfo = blobCache.create(generate('mceu'), blob, base64);
-      blobCache.add(blobInfo);
-      editor.insertContent(editor.dom.createHTML('img', { src: blobInfo.blobUri() }));
-    };
-
-    const blobToBase64 = blob => {
-      return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result.split(',')[1]);
-        };
-        reader.readAsDataURL(blob);
-      });
-    };
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Delay');
-
-    const pickFile = editor => new Promise(resolve => {
-      let resolved = false;
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/*';
-      fileInput.style.position = 'fixed';
-      fileInput.style.left = '0';
-      fileInput.style.top = '0';
-      fileInput.style.opacity = '0.001';
-      document.body.appendChild(fileInput);
-      const resolveFileInput = value => {
-        var _a;
-        if (!resolved) {
-          (_a = fileInput.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(fileInput);
-          resolved = true;
-          resolve(value);
-        }
-      };
-      const changeHandler = e => {
-        resolveFileInput(Array.prototype.slice.call(e.target.files));
-      };
-      fileInput.addEventListener('input', changeHandler);
-      fileInput.addEventListener('change', changeHandler);
-      const cancelHandler = e => {
-        const cleanup = () => {
-          resolveFileInput([]);
-        };
-        if (!resolved) {
-          if (e.type === 'focusin') {
-            global.setEditorTimeout(editor, cleanup, 1000);
-          } else {
-            cleanup();
-          }
-        }
-        editor.off('focusin remove', cancelHandler);
-      };
-      editor.on('focusin remove', cancelHandler);
-      fileInput.click();
-    });
-
     const setupButtons = editor => {
       editor.ui.registry.addButton('quickimage', {
         icon: 'image',
         tooltip: 'Insert image',
-        onAction: () => {
-          pickFile(editor).then(files => {
-            if (files.length > 0) {
-              const blob = files[0];
-              blobToBase64(blob).then(base64 => {
-                insertBlob(editor, base64, blob);
-              });
-            }
-          });
-        }
+        onAction: () => editor.execCommand('QuickbarInsertImage')
       });
       editor.ui.registry.addButton('quicktable', {
         icon: 'table',
@@ -79778,6 +80981,7 @@ __webpack_require__(24);
     var Plugin = () => {
       global$1.add('quickbars', editor => {
         register(editor);
+        register$1(editor);
         setupButtons(editor);
         addToEditor$1(editor);
         addToEditor(editor);
@@ -79790,7 +80994,7 @@ __webpack_require__(24);
 
 
 /***/ }),
-/* 25 */
+/* 27 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "searchreplace" plugin for usage with module loaders
@@ -79799,14 +81003,14 @@ __webpack_require__(24);
 //     require('tinymce/plugins/searchreplace')
 //   ES2015:
 //     import 'tinymce/plugins/searchreplace'
-__webpack_require__(26);
+__webpack_require__(28);
 
 /***/ }),
-/* 26 */
+/* 28 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -80906,7 +82110,7 @@ __webpack_require__(26);
 
 
 /***/ }),
-/* 27 */
+/* 29 */
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
 // Exports the "table" plugin for usage with module loaders
@@ -80915,14 +82119,14 @@ __webpack_require__(26);
 //     require('tinymce/plugins/table')
 //   ES2015:
 //     import 'tinymce/plugins/table'
-__webpack_require__(28);
+__webpack_require__(30);
 
 /***/ }),
-/* 28 */
+/* 30 */
 /***/ (() => {
 
 /**
- * TinyMCE version 7.2.0 (2024-06-19)
+ * TinyMCE version 7.7.2 (2025-03-19)
  */
 
 (function () {
@@ -81380,8 +82584,7 @@ __webpack_require__(28);
     const firstChild = element => child$3(element, 0);
 
     const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const supported = isFunction(Element.prototype.attachShadow) && isFunction(Node.prototype.getRootNode);
-    const getRootNode = supported ? e => SugarElement.fromDom(e.dom.getRootNode()) : documentOrOwner;
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
     const getShadowRoot = e => {
       const r = getRootNode(e);
       return isShadowRoot(r) ? Optional.some(r) : Optional.none();
@@ -84466,13 +85669,14 @@ __webpack_require__(8);
 __webpack_require__(10);
 __webpack_require__(12);
 __webpack_require__(14);
-__webpack_require__(15);
+__webpack_require__(16);
 __webpack_require__(17);
 __webpack_require__(19);
 __webpack_require__(21);
 __webpack_require__(23);
 __webpack_require__(25);
 __webpack_require__(27);
+__webpack_require__(29);
 
 })();
 

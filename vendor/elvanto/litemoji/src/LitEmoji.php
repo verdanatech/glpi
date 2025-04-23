@@ -4,23 +4,29 @@ namespace LitEmoji;
 
 class LitEmoji
 {
-    public const MB_REGEX = '/(
-    		     \x23\xE2\x83\xA3               # Digits
-    		     [\x30-\x39]\xE2\x83\xA3
-    		   | \xE2[\x9C-\x9E][\x80-\xBF]     # Dingbats
-    		   | \xF0\x9F[\x85-\x88][\xA6-\xBF] # Enclosed characters
-    		   | \xF0\x9F[\x8C-\x97][\x80-\xBF] # Misc
-    		   | \xF0\x9F\x98[\x80-\xBF]        # Smilies
-    		   | \xF0\x9F\x99[\x80-\x8F]
-    		   | \xF0\x9F[\x9A-\x9B][\x80-\xBF] # Transport and map symbols
-    		   | \xF0\x9F[\xA4-\xA7][\x80-\xBF] # Supplementary symbols and pictographs
-    		)/x';
+    private static string $preset = 'emojibase';
+    private static array $shortcodes = [];
+    private static array $shortcodeCodepoints = [];
+    private static array $shortcodeEntities = [];
+    private static array $entityCodepoints = [];
+    private static array $excludedShortcodes = [];
+    private static array $aliasedShortcodes = [];
 
-    private static $shortcodes = [];
-    private static $shortcodeCodepoints = [];
-    private static $shortcodeEntities = [];
-    private static $entityCodepoints = [];
-    private static $excludedShortcodes = [];
+    /**
+     * Switches to a different emoji preset, clearing the shortcode cache.
+     *
+     * @param string $preset
+     * @return void
+     */
+    public static function usePreset(string $preset)
+    {
+        if (!file_exists(sprintf('%s/%s.php', __DIR__, $preset))) {
+            throw new \InvalidArgumentException('Invalid emoji preset.');
+        }
+
+        self::$preset = $preset;
+        self::invalidateCache();
+    }
 
     /**
      * Converts all unicode emoji and HTML entities to plaintext shortcodes.
@@ -31,9 +37,7 @@ class LitEmoji
     public static function encodeShortcode(string $content): string
     {
         $content = self::entitiesToUnicode($content);
-        $content = self::unicodeToShortcode($content);
-
-        return $content;
+        return self::unicodeToShortcode($content);
     }
 
     /**
@@ -45,45 +49,61 @@ class LitEmoji
     public static function encodeHtml(string $content): string
     {
         $content = self::unicodeToShortcode($content);
-        $content = self::shortcodeToEntities($content);
-
-        return $content;
+        return self::shortcodeToEntities($content);
     }
 
     /**
      * Converts all plaintext shortcodes and HTML entities to unicode codepoints.
      *
-     * @param string $content
+     * @param string      $content
+     * @param string|null $encoding
      * @return string
      */
-    public static function encodeUnicode(string $content): string
+    public static function encodeUnicode(string $content, string $encoding = null): string
     {
-        $content = self::shortcodeToUnicode($content);
-        $content = self::entitiesToUnicode($content);
-
-        return $content;
+        $content = self::shortcodeToUnicode($content, $encoding);
+        return self::entitiesToUnicode($content, $encoding);
     }
 
     /**
      * Converts plaintext shortcodes to HTML entities.
      *
-     * @param string $content
+     * @param string      $content
+     * @param string|null $encoding
      * @return string
      */
-    public static function shortcodeToUnicode(string $content): string
+    public static function shortcodeToUnicode(string $content, string $encoding = null): string
     {
         $replacements = self::getShortcodeCodepoints();
-        return str_replace(array_keys($replacements), $replacements, $content);
+
+        if (!$encoding) {
+            $encoding = mb_detect_encoding($content);
+        }
+
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $content = mb_convert_encoding($content, 'UTF-8', $encoding);
+        }
+
+        $replaced = str_replace(array_keys($replacements), $replacements, $content);
+
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $replaced = mb_convert_encoding($replaced, $encoding, 'UTF-8');
+        }
+
+        return $replaced;
     }
 
     /**
      * Converts HTML entities to unicode codepoints.
      *
-     * @param string $content
+     * @param string      $content
+     * @param string|null $encoding
      * @return string
      */
-    public static function entitiesToUnicode(string $content): string
+    public static function entitiesToUnicode(string $content, string $encoding = null): string
     {
+        $replacements = self::getEntityCodepoints();
+
         /* Convert HTML entities to uppercase hexadecimal */
         $content = preg_replace_callback('/\&\#(x?[a-zA-Z0-9]*?)\;/', static function($matches) {
             $code = $matches[1];
@@ -95,58 +115,49 @@ class LitEmoji
             return '&#x' . strtoupper(dechex($code)) . ';';
         }, $content);
 
-        $replacements = self::getEntityCodepoints();
-        return str_replace(array_keys($replacements), $replacements, $content);
+        if (!$encoding) {
+            $encoding = mb_detect_encoding($content);
+        }
+
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $content = mb_convert_encoding($content, 'UTF-8', $encoding);
+        }
+
+        $replaced = str_replace(array_keys($replacements), $replacements, $content);
+
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $replaced = mb_convert_encoding($replaced, $encoding, 'UTF-8');
+        }
+
+        return $replaced;
     }
 
     /**
      * Converts unicode codepoints to plaintext shortcodes.
      *
-     * @param string $content
+     * @param string      $content
+     * @param string|null $encoding
      * @return string
      */
-    public static function unicodeToShortcode(string $content): string
+    public static function unicodeToShortcode(string $content, string $encoding = null): string
     {
-        $replacement = '';
-        $encoding = mb_detect_encoding($content);
-        $codepoints = array_flip(self::getShortcodes());
+        $codepoints = self::getShortcodeCodepoints();
 
-        /* Break content along codepoint boundaries */
-        $parts = preg_split(
-            self::MB_REGEX,
-            $content,
-            -1,
-            PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
-        );
-
-        /* Reconstruct content using shortcodes */
-        $sequence = [];
-        foreach ($parts as $offset => $part) {
-            if (preg_match(self::MB_REGEX, $part)) {
-                $part = mb_convert_encoding($part, 'UTF-32', $encoding);
-                $words = unpack('N*', $part);
-                $codepoint = sprintf('%X', reset($words));
-
-                $sequence[] = $codepoint;
-
-                if (isset($codepoints[$codepoint])) {
-                    $replacement .= ":$codepoints[$codepoint]:";
-                    $sequence = [];
-                } else {
-                    /* Check multi-codepoint sequence */
-                    $multi = implode('-', $sequence);
-
-                    if (isset($codepoints[$multi])) {
-                        $replacement .= ":$codepoints[$multi]:";
-                        $sequence = [];
-                    }
-                }
-            } else {
-                $replacement .= $part;
-            }
+        if (!$encoding) {
+            $encoding = mb_detect_encoding($content);
         }
 
-        return $replacement;
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $content = mb_convert_encoding($content, 'UTF-8', $encoding);
+        }
+
+        $replaced = str_replace(array_values($codepoints), array_keys($codepoints), $content);
+
+        if ($encoding !== false && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $replaced = mb_convert_encoding($replaced, $encoding, 'UTF-8');
+        }
+
+        return $replaced;
     }
 
     /**
@@ -183,12 +194,16 @@ class LitEmoji
                     }
                 }
 
-                // Invalidate shortcode cache
-                self::$shortcodes = [];
+                self::invalidateCache();
+                break;
+            case 'aliasShortcodes':
+                self::$aliasedShortcodes = (array) $value;
+
+                self::invalidateCache();
                 break;
         }
     }
-    
+
     /**
      * Removes all emoji-sequences from string.
      *
@@ -198,25 +213,31 @@ class LitEmoji
     public static function removeEmoji(string $source): string
     {
         $content = self::encodeShortcode($source);
-        $content = preg_replace('/\:\w+\:/', '', $content);
-        return $content;
+        return preg_replace('/:\w+:/', '', $content);
     }
 
-    private static function getShortcodes()
+    private static function getShortcodes(): array
     {
         if (!empty(self::$shortcodes)) {
             return self::$shortcodes;
         }
 
         // Skip excluded shortcodes
-        self::$shortcodes = array_filter(require(__DIR__ . '/shortcodes-array.php'), static function($code) {
+        self::$shortcodes = array_filter(require(sprintf('%s/%s.php', __DIR__, self::$preset)), static function($code) {
             return !in_array($code, self::$excludedShortcodes);
         }, ARRAY_FILTER_USE_KEY);
+
+        // Append shortcode aliases
+        foreach (self::$aliasedShortcodes as $alias => $code) {
+            if (array_key_exists($code, self::$shortcodes)) {
+                self::$shortcodes[$alias] = self::$shortcodes[$code];
+            }
+        }
 
         return self::$shortcodes;
     }
 
-    private static function getShortcodeCodepoints()
+    private static function getShortcodeCodepoints(): array
     {
         if (!empty(self::$shortcodeCodepoints)) {
             return self::$shortcodeCodepoints;
@@ -236,7 +257,7 @@ class LitEmoji
         return self::$shortcodeCodepoints;
     }
 
-    private static function getEntityCodepoints()
+    private static function getEntityCodepoints(): array
     {
         if (!empty(self::$entityCodepoints)) {
             return self::$entityCodepoints;
@@ -258,7 +279,7 @@ class LitEmoji
         return self::$entityCodepoints;
     }
 
-    private static function getShortcodeEntities()
+    private static function getShortcodeEntities(): array
     {
         if (!empty(self::$shortcodeEntities)) {
             return self::$shortcodeEntities;
@@ -274,5 +295,18 @@ class LitEmoji
         }
 
         return self::$shortcodeEntities;
+    }
+
+    /**
+     * Invalidates the shortcode cache.
+     *
+     * @return void
+     */
+    private static function invalidateCache(): void
+    {
+        self::$shortcodes = [];
+        self::$shortcodeCodepoints = [];
+        self::$shortcodeEntities = [];
+        self::$entityCodepoints = [];
     }
 }

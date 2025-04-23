@@ -186,17 +186,17 @@ class Calendar implements ICalendar, DAV\IProperties, DAV\Sync\ISyncCollection, 
      * The contents of the new file must be a valid ICalendar string.
      *
      * @param string   $name
-     * @param resource $calendarData
+     * @param resource $data
      *
      * @return string|null
      */
-    public function createFile($name, $calendarData = null)
+    public function createFile($name, $data = null)
     {
-        if (is_resource($calendarData)) {
-            $calendarData = stream_get_contents($calendarData);
+        if (is_resource($data)) {
+            $data = stream_get_contents($data);
         }
 
-        return $this->caldavBackend->createCalendarObject($this->calendarInfo['id'], $name, $calendarData);
+        return $this->caldavBackend->createCalendarObject($this->calendarInfo['id'], $name, $data);
     }
 
     /**
@@ -435,14 +435,14 @@ class Calendar implements ICalendar, DAV\IProperties, DAV\Sync\ISyncCollection, 
      * return null.
      *
      * The limit is 'suggestive'. You are free to ignore it.
-     * TODO: RFC6578 Setion 3.7 says that the server must fail when the server
+     * TODO: RFC6578 Section 3.7 says that the server must fail when the server
      * cannot truncate according to the limit, so it may not be just suggestive.
      *
      * @param string $syncToken
      * @param int    $syncLevel
      * @param int    $limit
      *
-     * @return array
+     * @return array|null
      */
     public function getChanges($syncToken, $syncLevel, $limit = null)
     {

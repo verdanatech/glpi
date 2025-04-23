@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,8 @@
 return [
     [
         'key'     => 'central',
-        'name'    => __("Central"),
+        'name'    => "Central",
+        'translated_name' => __("Central"), // For gettext extraction
         'context' => 'core',
         '_items'  => [
             [
@@ -173,7 +173,8 @@ return [
         ]
     ], [
         'key'     => 'assets',
-        'name'    => __("Assets"),
+        'name'    => "Assets",
+        'translated_name'    => __("Assets"), // For gettext extraction
         'context' => 'core',
         '_items'  => [
             [
@@ -255,7 +256,8 @@ return [
         ]
     ], [
         'key'     => 'assistance',
-        'name'    => __("Assistance"),
+        'name'    => "Assistance",
+        'translated_name'    => __("Assistance"), // For gettext extraction
         'context' => 'core',
         '_items'  => [
             [
@@ -342,7 +344,8 @@ return [
         ]
     ], [
         'key'     => 'mini_tickets',
-        'name'    => __("Mini tickets dashboard"),
+        'name'    => "Mini tickets dashboard",
+        'translated_name'    => __("Mini tickets dashboard"), // For gettext extraction
         'context' => 'mini_core',
         '_items'  => [
             [

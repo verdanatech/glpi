@@ -18,12 +18,12 @@ return array(
 	),
 	'weekly' => array(
 		'1' => 'semanal',
-		'2' => 'cualquier otra semana',
+		'2' => 'semana por medio',
 		'else' => 'cada %{interval} semanas' // cada 8 semanas
 	),
 	'daily' => array(
 		'1' => 'diario',
-		'2' => 'cualquier otro día',
+		'2' => 'día por medio',
 		'else' => 'cada %{interval} días' // cada 8 días
 	),
 	'hourly' => array(
@@ -39,6 +39,8 @@ return array(
 		'else' => 'cada %{interval} segundos'// cada 8 segundos
 	),
 	'dtstart' => ', empezando desde %{date}',
+	'timeofday' => ' a las %{date}',
+	'startingtimeofday' => ' empezando desde %{date}',
 	'infinite' => ', por siempre',
 	'until' => ', hasta %{date}',
 	'count' => array(
@@ -69,10 +71,10 @@ return array(
 	'weekdays' => array(
 		1 => 'Lunes',
 		2 => 'Martes',
-		3 => 'Miercoles',
+		3 => 'Miércoles',
 		4 => 'Jueves',
 		5 => 'Viernes',
-		6 => 'Sabado',
+		6 => 'Sábado',
 		7 => 'Domingo',
 	),
 	'nth_weekday' => array(

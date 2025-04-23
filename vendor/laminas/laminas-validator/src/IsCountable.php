@@ -2,11 +2,11 @@
 
 namespace Laminas\Validator;
 
-use Countable;
 use Traversable;
 
 use function count;
 use function is_array;
+use function is_countable;
 use function is_numeric;
 use function sprintf;
 use function ucfirst;
@@ -94,7 +94,7 @@ class IsCountable extends AbstractValidator
      */
     public function isValid($value)
     {
-        if (! (is_array($value) || $value instanceof Countable)) {
+        if (! is_countable($value)) {
             $this->error(self::NOT_COUNTABLE);
             return false;
         }
@@ -154,12 +154,11 @@ class IsCountable extends AbstractValidator
     }
 
     /**
-     * @param mixed $value
      * @return void
      * @throws Exception\InvalidArgumentException If either a min or max option
      *     was previously set.
      */
-    private function setCount($value)
+    private function setCount(mixed $value)
     {
         if (isset($this->options['min']) || isset($this->options['max'])) {
             throw new Exception\InvalidArgumentException(
@@ -170,12 +169,11 @@ class IsCountable extends AbstractValidator
     }
 
     /**
-     * @param mixed $value
      * @return void
      * @throws Exception\InvalidArgumentException If either a count or max option
      *     was previously set.
      */
-    private function setMin($value)
+    private function setMin(mixed $value)
     {
         if (isset($this->options['count'])) {
             throw new Exception\InvalidArgumentException(
@@ -186,12 +184,11 @@ class IsCountable extends AbstractValidator
     }
 
     /**
-     * @param mixed $value
      * @return void
      * @throws Exception\InvalidArgumentException If either a count or min option
      *     was previously set.
      */
-    private function setMax($value)
+    private function setMax(mixed $value)
     {
         if (isset($this->options['count'])) {
             throw new Exception\InvalidArgumentException(

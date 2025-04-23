@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,7 @@
 /**
  * Update from 9.4.2 to 9.4.3
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update942to943()
 {
@@ -48,8 +47,6 @@ function update942to943()
 
     $updateresult     = true;
 
-   //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.4.3'));
     $migration->setVersion('9.4.3');
 
     /** Fix URL of images inside ITIL objects contents */
@@ -105,13 +102,13 @@ function update942to943()
                     'FROM'      => $itil_element_table,
                     'WHERE'     => [
                         'itemtype' => $itil_type,
-                        'content'  => ['REGEXP', $DB->escape($missing_param_pattern)],
+                        'content'  => ['REGEXP', $missing_param_pattern],
                     ]
                 ]
             );
             foreach ($elements_to_fix as $data) {
-                 $data['content'] = $DB->escape($fix_content_fct($data['content'], $data['items_id'], $itil_fkey));
-                 $DB->updateOrDie($itil_element_table, $data, ['id' => $data['id']]);
+                 $data['content'] = $fix_content_fct($data['content'], $data['items_id'], $itil_fkey);
+                 $DB->update($itil_element_table, $data, ['id' => $data['id']]);
             }
         }
 
@@ -121,13 +118,13 @@ function update942to943()
                 'SELECT'    => ['id', $itil_fkey, 'content'],
                 'FROM'      => $task_table,
                 'WHERE'     => [
-                    'content'  => ['REGEXP', $DB->escape($missing_param_pattern)],
+                    'content'  => ['REGEXP', $missing_param_pattern],
                 ]
             ]
         );
         foreach ($tasks_to_fix as $data) {
-            $data['content'] = $DB->escape($fix_content_fct($data['content'], $data[$itil_fkey], $itil_fkey));
-            $DB->updateOrDie($task_table, $data, ['id' => $data['id']]);
+            $data['content'] = $fix_content_fct($data['content'], $data[$itil_fkey], $itil_fkey);
+            $DB->update($task_table, $data, ['id' => $data['id']]);
         }
     }
     /** /Fix URL of images inside ITIL objects contents */
@@ -139,14 +136,11 @@ function update942to943()
     $migration->addKey('glpi_problemtasks', 'is_private');
 
     /** Crontask missing from fresh install */
-    CronTask::Register(
+    $migration->addCrontask(
         'PurgeLogs',
         'PurgeLogs',
         7 * DAY_TIMESTAMP,
-        [
-            'param' => 24,
-            'mode' => CronTask::MODE_EXTERNAL
-        ]
+        param: 24,
     );
     /** /Crontask missing from fresh install */
 

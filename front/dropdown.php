@@ -33,11 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
-Session::checkLoginUser();
-
-Html::header(__('Setup'), $_SERVER['PHP_SELF'], "config", "commondropdown");
+Html::header(__('Setup'), '', "config", "commondropdown");
 
 echo "<div class='center'>";
 
@@ -45,7 +43,7 @@ $optgroup = Dropdown::getStandardDropdownItemTypes();
 if (count($optgroup) > 0) {
     Dropdown::showItemTypeList($optgroup);
 } else {
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
 echo "</div>";
