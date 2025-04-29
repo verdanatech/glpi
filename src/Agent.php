@@ -353,8 +353,8 @@ class Agent extends CommonDBTM
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('RuleMatchedLog', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(RuleMatchedLog::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -720,9 +720,6 @@ class Agent extends CommonDBTM
             try {
                 $response = $httpClient->request('GET', $endpoint, []);
                 self::$found_address = $address;
-                break;
-            } catch (\GuzzleHttp\Exception\RequestException $exception) {
-                // got an error response, we don't need to try other addresses
                 break;
             } catch (\Throwable $exception) {
                 // many addresses will be incorrect

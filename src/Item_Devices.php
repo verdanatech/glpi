@@ -251,6 +251,16 @@ class Item_Devices extends CommonDBRelation
             'datatype'           => 'dropdown'
         ];
 
+        if ($this->isField('comment')) {
+            $tab[] = [
+                'id'                 => '7',
+                'table'              => $this->getTable(),
+                'field'              => 'comment',
+                'name'               => __('Comments'),
+                'datatype'           => 'text'
+            ];
+        }
+
         return $tab;
     }
 
@@ -1439,11 +1449,11 @@ class Item_Devices extends CommonDBRelation
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('Infocom', $ong, $options);
-        $this->addStandardTab('Document_Item', $ong, $options);
-        $this->addStandardTab('Lock', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
-        $this->addStandardTab('Contract_Item', $ong, $options);
+        $this->addStandardTab(Infocom::class, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(Lock::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
+        $this->addStandardTab(Contract_Item::class, $ong, $options);
 
         return $ong;
     }

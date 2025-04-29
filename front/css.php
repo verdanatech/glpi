@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Application\Environment;
 use Glpi\UI\ThemeManager;
 
@@ -59,10 +61,7 @@ $css = Html::compileScss($_GET);
 
 header('Content-Type: text/css');
 
-$is_cacheable = !isset($_GET['nocache'])
-    // do not use browser cache on env where the source files may change
-    && !Environment::get()->shouldExpectRessourcesToChange()
-;
+$is_cacheable = !isset($_GET['nocache']) && Environment::get()->shouldForceExtraBrowserCache();
 if ($is_cacheable) {
    // Makes CSS cacheable by browsers and proxies
     $max_age = WEEK_TIMESTAMP;

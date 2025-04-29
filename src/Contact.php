@@ -44,6 +44,7 @@ use Sabre\VObject;
 class Contact extends CommonDBTM
 {
     use AssetImage;
+    use Glpi\Features\Clonable;
 
    // From CommonDBTM
     public $dohistory           = true;
@@ -92,17 +93,22 @@ class Contact extends CommonDBTM
         );
     }
 
+    public function getCloneRelations(): array
+    {
+        return [];
+    }
+
 
     public function defineTabs($options = [])
     {
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('Contact_Supplier', $ong, $options);
-        $this->addStandardTab('Document_Item', $ong, $options);
-        $this->addStandardTab('ManualLink', $ong, $options);
-        $this->addStandardTab('Notepad', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Contact_Supplier::class, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(ManualLink::class, $ong, $options);
+        $this->addStandardTab(Notepad::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }

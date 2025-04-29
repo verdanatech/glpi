@@ -78,8 +78,8 @@ final class SystemConfigurator
                 'GLPI_ENVIRONMENT_TYPE' => Environment::PRODUCTION->value,
 
                 // Constants related to system paths
-                'GLPI_CONFIG_DIR'      => $this->root_dir . '/../../config', // Path for configuration files (db, security key, ...)
-                'GLPI_VAR_DIR'         => $this->root_dir . '/../../files',  // Path for all files
+                'GLPI_CONFIG_DIR'      => $this->root_dir . '/config', // Path for configuration files (db, security key, ...)
+                'GLPI_VAR_DIR'         => $this->root_dir . '/files',  // Path for all files
                 'GLPI_MARKETPLACE_DIR' => $this->root_dir . '/marketplace', // Path for marketplace plugins
                 'GLPI_DOC_DIR'         => '{GLPI_VAR_DIR}', // Path for documents storage
                 'GLPI_CACHE_DIR'       => '{GLPI_VAR_DIR}/_cache', // Path for cache
