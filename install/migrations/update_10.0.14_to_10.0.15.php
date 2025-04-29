@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,7 @@
 /**
  * Update from 10.0.14 to 10.0.15
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update10014to10015()
 {
@@ -51,8 +50,6 @@ function update10014to10015()
     $DELFROMDISPLAYPREF = [];
     $update_dir = __DIR__ . '/update_10.0.14_to_10.0.15/';
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '10.0.15'));
     $migration->setVersion('10.0.15');
 
     $update_scripts = scandir($update_dir);

@@ -6,6 +6,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use wapmorgan\UnifiedArchive\Abilities;
 use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
 use wapmorgan\UnifiedArchive\Formats;
 
@@ -33,7 +34,7 @@ class BaseArchiveCommand extends BaseCommand
         if (!is_file($file)) {
             throw new \InvalidArgumentException('File ' . $input->getArgument('archive') . ' is not accessible');
         }
-        $output->writeln('<comment>Format ' . Formats::detectArchiveFormat($file).'</comment>', OutputInterface::VERBOSITY_VERY_VERBOSE);
+        $output->writeln('<comment>Format ' . Formats::detectArchiveFormat($file) . '</comment>', OutputInterface::VERBOSITY_VERY_VERBOSE);
         $password = $input->getOption('password');
         if (empty($password)) {
             $password = null;
@@ -53,7 +54,7 @@ class BaseArchiveCommand extends BaseCommand
      */
     protected function getDriverFormatAbilities($driver, $format)
     {
-        $abilities = $driver::checkFormatSupport($format);
-        return array_keys(array_intersect(self::$abilitiesLabels, $abilities));
+        $abilities = $driver::getFormatAbilities($format);
+        return array_keys(array_intersect(Abilities::$abilitiesLabels, $abilities));
     }
 }

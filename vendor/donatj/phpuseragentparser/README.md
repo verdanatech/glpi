@@ -6,7 +6,7 @@
 [![Latest Stable Version](https://poser.pugx.org/donatj/phpuseragentparser/version)](https://packagist.org/packages/donatj/phpuseragentparser)
 [![Total Downloads](https://poser.pugx.org/donatj/phpuseragentparser/downloads)](https://packagist.org/packages/donatj/phpuseragentparser)
 [![License](https://poser.pugx.org/donatj/phpuseragentparser/license)](https://packagist.org/packages/donatj/phpuseragentparser)
-[![CI](https://github.com/donatj/phpUserAgent/workflows/CI/badge.svg?)](https://github.com/donatj/phpUserAgent/actions?query=workflow%3ACI)
+[![ci.yml](https://github.com/donatj/phpUserAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/donatj/phpUserAgent/actions/workflows/ci.yml)
 
 
 ## What It Is
@@ -57,6 +57,7 @@ All that said, there is the start of a [branch to do it](https://github.com/dona
 ## Requirements
 
 - **php**: >=5.4.0
+- **ext-ctype**: *
 
 ## Installing
 
@@ -73,29 +74,45 @@ composer require 'donatj/phpuseragentparser'
 The classic procedural use is as simple as:
 
 ```php
-$ua_info = parse_user_agent();
-/*
-[
-	'platform' => '[Detected Platform]',
-	'browser'  => '[Detected Browser]',
-	'version'  => '[Detected Browser Version]',
-]
-*/
+<?php
+
+// if you're using composer
+require __DIR__ . '/../vendor/autoload.php';
+
+// v0 style global function - @deprecated
+$uaInfo = parse_user_agent();
+// or
+// modern namespaced function
+$uaInfo = donatj\UserAgent\parse_user_agent();
+
+echo $uaInfo[donatj\UserAgent\PLATFORM] . PHP_EOL;
+echo $uaInfo[donatj\UserAgent\BROWSER] . PHP_EOL;
+echo $uaInfo[donatj\UserAgent\BROWSER_VERSION] . PHP_EOL;
+
 ```
 
-
-The new object oriented wrapper form:
+The new object-oriented wrapper form:
 
 ```php
+<?php
+
+use donatj\UserAgent\UserAgentParser;
+
+// if you're using composer
+require __DIR__ . '/../vendor/autoload.php';
+
 $parser = new UserAgentParser();
 
+// object-oriented call
 $ua = $parser->parse();
 // or
+// command style invocation
 $ua = $parser();
 
-$ua->platform();
-$ua->browser();
-$ua->browserVersion();
+echo $ua->platform() . PHP_EOL;
+echo $ua->browser() . PHP_EOL;
+echo $ua->browserVersion() . PHP_EOL;
+
 ```
 
 ## Currently Detected Platforms
@@ -151,6 +168,7 @@ Predefined helper constants from `donatj\UserAgent\Browsers`
 | `Browsers::BROWSER` |  Browser |  
 | `Browsers::BUNJALLOO` |  Bunjalloo |  
 | `Browsers::CAMINO` |  Camino |  
+| `Browsers::CHATGPT_USER` |  ChatGPT-User |  
 | `Browsers::CHROME` |  Chrome |  
 | `Browsers::CURL` |  curl |  
 | `Browsers::EDGE` |  Edge |  
@@ -160,17 +178,20 @@ Predefined helper constants from `donatj\UserAgent\Browsers`
 | `Browsers::GOOGLEBOT` |  Googlebot |  
 | `Browsers::GOOGLEBOT_IMAGE` |  Googlebot-Image |  
 | `Browsers::GOOGLEBOT_VIDEO` |  Googlebot-Video |  
+| `Browsers::GPTBOT` |  GPTBot |  
 | `Browsers::HEADLESSCHROME` |  HeadlessChrome |  
 | `Browsers::IEMOBILE` |  IEMobile |  
 | `Browsers::IMESSAGEBOT` |  iMessageBot |  
 | `Browsers::KINDLE` |  Kindle |  
 | `Browsers::LYNX` |  Lynx |  
+| `Browsers::MASTODON` |  Mastodon |  
 | `Browsers::MIDORI` |  Midori |  
 | `Browsers::MIUIBROWSER` |  MiuiBrowser |  
 | `Browsers::MSIE` |  MSIE |  
 | `Browsers::MSNBOT_MEDIA` |  msnbot-media |  
 | `Browsers::NETFRONT` |  NetFront |  
 | `Browsers::NINTENDOBROWSER` |  NintendoBrowser |  
+| `Browsers::OAI_SEARCHBOT` |  OAI-SearchBot |  
 | `Browsers::OCULUSBROWSER` |  OculusBrowser |  
 | `Browsers::OPERA` |  Opera |  
 | `Browsers::PUFFIN` |  Puffin |  
@@ -178,6 +199,7 @@ Predefined helper constants from `donatj\UserAgent\Browsers`
 | `Browsers::SAILFISHBROWSER` |  SailfishBrowser |  
 | `Browsers::SAMSUNGBROWSER` |  SamsungBrowser |  
 | `Browsers::SILK` |  Silk |  
+| `Browsers::SLACKBOT` |  Slackbot |  
 | `Browsers::TELEGRAMBOT` |  TelegramBot |  
 | `Browsers::TIZENBROWSER` |  TizenBrowser |  
 | `Browsers::TWITTERBOT` |  Twitterbot |  
@@ -185,6 +207,7 @@ Predefined helper constants from `donatj\UserAgent\Browsers`
 | `Browsers::VALVE_STEAM_TENFOOT` |  Valve Steam Tenfoot |  
 | `Browsers::VIVALDI` |  Vivaldi |  
 | `Browsers::WGET` |  Wget |  
+| `Browsers::WHALE` |  Whale |  
 | `Browsers::WORDPRESS` |  WordPress |  
 | `Browsers::YANDEX` |  Yandex |  
 | `Browsers::YANDEXBOT` |  YandexBot |

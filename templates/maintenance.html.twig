@@ -6,7 +6,6 @@
  # http://glpi-project.org
  #
  # @copyright 2015-2025 Teclib' and contributors.
- # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
  # ---------------------------------------------------------------------
@@ -31,6 +30,8 @@
  # ---------------------------------------------------------------------
  #}
 
+{% set title = __('MAINTENANCE MODE') %}
+
 {% extends 'layout/page_card_notlogged.html.twig' %}
 
 {% block content_block %}
@@ -45,9 +46,10 @@
             {{ __('Sorry for the inconvenience but we’re performing some maintenance at the moment. We’ll be back online shortly!') }}
          </p>
 
+         {% set maintenance_text = config('maintenance_text') %}
          {% if maintenance_text|length %}
             <div class="alert alert-warning mt-4">
-               {{ maintenance_text|verbatim_value }}
+               {{ maintenance_text }}
             </div>
          {% endif %}
          <div class="empty-action">

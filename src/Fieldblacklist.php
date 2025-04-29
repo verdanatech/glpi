@@ -49,7 +49,7 @@ class Fieldblacklist extends CommonDropdown
     }
 
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return static::canUpdate();
     }
@@ -57,7 +57,7 @@ class Fieldblacklist extends CommonDropdown
     /**
      * @since 0.85
      **/
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         return static::canUpdate();
     }
@@ -253,7 +253,7 @@ class Fieldblacklist extends CommonDropdown
             if ($item = getItemForItemtype($this->fields['itemtype'])) {
                 echo $item->getTypeName(1);
             }
-            echo "<input type='hidden' name='itemtype' value='" . $this->fields['itemtype'] . "'>";
+            echo "<input type='hidden' name='itemtype' value='" . htmlescape($this->fields['itemtype']) . "'>";
         } else {
             //Add criteria : display dropdown
             $options = [];

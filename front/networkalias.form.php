@@ -38,8 +38,6 @@ use Glpi\Event;
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
 $alias = new NetworkAlias();
 
 if (!isset($_GET["id"])) {
@@ -98,14 +96,10 @@ if (isset($_POST["add"])) {
 }
 
 if (isset($_GET['_in_modal'])) {
-    Html::popHeader(NetworkAlias::getTypeName(1), $_SERVER['PHP_SELF']);
+    Html::popHeader(NetworkAlias::getTypeName(1));
     $alias->showForm($_GET["id"], $_GET);
     Html::popFooter();
 } else {
-    if (!isset($_GET["id"])) {
-        $_GET["id"] = "";
-    }
-
     Session::checkRight("internet", UPDATE);
 
     $menus = ['assets'];

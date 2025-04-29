@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,7 +35,7 @@
 /**
  * Update from 9.3 to 9.4
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update93xto940()
 {
@@ -52,8 +51,6 @@ function update93xto940()
     $ADDTODISPLAYPREF = [];
     $config_to_drop = [];
 
-   //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.4.0'));
     $migration->setVersion('9.4.0');
 
     /** Add otherserial field on ConsumableItem */
@@ -130,7 +127,7 @@ function update93xto940()
     $migration->createRule($rule, $criteria, $action);
 
     if (!countElementsInTable('glpi_profilerights', ['profiles_id' => 4, 'name' => 'rule_asset'])) {
-        $DB->insertOrDie("glpi_profilerights", [
+        $DB->insert("glpi_profilerights", [
             'id'           => null,
             'profiles_id'  => "4",
             'name'         => "rule_asset",
@@ -203,13 +200,13 @@ function update93xto940()
     }
     /** Add watcher visibility to groups */
 
-    Config::deleteConfigurationValues('core', $config_to_drop);
+    $migration->removeConfig($config_to_drop);
 
    // Add a config entry for the CAS version
     $migration->addConfig(['cas_version' => 'CAS_VERSION_2_0']);
 
     /** Drop old embed ocs search options */
-    $DB->deleteOrDie(
+    $DB->delete(
         'glpi_displaypreferences',
         [
             'itemtype'  => 'Computer',
@@ -240,7 +237,7 @@ function update93xto940()
         '95'  => '117'
     ];
     foreach ($so_maping as $old => $new) {
-        $DB->updateOrDie(
+        $DB->update(
             'glpi_displaypreferences',
             [
                 'num' => $new

@@ -33,12 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Dashboard\Dashboard;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
-include('../inc/includes.php');
 
 Session::checkCentralAccess();
 $default = Glpi\Dashboard\Grid::getDefaultDashboardForMenu('assets');
@@ -50,11 +49,10 @@ if ($default == "") {
 
 $dashboard = new Dashboard($default);
 if (!$dashboard->canViewCurrent()) {
-    Html::displayRightError();
-    exit();
+    throw new AccessDeniedHttpException();
 }
 
-Html::header(__('Assets Dashboard'), $_SERVER['PHP_SELF'], "assets", "dashboard");
+Html::header(__('Assets Dashboard'), '', "assets", "dashboard");
 
 $grid = new Glpi\Dashboard\Grid($default);
 $grid->showDefault();

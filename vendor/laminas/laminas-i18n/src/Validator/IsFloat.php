@@ -12,15 +12,18 @@ use Locale;
 use NumberFormatter;
 use Traversable;
 
+use function assert;
 use function intl_is_failure;
 use function is_bool;
 use function is_float;
 use function is_int;
 use function is_scalar;
+use function is_string;
 use function preg_match;
 use function preg_quote;
 use function str_replace;
 
+/** @final */
 class IsFloat extends AbstractValidator
 {
     public const INVALID   = 'floatInvalid';
@@ -29,7 +32,7 @@ class IsFloat extends AbstractValidator
     /**
      * Validation failure message template definitions
      *
-     * @var string[]
+     * @var array<string, string>
      */
     protected $messageTemplates = [
         self::INVALID   => 'Invalid type given. String, integer or float expected',
@@ -53,7 +56,7 @@ class IsFloat extends AbstractValidator
     /**
      * Constructor for the integer validator
      *
-     * @param array|Traversable $options
+     * @param iterable<string, mixed> $options
      */
     public function __construct($options = [])
     {
@@ -73,6 +76,8 @@ class IsFloat extends AbstractValidator
     /**
      * Returns the set locale
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
+     *
      * @return string
      */
     public function getLocale()
@@ -85,6 +90,8 @@ class IsFloat extends AbstractValidator
 
     /**
      * Sets the locale to use
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
      *
      * @param string|null $locale
      * @return $this
@@ -99,7 +106,7 @@ class IsFloat extends AbstractValidator
      * Returns true if and only if $value is a floating-point value. Uses the formal definition of a float as described
      * in the PHP manual: {@link https://www.php.net/float}
      *
-     * @param  float|int|string $value
+     * @param mixed $value
      * @return bool
      * @throws Exception\InvalidArgumentException
      */
@@ -114,6 +121,12 @@ class IsFloat extends AbstractValidator
 
         if (is_float($value) || is_int($value)) {
             return true;
+        }
+
+        if ($value === '') {
+            $this->error(self::NOT_FLOAT);
+
+            return false;
         }
 
         // Need to check if this is scientific formatted string. If not, switch to decimal.
@@ -163,7 +176,11 @@ class IsFloat extends AbstractValidator
         $decSeparatorPosition   = $this->wrapper->strpos($value, $decSeparator);
 
         //We have separators, and they are flipped. i.e. 2.000,000 for en-US
-        if ($groupSeparatorPosition && $decSeparatorPosition && $groupSeparatorPosition > $decSeparatorPosition) {
+        if (
+            $groupSeparatorPosition !== false
+            && $decSeparatorPosition !== false
+            && $groupSeparatorPosition > $decSeparatorPosition
+        ) {
             $this->error(self::NOT_FLOAT);
 
             return false;
@@ -187,7 +204,8 @@ class IsFloat extends AbstractValidator
                     '/'
                 )
                 . ']{0,3}';
-            $suffix      = $formatter->getTextAttribute(NumberFormatter::NEGATIVE_SUFFIX)
+            $suffix      = $formatter->getTextAttribute(NumberFormatter::NEGATIVE_SUFFIX);
+            $suffix      = $suffix !== false
                 ? '['
                     . preg_quote(
                         $formatter->getTextAttribute(NumberFormatter::POSITIVE_SUFFIX)
@@ -230,10 +248,18 @@ class IsFloat extends AbstractValidator
 
         // No strrpos() in wrappers yet. ICU 4.x doesn't have grouping size for
         // everything. ICU 52 has 3 for ALL locales.
-        $groupSize       = $formatter->getAttribute(NumberFormatter::GROUPING_SIZE) ?: 3;
+        $groupSize = $formatter->getAttribute(NumberFormatter::GROUPING_SIZE);
+        $groupSize = $groupSize === false ? 3 : $groupSize;
+        assert(is_int($groupSize));
         $lastStringGroup = $this->wrapper->strlen($value) > $groupSize ?
-            $this->wrapper->substr($value, -$groupSize) :
+            $this->wrapper->substr($value, 0 - $groupSize) :
             $value;
+
+        assert(is_string($lastStringGroup));
+        assert($lastStringGroup !== '');
+        assert($lnumSearch !== '');
+        assert($dnumSearch !== '');
+        assert($expDnumSearch !== '');
 
         if (
             (preg_match($lnumSearch, $unGroupedValue)

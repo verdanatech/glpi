@@ -36,13 +36,11 @@
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
 Session::checkSeveralRightsOr(['notification' => READ,
     'config'       => UPDATE
 ]);
 
-Html::header(_n('Notification', 'Notifications', Session::getPluralNumber()), $_SERVER['PHP_SELF'], "config", "notification");
+Html::header(_n('Notification', 'Notifications', Session::getPluralNumber()), '', "config", "notification");
 
 if (
     !Session::haveRight("config", READ)

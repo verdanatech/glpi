@@ -6,7 +6,6 @@
  # http://glpi-project.org
  #
  # @copyright 2015-2025 Teclib' and contributors.
- # @copyright 2003-2014 by the INDEPNET Development Team.
  # @licence   https://www.gnu.org/licenses/gpl-3.0.html
  #
  # ---------------------------------------------------------------------
@@ -31,14 +30,16 @@
  # ---------------------------------------------------------------------
  #}
 
-<div class="mx-n2 mb-4">
+<div class="mx-n2 mb-4 table-responsive">
    <table class="table table-hover card-table">
       <thead>
+         {% if title is not empty %}
          <tr class="border-top">
             <th colspan="{{ number_columns }}">
                <h4>{{ title }}</h4>
             </th>
          </tr>
+         {% endif %}
          <tr>
             <th>{{ param['first_cell']|raw }}</th>
             {% for col_name, column in columns %}
@@ -72,7 +73,7 @@
                   <td colspan="{{ number_columns }}">{{ row }}</td>
                {% else %}
                   {% set row_id = call('Html::cleanId', ['row_label_' ~ row_name ~ '_' ~ param['rand']]) %}
-                  <td class="{{ row['class'] }}" id="{{ row_id }}">
+                  <td class="{{ row['class'] ?? '' }}" id="{{ row_id }}">
                      {{ row['label'] ?? '&nbsp;' }}
                   </td>
 

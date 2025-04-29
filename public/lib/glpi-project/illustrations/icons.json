@@ -1,0 +1,586 @@
+{
+    "antivirus": {
+        "title": "Antivirus",
+        "tags": []
+    },
+    "application": {
+        "title": "Application",
+        "tags": ["software"]
+    },
+    "approve-requests": {
+        "title": "Approve Requests",
+        "tags": []
+    },
+    "asset-cartridge": {
+        "title": "Cartridge",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-desktop-1": {
+        "title": "Desktop 1",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-desktop-2": {
+        "title": "Desktop 2",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-laptop": {
+        "title": "Laptop",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-lost": {
+        "title": "Asset lost",
+        "tags": []
+    },
+    "asset-network-equipment": {
+        "title": "Network equipment",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-peripheral": {
+        "title": "Peripheral",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-phone": {
+        "title": "Phone",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-printer": {
+        "title": "Printer",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-server": {
+        "title": "Server",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-smartphone": {
+        "title": "Smartphone",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "backup-restoration-1": {
+        "title": "Backup and restoration 1",
+        "tags": []
+    },
+    "backup-restoration-2": {
+        "title": "Backup and restoration 2",
+        "tags": []
+    },
+    "bank": {
+        "title": "Bank",
+        "tags": [
+            "building"
+        ]
+    },
+    "bi-reporting-1": {
+        "title": "Business Intelligence and Reporting 1",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "bi-reporting-2": {
+        "title": "Business Intelligence and Reporting 2",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "bi-reporting-3": {
+        "title": "Business Intelligence and Reporting 3",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "bookmark": {
+        "title": "Bookmark",
+        "tags": []
+    },
+    "browse-kb": {
+        "title": "Browse help articles",
+        "tags": []
+    },
+    "building": {
+        "title": "Building",
+        "tags": [
+            "building"
+        ]
+    },
+    "calendar": {
+        "title": "Calendar",
+        "tags": []
+    },
+    "car": {
+        "title": "Car",
+        "tags": []
+    },
+    "chart-area": {
+        "title": "Area chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chart-bar": {
+        "title": "Bars chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chart-donut": {
+        "title": "Donut chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chart-line": {
+        "title": "Line chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chart-pie": {
+        "title": "Pie chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "cloud": {
+        "title": "Cloud",
+        "tags": []
+    },
+    "cloud-instance": {
+        "title": "Cloud instance",
+        "tags": []
+    },
+    "connectivity-issue": {
+        "title": "Connectivity issue",
+        "tags": []
+    },
+    "container": {
+        "title": "Container",
+        "tags": []
+    },
+    "containers": {
+        "title": "Containers",
+        "tags": []
+    },
+    "contract-signing-1": {
+        "title": "Contract signing 1",
+        "tags": []
+    },
+    "contract-signing-2": {
+        "title": "Contract signing 2",
+        "tags": []
+    },
+    "data-export": {
+        "title": "Data export",
+        "tags": []
+    },
+    "delivery": {
+        "title": "Delivery",
+        "tags": []
+    },
+    "error-404": {
+        "title": "Error 404",
+        "tags": []
+    },
+    "factory": {
+        "title": "Factory",
+        "tags": [
+            "building"
+        ]
+    },
+    "file-sheet": {
+        "title": "Sheet file",
+        "tags": [
+            "File"
+        ]
+    },
+    "firewall": {
+        "title": "Firewall",
+        "tags": []
+    },
+    "fixing-bug": {
+        "title": "Fixing bug",
+        "tags": []
+    },
+    "folder": {
+        "title": "Folder",
+        "tags": []
+    },
+    "gear": {
+        "title": "Gear",
+        "tags": [
+            "settings",
+            "setup"
+        ]
+    },
+    "glpi-cloud-support-1": {
+        "title": "GLPI Cloud Support 1",
+        "tags": []
+    },
+    "glpi-cloud-support-2": {
+        "title": "GLPI Cloud Support 2",
+        "tags": []
+    },
+    "group": {
+        "title": "Group",
+        "tags": []
+    },
+    "kb-faq": {
+        "title": "Knowledge base and FAQ",
+        "tags": []
+    },
+    "legal": {
+        "title": "Legal",
+        "tags": []
+    },
+    "license": {
+        "title": "License",
+        "tags": []
+    },
+    "location-1": {
+        "title": "Location 1",
+        "tags": []
+    },
+    "location-2": {
+        "title": "Location 2",
+        "tags": []
+    },
+    "lock": {
+        "title": "Lock",
+        "tags": []
+    },
+    "mobility": {
+        "title": "Mobility",
+        "tags": []
+    },
+    "monitoring": {
+        "title": "Monitoring",
+        "tags": []
+    },
+    "new-user-1": {
+        "title": "New user 1",
+        "tags": []
+    },
+    "new-user-2": {
+        "title": "New user 2",
+        "tags": []
+    },
+    "new-user-3": {
+        "title": "New user 3",
+        "tags": []
+    },
+    "new-user-4": {
+        "title": "New user 4",
+        "tags": []
+    },
+    "newspaper": {
+        "title": "Newspaper",
+        "tags": []
+    },
+    "on-premise": {
+        "title": "On-premise",
+        "tags": []
+    },
+    "order-supplies": {
+        "title": "Order supplies",
+        "tags": []
+    },
+    "partner": {
+        "title": "Partner",
+        "tags": []
+    },
+    "print-job": {
+        "title": "Print a job",
+        "tags": []
+    },
+    "question": {
+        "title": "Question",
+        "tags": []
+    },
+    "report-issue": {
+        "title": "Report an issue",
+        "tags": []
+    },
+    "request-service": {
+        "title": "Request a service",
+        "tags": []
+    },
+    "request-support": {
+        "title": "Request support",
+        "tags": []
+    },
+    "reservation": {
+        "title": "Make a reservation",
+        "tags": []
+    },
+    "reset-password-1": {
+        "title": "Reset password 1",
+        "tags": []
+    },
+    "reset-password-2": {
+        "title": "Reset password 2",
+        "tags": []
+    },
+    "reset-password-3": {
+        "title": "Reset password 3",
+        "tags": []
+    },
+    "rss-feeds": {
+        "title": "RSS feeds",
+        "tags": []
+    },
+    "security": {
+        "title": "Security",
+        "tags": []
+    },
+    "shared-folder": {
+        "title": "Shared folder",
+        "tags": []
+    },
+    "shared-inbox": {
+        "title": "Shared inbox",
+        "tags": []
+    },
+    "software-deployment": {
+        "title": "Deploy a software",
+        "tags": []
+    },
+    "technical-assistance-1": {
+        "title": "Technical assistance 1",
+        "tags": []
+    },
+    "technical-assistance-2": {
+        "title": "Technical assistance 2",
+        "tags": []
+    },
+    "time": {
+        "title": "Time",
+        "tags": []
+    },
+    "training": {
+        "title": "Training",
+        "tags": [
+            "presentation"
+        ]
+    },
+    "update-1": {
+        "title": "Update 1",
+        "tags": ["software"]
+    },
+    "update-2": {
+        "title": "Update 2",
+        "tags": ["software"]
+    },
+    "user-offboarding": {
+        "title": "User offboarding",
+        "tags": []
+    },
+    "virus": {
+        "title": "Virus",
+        "tags": []
+    },
+    "vpn": {
+        "title": "VPN",
+        "tags": []
+    },
+    "web": {
+        "title": "Web",
+        "tags": [
+            "www",
+            "internet",
+            "world"
+        ]
+    },
+    "wharehouse": {
+        "title": "Wharehouse",
+        "tags": []
+    },
+
+    "application-altenative": {
+        "title": "application-altenative",
+        "tags": []
+    },
+    "application-edit": {
+        "title": "application-edit",
+        "tags": []
+    },
+    "chart-multiple": {
+        "title": "chart-multiple",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chart-search": {
+        "title": "chart-search",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "chat-1": {
+        "title": "chat-1",
+        "tags": []
+    },
+    "chat-2": {
+        "title": "chat-2",
+        "tags": []
+    },
+    "cloud-network-1": {
+        "title": "cloud-network-1",
+        "tags": []
+    },
+    "cloud-network-2": {
+        "title": "cloud-network-2",
+        "tags": []
+    },
+    "database": {
+        "title": "database",
+        "tags": []
+    },
+    "download": {
+        "title": "download",
+        "tags": []
+    },
+    "group-alternative-1": {
+        "title": "group-alternative-1",
+        "tags": [
+            "users"
+        ]
+    },
+    "group-alternative-2": {
+        "title": "group-alternative-2",
+        "tags": [
+            "users"
+        ]
+    },
+    "group-web": {
+        "title": "group-web",
+        "tags": [
+            "users"
+        ]
+    },
+    "helpdesk": {
+        "title": "helpdesk",
+        "tags": [
+            "headphones"
+        ]
+    },
+    "hierarchy": {
+        "title": "hierarchy",
+        "tags": [
+            "users",
+            "group"
+        ]
+    },
+    "gear-hand": {
+        "title": "gear-hand",
+        "tags": [
+            "gear",
+            "wrench",
+            "setup",
+            "settings"
+        ]
+    },
+    "inbox": {
+        "title": "inbox",
+        "tags": [
+            "email"
+        ]
+    },
+    "notes": {
+        "title": "notes",
+        "tags": []
+    },
+    "presentation": {
+        "title": "presentation",
+        "tags": [
+            "training"
+        ]
+    },
+    "settings-search": {
+        "title": "settings-search",
+        "tags": [
+            "gear",
+            "wrench",
+            "setup"
+        ]
+    },
+    "settings": {
+        "title": "settings",
+        "tags": [
+            "gear",
+            "setup"
+        ]
+    },
+    "shaking-hands": {
+        "title": "shaking-hands",
+        "tags": []
+    },
+    "user-laptop": {
+        "title": "user-laptop",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "webinar": {
+        "title": "webinar",
+        "tags": [
+            "meeting"
+        ]
+    },
+    "world": {
+        "title": "world",
+        "tags": [
+            "web",
+            "www",
+            "internet"
+        ]
+    }
+}

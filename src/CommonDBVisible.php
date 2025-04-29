@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
+
 /**
  * Common DataBase visibility for items
  */
@@ -68,7 +70,7 @@ abstract class CommonDBVisible extends CommonDBTM
 
     public function __get(string $property)
     {
-        // TODO Deprecate access to variables in GLPI 10.1.
+        // TODO Deprecate access to variables in GLPI 11.0.
         $value = null;
         switch ($property) {
             case 'entities':
@@ -90,7 +92,7 @@ abstract class CommonDBVisible extends CommonDBTM
 
     public function __set(string $property, $value)
     {
-        // TODO Deprecate access to variables in GLPI 10.1.
+        // TODO Deprecate access to variables in GLPI 11.0.
         switch ($property) {
             case 'entities':
             case 'groups':
@@ -211,218 +213,162 @@ abstract class CommonDBVisible extends CommonDBTM
      **/
     public function showVisibility()
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $ID      = $this->fields['id'];
+        $ID      = (int)$this->fields['id'];
         $canedit = $this->canEdit($ID);
         $rand    = mt_rand();
         $nb      = $this->countVisibilities();
-        $str_type = strtolower($this::getType());
-        $fk = static::getForeignKeyField();
 
         if ($canedit) {
-            echo "<div class='firstbloc'>";
-            echo "<form name='{$str_type}visibility_form$rand' id='{$str_type}visibility_form$rand' ";
-            echo " method='post' action='" . static::getFormURL() . "'>";
-            echo "<input type='hidden' name='{$fk}' value='$ID'>";
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_1'><th colspan='4'>" . __('Add a target') . "</tr>";
-            echo "<tr class='tab_bg_1'><td class='tab_bg_2' width='100px'>";
-
-            $types   = ['Entity', 'Group', 'Profile', 'User'];
-
-            $addrand = Dropdown::showItemTypes('_type', $types);
-            $params = $this->getShowVisibilityDropdownParams();
-
-            Ajax::updateItemOnSelectEvent(
-                "dropdown__type" . $addrand,
-                "visibility$rand",
-                $CFG_GLPI["root_doc"] . "/ajax/visibility.php",
-                $params
-            );
-
-            echo "</td>";
-            echo "<td><span id='visibility$rand'></span>";
-            echo "</td></tr>";
-            echo "</table>";
-            Html::closeForm();
-            echo "</div>";
+            TemplateRenderer::getInstance()->display('components/add_visibility_target.html.twig', [
+                'type' => static::class,
+                'rand' => $rand,
+                'id'   => $ID,
+                'add_target_msg' => __('Add a target'),
+                'visiblity_dropdown_params' => $this->getShowVisibilityDropdownParams(),
+            ]);
         }
-        echo "<div class='spaced'>";
-        if ($canedit && $nb) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
-            $massiveactionparams = ['num_displayed'
-                              => min($_SESSION['glpilist_limit'], $nb),
-                'container'
-                              => 'mass' . __CLASS__ . $rand,
-                'specific_actions'
-                              => ['delete' => _x('button', 'Delete permanently')]
-            ];
 
-            if ($this->fields['users_id'] != Session::getLoginUserID()) {
-                $massiveactionparams['confirm']
-                = __('Caution! You are not the author of this element. Delete targets can result in loss of access to that element.');
-            }
-            Html::showMassiveActions($massiveactionparams);
-        }
-        echo "<table class='tab_cadre_fixehov'>";
-        $header_begin  = "<tr>";
-        $header_top    = '';
-        $header_bottom = '';
-        $header_end    = '';
-        if ($canedit && $nb) {
-            $header_begin  .= "<th width='10'>";
-            $header_top    .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-            $header_bottom .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-            $header_end    .= "</th>";
-        }
-        $header_end .= "<th>" . _n('Type', 'Types', 1) . "</th>";
-        $header_end .= "<th>" . _n('Recipient', 'Recipients', Session::getPluralNumber()) . "</th>";
-        $header_end .= "</tr>";
-        echo $header_begin . $header_top . $header_end;
+        $entries = [];
 
-       // Users
-        if (count($this->users)) {
-            foreach ($this->users as $val) {
-                foreach ($val as $data) {
-                    echo "<tr class='tab_bg_1'>";
-                    if ($canedit) {
-                        echo "<td>";
-                        Html::showMassiveActionCheckBox($this::getType() . '_User', $data["id"]);
-                        echo "</td>";
-                    }
-                    echo "<td>" . User::getTypeName(1) . "</td>";
-                    echo "<td>" . getUserName($data['users_id']) . "</td>";
-                    echo "</tr>";
-                }
+        foreach ($this->users as $val) {
+            foreach ($val as $data) {
+                $entries[] = [
+                    'itemtype' => static::class . '_User',
+                    'id' => $data['id'],
+                    'type' => User::getTypeName(1),
+                    'recipient' => htmlescape(getUserName($data['users_id']))
+                ];
             }
         }
 
-       // Groups
-        if (count($this->groups)) {
-            foreach ($this->groups as $val) {
-                foreach ($val as $data) {
-                    echo "<tr class='tab_bg_1'>";
-                    if ($canedit) {
-                        echo "<td>";
-                        Html::showMassiveActionCheckBox('Group_' . $this::getType(), $data["id"]);
-                        echo "</td>";
-                    }
-                    echo "<td>" . Group::getTypeName(1) . "</td>";
-
-                    $names   = Dropdown::getDropdownName('glpi_groups', $data['groups_id'], 1);
-                    $entname = sprintf(
-                        __('%1$s %2$s'),
-                        $names["name"],
-                        Html::showToolTip($names["comment"], ['display' => false])
+        foreach ($this->groups as $val) {
+            foreach ($val as $data) {
+                $name    = Dropdown::getDropdownName('glpi_groups', $data['groups_id']);
+                $tooltip = Dropdown::getDropdownComments('glpi_groups', (int) $data['groups_id']);
+                $recipient = sprintf(
+                    __s('%1$s %2$s'),
+                    htmlescape($name),
+                    Html::showToolTip($tooltip, ['display' => false])
+                );
+                if ($data['entities_id'] !== null) {
+                    $recipient = sprintf(
+                        __s('%1$s / %2$s'),
+                        $recipient,
+                        htmlescape(
+                            Dropdown::getDropdownName(
+                                'glpi_entities',
+                                $data['entities_id']
+                            )
+                        )
                     );
-                    if ($data['entities_id'] !== null) {
-                        $entname = sprintf(
-                            __('%1$s / %2$s'),
-                            $entname,
-                            Dropdown::getDropdownName(
-                                'glpi_entities',
-                                $data['entities_id']
-                            )
-                        );
-                        if ($data['is_recursive']) {
-                             //TRANS: R for Recursive
-                             $entname = sprintf(
-                                 __('%1$s %2$s'),
-                                 $entname,
-                                 "<span class='b'>(" . __('R') . ")</span>"
-                             );
-                        }
-                    }
-                     echo "<td>" . $entname . "</td>";
-                     echo "</tr>";
-                }
-            }
-        }
-
-       // Entity
-        if (count($this->entities)) {
-            foreach ($this->entities as $val) {
-                foreach ($val as $data) {
-                    echo "<tr class='tab_bg_1'>";
-                    if ($canedit) {
-                        echo "<td>";
-                        Html::showMassiveActionCheckBox('Entity_' . $this::getType(), $data["id"]);
-                        echo "</td>";
-                    }
-                    echo "<td>" . Entity::getTypeName(1) . "</td>";
-                    $names   = Dropdown::getDropdownName('glpi_entities', $data['entities_id'], 1);
-                    $tooltip = Html::showToolTip($names["comment"], ['display' => false]);
-                    $entname = sprintf(__('%1$s %2$s'), $names["name"], $tooltip);
                     if ($data['is_recursive']) {
-                        $entname = sprintf(
-                            __('%1$s %2$s'),
-                            $entname,
-                            "<span class='b'>(" . __('R') . ")</span>"
+                        $recipient = sprintf(
+                            __s('%1$s %2$s'),
+                            $recipient,
+                            "<span class='fw-bold'>(" . __s('R') . ")</span>"
                         );
                     }
-                    echo "<td>" . $entname . "</td>";
-                    echo "</tr>";
                 }
+                $entries[] = [
+                    'itemtype' => static::class . '_Group',
+                    'id' => $data['id'],
+                    'type' => Group::getTypeName(1),
+                    'recipient' => $recipient
+                ];
             }
         }
 
-       // Profiles
-        if (count($this->profiles)) {
-            foreach ($this->profiles as $val) {
-                foreach ($val as $data) {
-                    echo "<tr class='tab_bg_1'>";
-                    if ($canedit) {
-                        echo "<td>";
-                      //Knowledgebase-specific case
-                        if ($this::getType() === "KnowbaseItem") {
-                             Html::showMassiveActionCheckBox($this::getType() . '_Profile', $data["id"]);
-                        } else {
-                            Html::showMassiveActionCheckBox('Profile_' . $this::getType(), $data["id"]);
-                        }
-                        echo "</td>";
-                    }
-                    echo "<td>" . _n('Profile', 'Profiles', 1) . "</td>";
+        foreach ($this->entities as $val) {
+            foreach ($val as $data) {
+                $name    = Dropdown::getDropdownName('glpi_entities', $data['entities_id']);
+                $tooltip = Dropdown::getDropdownComments('glpi_entities', (int) $data['entities_id']);
+                $recipient = sprintf(
+                    __s('%1$s %2$s'),
+                    htmlescape($name),
+                    Html::showToolTip($tooltip, ['display' => false])
+                );
+                if ($data['is_recursive']) {
+                    $recipient = sprintf(
+                        __s('%1$s %2$s'),
+                        $recipient,
+                        "<span class='fw-bold'>(" . __s('R') . ")</span>"
+                    );
+                }
+                $entries[] = [
+                    'itemtype' => 'Entity_' . static::class,
+                    'id' => $data['id'],
+                    'type' => Entity::getTypeName(1),
+                    'recipient' => $recipient
+                ];
+            }
+        }
 
-                    $names   = Dropdown::getDropdownName('glpi_profiles', $data['profiles_id'], 1);
-                    $tooltip = Html::showToolTip($names["comment"], ['display' => false]);
-                    $entname = sprintf(__('%1$s %2$s'), $names["name"], $tooltip);
-                    if ($data['entities_id'] !== null) {
-                        $entname = sprintf(
-                            __('%1$s / %2$s'),
-                            $entname,
+        foreach ($this->profiles as $val) {
+            foreach ($val as $data) {
+                $name    = Dropdown::getDropdownName('glpi_profiles', $data['profiles_id']);
+                $tooltip = Dropdown::getDropdownComments('glpi_profiles', (int) $data['profiles_id']);
+                $recipient = sprintf(
+                    __s('%1$s %2$s'),
+                    htmlescape($name),
+                    Html::showToolTip($tooltip, ['display' => false])
+                );
+                if ($data['entities_id'] !== null) {
+                    $recipient = sprintf(
+                        __s('%1$s / %2$s'),
+                        $recipient,
+                        htmlescape(
                             Dropdown::getDropdownName(
                                 'glpi_entities',
                                 $data['entities_id']
                             )
+                        )
+                    );
+                    if ($data['is_recursive']) {
+                        $recipient = sprintf(
+                            __s('%1$s %2$s'),
+                            $recipient,
+                            "<span class='fw-bold'>(" . __s('R') . ")</span>"
                         );
-                        if ($data['is_recursive']) {
-                            $entname = sprintf(
-                                __('%1$s %2$s'),
-                                $entname,
-                                "<span class='b'>(" . __('R') . ")</span>"
-                            );
-                        }
                     }
-                    echo "<td>" . $entname . "</td>";
-                    echo "</tr>";
                 }
+                $entries[] = [
+                    'itemtype' => static::class === KnowbaseItem::class ? (static::class . '_Profile') : ('Profile_' . static::class),
+                    'id' => $data['id'],
+                    'type' => Profile::getTypeName(1),
+                    'recipient' => $recipient
+                ];
             }
         }
 
-        if ($nb) {
-            echo $header_begin . $header_bottom . $header_end;
-        }
         echo "</table>";
-        if ($canedit && $nb) {
-            $massiveactionparams['ontop'] = false;
-            Html::showMassiveActions($massiveactionparams);
-            Html::closeForm();
+
+        $massiveactionparams = [
+            'num_displayed' => count($entries),
+            'container' => 'mass' . static::class . $rand,
+            'specific_actions' => ['delete' => _x('button', 'Delete permanently')]
+        ];
+        if ($this->fields['users_id'] !== Session::getLoginUserID()) {
+            $massiveactionparams['confirm'] = __('Caution! You are not the author of this item. Deleting targets can result in loss of access.');
         }
 
-        echo "</div>";
-       // Add items
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
+            'is_tab' => true,
+            'nopager' => true,
+            'nofilter' => true,
+            'nosort' => true,
+            'columns' => [
+                'type' => _n('Type', 'Types', 1),
+                'recipient' => _n('Recipient', 'Recipients', 1)
+            ],
+            'formatters' => [
+                'recipient' => 'raw_html'
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'filtered_number' => count($entries),
+            'showmassiveactions' => $canedit,
+            'massiveactionparams' => $massiveactionparams
+        ]);
 
         return true;
     }
@@ -434,9 +380,16 @@ abstract class CommonDBVisible extends CommonDBTM
      */
     protected function getShowVisibilityDropdownParams()
     {
-        return [
-            'type'  => '__VALUE__',
-            'right' => strtolower($this::getType()) . '_public'
+        $params = [
+            'type'          => '__VALUE__',
+            'right'         => strtolower($this::getType()) . '_public',
         ];
+        if (isset($this->fields['entities_id'])) {
+            $params['entity'] = $this->fields['entities_id'];
+        }
+        if (isset($this->fields['is_recursive'])) {
+            $params['is_recursive'] = $this->fields['is_recursive'];
+        }
+        return $params;
     }
 }

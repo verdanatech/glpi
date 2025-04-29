@@ -1,10 +1,10 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 73:
+/***/ 1042:
 /***/ (() => {
 
-﻿/*! RateIt | v1.1.5 / 03/10/2021
+﻿/*! RateIt | v1.1.6 / 20/03/2024
     https://github.com/gjunge/rateit.js | Twitter: @gjunge
 */
 (function ($) {
@@ -196,7 +196,7 @@
                 index++;
 
                 // tabindex="0" gets only added in readonly mode. When keyboard tabbing, no focus is needed in readonly mode.
-                var html = '<button id="rateit-reset-{{index}}" type="button" data-role="none" class="rateit-reset" aria-label="' + $.rateit.aria.resetLabel + '" aria-controls="rateit-range-{{index}}"><span></span></button><{{element}} id="rateit-range-{{index}}" class="rateit-range"' + (itemdata('readonly') == true ? '' : ' tabindex="0"') + ' role="slider" aria-label="' + $.rateit.aria.ratingLabel + '" aria-owns="rateit-reset-{{index}}" aria-valuemin="' + itemdata('min') + '" aria-valuemax="' + itemdata('max') + '" aria-valuenow="' + itemdata('value') + '"><{{element}} class="rateit-empty"></{{element}}><{{element}} class="rateit-selected"></{{element}}><{{element}} class="rateit-hover"></{{element}}></{{element}}>';
+                var html = '<button id="rateit-reset-{{index}}" type="button" class="rateit-reset" aria-label="' + $.rateit.aria.resetLabel + '" aria-controls="rateit-range-{{index}}"><span></span></button><{{element}} id="rateit-range-{{index}}" class="rateit-range"' + (itemdata('readonly') == true ? '' : ' tabindex="0"') + ' role="slider" aria-label="' + $.rateit.aria.ratingLabel + '" aria-owns="rateit-reset-{{index}}" aria-valuemin="' + itemdata('min') + '" aria-valuemax="' + itemdata('max') + '" aria-valuenow="' + itemdata('value') + '"><{{element}} class="rateit-empty"></{{element}}><{{element}} class="rateit-selected"></{{element}}><{{element}} class="rateit-hover"></{{element}}></{{element}}>';
                 item.append(html.replace(/{{index}}/gi, index).replace(/{{element}}/gi, element));
 
                 //if we are in RTL mode, we have to change the float of the "reset button"
@@ -421,7 +421,7 @@
 
 /***/ }),
 
-/***/ 74:
+/***/ 1043:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -507,8 +507,8 @@ var __webpack_exports__ = {};
  */
 
 // RateIt jQuery plugin
-__webpack_require__(73);
-__webpack_require__(74);
+__webpack_require__(1042);
+__webpack_require__(1043);
 
 })();
 

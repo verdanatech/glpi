@@ -50,7 +50,7 @@ final class SecurityPolicy implements SecurityPolicyInterface
     {
         $this->allowedMethods = [];
         foreach ($methods as $class => $m) {
-            $this->allowedMethods[$class] = array_map(function ($value) { return strtr($value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'); }, \is_array($m) ? $m : [$m]);
+            $this->allowedMethods[$class] = array_map('strtolower', \is_array($m) ? $m : [$m]);
         }
     }
 
@@ -68,7 +68,13 @@ final class SecurityPolicy implements SecurityPolicyInterface
     {
         foreach ($tags as $tag) {
             if (!\in_array($tag, $this->allowedTags)) {
-                throw new SecurityNotAllowedTagError(\sprintf('Tag "%s" is not allowed.', $tag), $tag);
+                if ('extends' === $tag) {
+                    trigger_deprecation('twig/twig', '3.12', 'The "extends" tag is always allowed in sandboxes, but won\'t be in 4.0, please enable it explicitly in your sandbox policy if needed.');
+                } elseif ('use' === $tag) {
+                    trigger_deprecation('twig/twig', '3.12', 'The "use" tag is always allowed in sandboxes, but won\'t be in 4.0, please enable it explicitly in your sandbox policy if needed.');
+                } else {
+                    throw new SecurityNotAllowedTagError(\sprintf('Tag "%s" is not allowed.', $tag), $tag);
+                }
             }
         }
 
@@ -92,7 +98,7 @@ final class SecurityPolicy implements SecurityPolicyInterface
         }
 
         $allowed = false;
-        $method = strtr($method, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+        $method = strtolower($method);
         foreach ($this->allowedMethods as $class => $methods) {
             if ($obj instanceof $class && \in_array($method, $methods)) {
                 $allowed = true;

@@ -33,19 +33,17 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if (!Session::haveRight('datacenter', UPDATE)) {
-    http_response_code(403);
-    die;
+    throw new AccessDeniedHttpException();
 }
 if (!isset($_REQUEST['action'])) {
-    exit();
+    throw new BadRequestHttpException();
 }
 
 $answer = [];

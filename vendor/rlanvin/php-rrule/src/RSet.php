@@ -202,7 +202,7 @@ class RSet implements RRuleInterface
 	}
 
 	/**
-	 * Add a RDATE (renamed Date for simplicy, since we don't support full RDATE syntax at the moment)
+	 * Add a RDATE (renamed Date for simplicity, since we don't support full RDATE syntax at the moment)
 	 *
 	 * @param mixed $date a valid date representation or a \DateTime object
 	 * @return $this
@@ -382,7 +382,7 @@ class RSet implements RRuleInterface
 	}
 
 	/**
-	 * Return true if the rrule has no end condition (infite)
+	 * Return true if the rrule has no end condition (infinite)
 	 *
 	 * @return bool
 	 */
@@ -488,6 +488,7 @@ class RSet implements RRuleInterface
 
 	/**
 	 * @internal
+	 * @return bool
 	 */
 	#[\ReturnTypeWillChange]
 	public function offsetExists($offset)
@@ -497,6 +498,7 @@ class RSet implements RRuleInterface
 
 	/**
 	 * @internal
+	 * @return mixed
 	 */
 	#[\ReturnTypeWillChange]
 	public function offsetGet($offset)
@@ -530,6 +532,7 @@ class RSet implements RRuleInterface
 
 	/**
 	 * @internal
+	 * @return void
 	 */
 	#[\ReturnTypeWillChange]
 	public function offsetSet($offset, $value)
@@ -539,6 +542,7 @@ class RSet implements RRuleInterface
 
 	/**
 	 * @internal
+	 * @return void
 	 */
 	#[\ReturnTypeWillChange]
 	public function offsetUnset($offset)
@@ -552,7 +556,7 @@ class RSet implements RRuleInterface
 	/**
 	 * Returns the number of recurrences in this set. It will have go
 	 * through the whole recurrence, if this hasn't been done before, which
-	 * introduces a performance penality.
+	 * introduces a performance penalty.
 	 * @return int
 	 */
 	#[\ReturnTypeWillChange]

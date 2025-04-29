@@ -33,11 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
-
-Session::checkLoginUser();
-
 switch ($_REQUEST['action']) {
     case "move_rule":
         $rule_collection = getItemForItemtype($_POST['collection_classname']);

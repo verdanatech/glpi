@@ -1,6 +1,37 @@
 ChangeLog
 =========
 
+5.1.12 (2024-08-27)
+------------------
+
+* #243 add cs-fixer v3 (@phil-davis)
+
+5.1.11 (2024-07-26)
+------------------
+
+* #241 PHP 8.4 compliance (@phil-davis)
+
+5.1.10 (2023-08-18)
+------------------
+
+* #225 Enhance tests/bootstrap.php to find autoloader in more environments (@phil-davis)
+
+5.1.9 (2023-08-17)
+------------------
+
+* #223 skip testParseMimeTypeOnInvalidMimeType (@phil-davis)
+
+5.1.8 (2023-08-17)
+------------------
+
+* #215 Improve CURLOPT_HTTPHEADER Setting Assignment (@amrita-shrestha)
+
+5.1.7 (2023-06-26)
+------------------
+
+* #98 and #176 Add more tests (@peter279k)
+* #207 fix: handle client disconnect properly with ignore_user_abort true (@kesselb)
+
 5.1.6 (2022-07-15)
 ------------------
 

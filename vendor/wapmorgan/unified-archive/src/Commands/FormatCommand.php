@@ -9,7 +9,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
-use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
+use wapmorgan\UnifiedArchive\Abilities;
 use wapmorgan\UnifiedArchive\Formats;
 
 class FormatCommand extends BaseCommand
@@ -44,23 +44,25 @@ class FormatCommand extends BaseCommand
         $output->writeln('Format <info>' . $format . '</info> drivers support');
 
         $table = new Table($output);
-        $table->setHeaders(['format', ...array_keys(self::$abilitiesLabels)]);
+        $headers = array_keys(Abilities::$abilitiesLabels);
+        array_unshift($headers, 'format');
+        $table->setHeaders($headers);
         /**
          * @var int $i
          * @var \wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver $driver
          */
         foreach ($formats[$format] as $i => $driver) {
             if ($driver::isInstalled()) {
-                $abilities = $driver::checkFormatSupport($format);
+                $abilities = $driver::getFormatAbilities($format);
                 $row = [$driver];
 
-                foreach (self::$abilitiesLabels as $possibleAbility) {
+                foreach (Abilities::$abilitiesLabels as $possibleAbility) {
                     $row[] = in_array($possibleAbility, $abilities, true) ? '+' : '';
                 }
 
                 $table->setRow($i, $row);
             } else {
-                $table->setRow($i, [$driver, new TableCell('<error>not installed</error>', ['colspan' => 6])]);
+                $table->setRow($i, [$driver, new TableCell('<error>not installed</error>', ['colspan' => count($headers) - 1])]);
             }
         }
         $table->render();

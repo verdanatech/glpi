@@ -33,6 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+
 class Telemetry extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
@@ -124,7 +127,12 @@ class Telemetry extends CommonGLPI
         $dbinfos = $DB->getInfo();
 
         $size_res = $DB->request([
-            'SELECT' => new \QueryExpression("ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) AS dbsize"),
+            'SELECT' => [
+                QueryFunction::round(
+                    expression: new QueryExpression(QueryFunction::sum(new QueryExpression('data_length + index_length')) . ' / 1024 / 1024'),
+                    alias: 'dbsize',
+                )
+            ],
             'FROM'   => 'information_schema.tables',
             'WHERE'  => ['table_schema' => $DB->dbdefault]
         ])->current();
@@ -361,7 +369,7 @@ class Telemetry extends CommonGLPI
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $out = "<a id='view_telemetry' href='{$CFG_GLPI['root_doc']}/ajax/telemetry.php' class='btn btn-sm btn-info mt-2'>
+        $out = "<a id='view_telemetry' href='{$CFG_GLPI['root_doc']}/ajax/telemetry.php' class='btn btn-sm btn-info'>
          " . __('See what would be sent...') . "
       </a>";
         $out .= Html::scriptBlock("
@@ -369,7 +377,7 @@ class Telemetry extends CommonGLPI
             e.preventDefault();
 
             glpi_ajax_dialog({
-               title: __('Telemetry data'),
+               title: " . json_encode(__('Telemetry data')) . ",
                url: $('#view_telemetry').attr('href'),
                dialogclass: 'modal-lg'
             });
@@ -449,7 +457,7 @@ class Telemetry extends CommonGLPI
         $out .= __("Once sent, usage statistics are aggregated and made available to a broad range of GLPI developers.") . "<br><br>";
         $out .= __("Let us know your usage to improve future versions of GLPI and its plugins!") . "<br>";
 
-        $out .= self::getViewLink();
+        $out .= '<span class="mt-2">' . self::getViewLink() . '</span>';
         return $out;
     }
 

@@ -35,16 +35,15 @@
 
 use Glpi\Application\View\TemplateRenderer;
 
-include('../inc/includes.php');
-
 Session::checkSeveralRightsOr(['rule_dictionnary_dropdown' => READ,
     'rule_dictionnary_software' => READ
 ]);
 
-Html::header(_n('Dictionary', 'Dictionaries', Session::getPluralNumber()), $_SERVER['PHP_SELF'], "admin", "dictionnary", -1);
+Html::header(_n('Dictionary', 'Dictionaries', Session::getPluralNumber()), '', "admin", "dictionnary", -1);
 
+echo TemplateRenderer::getInstance()->render('pages/admin/rules/backup_header.html.twig');
 echo TemplateRenderer::getInstance()->render(
-    'pages/admin/rules_list.html.twig',
+    'pages/admin/rules/collections_list.html.twig',
     [
         'rules_group' => RuleCollection::getDictionnaries()
     ]

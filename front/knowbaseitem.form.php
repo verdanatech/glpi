@@ -38,8 +38,6 @@ use Glpi\Event;
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
 if (!isset($_GET["id"])) {
     $_GET["id"] = "";
 }
@@ -146,33 +144,33 @@ if (isset($_POST["add"])) {
         }
     }
     Html::back();
-} else if (isset($_GET["id"]) and isset($_GET['to_rev'])) {
+} else if (isset($_GET['to_rev'])) {
     $kb->check($_GET["id"], UPDATE);
     if ($kb->revertTo($_GET['to_rev'])) {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
                 __('Knowledge base item has been reverted to revision %s'),
                 $_GET['to_rev']
-            )
+            ))
         );
     } else {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
                 __('Knowledge base item has not been reverted to revision %s'),
                 $_GET['to_rev']
-            ),
+            )),
             false,
             ERROR
         );
     }
     Html::redirect($kb->getFormURLWithID($_GET['id']));
-} else if (isset($_GET["id"])) {
+} else {
     if (!Session::getLoginUserID()) {
         Html::redirect("helpdesk.faq.php?id=" . $_GET['id']);
     }
 
     if (isset($_GET["_in_modal"])) {
-        Html::popHeader(__('Knowledge base'), $_SERVER['PHP_SELF']);
+        Html::popHeader(__('Knowledge base'));
         if ($_GET['id']) {
             $kb->check($_GET["id"], READ);
             $kb->showFull();

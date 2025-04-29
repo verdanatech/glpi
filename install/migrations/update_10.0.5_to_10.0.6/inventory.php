@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2025 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -43,7 +42,7 @@ $migration->addConfig(["entities_id_default" => 0], 'inventory');
 $config = \Config::getConfigurationValues('inventory');
 if (isset($config['stale_agents_action']) && is_numeric($config['stale_agents_action'])) {
     //convert stale_agents_action to an array
-    $DB->updateOrDie(
+    $DB->update(
         'glpi_configs',
         [
             'value' => exportArrayToDB([$config['stale_agents_action']])

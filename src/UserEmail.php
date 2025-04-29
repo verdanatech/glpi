@@ -33,8 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Toolbox\Sanitizer;
-
 /**
  * UserEmail class
  **/
@@ -189,10 +187,10 @@ class UserEmail extends CommonDBChild
     public static function getJSCodeToAddForItemChild($field_name, $child_count_js_var)
     {
 
-        return "<input title=\'" . __s('Default email') . "\' type=\'radio\' name=\'_default_email\'" .
-             " value=\'-'+$child_count_js_var+'\'>&nbsp;" .
-             "<input type=\'text\' size=\'30\' class=\'form-control\' " . "name=\'" . $field_name .
-             "[-'+$child_count_js_var+']\'>";
+        return "<div class=\'d-flex\'><input title=\'" . __s('Default email') . "\' type=\'radio\' name=\'_default_email\'" .
+             " value=\'-'+" . htmlescape($child_count_js_var) . "+'\' aria-label=\'" . __s('Set as default email') . "\'>&nbsp;" .
+             "<input type=\'text\' size=\'30\' class=\'form-control\' " . "name=\'" . htmlescape($field_name) .
+             "[-'+" . htmlescape($child_count_js_var) . "+']\'  aria-label=\'" . __s('Email address') . "\'></div>";
     }
 
 
@@ -209,25 +207,25 @@ class UserEmail extends CommonDBChild
         if ($this->isNewID($this->getID())) {
             $value = '';
         } else {
-            $value = Html::entities_deep($this->fields['email']);
+            $value = htmlescape($this->fields['email']);
         }
         $result = "";
-        $field_name = $field_name . "[$id]";
+        $field_name = htmlescape($field_name . "[$id]");
         $result .= "<div class='d-flex align-items-center'>";
         $result .= "<input title='" . __s('Default email') . "' type='radio' name='_default_email'
-             value='" . $this->getID() . "'";
+             value='" . htmlescape($this->getID()) . "'";
         if (!$canedit) {
-            $result .= " disabled";
+            $result .= " disabled aria-disabled='true'";
         }
         if ($this->fields['is_default']) {
             $result .= " checked";
         }
-        $result .= ">&nbsp;";
+        $result .= " aria-label='" . __s('Set as default email') . "'>&nbsp;";
         if (!$canedit || $this->fields['is_dynamic']) {
             $result .= "<input type='hidden' name='$field_name' value='$value'>";
-            $result .= sprintf(__('%1$s %2$s'), $value, "<span class='b'>(" . __('D') . ")</span>");
+            $result .= sprintf('%s <span class="b">(%s)</span>', $value, __s('D'));
         } else {
-            $result .= "<input type='text' size=30 class='form-control' name='$field_name' value='$value' >";
+            $result .= "<input type='text' size=30 class='form-control' name='$field_name' value='$value' aria-label='" . __s('Email address') . "'>";
         }
         $result .= "</div>";
 
@@ -329,7 +327,7 @@ class UserEmail extends CommonDBChild
      */
     private function checkInputEmailValidity(array $input): bool
     {
-        return isset($input['email']) && !empty($input['email']) && GLPIMailer::validateAddress(Sanitizer::unsanitize($input['email']));
+        return isset($input['email']) && !empty($input['email']) && GLPIMailer::validateAddress($input['email']);
     }
 
 

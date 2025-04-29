@@ -13,7 +13,7 @@ namespace Laminas\ServiceManager;
  *
  * - rename the method `initialize()` to `__invoke()`, and:
  *   - rename the `$serviceLocator` argument to `$container`, and change the
- *     typehint to `Interop\Container\ContainerInterface`
+ *     typehint to `Psr\Container\ContainerInterface`
  *   - swap the order of the arguments (so that `$instance` comes second)
  * - create an `initialize()` method as defined in this interface, and have it
  *   proxy to `__invoke()`, passing the arguments in the new order.
@@ -29,8 +29,7 @@ interface InitializerInterface extends Initializer\InitializerInterface
     /**
      * Initialize
      *
-     * @param mixed $instance
      * @return mixed
      */
-    public function initialize($instance, ServiceLocatorInterface $serviceLocator);
+    public function initialize(mixed $instance, ServiceLocatorInterface $serviceLocator);
 }

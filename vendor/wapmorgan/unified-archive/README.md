@@ -54,17 +54,17 @@ UnifiedArchive uses "drivers", which can be one of types:
 By default, UA goes top-down to select first available driver for passed archive. So, PHP Extension driver will be used (if available), then Utilities + bridge driver (if available), and then Pure PHP driver.
 
 There is at least one driver in all three types, which handles **zip** format, so this format can be fully supported in any OS/PHP configuration:
-1. zip / phar PHP extensions
-2. Utility + bridge SevenZip / AlchemyZippy
-3. Pure NelexaZip
+1. PHP extensions: zip / phar 
+2. Utility + bridge: SevenZip / AlchemyZippy
+3. Pure: NelexaZip / SplitbrainPhpArchive
 
 **tar** format (with compressed variants) supported by:
-1. phar PHP extension
-2. Utility + bridge SevenZip / AlchemyZippy
-3. Pure TarByPear
+1. PHP extension: phar
+2. Utility + bridge: SevenZip / AlchemyZippy
+3. Pure: TarByPear / SplitbrainPhpArchive
 
 **So, there is always one driver that supports popular formats, and you should not remember how to work with this concrete
-driver (zip/phar/SevenZip/AlchemyZippy/NelexaZip), interface for them is uniform.**
+driver (zip/phar/SevenZip/AlchemyZippy/NelexaZip/SplitbrainPhpArchive), interface for them is uniform.**
 
 # Quick start
 
@@ -93,18 +93,19 @@ composer require pear/archive_tar
 
 ## Usage
 
+* [Full usage](docs/Usage.md)
+* [Drivers & formats](docs/Drivers.md)
+* [Full API description](docs/API.md)
+* [Changelog](CHANGELOG.md)
+
 ```php
 use \wapmorgan\UnifiedArchive\UnifiedArchive;
-
 $output_dir = '/var/www/extracted';
-
 # Extraction
 $archive = UnifiedArchive::open('archive.zip'); // archive.rar, archive.tar.bz2
-
 if (disk_free_space($output_dir) < $archive->getOriginalSize()) {
     throw new \RuntimeException('No needed space available. Need ' . ($archive->getOriginalSize() - disk_free_space($output_dir)) . ' byte(s) more');
 }
-
 $extracted = $archive->extract($output_dir);
 echo 'Number of extracted files' . $extracted.PHP_EOL;
 
@@ -126,8 +127,3 @@ archives without other system software. To show help, launch it:
 ./vendor/bin/cam archive:extract archive.tar.gz ./OUTPUT/ # extraction all archive
 ./vendor/bin/cam archive:create --compression=maximum archive2.tar.gz ./OUTPUT/partners # archive creation from files
 ```
-
-* [Usage](docs/Usage.md)
-* [Drivers & formats](docs/Drivers.md)
-* [Full API description](docs/API.md)
-* [Changelog](CHANGELOG.md)

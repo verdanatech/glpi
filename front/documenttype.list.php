@@ -33,15 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
-
-Session::checkLoginUser();
-
-Html::popHeader(__('Setup'), $_SERVER['PHP_SELF']);
+Html::popHeader(__('Setup'));
 
 $params = Search::manageParams('DocumentType', $_GET);
 
-$params['target'] = $_SERVER['PHP_SELF'];
 Search::showList('DocumentType', $params);
 
 Html::popFooter();
