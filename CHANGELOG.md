@@ -234,6 +234,8 @@ The present file will list all changes made to the project; according to the
 - `Auth::getMethodName()` now only returns the name without a link. Use `Auth::getMethodLink()` to get a HTML-safe link.
 - `GLPI_STRICT_DEPRECATED` constant is now know as `GLPI_STRICT_ENV`
 - `Software::merge()` method is now private.
+- The refusal of the collected emails corresponding to a GLPI notification will now be made based on a default rule.
+- The `$store_path` parameter has been removed from the `Dropdown::dropdownIcons()` method.
 
 #### Deprecated
 - Usage of the `/marketplace` path for plugins URLs. All plugins URLs should now start with `/plugins`.
@@ -262,10 +264,14 @@ The present file will list all changes made to the project; according to the
 - `DBmysql::truncate()`
 - `DBmysql::truncateOrDie()`
 - `DBmysql::updateOrDie()`. Use `DBmysql::update()` instead.
+- `Document::send()`
 - `Glpi\Application\View\Extension\DataHelpersExtension::getVerbatimValue()`
 - `Glpi\Application\View\Extension\PluginExtension::getPluginWebDir()`
 - `Glpi\Dashboard\Filter::getAll()`
+- `Glpi\Http\Response::send()`
+- `Glpi\Http\Response::sendContent()`
 - `Glpi\Http\Response::sendError()`. Throw a `Glpi\Exception\Http\*HttpException` exception instead.
+- `Glpi\Http\Response::sendHeaders()`
 - `Glpi\Toolbox\Sanitizer::dbEscape()`
 - `Glpi\Toolbox\Sanitizer::dbEscapeRecursive()`
 - `Glpi\Toolbox\Sanitizer::dbUnescape()`
@@ -315,6 +321,7 @@ The present file will list all changes made to the project; according to the
 - `Timer` class
 - `Toolbox::addslashes_deep()`
 - `Toolbox::seems_utf8()`
+- `Toolbox::sendFile()`
 - `Toolbox::stripslashes_deep()`
 
 #### Removed
@@ -388,6 +395,8 @@ The present file will list all changes made to the project; according to the
 - `ComputerVirtualMachine::showForComputer()`
 - `Config::detectRootDoc()`
 - `Config::getCurrentDBVersion()`
+- `Config::getLibraries()`
+- `Config::getLibraryDir()`
 - `Config::showDebug()`
 - `Config::showLibrariesInformation()`
 - `Config::validatePassword()`
@@ -423,6 +432,7 @@ The present file will list all changes made to the project; according to the
 - `Glpi\Api\API::showDebug()`
 - `Glpi\Api\API::returnSanitizedContent()`
 - `Glpi\Application\ErrorHandler` class
+- `Glpi\Cache\CacheManager::getInstallerCacheInstance()`
 - `Glpi\Console\Command\ForceNoPluginsOptionCommandInterface` class
 - `Glpi\Dashboard\Filter::dates()`
 - `Glpi\Dashboard\Filter::dates_mod()`
@@ -487,6 +497,7 @@ The present file will list all changes made to the project; according to the
 - `KnowbaseItemTranslation::isKbTranslationActive()`. Translations are now always active.
 - `Link::showForItem()`
 - `Link_Itemtype::showForLink()`
+- `MailCollector::isMessageSentByGlpi()`
 - `MailCollector::listEncodings()`
 - `MailCollector::title()`
 - `MassiveAction::updateProgressBars()`

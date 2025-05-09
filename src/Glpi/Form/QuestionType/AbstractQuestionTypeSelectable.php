@@ -49,9 +49,7 @@ abstract class AbstractQuestionTypeSelectable extends AbstractQuestionType imple
     public const TRANSLATION_KEY_OPTION = 'option';
 
     #[Override]
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     #[Override]
     public function getFormEditorJsOptions(): string
@@ -106,7 +104,7 @@ abstract class AbstractQuestionTypeSelectable extends AbstractQuestionType imple
     {
         // language=Twig
         $js = <<<TWIG
-            import("{{ js_path('js/modules/Forms/QuestionSelectable.js') }}").then((m) => {
+            import("js/modules/Forms/QuestionSelectable").then((m) => {
                 {% if question is not null %}
                     const container = $('div[data-glpi-form-editor-selectable-question-options="{{ rand }}"]');
                     container.data(
@@ -188,8 +186,15 @@ TWIG;
             return [];
         }
 
+        /**
+         * New default values format require an array of values.
+         * The old system did not use an array if there was only one element.
+         */
         $default_values = json_decode($rawData['default_values']);
-        if ($default_values === null && json_last_error() !== JSON_ERROR_NONE) {
+        if (
+            ($default_values === null && json_last_error() !== JSON_ERROR_NONE)
+            || !is_array($default_values)
+        ) {
             $default_values = [$rawData['default_values']];
         }
 
@@ -393,7 +398,7 @@ TWIG;
                 'remove_option'     => __('Remove option'),
                 'selectable_option' => __('Selectable option'),
                 'enter_option'      => __('Enter an option'),
-            ]
+            ],
         ]);
     }
 
@@ -441,7 +446,7 @@ TWIG;
         // Replace uuids by labels
         $options = $this->getOptions($question);
         $answer = array_map(
-            fn ($uuid) => $options[$uuid] ?? '',
+            fn($uuid) => $options[$uuid] ?? '',
             $answer
         );
 

@@ -34,7 +34,6 @@
 
 namespace Glpi\Controller\Config\Helpdesk;
 
-use Config;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -63,6 +62,9 @@ final class SetTilesOrderController extends AbstractTileController
         return $this->render('pages/admin/helpdesk_home_config_tiles.html.twig', [
             'tiles_manager' => $this->tiles_manager,
             'tiles' => $tiles,
+            // If we reach this point, the item was editable so we must keep
+            // displaying the controls.
+            'editable' => true,
         ]);
     }
 }

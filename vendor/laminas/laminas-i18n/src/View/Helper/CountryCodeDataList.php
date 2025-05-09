@@ -23,9 +23,9 @@ use const PHP_EOL;
 final class CountryCodeDataList
 {
     public function __construct(
-        private CountryCodeListInterface $codeList,
-        private Escaper $escaper,
-        private string $defaultLocale
+        private readonly CountryCodeListInterface $codeList,
+        private readonly Escaper $escaper,
+        private readonly string $defaultLocale
     ) {
     }
 
@@ -35,8 +35,8 @@ final class CountryCodeDataList
      */
     public function __invoke(?string $locale = null, array $dataListAttributes = []): string
     {
-        $locale = $locale ?? $this->defaultLocale;
-        $list   = array_map(function (CountryCode $code) use ($locale): string {
+        $locale ??= $this->defaultLocale;
+        $list     = array_map(function (CountryCode $code) use ($locale): string {
             $name = Locale::getDisplayRegion('-' . $code->toString(), $locale);
             return sprintf(
                 '<option value="%s" label="%s">',

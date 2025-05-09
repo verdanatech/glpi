@@ -152,9 +152,9 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
         return AssetDefinition::class;
     }
 
-    public function getReservedSystemNames(): array
+    public function getReservedSystemNamesPattern(): string
     {
-        $names = [
+        $core_assets = [
             'Computer',
             'Monitor',
             'Software',
@@ -172,9 +172,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
             'Cable',
         ];
 
-        sort($names);
-
-        return $names;
+        return '/^(.+(Model|Type)|' . \implode('|', $core_assets) . ')$/i';
     }
 
     public function bootstrapDefinition(AbstractDefinition $definition): void
@@ -193,7 +191,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
             'location_types',
             'state_types',
             'ticket_types',
-            'unicity_types'
+            'unicity_types',
         ];
         foreach ($config_keys as $config_key) {
             if (!in_array($asset_class_name, $CFG_GLPI[$config_key], true)) {

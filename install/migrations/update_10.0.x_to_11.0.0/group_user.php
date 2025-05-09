@@ -33,11 +33,19 @@
  */
 
 /**
+ * @var \DBmysql $DB
  * @var \Migration $migration
- * @var array $DELFROMDISPLAYPREF
  */
 
-$migration->dropField('glpi_groups_users', 'is_userdelegate');
-
-$DELFROMDISPLAYPREF['Group']      = [71];
-$DELFROMDISPLAYPREF['Group_User'] = [7];
+if (!$DB->fieldExists('glpi_groups_users', 'is_userdelegate')) {
+    $migration->addField(
+        'glpi_groups_users',
+        'is_userdelegate',
+        "tinyint NOT NULL DEFAULT '0'",
+        ['after' => 'is_manager']
+    );
+    $migration->addKey(
+        'glpi_groups_users',
+        'is_userdelegate'
+    );
+}

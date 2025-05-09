@@ -24,7 +24,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1067);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1063);
 /*!
- * GridStack 11.5.1
+ * GridStack 12.1.1
  * https://gridstackjs.com/
  *
  * Copyright (c) 2021-2024  Alain Dumesny
@@ -203,41 +203,19 @@ class GridStack {
         if (opts.alwaysShowResizeHandle !== undefined) {
             opts._alwaysShowResizeHandle = opts.alwaysShowResizeHandle;
         }
-        let bk = opts.columnOpts?.breakpoints;
-        // LEGACY: oneColumnMode stuff changed in v10.x - check if user explicitly set something to convert over
-        const oldOpts = opts;
-        if (oldOpts.oneColumnModeDomSort) {
-            delete oldOpts.oneColumnModeDomSort;
-            console.log('warning: Gridstack oneColumnModeDomSort no longer supported. Use GridStackOptions.columnOpts instead.');
-        }
-        if (oldOpts.oneColumnSize || oldOpts.disableOneColumnMode === false) {
-            const oneSize = oldOpts.oneColumnSize || 768;
-            delete oldOpts.oneColumnSize;
-            delete oldOpts.disableOneColumnMode;
-            opts.columnOpts = opts.columnOpts || {};
-            bk = opts.columnOpts.breakpoints = opts.columnOpts.breakpoints || [];
-            let oneColumn = bk.find(b => b.c === 1);
-            if (!oneColumn) {
-                oneColumn = { c: 1, w: oneSize };
-                bk.push(oneColumn, { c: 12, w: oneSize + 1 });
-            }
-            else
-                oneColumn.w = oneSize;
-        }
-        //...end LEGACY
         // cleanup responsive opts (must have columnWidth | breakpoints) then sort breakpoints by size (so we can match during resize)
         const resp = opts.columnOpts;
         if (resp) {
-            if (!resp.columnWidth && !resp.breakpoints?.length) {
+            const bk = resp.breakpoints;
+            if (!resp.columnWidth && !bk?.length) {
                 delete opts.columnOpts;
-                bk = undefined;
             }
             else {
                 resp.columnMax = resp.columnMax || 12;
+                if (bk?.length > 1)
+                    bk.sort((a, b) => (b.w || 0) - (a.w || 0));
             }
         }
-        if (bk?.length > 1)
-            bk.sort((a, b) => (b.w || 0) - (a.w || 0));
         // elements DOM attributes override any passed options (like CSS style) - merge the two together
         const defaults = {
             ..._utils__WEBPACK_IMPORTED_MODULE_1__.Utils.cloneDeep(_types__WEBPACK_IMPORTED_MODULE_2__.gridDefaults),
@@ -259,9 +237,9 @@ class GridStack {
         }
         opts = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.defaults(opts, defaults);
         this._initMargin(); // part of settings defaults...
-        // Now check if we're loading into 1 column mode FIRST so we don't do un-necessary work (like cellHeight = width / 12 then go 1 column)
+        // Now check if we're loading into !12 column mode FIRST so we don't do un-necessary work (like cellHeight = width / 12 then go 1 column)
         this.checkDynamicColumn();
-        this.el.classList.add('gs-' + opts.column);
+        this._updateColumnVar(opts);
         if (opts.rtl === 'auto') {
             opts.rtl = (el.style.direction === 'rtl');
         }
@@ -280,7 +258,7 @@ class GridStack {
         this._isAutoCellHeight = (opts.cellHeight === 'auto');
         if (this._isAutoCellHeight || opts.cellHeight === 'initial') {
             // make the cell content square initially (will use resize/column event to keep it square)
-            this.cellHeight(undefined, false);
+            this.cellHeight(undefined);
         }
         else {
             // append unit if any are set
@@ -288,14 +266,14 @@ class GridStack {
                 opts.cellHeight = opts.cellHeight + opts.cellHeightUnit;
                 delete opts.cellHeightUnit;
             }
-            this.cellHeight(opts.cellHeight, false);
+            const val = opts.cellHeight;
+            delete opts.cellHeight; // force initial cellHeight() call to set the value
+            this.cellHeight(val);
         }
         // see if we need to adjust auto-hide
         if (opts.alwaysShowResizeHandle === 'mobile') {
             opts.alwaysShowResizeHandle = _dd_touch__WEBPACK_IMPORTED_MODULE_4__.isTouch;
         }
-        this._styleSheetClass = 'gs-id-' + _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__.GridStackEngine._idSeq++;
-        this.el.classList.add(this._styleSheetClass);
         this._setStaticClass();
         const engineClass = opts.engineClass || GridStack.engineClass || _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__.GridStackEngine;
         this.engine = new engineClass({
@@ -303,8 +281,6 @@ class GridStack {
             float: opts.float,
             maxRow: opts.maxRow,
             onChange: (cbNodes) => {
-                let maxH = 0;
-                this.engine.nodes.forEach(n => { maxH = Math.max(maxH, n.y + n.h); });
                 cbNodes.forEach(n => {
                     const el = n.el;
                     if (!el)
@@ -318,11 +294,9 @@ class GridStack {
                         this._writePosAttr(el, n);
                     }
                 });
-                this._updateStyles(false, maxH); // false = don't recreate, just append if need be
+                this._updateContainerHeight();
             }
         });
-        // create initial global styles BEFORE loading children so resizeToContent margin can be calculated correctly
-        this._updateStyles(false, 0);
         if (opts.auto) {
             this.batchUpdate(); // prevent in between re-layout #1535 TODO: this only set float=true, need to prevent collision check...
             this.engine._loading = true; // loading collision check
@@ -337,7 +311,6 @@ class GridStack {
             if (children.length)
                 this.load(children); // don't load empty
         }
-        // if (this.engine.nodes.length) this._updateStyles(); // update based on # of children. done in engine onChange CB
         this.setAnimation();
         // dynamic grids require pausing during drag to detect over to nest vs push
         if (opts.subGridDynamic && !_dd_manager__WEBPACK_IMPORTED_MODULE_5__.DDManager.pauseDrag)
@@ -347,6 +320,11 @@ class GridStack {
         this._setupRemoveDrop();
         this._setupAcceptWidget();
         this._updateResizeEvent();
+    }
+    _updateColumnVar(opts = this.opts) {
+        this.el.classList.add('gs-' + opts.column);
+        if (typeof opts.column === 'number')
+            this.el.style.setProperty('--gs-column-width', `${100 / opts.column}%`);
     }
     /**
      * add a new widget and returns it.
@@ -629,8 +607,18 @@ class GridStack {
         items.forEach(n => { maxColumn = Math.max(maxColumn, (n.x || 0) + n.w); });
         if (maxColumn > this.engine.defaultColumn)
             this.engine.defaultColumn = maxColumn;
-        if (maxColumn > column)
-            this.engine.cacheLayout(items, maxColumn, true);
+        if (maxColumn > column) {
+            // if we're loading (from empty) into a smaller column, check for special responsive layout
+            if (this.engine.nodes.length === 0 && this.responseLayout) {
+                this.engine.nodes = items;
+                this.engine.columnChanged(maxColumn, column, this.responseLayout);
+                items = this.engine.nodes;
+                this.engine.nodes = [];
+                delete this.responseLayout;
+            }
+            else
+                this.engine.cacheLayout(items, maxColumn, true);
+        }
         // if given a different callback, temporally set it as global option so creating will use it
         const prevCB = GridStack.addRemoveCB;
         if (typeof (addRemove) === 'function')
@@ -763,16 +751,15 @@ class GridStack {
      *
      * @param val the cell height. If not passed (undefined), cells content will be made square (match width minus margin),
      * if pass 0 the CSS will be generated by the application instead.
-     * @param update (Optional) if false, styles will not be updated
      *
      * @example
      * grid.cellHeight(100); // same as 100px
      * grid.cellHeight('70px');
      * grid.cellHeight(grid.cellWidth() * 1.2);
      */
-    cellHeight(val, update = true) {
+    cellHeight(val) {
         // if not called internally, check if we're changing mode
-        if (update && val !== undefined) {
+        if (val !== undefined) {
             if (this._isAutoCellHeight !== (val === 'auto')) {
                 this._isAutoCellHeight = (val === 'auto');
                 this._updateResizeEvent();
@@ -793,10 +780,10 @@ class GridStack {
         }
         this.opts.cellHeightUnit = data.unit;
         this.opts.cellHeight = data.h;
+        // finally update var and container
+        this.el.style.setProperty('--gs-cell-height', `${this.opts.cellHeight}${this.opts.cellHeightUnit}`);
+        this._updateContainerHeight();
         this.resizeToContentCheck();
-        if (update) {
-            this._updateStyles(true); // true = force re-create for current # of rows
-        }
         return this;
     }
     /** Gets current cell width. */
@@ -850,8 +837,6 @@ class GridStack {
     /**
      * set the number of columns in the grid. Will update existing widgets to conform to new number of columns,
      * as well as cache the original layout so you can revert back to previous positions without loss.
-     * Requires `gridstack-extra.css` or `gridstack-extra.min.css` for [2-11],
-     * else you will need to generate correct CSS (see https://github.com/gridstack/gridstack.js#change-grid-columns)
      * @param column - Integer > 0 (default 12).
      * @param layout specify the type of re-layout that will happen (position, size, etc...).
      * Note: items will never be outside of the current column boundaries. default ('moveScale'). Ignored for 1 column
@@ -861,15 +846,16 @@ class GridStack {
             return this;
         const oldColumn = this.getColumn();
         this.opts.column = column;
-        if (!this.engine)
-            return this; // called in constructor, noting else to do
+        if (!this.engine) {
+            // called in constructor, noting else to do but remember that breakpoint layout
+            this.responseLayout = layout;
+            return this;
+        }
         this.engine.column = column;
         this.el.classList.remove('gs-' + oldColumn);
-        this.el.classList.add('gs-' + column);
-        // update the items now, checking if we have a custom children layout
-        /*const newChildren = this.opts.columnOpts?.breakpoints?.find(r => r.c === column)?.children;
-        if (newChildren) this.load(newChildren);
-        else*/ this.engine.columnChanged(oldColumn, column, layout);
+        this._updateColumnVar();
+        // update the items now
+        this.engine.columnChanged(oldColumn, column, layout);
         if (this._isAutoCellHeight)
             this.cellHeight();
         this.resizeToContentCheck(true); // wait for width resizing
@@ -903,14 +889,13 @@ class GridStack {
         this.setAnimation(false);
         if (!removeDOM) {
             this.removeAll(removeDOM);
-            this.el.classList.remove(this._styleSheetClass);
             this.el.removeAttribute('gs-current-row');
         }
         else {
             this.el.parentNode.removeChild(this.el);
         }
-        this._removeStylesheet();
-        delete this.parentGridNode?.subGrid;
+        if (this.parentGridNode)
+            delete this.parentGridNode.subGrid;
         delete this.parentGridNode;
         delete this.opts;
         delete this._placeholder?.gridstackNode;
@@ -965,7 +950,7 @@ class GridStack {
     }
     /** returns the current number of rows, which will be at least `minRow` if set */
     getRow() {
-        return Math.max(this.engine.getRow(), this.opts.minRow);
+        return Math.max(this.engine.getRow(), this.opts.minRow || 0);
     }
     /**
      * Checks if specified area is empty.
@@ -992,8 +977,8 @@ class GridStack {
      */
     makeWidget(els, options) {
         const el = GridStack.getElement(els);
-        if (!el)
-            return;
+        if (!el || el.gridstackNode)
+            return el;
         if (!el.parentElement)
             this.el.appendChild(el);
         this._prepareElement(el, true, options);
@@ -1145,6 +1130,7 @@ class GridStack {
         else {
             this.el.classList.remove('grid-stack-animate');
         }
+        this.opts.animate = doAnimate;
         return this;
     }
     /** @internal */
@@ -1179,23 +1165,33 @@ class GridStack {
      */
     updateOptions(o) {
         const opts = this.opts;
-        if (o.acceptWidgets !== undefined)
+        if (o === opts)
+            return this; // nothing to do
+        if (o.acceptWidgets !== undefined) {
+            opts.acceptWidgets = o.acceptWidgets;
             this._setupAcceptWidget();
-        if (o.animate !== undefined)
-            this.setAnimation();
-        if (o.cellHeight) {
-            this.cellHeight(o.cellHeight, true);
-            delete o.cellHeight;
         }
-        if (o.class && o.class !== opts.class) {
+        if (o.animate !== undefined)
+            this.setAnimation(o.animate);
+        if (o.cellHeight)
+            this.cellHeight(o.cellHeight);
+        if (o.class !== undefined && o.class !== opts.class) {
             if (opts.class)
                 this.el.classList.remove(opts.class);
-            this.el.classList.add(o.class);
+            if (o.class)
+                this.el.classList.add(o.class);
         }
-        if (typeof (o.column) === 'number' && !o.columnOpts) {
+        // responsive column take over actual count (keep what we have now)
+        if (o.columnOpts) {
+            this.opts.columnOpts = o.columnOpts;
+            this.checkDynamicColumn();
+        }
+        else if (o.columnOpts === null && this.opts.columnOpts) {
+            delete this.opts.columnOpts;
+            this._updateResizeEvent();
+        }
+        else if (typeof (o.column) === 'number')
             this.column(o.column);
-            delete o.column;
-        } // responsive column take over actual count
         if (o.margin !== undefined)
             this.margin(o.margin);
         if (o.staticGrid !== undefined)
@@ -1207,16 +1203,18 @@ class GridStack {
         if (o.float !== undefined)
             this.float(o.float);
         if (o.row !== undefined) {
-            opts.minRow = opts.maxRow = o.row;
+            opts.minRow = opts.maxRow = opts.row = o.row;
         }
-        if (o.children?.length) {
+        else {
+            if (o.minRow !== undefined)
+                opts.minRow = o.minRow;
+            if (o.maxRow !== undefined)
+                opts.maxRow = o.maxRow;
+        }
+        if (o.children?.length)
             this.load(o.children);
-            delete o.children;
-        }
         // TBD if we have a real need for these (more complex code)
         // alwaysShowResizeHandle, draggable, handle, handleClass, itemClass, layout, placeholderClass, placeholderText, resizable, removable, row,...
-        // rest are just copied over...
-        this.opts = { ...this.opts, ...o };
         return this;
     }
     /**
@@ -1255,8 +1253,7 @@ class GridStack {
                     // restore any sub-grid back
                     if (n.subGrid?.el) {
                         itemContent.appendChild(n.subGrid.el);
-                        if (!n.subGrid.opts.styleInHead)
-                            n.subGrid._updateStyles(true); // force create
+                        n.subGrid._updateContainerHeight();
                     }
                 }
                 delete w.content;
@@ -1341,7 +1338,7 @@ class GridStack {
             // sub-grid - use their actual row count * their cell height, BUT append any content outside of the grid (eg: above text)
             wantedH = n.subGrid.getRow() * n.subGrid.getCellHeight(true);
             const subRec = n.subGrid.el.getBoundingClientRect();
-            const parentRec = n.subGrid.el.parentElement.getBoundingClientRect();
+            const parentRec = el.getBoundingClientRect();
             wantedH += subRec.top - parentRec.top;
         }
         else if (n.subGridOpts?.children?.length) {
@@ -1415,7 +1412,7 @@ class GridStack {
      */
     margin(value) {
         const isMultiValue = (typeof value === 'string' && value.split(' ').length > 1);
-        // check if we can skip re-creating our CSS file... won't check if multi values (too much hassle)
+        // check if we can skip... won't check if multi values (too much hassle)
         if (!isMultiValue) {
             const data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(value);
             if (this.opts.marginUnit === data.unit && this.opts.margin === data.h)
@@ -1425,7 +1422,6 @@ class GridStack {
         this.opts.margin = value;
         this.opts.marginTop = this.opts.marginBottom = this.opts.marginLeft = this.opts.marginRight = undefined;
         this._initMargin();
-        this._updateStyles(true); // true = force re-create
         return this;
     }
     /** returns current margin number value (undefined if 4 sides don't match) */
@@ -1497,75 +1493,12 @@ class GridStack {
     /** @internal */
     _triggerEvent(type, data) {
         const event = data ? new CustomEvent(type, { bubbles: false, detail: data }) : new Event(type);
-        this.el.dispatchEvent(event);
-        return this;
-    }
-    /** @internal called to delete the current dynamic style sheet used for our layout */
-    _removeStylesheet() {
-        if (this._styles) {
-            const styleLocation = this.opts.styleInHead ? undefined : this.el.parentNode;
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.removeStylesheet(this._styleSheetClass, styleLocation);
-            delete this._styles;
-        }
-        return this;
-    }
-    /** @internal updated/create the CSS styles for row based layout and initial margin setting */
-    _updateStyles(forceUpdate = false, maxH) {
-        // call to delete existing one if we change cellHeight / margin
-        if (forceUpdate) {
-            this._removeStylesheet();
-        }
-        if (maxH === undefined)
-            maxH = this.getRow();
-        this._updateContainerHeight();
-        // if user is telling us they will handle the CSS themselves by setting heights to 0. Do we need this opts really ??
-        if (this.opts.cellHeight === 0) {
-            return this;
-        }
-        const cellHeight = this.opts.cellHeight;
-        const cellHeightUnit = this.opts.cellHeightUnit;
-        const prefix = `.${this._styleSheetClass} > .${this.opts.itemClass}`;
-        // create one as needed
-        if (!this._styles) {
-            // insert style to parent (instead of 'head' by default) to support WebComponent
-            const styleLocation = this.opts.styleInHead ? undefined : this.el.parentNode;
-            this._styles = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.createStylesheet(this._styleSheetClass, styleLocation, {
-                nonce: this.opts.nonce,
-            });
-            if (!this._styles)
-                return this;
-            this._styles._max = 0;
-            // these are done once only
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, prefix, `height: ${cellHeight}${cellHeightUnit}`);
-            // content margins
-            const top = this.opts.marginTop + this.opts.marginUnit;
-            const bottom = this.opts.marginBottom + this.opts.marginUnit;
-            const right = this.opts.marginRight + this.opts.marginUnit;
-            const left = this.opts.marginLeft + this.opts.marginUnit;
-            const content = `${prefix} > .grid-stack-item-content`;
-            const placeholder = `.${this._styleSheetClass} > .grid-stack-placeholder > .placeholder-content`;
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, content, `top: ${top}; right: ${right}; bottom: ${bottom}; left: ${left};`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, placeholder, `top: ${top}; right: ${right}; bottom: ${bottom}; left: ${left};`);
-            // resize handles offset (to match margin)
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-n`, `top: ${top};`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-s`, `bottom: ${bottom}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-ne`, `right: ${right}; top: ${top}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-e`, `right: ${right}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-se`, `right: ${right}; bottom: ${bottom}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-nw`, `left: ${left}; top: ${top}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-w`, `left: ${left}`);
-            _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix} > .ui-resizable-sw`, `left: ${left}; bottom: ${bottom}`);
-        }
-        // now update the height specific fields
-        maxH = maxH || this._styles._max;
-        if (maxH > this._styles._max) {
-            const getHeight = (rows) => (cellHeight * rows) + cellHeightUnit;
-            for (let i = this._styles._max + 1; i <= maxH; i++) { // start at 1
-                _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix}[gs-y="${i}"]`, `top: ${getHeight(i)}`);
-                _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.addCSSRule(this._styles, `${prefix}[gs-h="${i + 1}"]`, `height: ${getHeight(i + 1)}`); // start at 2
-            }
-            this._styles._max = maxH;
-        }
+        // check if we're nested, and if so call the outermost grid to trigger the event
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        let grid = this;
+        while (grid.parentGridNode)
+            grid = grid.parentGridNode.grid;
+        grid.el.dispatchEvent(event);
         return this;
     }
     /** @internal */
@@ -1619,14 +1552,19 @@ class GridStack {
             this.prepareDragDrop(node.el);
         return this;
     }
-    /** @internal call to write position x,y,w,h attributes back to element */
+    /** @internal write position CSS vars and x,y,w,h attributes (not used for CSS but by users) back to element */
     _writePosAttr(el, n) {
-        if (n.x !== undefined && n.x !== null) {
-            el.setAttribute('gs-x', String(n.x));
+        // Avoid overwriting the inline style of the element during drag/resize, but always update the placeholder
+        if ((!n._moving && !n._resizing) || this._placeholder === el) {
+            // width/height:1 x/y:0 is set by default in the main CSS, so no need to set inlined vars
+            el.style.top = n.y ? (n.y === 1 ? `var(--gs-cell-height)` : `calc(${n.y} * var(--gs-cell-height))`) : null;
+            el.style.left = n.x ? (n.x === 1 ? `var(--gs-column-width)` : `calc(${n.x} * var(--gs-column-width))`) : null;
+            el.style.width = n.w > 1 ? `calc(${n.w} * var(--gs-column-width))` : null;
+            el.style.height = n.h > 1 ? `calc(${n.h} * var(--gs-cell-height))` : null;
         }
-        if (n.y !== undefined && n.y !== null) {
-            el.setAttribute('gs-y', String(n.y));
-        }
+        // NOTE: those are technically not needed anymore (v12+) as we have CSS vars for everything, but some users depends on them to render item size using CSS
+        n.x > 0 ? el.setAttribute('gs-x', String(n.x)) : el.removeAttribute('gs-x');
+        n.y > 0 ? el.setAttribute('gs-y', String(n.y)) : el.removeAttribute('gs-y');
         n.w > 1 ? el.setAttribute('gs-w', String(n.w)) : el.removeAttribute('gs-w');
         n.h > 1 ? el.setAttribute('gs-h', String(n.h)) : el.removeAttribute('gs-h');
         return this;
@@ -1774,7 +1712,9 @@ class GridStack {
                 if (_utils__WEBPACK_IMPORTED_MODULE_1__.Utils.shouldSizeToContent(n))
                     this.resizeToContentCBCheck(n.el);
             });
+            this._ignoreLayoutsNodeChange = true; // loop through each node will set/reset around each move, so set it here again
             this.batchUpdate(false);
+            this._ignoreLayoutsNodeChange = false;
         }
         // call this regardless of shouldSizeToContent because widget might need to stretch to take available space after a resize
         if (this._gsEventHandler['resizecontent'])
@@ -1832,42 +1772,27 @@ class GridStack {
             margin = this.opts.margin = data.h;
         }
         // see if top/bottom/left/right need to be set as well
-        if (this.opts.marginTop === undefined) {
-            this.opts.marginTop = margin;
-        }
-        else {
-            data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(this.opts.marginTop);
-            this.opts.marginTop = data.h;
-            delete this.opts.margin;
-        }
-        if (this.opts.marginBottom === undefined) {
-            this.opts.marginBottom = margin;
-        }
-        else {
-            data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(this.opts.marginBottom);
-            this.opts.marginBottom = data.h;
-            delete this.opts.margin;
-        }
-        if (this.opts.marginRight === undefined) {
-            this.opts.marginRight = margin;
-        }
-        else {
-            data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(this.opts.marginRight);
-            this.opts.marginRight = data.h;
-            delete this.opts.margin;
-        }
-        if (this.opts.marginLeft === undefined) {
-            this.opts.marginLeft = margin;
-        }
-        else {
-            data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(this.opts.marginLeft);
-            this.opts.marginLeft = data.h;
-            delete this.opts.margin;
-        }
+        const keys = ['marginTop', 'marginRight', 'marginBottom', 'marginLeft'];
+        keys.forEach(k => {
+            if (this.opts[k] === undefined) {
+                this.opts[k] = margin;
+            }
+            else {
+                data = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(this.opts[k]);
+                this.opts[k] = data.h;
+                delete this.opts.margin;
+            }
+        });
         this.opts.marginUnit = data.unit; // in case side were spelled out, use those units instead...
         if (this.opts.marginTop === this.opts.marginBottom && this.opts.marginLeft === this.opts.marginRight && this.opts.marginTop === this.opts.marginRight) {
             this.opts.margin = this.opts.marginTop; // makes it easier to check for no-ops in setMargin()
         }
+        // finally Update the CSS margin variables (inside the cell height) */
+        const style = this.el.style;
+        style.setProperty('--gs-item-margin-top', `${this.opts.marginTop}${this.opts.marginUnit}`);
+        style.setProperty('--gs-item-margin-bottom', `${this.opts.marginBottom}${this.opts.marginUnit}`);
+        style.setProperty('--gs-item-margin-right', `${this.opts.marginRight}${this.opts.marginUnit}`);
+        style.setProperty('--gs-item-margin-left', `${this.opts.marginLeft}${this.opts.marginUnit}`);
         return this;
     }
     /* ===========================================================================================
@@ -2277,8 +2202,6 @@ class GridStack {
                 this.resizeToContentCheck(false, node);
                 if (subGrid) {
                     subGrid.parentGridNode = node;
-                    if (!subGrid.opts.styleInHead)
-                        subGrid._updateStyles(true); // re-create sub-grid styles now that we've moved
                 }
                 this._updateContainerHeight();
             }
@@ -2353,9 +2276,7 @@ class GridStack {
             /** called when item starts moving/resizing */
             const onStartMoving = (event, ui) => {
                 // trigger any 'dragstart' / 'resizestart' manually
-                if (this._gsEventHandler[event.type]) {
-                    this._gsEventHandler[event.type](event, event.target);
-                }
+                this.triggerEvent(event, event.target);
                 cellWidth = this.cellWidth();
                 cellHeight = this.getCellHeight(true); // force pixels for calculations
                 this._onStartMoving(el, event, ui, node, cellWidth, cellHeight);
@@ -2369,6 +2290,7 @@ class GridStack {
                 this.placeholder.remove();
                 delete this.placeholder.gridstackNode;
                 delete node._moving;
+                delete node._resizing;
                 delete node._event;
                 delete node._lastTried;
                 const widthChanged = node.w !== node._orig.w;
@@ -2397,9 +2319,7 @@ class GridStack {
                         // move to new placeholder location
                         this._writePosAttr(target, node);
                     }
-                    if (this._gsEventHandler[event.type]) {
-                        this._gsEventHandler[event.type](event, target);
-                    }
+                    this.triggerEvent(event, target);
                 }
                 // @ts-ignore
                 this._extraDragRow = 0; // @ts-ignore
@@ -2461,6 +2381,7 @@ class GridStack {
         node._lastUiPosition = ui.position;
         node._prevYPix = ui.position.top;
         node._moving = (event.type === 'dragstart'); // 'dropover' are not initially moving so they can go exactly where they enter (will push stuff out of the way)
+        node._resizing = (event.type === 'resizestart');
         delete node._lastTried;
         if (event.type === 'dropover' && node._temporaryRemoved) {
             // console.log('engine.addNode x=' + node.x); // TEST
@@ -2563,9 +2484,17 @@ class GridStack {
             if (!node._sidebarOrig) {
                 this._writePosAttr(target, node);
             }
-            if (this._gsEventHandler[event.type]) {
-                this._gsEventHandler[event.type](event, target);
-            }
+            this.triggerEvent(event, target);
+        }
+    }
+    /** call given event callback on our main top-most grid (if we're nested) */
+    triggerEvent(event, target) {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        let grid = this;
+        while (grid.parentGridNode)
+            grid = grid.parentGridNode.grid;
+        if (grid._gsEventHandler[event.type]) {
+            grid._gsEventHandler[event.type](event, target);
         }
     }
     /** @internal called when item leaving our area by either cursor dropout event
@@ -2621,7 +2550,7 @@ GridStack.resizeToContentParent = '.grid-stack-item-content';
 GridStack.Utils = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils;
 /** scoping so users can call new GridStack.Engine(12) for example */
 GridStack.Engine = _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__.GridStackEngine;
-GridStack.GDRev = '11.5.1';
+GridStack.GDRev = '12.1.1';
 
 //# sourceMappingURL=gridstack.js.map
 
@@ -2636,7 +2565,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1060);
 /**
- * gridstack-engine.ts 11.5.1
+ * gridstack-engine.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -3661,7 +3590,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   obsoleteOptsDel: () => (/* binding */ obsoleteOptsDel)
 /* harmony export */ });
 /**
- * utils.ts 11.5.1
+ * utils.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 /** checks for obsolete method names */
@@ -3811,50 +3740,6 @@ class Utils {
     /** find an item by id */
     static find(nodes, id) {
         return id ? nodes.find(n => n.id === id) : undefined;
-    }
-    /**
-     * creates a style sheet with style id under given parent
-     * @param id will set the 'gs-style-id' attribute to that id
-     * @param parent to insert the stylesheet as first child,
-     * if none supplied it will be appended to the document head instead.
-     */
-    static createStylesheet(id, parent, options) {
-        const style = document.createElement('style');
-        const nonce = options?.nonce;
-        if (nonce)
-            style.nonce = nonce;
-        style.setAttribute('type', 'text/css');
-        style.setAttribute('gs-style-id', id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (style.styleSheet) { // TODO: only CSSImportRule have that and different beast ??
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            style.styleSheet.cssText = '';
-        }
-        else {
-            style.appendChild(document.createTextNode('')); // WebKit hack
-        }
-        if (!parent) {
-            // default to head
-            parent = document.getElementsByTagName('head')[0];
-            parent.appendChild(style);
-        }
-        else {
-            parent.insertBefore(style, parent.firstChild);
-        }
-        return style;
-    }
-    /** removed the given stylesheet id */
-    static removeStylesheet(id, parent) {
-        const target = parent || document;
-        const el = target.querySelector('STYLE[gs-style-id=' + id + ']');
-        if (el && el.parentNode)
-            el.remove();
-    }
-    /** inserts a CSS rule */
-    static addCSSRule(sheet, selector, rules) {
-        // Rather than using sheet.insertRule, use text since it supports
-        // gridstack node reparenting around in the DOM
-        sheet.textContent += `${selector} { ${rules} } `;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     static toBool(v) {
@@ -4288,7 +4173,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   gridDefaults: () => (/* binding */ gridDefaults)
 /* harmony export */ });
 /**
- * types.ts 11.5.1
+ * types.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 // default values for grid options - used during init and when saving out
@@ -4319,7 +4204,6 @@ const gridDefaults = {
     // handleClass: null,
     // removable: false,
     // staticGrid: false,
-    // styleInHead: false,
     //removable
 };
 //# sourceMappingURL=types.js.map
@@ -4337,7 +4221,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1063);
 /* harmony import */ var _dd_element__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1064);
 /**
- * dd-gridstack.ts 11.5.1
+ * dd-gridstack.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -4482,7 +4366,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   DDManager: () => (/* binding */ DDManager)
 /* harmony export */ });
 /**
- * dd-manager.ts 11.5.1
+ * dd-manager.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 /**
@@ -4505,7 +4389,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_draggable__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1069);
 /* harmony import */ var _dd_droppable__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1070);
 /**
- * dd-elements.ts 11.5.1
+ * dd-elements.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -4610,7 +4494,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1063);
 /**
- * dd-resizable.ts 11.5.1
+ * dd-resizable.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -4791,12 +4675,13 @@ class DDResizable extends _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__.DDBaseImple
     /** @internal */
     _resizeStop(event) {
         const ev = _utils__WEBPACK_IMPORTED_MODULE_2__.Utils.initEvent(event, { type: 'resizestop', target: this.el });
+        // Remove style attr now, so the stop handler can rebuild style attrs
+        this._cleanHelper();
         if (this.option.stop) {
             this.option.stop(ev); // Note: ui() not used by gridstack so don't pass
         }
         this.el.classList.remove('ui-resizable-resizing');
         this.triggerEvent('resizestop', ev);
-        this._cleanHelper();
         delete this.startEvent;
         delete this.originalRect;
         delete this.temporalRect;
@@ -4924,7 +4809,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1067);
 /**
- * dd-resizable-handle.ts 11.5.1
+ * dd-resizable-handle.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -5055,7 +4940,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1063);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1060);
 /**
- * touch.ts 11.5.1
+ * touch.ts 12.1.1
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -5210,7 +5095,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   DDBaseImplement: () => (/* binding */ DDBaseImplement)
 /* harmony export */ });
 /**
- * dd-base-impl.ts 11.5.1
+ * dd-base-impl.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 class DDBaseImplement {
@@ -5256,7 +5141,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1068);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
 /**
- * dd-draggable.ts 11.5.1
+ * dd-draggable.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -5632,7 +5517,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
 /**
- * dd-droppable.ts 11.5.1
+ * dd-droppable.ts 12.1.1
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -5790,15 +5675,6 @@ __webpack_require__.r(__webpack_exports__);
 // extracted by mini-css-extract-plugin
 
 
-/***/ }),
-
-/***/ 1072:
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-// extracted by mini-css-extract-plugin
-
-
 /***/ })
 
 /******/ 	});
@@ -5899,7 +5775,6 @@ __webpack_require__.r(__webpack_exports__);
 
 window.GridStack = gridstack__WEBPACK_IMPORTED_MODULE_0__.GridStack;
 __webpack_require__(1071);
-__webpack_require__(1072);
 
 })();
 

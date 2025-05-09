@@ -434,11 +434,12 @@
 .dashboard .grid-guide {
   display: none;
   position: absolute;
-  top: calc(40px + 62px + 16px);
+  bottom: var(--gs-cell-height);
   width: calc(100% + 1px);
   border: 1px solid var(--tblr-body-bg);
   border-width: 0 1px 1px 0;
   background-image: linear-gradient(to right, var(--tblr-body-bg) 1px, transparent 1px), linear-gradient(to bottom, var(--tblr-body-bg) 1px, transparent 1px);
+  background-size: var(--gs-cell-height) var(--gs-cell-height);
 }
 .dashboard .grid-guide .cell-add {
   opacity: 0;
@@ -446,6 +447,8 @@
   position: relative;
   cursor: pointer;
   border: 2px dashed #777;
+  width: var(--gs-cell-height);
+  height: var(--gs-cell-height);
 }
 .dashboard .grid-guide .cell-add:hover {
   opacity: 1;
@@ -496,10 +499,6 @@
 .dashboard .grid-stack .grid-stack-item > .controls i.fa-regular:hover,
 .dashboard .grid-stack .grid-stack-item > .controls i.ti:hover {
   opacity: 1;
-}
-.dashboard .grid-stack .grid-stack-item .placeholder-content {
-  left: 3px;
-  right: 3px;
 }
 .dashboard .grid-stack .grid-stack-item .loading-card {
   height: 100%;

@@ -3416,7 +3416,15 @@ html:has(.tab-pane.active > [data-glpi-form-editor-container]) {
   width: 100%;
 }
 .form-renderer [data-glpi-form-renderer-hidden-by-condition] {
-  display: none;
+  display: none !important;
+}
+.form-renderer .input-group > div:not(.d-none):has(> span.select2-container):not(:first-child) .select2-selection {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+.form-renderer .input-group > div:not(.d-none):has(> span.select2-container):not(:last-of-type) .select2-selection {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 /*!
@@ -4489,11 +4497,6 @@ html[data-glpi-theme-dark="1"] .netport a {
   opacity: 0.8;
 }
 
-.grid-stack .grid-stack-item .grid-stack-item-content,
-.grid-stack .grid-stack-item .placeholder-content {
-  left: 0;
-  right: 0;
-}
 .grid-stack .grid-stack-placeholder > .placeholder-content {
   border: 1px dashed #bcbf33;
   background-color: rgba(229, 245, 105, 0.5);
@@ -4532,7 +4535,7 @@ ul.indexes {
   content: "+";
   left: 45%;
   color: grey;
-  top: 1px;
+  top: 3px;
   font: var(--fa-font-solid);
   font-size: 1em;
   position: absolute;
@@ -4571,8 +4574,8 @@ ul.indexes {
   float: left;
 }
 .grid-room .racks_add .cell_add::after {
-  left: calc(50% - 4px);
-  top: calc(50% - 0.5em - 4px);
+  left: calc(50% - 5px);
+  top: calc(50% - 6px);
 }
 .grid-room .grid-stack {
   float: left;
@@ -4753,7 +4756,7 @@ ul.indexes {
 
 .grid-rack {
   width: 217px;
-  background: var(--tblr-body-bg) repeating-linear-gradient(transparent, transparent 21px, var(--tblr-bg-surface-tertiary) 21px, var(--tblr-bg-surface-tertiary) 42px);
+  background: var(--tblr-bg-surface) repeating-linear-gradient(transparent, transparent 21px, var(--tblr-bg-surface-tertiary) 21px, var(--tblr-bg-surface-tertiary) 42px);
   z-index: 1;
   border: 1px solid var(--tblr-border-color);
   float: left;

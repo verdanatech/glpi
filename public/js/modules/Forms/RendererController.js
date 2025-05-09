@@ -33,7 +33,7 @@
 
 /* global glpi_toast_info, tinymce, glpi_toast_error, _ */
 
-import { GlpiFormConditionEngine } from './Condition/Engine.js';
+import { GlpiFormConditionEngine } from 'js/modules/Forms/Condition/Engine';
 
 /**
  * Client code to handle users actions on the form_renderer template
@@ -123,6 +123,13 @@ export class GlpiFormRendererController
             debouncedComputeItemsVisibilities();
         });
 
+        // Handle delegation form update
+        $(this.#target).on(
+            'change',
+            '[data-glpi-form-renderer-delegation-container] select[name="delegation_users_id"]',
+            (e) => this.#renderDelegation(e)
+        );
+
         // Enable actions
         $(this.#target).removeClass('pointer-events-none');
     }
@@ -192,6 +199,7 @@ export class GlpiFormRendererController
             $(this.#target)
                 .find(`
                     [data-glpi-form-renderer-form-header],
+                    [data-glpi-form-renderer-delegation-container],
                     [data-glpi-form-renderer-section=${this.#section_index}],
                     [data-glpi-form-renderer-parent-section=${this.#section_index}],
                     [data-glpi-form-renderer-actions]
@@ -357,6 +365,14 @@ export class GlpiFormRendererController
     {
         const container = this.#target;
 
+        // Apply submit button visibility
+        const submit_button = container.querySelector(
+            '[data-glpi-form-renderer-action=submit]'
+        );
+        if (submit_button !== null) {
+            this.#applyVisibilityToItem(submit_button, results.form_visibility);
+        }
+
         // Apply sections visibility
         for (const [id, must_be_visible] of Object.entries(
             results.sections_visibility
@@ -482,5 +498,22 @@ export class GlpiFormRendererController
             .find("button[data-glpi-form-renderer-action]")
             .removeClass("pointer-events-none")
         ;
+    }
+
+    async #renderDelegation()
+    {
+        const selected_user_id = $(this.#target)
+            .find('[data-glpi-form-renderer-delegation-container]')
+            .find('select[name="delegation_users_id"]')
+            .val();
+
+        const response = await $.get('/Form/Delegation', {
+            'selected_user_id': selected_user_id,
+        });
+
+        // Replace only the inner content of the delegation container
+        $(this.#target)
+            .find('[data-glpi-form-renderer-delegation-container]')
+            .html(response);
     }
 }

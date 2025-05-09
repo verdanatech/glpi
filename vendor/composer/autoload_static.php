@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
+class ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94
 {
     public static $files = array (
         '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
@@ -1316,6 +1316,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Api\\HL\\Router' => __DIR__ . '/../..' . '/src/Glpi/Api/HL/Router.php',
         'Glpi\\Api\\HL\\Search' => __DIR__ . '/../..' . '/src/Glpi/Api/HL/Search.php',
         'Glpi\\Application\\Environment' => __DIR__ . '/../..' . '/src/Glpi/Application/Environment.php',
+        'Glpi\\Application\\ImportMapGenerator' => __DIR__ . '/../..' . '/src/Glpi/Application/ImportMapGenerator.php',
         'Glpi\\Application\\ResourcesChecker' => __DIR__ . '/../..' . '/src/Glpi/Application/ResourcesChecker.php',
         'Glpi\\Application\\SystemConfigurator' => __DIR__ . '/../..' . '/src/Glpi/Application/SystemConfigurator.php',
         'Glpi\\Application\\View\\Extension\\ConfigExtension' => __DIR__ . '/../..' . '/src/Glpi/Application/View/Extension/ConfigExtension.php',
@@ -1511,8 +1512,6 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Controller\\ApiRestController' => __DIR__ . '/../..' . '/src/Glpi/Controller/ApiRestController.php',
         'Glpi\\Controller\\CaldavController' => __DIR__ . '/../..' . '/src/Glpi/Controller/CaldavController.php',
         'Glpi\\Controller\\CentralController' => __DIR__ . '/../..' . '/src/Glpi/Controller/CentralController.php',
-        'Glpi\\Controller\\CommonAjaxController' => __DIR__ . '/../..' . '/src/Glpi/Controller/CommonAjaxController.php',
-        'Glpi\\Controller\\CommonAjaxControllerAllowedClassesList' => __DIR__ . '/../..' . '/src/Glpi/Controller/CommonAjaxControllerAllowedClassesList.php',
         'Glpi\\Controller\\Config\\Helpdesk\\AbstractTileController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Config/Helpdesk/AbstractTileController.php',
         'Glpi\\Controller\\Config\\Helpdesk\\AddTileController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Config/Helpdesk/AddTileController.php',
         'Glpi\\Controller\\Config\\Helpdesk\\CopyParentEntityController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Config/Helpdesk/CopyParentEntityController.php',
@@ -1526,6 +1525,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Controller\\Form\\AllowListDropdown\\CountUsersController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/AllowListDropdown/CountUsersController.php',
         'Glpi\\Controller\\Form\\Condition\\EditorController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Condition/EditorController.php',
         'Glpi\\Controller\\Form\\Condition\\EngineController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Condition/EngineController.php',
+        'Glpi\\Controller\\Form\\DelegationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/DelegationController.php',
         'Glpi\\Controller\\Form\\Destination\\AddDestinationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Destination/AddDestinationController.php',
         'Glpi\\Controller\\Form\\Destination\\PurgeDestinationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Destination/PurgeDestinationController.php',
         'Glpi\\Controller\\Form\\Destination\\UpdateDestinationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Destination/UpdateDestinationController.php',
@@ -1542,6 +1542,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Controller\\Form\\Translation\\DeleteFormTranslationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Translation/DeleteFormTranslationController.php',
         'Glpi\\Controller\\Form\\Translation\\UpdateFormTranslationController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Translation/UpdateFormTranslationController.php',
         'Glpi\\Controller\\Form\\Utils\\CanCheckAccessPolicies' => __DIR__ . '/../..' . '/src/Glpi/Controller/Form/Utils/CanCheckAccessPolicies.php',
+        'Glpi\\Controller\\GenericAjaxCrudController' => __DIR__ . '/../..' . '/src/Glpi/Controller/GenericAjaxCrudController.php',
         'Glpi\\Controller\\GenericFormController' => __DIR__ . '/../..' . '/src/Glpi/Controller/GenericFormController.php',
         'Glpi\\Controller\\GenericListController' => __DIR__ . '/../..' . '/src/Glpi/Controller/GenericListController.php',
         'Glpi\\Controller\\Helpdesk\\IndexController' => __DIR__ . '/../..' . '/src/Glpi/Controller/Helpdesk/IndexController.php',
@@ -1704,6 +1705,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Form\\Condition\\UsedAsCriteriaInterface' => __DIR__ . '/../..' . '/src/Glpi/Form/Condition/UsedAsCriteriaInterface.php',
         'Glpi\\Form\\Condition\\ValueOperator' => __DIR__ . '/../..' . '/src/Glpi/Form/Condition/ValueOperator.php',
         'Glpi\\Form\\Condition\\VisibilityStrategy' => __DIR__ . '/../..' . '/src/Glpi/Form/Condition/VisibilityStrategy.php',
+        'Glpi\\Form\\DelegationData' => __DIR__ . '/../..' . '/src/Glpi/Form/DelegationData.php',
         'Glpi\\Form\\Destination\\AbstractCommonITILFormDestination' => __DIR__ . '/../..' . '/src/Glpi/Form/Destination/AbstractCommonITILFormDestination.php',
         'Glpi\\Form\\Destination\\AbstractConfigField' => __DIR__ . '/../..' . '/src/Glpi/Form/Destination/AbstractConfigField.php',
         'Glpi\\Form\\Destination\\AnswersSet_FormDestinationItem' => __DIR__ . '/../..' . '/src/Glpi/Form/Destination/AnswersSet_FormDestinationItem.php',
@@ -1798,6 +1800,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Glpi\\Form\\Export\\Specification\\TranslationContentSpecification' => __DIR__ . '/../..' . '/src/Glpi/Form/Export/Specification/TranslationContentSpecification.php',
         'Glpi\\Form\\Form' => __DIR__ . '/../..' . '/src/Glpi/Form/Form.php',
         'Glpi\\Form\\FormTranslation' => __DIR__ . '/../..' . '/src/Glpi/Form/FormTranslation.php',
+        'Glpi\\Form\\Migration\\ConditionHandlerDataConverterInterface' => __DIR__ . '/../..' . '/src/Glpi/Form/Migration/ConditionHandlerDataConverterInterface.php',
         'Glpi\\Form\\Migration\\DestinationFieldConverterInterface' => __DIR__ . '/../..' . '/src/Glpi/Form/Migration/DestinationFieldConverterInterface.php',
         'Glpi\\Form\\Migration\\FormMigration' => __DIR__ . '/../..' . '/src/Glpi/Form/Migration/FormMigration.php',
         'Glpi\\Form\\Migration\\FormQuestionDataConverterInterface' => __DIR__ . '/../..' . '/src/Glpi/Form/Migration/FormQuestionDataConverterInterface.php',
@@ -3727,6 +3730,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'Nette\\Schema\\Processor' => __DIR__ . '/..' . '/nette/schema/src/Schema/Processor.php',
         'Nette\\Schema\\Schema' => __DIR__ . '/..' . '/nette/schema/src/Schema/Schema.php',
         'Nette\\Schema\\ValidationException' => __DIR__ . '/..' . '/nette/schema/src/Schema/ValidationException.php',
+        'Nette\\ShouldNotHappenException' => __DIR__ . '/..' . '/nette/utils/src/exceptions.php',
         'Nette\\SmartObject' => __DIR__ . '/..' . '/nette/utils/src/SmartObject.php',
         'Nette\\StaticClass' => __DIR__ . '/..' . '/nette/utils/src/StaticClass.php',
         'Nette\\UnexpectedValueException' => __DIR__ . '/..' . '/nette/utils/src/exceptions.php',
@@ -3954,6 +3958,8 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'PhpOffice\\PhpSpreadsheet\\Calculation\\ArrayEnabled' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/ArrayEnabled.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\BinaryComparison' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/BinaryComparison.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Calculation' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Calculation.php',
+        'PhpOffice\\PhpSpreadsheet\\Calculation\\CalculationBase' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/CalculationBase.php',
+        'PhpOffice\\PhpSpreadsheet\\Calculation\\CalculationLocale' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/CalculationLocale.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Category' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Category.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Database\\DAverage' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Database/DAverage.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Database\\DCount' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Database/DCount.php',
@@ -4039,6 +4045,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Financial\\TreasuryBill' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Financial/TreasuryBill.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\FormulaParser' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/FormulaParser.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\FormulaToken' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/FormulaToken.php',
+        'PhpOffice\\PhpSpreadsheet\\Calculation\\FunctionArray' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/FunctionArray.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Functions' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Functions.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Information\\ErrorValue' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Information/ErrorValue.php',
         'PhpOffice\\PhpSpreadsheet\\Calculation\\Information\\ExcelError' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Calculation/Information/ExcelError.php',
@@ -4397,6 +4404,7 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\SheetView' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/SheetView.php',
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\Table' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Table.php',
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\Table\\Column' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Table/Column.php',
+        'PhpOffice\\PhpSpreadsheet\\Worksheet\\Table\\TableDxfsStyle' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Table/TableDxfsStyle.php',
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\Table\\TableStyle' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Table/TableStyle.php',
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\Validations' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Validations.php',
         'PhpOffice\\PhpSpreadsheet\\Worksheet\\Worksheet' => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Worksheet/Worksheet.php',
@@ -7638,11 +7646,11 @@ class ComposerStaticInita37d68bd366ad1ec5ff38377678492b3
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInita37d68bd366ad1ec5ff38377678492b3::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInita37d68bd366ad1ec5ff38377678492b3::$prefixDirsPsr4;
-            $loader->fallbackDirsPsr4 = ComposerStaticInita37d68bd366ad1ec5ff38377678492b3::$fallbackDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInita37d68bd366ad1ec5ff38377678492b3::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInita37d68bd366ad1ec5ff38377678492b3::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94::$prefixDirsPsr4;
+            $loader->fallbackDirsPsr4 = ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94::$fallbackDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInitc1a4aa86f60a7a3a4da0b5b650c33b94::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -192,7 +192,7 @@ process.umask = function() { return 0; };
 
 /***/ }),
 
-/***/ 1074:
+/***/ 1073:
 /***/ ((module) => {
 
 /*
@@ -341,22 +341,22 @@ fuzzy.filter = function(pattern, arr, opts) {
 
 /***/ }),
 
-/***/ 1075:
+/***/ 1074:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 /* provided dependency */ var process = __webpack_require__(41);
 if (process.env.NODE_ENV === 'production') {
   // eslint-disable-next-line global-require
-  module.exports = __webpack_require__(1076);
+  module.exports = __webpack_require__(1075);
 } else {
   // eslint-disable-next-line global-require
-  module.exports = __webpack_require__(1077);
+  module.exports = __webpack_require__(1076);
 }
 
 
 /***/ }),
 
-/***/ 1076:
+/***/ 1075:
 /***/ ((module) => {
 
 /*! hotkeys-js v3.13.9 | MIT © 2024 kenny wong <wowohoo@qq.com> https://jaywcjlove.github.io/hotkeys-js */
@@ -364,7 +364,7 @@ let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().inde
 
 /***/ }),
 
-/***/ 1077:
+/***/ 1076:
 /***/ ((module) => {
 
 "use strict";
@@ -1121,7 +1121,7 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1075);
+/* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1074);
 /* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(hotkeys_js__WEBPACK_IMPORTED_MODULE_0__);
 /**
  * ---------------------------------------------------------------------
@@ -1158,7 +1158,7 @@ __webpack_require__.r(__webpack_exports__);
 
 // Fuzzy base lib
 // 'fuzzy' object has to be declared in global scope
-window.fuzzy = __webpack_require__(1074);
+window.fuzzy = __webpack_require__(1073);
 
 // Required to open search menu with "CTRL+ALT+G"
 

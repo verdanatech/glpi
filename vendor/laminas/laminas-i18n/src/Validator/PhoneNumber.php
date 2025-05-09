@@ -14,8 +14,8 @@ use function in_array;
 use function is_scalar;
 use function is_string;
 use function preg_match;
+use function str_starts_with;
 use function strlen;
-use function strpos;
 use function strtoupper;
 use function substr;
 
@@ -23,6 +23,8 @@ use function substr;
  * @deprecated This class is deprecated and will be removed in v3.0.0
  *             Use Laminas\I18n\PhoneNumber\Validator\PhoneNumber instead:
  *             https://github.com/laminas/laminas-i18n-phone-number
+ *
+ * @final
  */
 class PhoneNumber extends AbstractValidator
 {
@@ -233,11 +235,11 @@ class PhoneNumber extends AbstractValidator
          *   3) Bare country prefix
          */
         $valueNoCountry = null;
-        if (0 === strpos((string) $value, '+' . $countryPattern['code'])) {
+        if (str_starts_with((string) $value, '+' . $countryPattern['code'])) {
             $valueNoCountry = substr((string) $value, $codeLength + 1);
-        } elseif (0 === strpos((string) $value, '00' . $countryPattern['code'])) {
+        } elseif (str_starts_with((string) $value, '00' . $countryPattern['code'])) {
             $valueNoCountry = substr((string) $value, $codeLength + 2);
-        } elseif (0 === strpos((string) $value, $countryPattern['code'])) {
+        } elseif (str_starts_with((string) $value, $countryPattern['code'])) {
             $valueNoCountry = substr((string) $value, $codeLength);
         }
 

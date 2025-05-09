@@ -2,7 +2,6 @@
 
 namespace Laminas\I18n\Translator;
 
-use Laminas\ServiceManager\Config;
 use Laminas\ServiceManager\FactoryInterface;
 use Laminas\ServiceManager\ServiceLocatorInterface;
 use Laminas\ServiceManager\ServiceManager;
@@ -10,7 +9,10 @@ use Psr\Container\ContainerInterface;
 
 use function is_array;
 
-/** @psalm-import-type ServiceManagerConfiguration from ServiceManager */
+/**
+ * @psalm-import-type ServiceManagerConfiguration from ServiceManager
+ * @final
+ */
 class LoaderPluginManagerFactory implements FactoryInterface
 {
     /**
@@ -33,7 +35,7 @@ class LoaderPluginManagerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $name, ?array $options = null)
     {
-        $options       = $options ?? [];
+        $options     ??= [];
         $pluginManager = new LoaderPluginManager($container, $options);
 
         // If this is in a laminas-mvc application, the ServiceListener will inject
@@ -55,7 +57,7 @@ class LoaderPluginManagerFactory implements FactoryInterface
         }
 
         // Wire service configuration for translator_plugins
-        (new Config($config['translator_plugins']))->configureServiceManager($pluginManager);
+        $pluginManager->configure($config['translator_plugins']);
 
         return $pluginManager;
     }

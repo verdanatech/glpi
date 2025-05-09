@@ -5,7 +5,7 @@
 /***/ ((module) => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -7216,6 +7216,8 @@
         },
         default: []
       });
+      registerOption('extended_mathml_attributes', { processor: 'string[]' });
+      registerOption('extended_mathml_elements', { processor: 'string[]' });
       registerOption('inline_boundaries', {
         processor: 'boolean',
         default: true
@@ -7254,6 +7256,11 @@
       });
       registerOption('event_root', { processor: 'string' });
       registerOption('service_message', { processor: 'string' });
+      registerOption('onboarding', {
+        processor: 'boolean',
+        default: true
+      });
+      registerOption('tiny_cloud_entry_url', { processor: 'string' });
       registerOption('theme', {
         processor: value => value === false || isString(value) || isFunction(value),
         default: 'silver'
@@ -8041,7 +8048,7 @@
         }
       };
       const startBlink = () => {
-        cursorInterval = setInterval(() => {
+        cursorInterval = window.setInterval(() => {
           lastVisualCaret.on(caretState => {
             if (hasFocus()) {
               dom.toggleClass(caretState.caret, 'mce-visual-caret-hidden');
@@ -9393,10 +9400,11 @@
       'div[data-ephox-embed-iri]',
       'div.tiny-pageembed',
       'div.mce-toc',
-      'div[data-mce-toc]'
+      'div[data-mce-toc]',
+      'div.mce-footnotes'
     ];
     const isZeroWidth = elem => isText$c(elem) && get$3(elem) === ZWSP$1;
-    const context = (editor, elem, wrapName, nodeName) => parent(elem).fold(() => 'skipping', parent => {
+    const context = (editor, elem, wrapName, nodeName) => parentElement(elem).fold(() => 'skipping', parent => {
       if (nodeName === 'br' || isZeroWidth(elem)) {
         return 'valid';
       } else if (isAnnotation(elem)) {
@@ -9725,13 +9733,13 @@
       if (!isNumber(time)) {
         time = 0;
       }
-      return setTimeout(callback, time);
+      return window.setTimeout(callback, time);
     };
     const wrappedSetInterval = (callback, time) => {
       if (!isNumber(time)) {
         time = 0;
       }
-      return setInterval(callback, time);
+      return window.setInterval(callback, time);
     };
     const Delay = {
       setEditorTimeout: (editor, callback, time) => {
@@ -9746,7 +9754,7 @@
           if (!editor.removed) {
             callback();
           } else {
-            clearInterval(timer);
+            window.clearInterval(timer);
           }
         }, time);
         return timer;
@@ -11011,10 +11019,11 @@
     };
     const scrollToMarker = (editor, marker, viewHeight, alignToTop, doc) => {
       const pos = marker.pos;
+      const scrollMargin = 30;
       if (alignToTop) {
-        to(pos.left, pos.top, doc);
+        to(pos.left, Math.max(0, pos.top - scrollMargin), doc);
       } else {
-        const y = pos.top - viewHeight + marker.height;
+        const y = pos.top - viewHeight + marker.height + scrollMargin;
         to(-editor.getBody().getBoundingClientRect().left, y, doc);
       }
     };
@@ -17136,18 +17145,39 @@
         const encoding = el.getAttribute('encoding');
         return hasAllowedEncodings && isString(encoding) && contains$2(allowedEncodings, encoding);
       };
+      const isValidElementOpt = (node, lcTagName) => {
+        if (hasAllowedEncodings && lcTagName === 'semantics') {
+          return Optional.some(true);
+        } else if (lcTagName === 'annotation') {
+          return Optional.some(isElement$6(node) && hasValidEncoding(node));
+        } else if (isArray$1(settings.extended_mathml_elements)) {
+          if (settings.extended_mathml_elements.includes(lcTagName)) {
+            return Optional.from(true);
+          } else {
+            return Optional.none();
+          }
+        } else {
+          return Optional.none();
+        }
+      };
       purify$1.addHook('uponSanitizeElement', (node, evt) => {
         var _a;
         const lcTagName = (_a = evt.tagName) !== null && _a !== void 0 ? _a : node.nodeName.toLowerCase();
-        if (hasAllowedEncodings && lcTagName === 'semantics') {
-          evt.allowedTags[lcTagName] = true;
-        }
-        if (lcTagName === 'annotation') {
-          const elm = node;
-          const keepElement = hasValidEncoding(elm);
+        const keepElementOpt = isValidElementOpt(node, lcTagName);
+        keepElementOpt.each(keepElement => {
           evt.allowedTags[lcTagName] = keepElement;
-          if (!keepElement) {
-            elm.remove();
+          if (!keepElement && settings.sanitize) {
+            if (isElement$6(node)) {
+              node.remove();
+            }
+          }
+        });
+      });
+      purify$1.addHook('uponSanitizeAttribute', (_node, event) => {
+        if (isArray$1(settings.extended_mathml_attributes)) {
+          const keepAttribute = settings.extended_mathml_attributes.includes(event.attrName);
+          if (keepAttribute) {
+            event.forceKeepAttr = true;
           }
         }
       });
@@ -24139,6 +24169,7 @@
     const optionOf = (key, schema) => field(key, key, asOption(), schema);
     const optionString = key => optionOf(key, string);
     const optionFunction = key => optionOf(key, functionProcessor);
+    const optionObjOf = (key, objSchema) => optionOf(key, objOf(objSchema));
     const defaulted = (key, fallback) => field(key, key, defaulted$1(fallback), anyValue());
     const defaultedOf = (key, fallback, schema) => field(key, key, defaulted$1(fallback), schema);
     const defaultedNumber = (key, fallback) => defaultedOf(key, fallback, number);
@@ -24213,7 +24244,7 @@
       onAction,
       customField('original', identity)
     ]);
-    const launchButtonFields = baseToolbarButtonFields.concat([defaultedType('contextformbutton')]);
+    const launchButtonFields$1 = baseToolbarButtonFields.concat([defaultedType('contextformbutton')]);
     const launchToggleButtonFields = baseToolbarToggleButtonFields.concat([defaultedType('contextformtogglebutton')]);
     const toggleOrNormal = choose('type', {
       contextformbutton: contextButtonFields,
@@ -24223,7 +24254,7 @@
       optionalLabel,
       requiredArrayOf('commands', toggleOrNormal),
       optionOf('launch', choose('type', {
-        contextformbutton: launchButtonFields,
+        contextformbutton: launchButtonFields$1,
         contextformtogglebutton: launchToggleButtonFields
       })),
       defaultedFunction('onInput', noop),
@@ -24259,8 +24290,10 @@
       contextsizeinputform: contextSizeInputFormFields
     });
 
+    const launchButtonFields = baseToolbarButtonFields.concat([defaultedType('contexttoolbarbutton')]);
     objOf([
       defaultedType('contexttoolbar'),
+      optionObjOf('launch', launchButtonFields),
       requiredOf('items', oneOf([
         string,
         arrOfObj([
@@ -28966,6 +28999,8 @@
         allow_unsafe_link_target: getOption('allow_unsafe_link_target'),
         convert_unsafe_embeds: getOption('convert_unsafe_embeds'),
         convert_fonts_to_spans: getOption('convert_fonts_to_spans'),
+        extended_mathml_attributes: getOption('extended_mathml_attributes'),
+        extended_mathml_elements: getOption('extended_mathml_elements'),
         fix_list_elements: getOption('fix_list_elements'),
         font_size_legacy_values: getOption('font_size_legacy_values'),
         forced_root_block: getOption('forced_root_block'),
@@ -31647,8 +31682,8 @@
       documentBaseURL: null,
       suffix: null,
       majorVersion: '7',
-      minorVersion: '7.2',
-      releaseDate: '2025-03-19',
+      minorVersion: '8.0',
+      releaseDate: 'TBD',
       i18n: I18n,
       activeEditor: null,
       focusedEditor: null,
@@ -32067,7 +32102,7 @@
         if (!done) {
           done = true;
           if (timer !== null) {
-            clearTimeout(timer);
+            window.clearTimeout(timer);
             timer = null;
           }
           completer.apply(null, args);
@@ -32077,7 +32112,7 @@
       const reject = complete(rejectCb);
       const start = (...args) => {
         if (!done && timer === null) {
-          timer = setTimeout(() => reject.apply(null, args), timeout);
+          timer = window.setTimeout(() => reject.apply(null, args), timeout);
         }
       };
       return {
@@ -32292,7 +32327,7 @@ tinymce.IconManager.add('default', {
     'bookmark': '<svg width="24" height="24"><path d="M6 4v17l6-4 6 4V4c0-.6-.4-1-1-1H7a1 1 0 0 0-1 1Z" fill-rule="nonzero"/></svg>',
     'border-style': '<svg width="24" height="24"><g fill-rule="evenodd"><rect width="18" height="2" x="3" y="6" rx="1"/><rect width="2.8" height="2" x="3" y="16" rx="1"/><rect width="2.8" height="2" x="6.8" y="16" rx="1"/><rect width="2.8" height="2" x="10.6" y="16" rx="1"/><rect width="2.8" height="2" x="14.4" y="16" rx="1"/><rect width="2.8" height="2" x="18.2" y="16" rx="1"/><rect width="8" height="2" x="3" y="11" rx="1"/><rect width="8" height="2" x="13" y="11" rx="1"/></g></svg>',
     'border-width': '<svg width="24" height="24"><g fill-rule="evenodd"><rect width="18" height="5" x="3" y="5" rx="1"/><rect width="18" height="3.5" x="3" y="11.5" rx="1"/><rect width="18" height="2" x="3" y="17" rx="1"/></g></svg>',
-    'brightness': '<svg width="24" height="24"><path d="M12 17c.3 0 .5.1.7.3.2.2.3.4.3.7v1c0 .3-.1.5-.3.7a1 1 0 0 1-.7.3 1 1 0 0 1-.7-.3 1 1 0 0 1-.3-.7v-1c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3Zm0-10a1 1 0 0 1-.7-.3A1 1 0 0 1 11 6V5c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3.3 0 .5.1.7.3.2.2.3.4.3.7v1c0 .3-.1.5-.3.7a1 1 0 0 1-.7.3Zm7 4c.3 0 .5.1.7.3.2.2.3.4.3.7 0 .3-.1.5-.3.7a1 1 0 0 1-.7.3h-1a1 1 0 0 1-.7-.3 1 1 0 0 1-.3-.7c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3h1ZM7 12c0 .3-.1.5-.3.7a1 1 0 0 1-.7.3H5a1 1 0 0 1-.7-.3A1 1 0 0 1 4 12c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3h1c.3 0 .5.1.7.3.2.2.3.4.3.7Zm10 3.5.7.8c.2.1.3.4.3.6 0 .3-.1.6-.3.8a1 1 0 0 1-.8.3 1 1 0 0 1-.6-.3l-.8-.7a1 1 0 0 1-.3-.8c0-.2.1-.5.3-.7a1 1 0 0 1 1.4 0Zm-10-7-.7-.8a1 1 0 0 1-.3-.6c0-.3.1-.6.3-.8.2-.2.5-.3.8-.3.2 0 .5.1.7.3l.7.7c.2.2.3.5.3.8 0 .2-.1.5-.3.7a1 1 0 0 1-.7.3 1 1 0 0 1-.8-.3Zm10 0a1 1 0 0 1-.8.3 1 1 0 0 1-.7-.3 1 1 0 0 1-.3-.7c0-.3.1-.6.3-.8l.8-.7c.1-.2.4-.3.6-.3.3 0 .6.1.8.3.2.2.3.5.3.8 0 .2-.1.5-.3.7l-.7.7Zm-10 7c.2-.2.5-.3.8-.3.2 0 .5.1.7.3a1 1 0 0 1 0 1.4l-.8.8a1 1 0 0 1-.6.3 1 1 0 0 1-.8-.3 1 1 0 0 1-.3-.8c0-.2.1-.5.3-.6l.7-.8ZM12 8a4 4 0 0 1 3.7 2.4 4 4 0 0 1 0 3.2A4 4 0 0 1 12 16a4 4 0 0 1-3.7-2.4 4 4 0 0 1 0-3.2A4 4 0 0 1 12 8Zm0 6.5c.7 0 1.3-.2 1.8-.7.5-.5.7-1.1.7-1.8s-.2-1.3-.7-1.8c-.5-.5-1.1-.7-1.8-.7s-1.3.2-1.8.7c-.5.5-.7 1.1-.7 1.8s.2 1.3.7 1.8c.5.5 1.1.7 1.8.7Z" fill-rule="evenodd"/></svg>',
+    'brightness': '<svg width="24" height="24"><path d="M12.7 18.3a1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v1a1 1 0 0 0 .3.7 1 1 0 0 0 .7.3 1 1 0 0 0 .7-.3 1 1 0 0 0 .3-.7v-1a1 1 0 0 0-.3-.7ZM11.3 5.7a1 1 0 0 0 .7.3 1 1 0 0 0 .7-.3A1 1 0 0 0 13 5V4a1 1 0 0 0-.3-.7A1 1 0 0 0 12 3a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v1a1 1 0 0 0 .3.7Zm9.4 5.6a1 1 0 0 0-.7-.3h-1a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7 1 1 0 0 0 .3.7 1 1 0 0 0 .7.3h1a1 1 0 0 0 .7-.3 1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7Zm-15 1.4A1 1 0 0 0 6 12a1 1 0 0 0-.3-.7A1 1 0 0 0 5 11H4a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7 1 1 0 0 0 .3.7 1 1 0 0 0 .7.3h1a1 1 0 0 0 .7-.3Zm13 4.6-.7-.8a1 1 0 0 0-.8-.3 1 1 0 0 0-.7.3 1 1 0 0 0-.3.7 1 1 0 0 0 .3.8l.7.7a1 1 0 0 0 .7.3 1 1 0 0 0 .8-.3 1 1 0 0 0 .3-.8 1 1 0 0 0-.3-.7ZM5.3 6.7l.7.8a1 1 0 0 0 .8.3 1 1 0 0 0 .7-.3 1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.8l-.7-.7A1 1 0 0 0 6 5a1 1 0 0 0-.8.3 1 1 0 0 0-.3.8 1 1 0 0 0 .3.6Zm12 1a1 1 0 0 0 .7-.2l.7-.7A1 1 0 0 0 19 6a1 1 0 0 0-.3-.8 1 1 0 0 0-.8-.3 1 1 0 0 0-.7.3l-.7.7a1 1 0 0 0-.3.8 1 1 0 0 0 .3.7 1 1 0 0 0 .7.2ZM6.7 16.4a1 1 0 0 0-.8.2l-.7.7a1 1 0 0 0-.3.7 1 1 0 0 0 .3.8 1 1 0 0 0 .8.3 1 1 0 0 0 .7-.3l.7-.7a1 1 0 0 0 .3-.8 1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3Z"/><path fill-rule="evenodd" d="M13.6 8.3A4 4 0 0 0 12 8a4 4 0 0 0-1.6.3A4 4 0 0 0 9 9.5a4 4 0 0 0-.6 1A4 4 0 0 0 8 12c0 .6.1 1 .3 1.6a4 4 0 0 0 2.1 2 4 4 0 0 0 1.6.4 4 4 0 0 0 1.6-.3 4 4 0 0 0 2-2.1A4 4 0 0 0 16 12a4 4 0 0 0-.3-1.6 4 4 0 0 0-2.1-2ZM14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/></svg>',
     'browse': '<svg width="24" height="24"><path d="M19 4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4v-2h4V8H5v10h4v2H5a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h14Zm-8 9.4-2.3 2.3a1 1 0 1 1-1.4-1.4l4-4a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1-1.4 1.4L13 13.4V20a1 1 0 0 1-2 0v-6.6Z" fill-rule="nonzero"/></svg>',
     'cancel': '<svg width="24" height="24"><path d="M12 4.6a7.4 7.4 0 1 1 0 14.8 7.4 7.4 0 0 1 0-14.8ZM12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 8L14.8 8l1 1.1-2.7 2.8 2.7 2.7-1.1 1.1-2.7-2.7-2.7 2.7-1-1.1 2.6-2.7-2.7-2.7 1-1.1 2.8 2.7Z" fill-rule="nonzero"/></svg>',
     'cell-background-color': '<svg width="24" height="24"><path d="m15.7 2 1.6 1.6-2.7 2.6 5.9 5.8c.7.7.7 1.7 0 2.4l-6.3 6.1a1.7 1.7 0 0 1-2.4 0l-6.3-6.1c-.7-.7-.7-1.7 0-2.4L15.7 2ZM18 12l-4.5-4L9 12h9ZM4 16s2 2.4 2 3.8C6 21 5.1 22 4 22s-2-1-2-2.2C2 18.4 4 16 4 16Z"/></svg>',
@@ -32310,11 +32345,11 @@ tinymce.IconManager.add('default', {
     'code-sample': '<svg width="24" height="26"><path d="M7.1 11a2.8 2.8 0 0 1-.8 2 2.8 2.8 0 0 1 .8 2v1.7c0 .3.1.6.4.8.2.3.5.4.8.4.3 0 .4.2.4.4v.8c0 .2-.1.4-.4.4-.7 0-1.4-.3-2-.8-.5-.6-.8-1.3-.8-2V15c0-.3-.1-.6-.4-.8-.2-.3-.5-.4-.8-.4a.4.4 0 0 1-.4-.4v-.8c0-.2.2-.4.4-.4.3 0 .6-.1.8-.4.3-.2.4-.5.4-.8V9.3c0-.7.3-1.4.8-2 .6-.5 1.3-.8 2-.8.3 0 .4.2.4.4v.8c0 .2-.1.4-.4.4-.3 0-.6.1-.8.4-.3.2-.4.5-.4.8V11Zm9.8 0V9.3c0-.3-.1-.6-.4-.8-.2-.3-.5-.4-.8-.4a.4.4 0 0 1-.4-.4V7c0-.2.1-.4.4-.4.7 0 1.4.3 2 .8.5.6.8 1.3.8 2V11c0 .3.1.6.4.8.2.3.5.4.8.4.2 0 .4.2.4.4v.8c0 .2-.2.4-.4.4-.3 0-.6.1-.8.4-.3.2-.4.5-.4.8v1.7c0 .7-.3 1.4-.8 2-.6.5-1.3.8-2 .8a.4.4 0 0 1-.4-.4v-.8c0-.2.1-.4.4-.4.3 0 .6-.1.8-.4.3-.2.4-.5.4-.8V15a2.8 2.8 0 0 1 .8-2 2.8 2.8 0 0 1-.8-2Zm-3.3-.4c0 .4-.1.8-.5 1.1-.3.3-.7.5-1.1.5-.4 0-.8-.2-1.1-.5-.4-.3-.5-.7-.5-1.1 0-.5.1-.9.5-1.2.3-.3.7-.4 1.1-.4.4 0 .8.1 1.1.4.4.3.5.7.5 1.2ZM12 13c.4 0 .8.1 1.1.5.4.3.5.7.5 1.1 0 1-.1 1.6-.5 2a3 3 0 0 1-1.1 1c-.4.3-.8.4-1.1.4a.5.5 0 0 1-.5-.5V17a3 3 0 0 0 1-.2l.6-.6c-.6 0-1-.2-1.3-.5-.2-.3-.3-.7-.3-1 0-.5.1-1 .5-1.2.3-.4.7-.5 1.1-.5Z" fill-rule="evenodd"/></svg>',
     'color-levels': '<svg width="24" height="24"><path d="M17.5 11.4A9 9 0 0 1 18 14c0 .5 0 1-.2 1.4 0 .4-.3.9-.5 1.3a6.2 6.2 0 0 1-3.7 3 5.7 5.7 0 0 1-3.2 0A5.9 5.9 0 0 1 7.6 18a6.2 6.2 0 0 1-1.4-2.6 6.7 6.7 0 0 1 0-2.8c0-.4.1-.9.3-1.3a13.6 13.6 0 0 1 2.3-4A20 20 0 0 1 12 4a26.4 26.4 0 0 1 3.2 3.4 18.2 18.2 0 0 1 2.3 4Zm-2 4.5c.4-.7.5-1.4.5-2a7.3 7.3 0 0 0-1-3.2c.2.6.2 1.2.2 1.9a4.5 4.5 0 0 1-1.3 3 5.3 5.3 0 0 1-2.3 1.5 4.9 4.9 0 0 1-2 .1 4.3 4.3 0 0 0 2.4.8 4 4 0 0 0 2-.6 4 4 0 0 0 1.5-1.5Z" fill-rule="evenodd"/></svg>',
     'color-picker': '<svg width="24" height="24"><path d="M12 3a9 9 0 0 0 0 18 1.5 1.5 0 0 0 1.1-2.5c-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8Zm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" fill-rule="nonzero"/></svg>',
-    'color-swatch-remove-color': '<svg width="24" height="24"><path stroke="#000" stroke-width="2" d="M21 3 3 21" fill-rule="evenodd"/></svg>',
+    'color-swatch-remove-color': '<svg width="24" height="24" class="color-swatch-remove-color"><path stroke="#000" stroke-width="2" d="M21 3 3 21" fill-rule="evenodd"/></svg>',
     'color-swatch': '<svg width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="1" fill-rule="evenodd"/></svg>',
     'comment-add': '<svg width="24" height="24"><g fill-rule="nonzero"><path d="m9 19 3-2h7c.6 0 1-.4 1-1V6c0-.6-.4-1-1-1H5a1 1 0 0 0-1 1v10c0 .6.4 1 1 1h4v2Zm-2 4v-4H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-6.4L7 23Z"/><path d="M13 10h2a1 1 0 0 1 0 2h-2v2a1 1 0 0 1-2 0v-2H9a1 1 0 0 1 0-2h2V8a1 1 0 0 1 2 0v2Z"/></g></svg>',
     'comment': '<svg width="24" height="24"><path fill-rule="nonzero" d="m9 19 3-2h7c.6 0 1-.4 1-1V6c0-.6-.4-1-1-1H5a1 1 0 0 0-1 1v10c0 .6.4 1 1 1h4v2Zm-2 4v-4H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-6.4L7 23Z"/></svg>',
-    'contrast': '<svg width="24" height="24"><path d="M12 4a7.8 7.8 0 0 1 5.7 2.3A8 8 0 1 1 12 4Zm-6 8a6 6 0 0 0 6 6V6a6 6 0 0 0-6 6Z" fill-rule="evenodd"/></svg>',
+    'contrast': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12 4a7.8 7.8 0 0 1 5.7 2.3A8 8 0 0 1 19.4 9c.4 1 .6 2 .6 3.1s-.2 2.1-.6 3.1a8 8 0 0 1-1.7 2.6 8 8 0 0 1-2.6 1.7 7.8 7.8 0 0 1-3.1.6 7.8 7.8 0 0 1-3.1-.6 8 8 0 0 1-2.6-1.7A8 8 0 0 1 4.6 15 7.8 7.8 0 0 1 4 12c0-1.1.2-2.1.6-3.1a8 8 0 0 1 1.7-2.6A8 8 0 0 1 9 4.6 7.8 7.8 0 0 1 12 4Zm-6 8a6 6 0 0 0 1.8 4.2 6 6 0 0 0 1.9 1.3 5.8 5.8 0 0 0 2.3.5V6c-.8 0-1.6.2-2.3.5a6 6 0 0 0-2 1.3 6 6 0 0 0-1.2 1.9A5.8 5.8 0 0 0 6 12Z"/></svg>',
     'copy': '<svg width="24" height="24"><path d="M16 3H6a2 2 0 0 0-2 2v11h2V5h10V3Zm1 4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V9c0-1.2.9-2 2-2h7Zm0 12V9h-7v10h7Z" fill-rule="nonzero"/></svg>',
     'crop': '<svg width="24" height="24"><path d="M17 8v7h2c.6 0 1 .4 1 1s-.4 1-1 1h-2v2c0 .6-.4 1-1 1a1 1 0 0 1-1-1v-2H7V9H5a1 1 0 1 1 0-2h2V5c0-.6.4-1 1-1s1 .4 1 1v2h7l3-3 1 1-3 3ZM9 9v5l5-5H9Zm1 6h5v-5l-5 5Z" fill-rule="evenodd"/></svg>',
     'cut-column': '<svg width="24" height="24"><path fill-rule="evenodd" d="M7.2 4.5c.9 0 1.6.4 2.2 1A3.7 3.7 0 0 1 10.5 8v.5l1 1 4-4 1-.5a3.3 3.3 0 0 1 2 0c.4 0 .7.3 1 .5L17 8h4v13h-6V10l-1.5 1.5.5.5v4l-2.5-2.5-1 1v.5c0 .4 0 .8-.3 1.2-.2.5-.4.9-.8 1.2-.6.7-1.3 1-2.2 1-.8.2-1.5 0-2-.6l-.5-.8-.2-1c0-.4 0-.8.3-1.2A3.9 3.9 0 0 1 7 12.7c.5-.2 1-.3 1.5-.2l1-1-1-1c-.5 0-1 0-1.5-.2-.5-.1-1-.4-1.4-.9-.4-.3-.6-.7-.8-1.2L4.5 7c0-.4 0-.7.2-1 0-.3.3-.6.5-.8.5-.5 1.2-.8 2-.7Zm12.3 5h-3v10h3v-10ZM8 13.8h-.3l-.4.2a2.8 2.8 0 0 0-.7.4v.1a2.8 2.8 0 0 0-.6.8l-.1.4v.7l.2.5.5.2h.7a2.6 2.6 0 0 0 .8-.3 2.4 2.4 0 0 0 .7-.7 2.5 2.5 0 0 0 .3-.8 1.5 1.5 0 0 0 0-.8 1 1 0 0 0-.2-.4 1 1 0 0 0-.5-.2H8Zm3.5-3.7c-.4 0-.7.1-1 .4-.3.3-.4.6-.4 1s.1.7.4 1c.3.3.6.4 1 .4s.7-.1 1-.4c.3-.3.4-.6.4-1s-.1-.7-.4-1c-.3-.3-.6-.4-1-.4ZM7 5.8h-.4a1 1 0 0 0-.5.3 1 1 0 0 0-.2.5v.7a2.5 2.5 0 0 0 .3.8l.2.3h.1l.4.4.4.2.4.1h.7L9 9l.2-.4a1.6 1.6 0 0 0 0-.8 2.6 2.6 0 0 0-.3-.8A2.5 2.5 0 0 0 7.7 6l-.4-.1H7Z"/></svg>',
@@ -32340,7 +32375,7 @@ tinymce.IconManager.add('default', {
     'format': '<svg width="24" height="24"><path fill-rule="evenodd" d="M17 5a1 1 0 0 1 0 2h-4v11a1 1 0 0 1-2 0V7H7a1 1 0 1 1 0-2h10Z"/></svg>',
     'fullscreen': '<svg width="24" height="24"><path d="m15.3 10-1.2-1.3 2.9-3h-2.3a.9.9 0 1 1 0-1.7H19c.5 0 .9.4.9.9v4.4a.9.9 0 1 1-1.8 0V7l-2.9 3Zm0 4 3 3v-2.3a.9.9 0 1 1 1.7 0V19c0 .5-.4.9-.9.9h-4.4a.9.9 0 1 1 0-1.8H17l-3-2.9 1.3-1.2ZM10 15.4l-2.9 3h2.3a.9.9 0 1 1 0 1.7H5a.9.9 0 0 1-.9-.9v-4.4a.9.9 0 1 1 1.8 0V17l2.9-3 1.2 1.3ZM8.7 10 5.7 7v2.3a.9.9 0 0 1-1.7 0V5c0-.5.4-.9.9-.9h4.4a.9.9 0 0 1 0 1.8H7l3 2.9-1.3 1.2Z" fill-rule="nonzero"/></svg>',
     'gallery': '<svg width="24" height="24"><path fill-rule="nonzero" d="m5 15.7 2.3-2.2c.3-.3.7-.3 1 0L11 16l5.1-5c.3-.4.8-.4 1 0l2 1.9V8H5v7.7ZM5 18V19h3l1.8-1.9-2-2L5 17.9Zm14-3-2.5-2.4-6.4 6.5H19v-4ZM4 6h16c.6 0 1 .4 1 1v13c0 .6-.4 1-1 1H4a1 1 0 0 1-1-1V7c0-.6.4-1 1-1Zm6 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4ZM4.5 4h15a.5.5 0 1 1 0 1h-15a.5.5 0 0 1 0-1Zm2-2h11a.5.5 0 1 1 0 1h-11a.5.5 0 0 1 0-1Z"/></svg>',
-    'gamma': '<svg width="24" height="24"><path d="M4 3h16c.6 0 1 .4 1 1v16c0 .6-.4 1-1 1H4a1 1 0 0 1-1-1V4c0-.6.4-1 1-1Zm1 2v14h14V5H5Zm6.5 11.8V14L9.2 8.7a5.1 5.1 0 0 0-.4-.8l-.1-.2H8v-1l.3-.1.3-.1h.7a1 1 0 0 1 .6.5l.1.3a8.5 8.5 0 0 1 .3.6l1.9 4.6 2-5.2a1 1 0 0 1 1-.6.5.5 0 0 1 .5.6L13 14v2.8a.7.7 0 0 1-1.4 0Z" fill-rule="nonzero"/></svg>',
+    'gamma': '<svg height="24" width="24"><path d="M11.5 16.3a.7.7 0 1 0 1.4 0V14l2.7-6a.7.7 0 1 0-1.2-.6l-2.2 5-2.3-4.9C9.6 7 8.7 7 8 7.2v1.1c.8-.2.9 0 1.2 1l2.3 4.7z"/><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2h14v14H5z" fill-rule="evenodd"/></svg>',
     'help': '<svg width="24" height="24"><g fill-rule="evenodd"><path d="M12 5.5a6.5 6.5 0 0 0-6 9 6.3 6.3 0 0 0 1.4 2l1 1a6.3 6.3 0 0 0 3.6 1 6.5 6.5 0 0 0 6-9 6.3 6.3 0 0 0-1.4-2l-1-1a6.3 6.3 0 0 0-3.6-1ZM12 4a7.8 7.8 0 0 1 5.7 2.3A8 8 0 1 1 12 4Z"/><path d="M9.6 9.7a.7.7 0 0 1-.7-.8c0-1.1 1.5-1.8 3.2-1.8 1.8 0 3.2.8 3.2 2.4 0 1.4-.4 2.1-1.5 2.8-.2 0-.3.1-.3.2a2 2 0 0 0-.8.8.8.8 0 0 1-1.4-.6c.3-.7.8-1 1.3-1.5l.4-.2c.7-.4.8-.6.8-1.5 0-.5-.6-.9-1.7-.9-.5 0-1 .1-1.4.3-.2 0-.3.1-.3.2v-.2c0 .4-.4.8-.8.8Z" fill-rule="nonzero"/><circle cx="12" cy="16" r="1"/></g></svg>',
     'highlight-bg-color': '<svg width="24" height="24"><g fill-rule="evenodd"><path class="tox-icon-highlight-bg-color__color" d="M3 18h18v3H3z"/><path fill-rule="nonzero" d="M7.7 16.7H3l3.3-3.3-.7-.8L10.2 8l4 4.1-4 4.2c-.2.2-.6.2-.8 0l-.6-.7-1.1 1.1zm5-7.5L11 7.4l3-2.9a2 2 0 0 1 2.6 0L18 6c.7.7.7 2 0 2.7l-2.9 2.9-1.8-1.8-.5-.6"/></g></svg>',
     'home': '<svg width="24" height="24"><path fill-rule="nonzero" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
@@ -32351,7 +32386,7 @@ tinymce.IconManager.add('default', {
     'info': '<svg width="24" height="24"><path d="M12 4a7.8 7.8 0 0 1 5.7 2.3A8 8 0 1 1 12 4Zm-1 3v2h2V7h-2Zm3 10v-1h-1v-5h-3v1h1v4h-1v1h4Z" fill-rule="evenodd"/></svg>',
     'insert-character': '<svg width="24" height="24"><path d="M15 18h4l1-2v4h-6v-3.3l1.4-1a6 6 0 0 0 1.8-2.9 6.3 6.3 0 0 0-.1-4.1 5.8 5.8 0 0 0-3-3.2c-.6-.3-1.3-.5-2.1-.5a5.1 5.1 0 0 0-3.9 1.8 6.3 6.3 0 0 0-1.3 6 6.2 6.2 0 0 0 1.8 3l1.4.9V20H4v-4l1 2h4v-.5l-2-1L5.4 15A6.5 6.5 0 0 1 4 11c0-1 .2-1.9.6-2.7A7 7 0 0 1 6.3 6C7.1 5.4 8 5 9 4.5c1-.3 2-.5 3.1-.5a8.8 8.8 0 0 1 5.7 2 7 7 0 0 1 1.7 2.3 6 6 0 0 1 .2 4.8c-.2.7-.6 1.3-1 1.9a7.6 7.6 0 0 1-3.6 2.5v.5Z" fill-rule="evenodd"/></svg>',
     'insert-time': '<svg width="24" height="24"><g fill-rule="nonzero"><path d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm0 2a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z"/><path d="M16 12h-3V7c0-.6-.4-1-1-1a1 1 0 0 0-1 1v7h5c.6 0 1-.4 1-1s-.4-1-1-1Z"/></g></svg>',
-    'invert': '<svg width="24" height="24"><path d="M18 19.3 16.5 18a5.8 5.8 0 0 1-3.1 1.9 6.1 6.1 0 0 1-5.5-1.6A5.8 5.8 0 0 1 6 14v-.3l.1-1.2A13.9 13.9 0 0 1 7.7 9l-3-3 .7-.8 2.8 2.9 9 8.9 1.5 1.6-.7.6Zm0-5.5v.3l-.1 1.1-.4 1-1.2-1.2a4.3 4.3 0 0 0 .2-1v-.2c0-.4 0-.8-.2-1.3l-.5-1.4a14.8 14.8 0 0 0-3-4.2L12 6a26.1 26.1 0 0 0-2.2 2.5l-1-1a20.9 20.9 0 0 1 2.9-3.3L12 4l1 .8a22.2 22.2 0 0 1 4 5.4c.6 1.2 1 2.4 1 3.6Z" fill-rule="evenodd"/></svg>',
+    'invert': '<svg height="24" width="24"><path d="M5 4 3.6 5.4l3.9 4C6.6 10.7 6 12.3 6 14a6 6 0 0 0 10.3 4.2l1.9 1.8 1.4-1.4z" fill-rule="evenodd"/><path d="M13.4 8.4c.9 1 1.6 2.1 2 3.2l2.6 2.6V14c0-5-6-10-6-10s-1 .8-2.1 2l1.4 1.5.7-.7 1.4 1.6z"/></svg>',
     'italic': '<svg width="24" height="24"><path d="m16.7 4.7-.1.9h-.3c-.6 0-1 0-1.4.3-.3.3-.4.6-.5 1.1l-2.1 9.8v.6c0 .5.4.8 1.4.8h.2l-.2.8H8l.2-.8h.2c1.1 0 1.8-.5 2-1.5l2-9.8.1-.5c0-.6-.4-.8-1.4-.8h-.3l.2-.9h5.8Z" fill-rule="evenodd"/></svg>',
     'language': '<svg width="24" height="24"><path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm4.3 13.3c-.5 1-1.2 2-2 2.9a7.5 7.5 0 0 0 3.2-2.1l-.2-.2a6 6 0 0 0-1-.6Zm-8.6 0c-.5.2-.9.5-1.2.8.9 1 2 1.7 3.2 2a10 10 0 0 1-2-2.8Zm3.6-.8c-.8 0-1.6.1-2.2.3.5 1 1.2 1.9 2.1 2.7Zm1.5 0v3c.9-.8 1.6-1.7 2.1-2.7-.6-.2-1.4-.3-2.1-.3Zm-6-2.7H4.5c.2 1 .5 2.1 1 3h.3l1.3-1a10 10 0 0 1-.3-2Zm12.7 0h-2.3c0 .7-.1 1.4-.3 2l1.6 1.1c.5-1 .9-2 1-3.1Zm-3.8 0h-3V14c1 0 2 .1 2.7.4.2-.5.3-1 .3-1.6Zm-4.4 0h-3l.3 1.6c.8-.3 1.7-.4 2.7-.4v-1.3Zm-5.5-5c-.7 1-1.1 2.2-1.3 3.5h2.3c0-1 .2-1.8.5-2.6l-1.5-1Zm2.9 1.4v.1c-.2.6-.4 1.3-.4 2h3V9.4c-1 0-1.8-.1-2.6-.3Zm6.6 0h-.1l-2.4.3v1.8h3l-.5-2.1Zm3-1.4-.3.1-1.3.8c.3.8.5 1.6.5 2.6h2.3a7.5 7.5 0 0 0-1.3-3.5Zm-9 0 2 .2V5.5a9 9 0 0 0-2 2.2Zm3.5-2.3V8c.6 0 1.3 0 1.9-.2a9 9 0 0 0-2-2.3Zm-3-.7h-.1c-1.1.4-2.1 1-3 1.8l1.2.7a10 10 0 0 1 1.9-2.5Zm4.4 0 .1.1a10 10 0 0 1 1.8 2.4l1.1-.7a7.5 7.5 0 0 0-3-1.8Z"/></svg>',
     'line-height': '<svg width="24" height="24"><path d="M21 5a1 1 0 0 1 .1 2H13a1 1 0 0 1-.1-2H21zm0 4a1 1 0 0 1 .1 2H13a1 1 0 0 1-.1-2H21zm0 4a1 1 0 0 1 .1 2H13a1 1 0 0 1-.1-2H21zm0 4a1 1 0 0 1 .1 2H13a1 1 0 0 1-.1-2H21zM7 3.6l3.7 3.7a1 1 0 0 1-1.3 1.5h-.1L8 7.3v9.2l1.3-1.3a1 1 0 0 1 1.3 0h.1c.4.4.4 1 0 1.3v.1L7 20.4l-3.7-3.7a1 1 0 0 1 1.3-1.5h.1L6 16.7V7.4L4.7 8.7a1 1 0 0 1-1.3 0h-.1a1 1 0 0 1 0-1.3v-.1L7 3.6z"/></svg>',
@@ -32420,7 +32455,7 @@ tinymce.IconManager.add('default', {
     'selected': '<svg width="24" height="24"><path fill-rule="nonzero" d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2Zm3.6 10.9L7 12.3a.7.7 0 0 0-1 1L9.6 17 18 8.6a.7.7 0 0 0 0-1 .7.7 0 0 0-1 0l-7.4 7.3Z"/></svg>',
     'send': '<svg width="24" height="24"><path fill-rule="evenodd" clip-rule="evenodd" d="m13.3 22 7-18.3-18.3 7L9 15l4.3 7ZM18 6.8l-.7-.7L9.4 14l.7.7L18 6.8Z"/></svg>',
     'settings': '<svg width="24" height="24"><path d="M11 6h8c.6 0 1 .4 1 1s-.4 1-1 1h-8v.3c0 .2 0 .3-.2.5l-.6.2H7.8c-.3 0-.4 0-.6-.2a.7.7 0 0 1-.2-.6V8H5a1 1 0 1 1 0-2h2v-.3c0-.2 0-.3.2-.5l.5-.2h2.5c.3 0 .4 0 .6.2l.2.5V6ZM8 8h2V6H8v2Zm9 2.8v.2h2c.6 0 1 .4 1 1s-.4 1-1 1h-2v.3c0 .2 0 .3-.2.5l-.6.2h-2.4c-.3 0-.4 0-.6-.2a.7.7 0 0 1-.2-.6V13H5a1 1 0 0 1 0-2h8v-.3c0-.2 0-.3.2-.5l.6-.2h2.4c.3 0 .4 0 .6.2l.2.6ZM14 13h2v-2h-2v2Zm-3 2.8v.2h8c.6 0 1 .4 1 1s-.4 1-1 1h-8v.3c0 .2 0 .3-.2.5l-.6.2H7.8c-.3 0-.4 0-.6-.2a.7.7 0 0 1-.2-.6V18H5a1 1 0 0 1 0-2h2v-.3c0-.2 0-.3.2-.5l.5-.2h2.5c.3 0 .4 0 .6.2l.2.6ZM8 18h2v-2H8v2Z" fill-rule="evenodd"/></svg>',
-    'sharpen': '<svg width="24" height="24"><path d="m16 6 4 4-8 9-8-9 4-4h8Zm-4 10.2 5.5-6.2-.1-.1H12v-.3h5.1l-.2-.2H12V9h4.6l-.2-.2H12v-.3h4.1l-.2-.2H12V8h3.6l-.2-.2H8.7L6.5 10l.1.1H12v.3H6.9l.2.2H12v.3H7.3l.2.2H12v.3H7.7l.3.2h4v.3H8.2l.2.2H12v.3H8.6l.3.2H12v.3H9l.3.2H12v.3H9.5l.2.2H12v.3h-2l.2.2H12v.3h-1.6l.2.2H12v.3h-1.1l.2.2h.9v.3h-.7l.2.2h.5v.3h-.3l.3.2Z" fill-rule="evenodd"/></svg>',
+    'sharpen': '<svg width="24" height="24"><path fill-rule="evenodd" d="m16 6 4 4-8 9-8-9 4-4h8Zm-4 10.2 5.5-6.2-.1-.1H12v-.3h5.1l-.2-.2H12V9h4.6l-.2-.2H12v-.3h4.1l-.2-.2H12V8h3.6l-.2-.2H8.7L6.5 10l.1.1H12v.3H6.9l.2.2H12v.3H7.3l.2.2H12v.3H7.7l.3.2h4v.3H8.2l.2.2H12v.3H8.6l.3.2H12v.3H9l.3.2H12v.3H9.5l.2.2H12v.3h-2l.2.2H12v.3h-1.6l.2.2H12v.3h-1.1l.2.2h.9v.3h-.7l.2.2h.5v.3h-.3l.3.2Z"/></svg>',
     'sourcecode': '<svg width="24" height="24"><g fill-rule="nonzero"><path d="M9.8 15.7c.3.3.3.8 0 1-.3.4-.9.4-1.2 0l-4.4-4.1a.8.8 0 0 1 0-1.2l4.4-4.2c.3-.3.9-.3 1.2 0 .3.3.3.8 0 1.1L6 12l3.8 3.7ZM14.2 15.7c-.3.3-.3.8 0 1 .4.4.9.4 1.2 0l4.4-4.1c.3-.3.3-.9 0-1.2l-4.4-4.2a.8.8 0 0 0-1.2 0c-.3.3-.3.8 0 1.1L18 12l-3.8 3.7Z"/></g></svg>',
     'spell-check': '<svg width="24" height="24"><path d="M6 8v3H5V5c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3h2c.3 0 .5.1.7.3.2.2.3.4.3.7v6H8V8H6Zm0-3v2h2V5H6Zm13 0h-3v5h3v1h-3a1 1 0 0 1-.7-.3 1 1 0 0 1-.3-.7V5c0-.3.1-.5.3-.7.2-.2.4-.3.7-.3h3v1Zm-5 1.5-.1.7c-.1.2-.3.3-.6.3.3 0 .5.1.6.3l.1.7V10c0 .3-.1.5-.3.7a1 1 0 0 1-.7.3h-3V4h3c.3 0 .5.1.7.3.2.2.3.4.3.7v1.5ZM13 10V8h-2v2h2Zm0-3V5h-2v2h2Zm3 5 1 1-6.5 7L7 15.5l1.3-1 2.2 2.2L16 12Z" fill-rule="evenodd"/></svg>',
     'strike-through': '<svg width="24" height="24"><g fill-rule="evenodd"><path d="M15.6 8.5c-.5-.7-1-1.1-1.3-1.3-.6-.4-1.3-.6-2-.6-2.7 0-2.8 1.7-2.8 2.1 0 1.6 1.8 2 3.2 2.3 4.4.9 4.6 2.8 4.6 3.9 0 1.4-.7 4.1-5 4.1A6.2 6.2 0 0 1 7 16.4l1.5-1.1c.4.6 1.6 2 3.7 2 1.6 0 2.5-.4 3-1.2.4-.8.3-2-.8-2.6-.7-.4-1.6-.7-2.9-1-1-.2-3.9-.8-3.9-3.6C7.6 6 10.3 5 12.4 5c2.9 0 4.2 1.6 4.7 2.4l-1.5 1.1Z"/><path d="M5 11h14a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" fill-rule="nonzero"/></g></svg>',
@@ -32466,6 +32501,7 @@ tinymce.IconManager.add('default', {
     'add-file': '<svg height="24" width="24"><path d="M2 7h2V4h3V2H4a2 2 0 0 0-2 2zm20 0h-2V4h-3V2h3a2 2 0 0 1 2 2zm0 2h-2v6h2zm0 8h-2v3h-3v2h3a2 2 0 0 0 2-2zM2 9h2v6H2zm0 8h2v3h3v2H4a2 2 0 0 1-2-2zm7 5v-2h6v2zm6-20v2H9V2zM6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M2 7h2V4h3V2H4a2 2 0 0 0-2 2zm20 0h-2V4h-3V2h3a2 2 0 0 1 2 2zm0 2h-2v6h2zm0 8h-2v3h-3v2h3a2 2 0 0 0 2-2zM2 9h2v6H2zm0 8h2v3h3v2H4a2 2 0 0 1-2-2zm7 5v-2h6v2zm6-20v2H9V2zM6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/><path d="M6 17h12l-4-5-3 3.8-2-2.6z"/></svg>',
     'adjustments': '<svg width="24" height="24"><path d="M16 11a3 3 0 1 1 2.8-4H21v2h-2.2a3 3 0 0 1-2.8 2Zm0-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2ZM3 9h8V7H3v2Zm5 10a3 3 0 1 0-2.8-4H3v2h2.2A3 3 0 0 0 8 19Zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm13 0h-8v-2h8v2Z"/></svg>',
     'alt-text': '<svg width="24" height="24"><path d="M3 20a2 2 0 0 1-1.4-.6A2 2 0 0 1 1 18V6c0-.6.2-1 .6-1.4A2 2 0 0 1 3 4h18c.6 0 1 .2 1.4.6.4.4.6.9.6 1.4v12c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6H3Zm0-2h18V6H3v12Zm1.5-3H6v-1.5h1.5V15H9v-5a1 1 0 0 0-.3-.7A1 1 0 0 0 8 9H5.5a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v5ZM6 12v-1.5h1.5V12H6Z"/><path d="M11 15V9h1.3v4.5h2V15H11Zm5.8-4.5V15h1.4v-4.5h1.3V9h-4v1.5h1.3Z"/></svg>',
+    'auto-image-enhancement': '<svg width="24" height="24"><path d="M7.7 10.6a5.8 5.8 0 0 0 5.7 5.7A5.8 5.8 0 0 0 7.7 22 5.8 5.8 0 0 0 2 16.3a5.8 5.8 0 0 0 5.7-5.7ZM15.5 2c.3 3 3.3 6 6.5 6.4-3.2.5-6.2 3.4-6.5 6.5-.3-3.4-3-6-6.4-6.5 3.3-.5 6.1-3 6.4-6.4Z"/></svg>',
     'blur': '<svg width="24" height="24"><path d="M19.3 9.3a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7A1 1 0 0 0 20 9a1 1 0 0 0-.7.3Zm-16 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3A1 1 0 0 0 5 10a1 1 0 0 0-.3-.7A1 1 0 0 0 4 9a1 1 0 0 0-.7.3Zm16 6a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3Zm-16 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3A1 1 0 0 0 5 16a1 1 0 0 0-.3-.7A1 1 0 0 0 4 15a1 1 0 0 0-.7.3Zm5-11A1 1 0 0 0 8 5a1 1 0 0 0 1 1c.3 0 .5-.1.7-.3A1 1 0 0 0 10 5a1 1 0 0 0-.3-.7A1 1 0 0 0 9 4a1 1 0 0 0-.7.3Zm6 0a1 1 0 0 0-.3.7 1 1 0 0 0 1 1c.3 0 .5-.1.7-.3A1 1 0 0 0 16 5a1 1 0 0 0-.3-.7A1 1 0 0 0 15 4a1 1 0 0 0-.7.3Zm-6 16a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7A1 1 0 0 0 9 20a1 1 0 0 0-.7.3Zm6 0a1 1 0 0 0-.3.7c0 .3.1.5.3.7.2.2.4.3.7.3s.5-.1.7-.3a1 1 0 0 0 .3-.7 1 1 0 0 0-.3-.7 1 1 0 0 0-.7-.3 1 1 0 0 0-.7.3ZM7.6 8.6A2 2 0 0 0 7 10c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 9 8a2 2 0 0 0-1.4.6Zm0 6A2 2 0 0 0 7 16c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 9 14a2 2 0 0 0-1.4.6Zm6-6A2 2 0 0 0 13 10c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 15 8a2 2 0 0 0-1.4.6Zm0 6A2 2 0 0 0 13 16c0 .6.2 1 .6 1.4.4.4.8.6 1.4.6s1-.2 1.4-.6c.4-.4.6-.8.6-1.4s-.2-1-.6-1.4A2 2 0 0 0 15 14a2 2 0 0 0-1.4.6Z"/></svg>',
     'box': '<svg width="24" height="24"><path d="M3.8 7a1 1 0 0 0-.7.6l-.1 3V13.8a3.5 3.5 0 0 0 4 2.7c.8-.2 1.4-.5 2-1l.3-.3.3.2c.7.7 1.4 1 2.4 1.1 1.2 0 2.4-.6 3-1.6.9-1.2.8-2.8 0-4a3.7 3.7 0 0 0-2-1.2c-.4-.1-1.2-.1-1.6 0a3.4 3.4 0 0 0-1.7 1l-.3.2-.2-.1c-.4-.5-1.2-1-2-1.1-.6-.2-1.5 0-2 .2H5V9c0-1.3 0-1.3-.3-1.6a1 1 0 0 0-1-.3Zm12 2.6c-.3.2-.5.4-.6.8v.6l.9 1 .7 1v.1l-.8 1-.7 1a1 1 0 0 0 0 .7 1 1 0 0 0 1.3.6c.2 0 .3-.2 1-1l.5-.7.6.8.7.8c.4.3 1 .3 1.3 0l.2-.3a1 1 0 0 0 0-.8l-.8-1.2-.7-1a26 26 0 0 0 1.5-2 .8.8 0 0 0 .1-.4c0-.4-.1-.7-.5-.9H20c-.4 0-.5 0-1.2.8l-.7.8-.6-.7-.7-.9a1 1 0 0 0-1 0Zm-9 2 .4.1c.3.1.6.5.7.8l.1.6v.6c-.6 1-2 1.2-2.7.3-.3-.3-.3-.5-.3-1v-.5c.3-.5.7-.8 1.1-1a1.5 1.5 0 0 1 .7 0Zm5.7 0c.4 0 .8.4 1 .8l.2.6-.1.7c-.5.9-1.6 1.1-2.4.6a1.4 1.4 0 0 1-.6-1.1 1.4 1.4 0 0 1 .5-1.2 1.5 1.5 0 0 1 1.4-.4Z"/></svg>',
     'camera': '<svg height="24" width="24"><g clip-rule="evenodd" fill-rule="evenodd"><path d="M10 5.4a1 1 0 0 1 .8-.4h4.4a1 1 0 0 1 .8.4l1.2 1.8h2.3A2.5 2.5 0 0 1 22 9.6v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 4 17.6v-8a2.5 2.5 0 0 1 2.5-2.4h2.3zM11.4 7l-1.2 1.7a1 1 0 0 1-.8.5h-3a.5.5 0 0 0-.4.4v8a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.4h-2.9a1 1 0 0 1-.8-.5L14.6 7z"/><path d="M13 11.4a2 2 0 1 0 0 3.8 2 2 0 0 0 0-3.8zm-4 1.9a4 4 0 1 1 8 0 4 4 0 0 1-8 0z"/></g></svg>',
@@ -32478,16 +32514,17 @@ tinymce.IconManager.add('default', {
     'folder': '<svg width="24" height="24"><path fill-rule="evenodd" d="M5.6 6a.6.6 0 0 0-.6.6v11.2a.6.6 0 0 0 .6.6h12.8a.6.6 0 0 0 .6-.6V9a.6.6 0 0 0-.6-.6h-7.2a1 1 0 0 1-.8-.4L9 6H5.6ZM3.8 4.8A2.6 2.6 0 0 1 5.6 4h4a1 1 0 0 1 .8.4l1.3 2h6.7A2.6 2.6 0 0 1 21 9v8.8a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 17.8V6.6c0-.7.3-1.4.8-1.8Z" clip-rule="evenodd"/></svg>',
     'google-drive': '<svg height="24" width="24"><path clip-rule="evenodd" d="M8.7 4.5a1 1 0 0 1 .9-.5h4.8a1 1 0 0 1 .9.5l5.6 9.7a1 1 0 0 1 0 1l-2.4 4.2a1 1 0 0 1-.9.5H6.4a1 1 0 0 1-.9-.5l-2.4-4.2a1 1 0 0 1 0-1zM10.2 6l-4.5 7.7h2.5L12.7 6h-2.5zm4.2 1 4.4 7.7-1.2 2.2-4.4-7.7zM12 11.2l-1.5 2.5h3zm2.6 4.5H5.7L7 17.9h8.9l-1.3-2.2z" fill-rule="evenodd"/></svg>',
     'google-photos': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12.4 3c-.8 0-1.4.7-1.4 1.4v3.2a5 5 0 0 0-8 4c0 .8.6 1.4 1.4 1.4h3.2a5 5 0 0 0-1 3 5 5 0 0 0 5 5c.8 0 1.4-.6 1.4-1.4v-3.2a5 5 0 0 0 8-4c0-.8-.7-1.4-1.4-1.4h-3.2a5 5 0 0 0-4-8Zm.6 8V5a3 3 0 0 1 2.4 3 3 3 0 0 1-2.4 3Zm-2 0H5a3 3 0 0 1 3-2.4 3 3 0 0 1 3 2.4Zm2 2a3 3 0 0 0 3 2.4 3 3 0 0 0 3-2.4h-6Zm-4.4 3a3 3 0 0 1 2.4-3v6a3 3 0 0 1-2.4-3Z" clip-rule="evenodd"/></svg>',
-    'grayscale': '<svg height="24" width="24"><g clip-rule="evenodd" fill-rule="evenodd"><path d="M12 15v2a5 5 0 0 0 0-10v2a3 3 0 1 0 0 6zm0 0a3 3 0 1 0 0-6z"/><path d="M5 21a2 2 0 0 1-1.4-.6A2 2 0 0 1 3 19V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5 3h14c.6 0 1 .2 1.4.6.4.4.6.8.6 1.4v14c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6zm7-2h7V5h-7v2a5 5 0 0 0 0 10z"/></g></svg>',
+    'grayscale': '<svg height="24" width="24"><path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm12.4 0H19v3.6zm-2.8 0h-2.2l8.6 8.6v-2.2zm-5 0H5l14 14v-2.6z" fill-rule="evenodd"/></svg>',
     'huddle': '<svg height="24" width="24"><path d="M10.3 5.6V8h.8v-2l3.5 2 4.3-2.5L14.6 3l-4.3 2.6zM14.6 8v5.2l4.3-2.6V5.6L14.6 8zM6 13.3v2.5h.9v-2l3.4 2 4.3-2.5-4.3-2.6zm4.3 2.6V21l4.3-2.6v-5.1l-4.3 2.6z"/></svg>',
     'image-decorative': '<svg width="24" height="24"><path d="M12 10c.3 0 .5-.1.7-.3A1 1 0 0 0 13 9a1 1 0 0 0-.3-.7A1 1 0 0 0 12 8a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7 1 1 0 0 0 1 1Zm0 6a3 3 0 0 1-1.8-.5A3 3 0 0 1 9.1 14a2 2 0 0 0-.2 0 3 3 0 0 1-2.5-1 3 3 0 0 1-.9-2.2A3 3 0 0 1 6.2 9a3.4 3.4 0 0 1-.5-1 3 3 0 0 1-.2-1 3 3 0 0 1 1-2.2A3 3 0 0 1 8.8 4H9a3 3 0 0 1 1.1-1.4A3 3 0 0 1 12 2a3 3 0 0 1 1.8.5c.5.4.9.9 1.1 1.5h.2a3 3 0 0 1 2.5.8 3 3 0 0 1 .9 2.3c0 .3 0 .7-.2 1a2.8 2.8 0 0 1-.5.9l.5 1 .2 1a3 3 0 0 1-1 2.2 3 3 0 0 1-2.4.9 1.8 1.8 0 0 0-.2 0 3 3 0 0 1-1.1 1.4 3 3 0 0 1-1.8.5Zm0 7a8.7 8.7 0 0 1 .7-3.5 9.2 9.2 0 0 1 2-2.8 9.2 9.2 0 0 1 2.8-2A8.6 8.6 0 0 1 21 14a8.6 8.6 0 0 1-.7 3.5 9.2 9.2 0 0 1-2 2.8 9.2 9.2 0 0 1-2.8 2 8.6 8.6 0 0 1-3.5.7Zm2.5-2.5a6.8 6.8 0 0 0 2.4-1.5 6.8 6.8 0 0 0 1.7-2.6c-1 .4-1.8 1-2.6 1.7a6.8 6.8 0 0 0-1.5 2.4ZM12 23a8.6 8.6 0 0 0-.7-3.5 9.2 9.2 0 0 0-2-2.9 9.2 9.2 0 0 0-2.8-1.9A8.6 8.6 0 0 0 3 14a8.7 8.7 0 0 0 .7 3.5 9.2 9.2 0 0 0 2 2.9 9.2 9.2 0 0 0 2.8 1.9 8.6 8.6 0 0 0 3.5.7Zm-2.5-2.5A6.8 6.8 0 0 1 7.2 19a6.8 6.8 0 0 1-1.6-2.6c.9.4 1.7 1 2.5 1.7a6.8 6.8 0 0 1 1.6 2.4Zm5.9-8.4c.3 0 .5-.1.8-.4.2-.2.3-.5.3-.8 0-.2 0-.4-.2-.6a1.3 1.3 0 0 0-.5-.4l-.8-.4a3 3 0 0 1-.2.5 3.8 3.8 0 0 1-.2.5 2.5 2.5 0 0 1-.3.4 4 4 0 0 1-.4.4l.8.6a.8.8 0 0 0 .3.1h.4ZM15 8.5l.8-.4.5-.4.2-.6a1.1 1.1 0 0 0-.3-.8 1 1 0 0 0-.8-.4 1.1 1.1 0 0 0-.7.2l-.8.6.4.4.3.4a3.9 3.9 0 0 1 .4 1Zm-4-2.3a2.7 2.7 0 0 1 1-.2 2.7 2.7 0 0 1 1 .2l.2-1.1c0-.3-.1-.6-.4-.8A1.2 1.2 0 0 0 12 4c-.3 0-.6.1-.8.3-.3.2-.4.5-.3.8v1.1Zm1 7.8c.3 0 .6-.1.8-.3.3-.2.4-.5.3-.8v-1.1a2.7 2.7 0 0 1-1.1.2 2.7 2.7 0 0 1-1-.2l-.2 1.1c0 .3.1.6.4.8.2.2.5.3.8.3ZM9 8.5a3 3 0 0 1 .4-1l.3-.4.4-.4-.8-.6A.9.9 0 0 0 9 6a1.2 1.2 0 0 0-.3 0c-.4 0-.6 0-.9.3a1.1 1.1 0 0 0-.3.8c0 .2 0 .4.2.6l.5.4.9.4Zm-.3 3.6H9l.3-.2.8-.6a5.5 5.5 0 0 1-.4-.4 2.1 2.1 0 0 1-.3-.4 3.8 3.8 0 0 1-.2-.5 3 3 0 0 1-.1-.5l-1 .4-.4.4a1.1 1.1 0 0 0-.2.6c0 .3.2.6.4.8.2.2.4.4.7.4Z"/></svg>',
     'image-enhancements': '<svg height="24" width="24"><path d="M5.3 21a2 2 0 0 1-1.5-.6 2 2 0 0 1-.6-1.4V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5.2 3H13v2H5.2v14h14v-8h2v8c0 .6-.1 1-.5 1.4a2 2 0 0 1-1.4.6z"/><path d="M11 9a4 4 0 0 0 4 4 4 4 0 0 0-4 4 4 4 0 0 0-4-4 4 4 0 0 0 4-4zm5.5-6c.2 2.1 2.2 4.1 4.5 4.5-2.3.4-4.3 2.4-4.5 4.5A5.2 5.2 0 0 0 12 7.5 5.2 5.2 0 0 0 16.5 3z"/></svg>',
     'instagram': '<svg height="24" width="24"><path clip-rule="evenodd" d="M10.1 9a4 4 0 1 1 4.4 6.6A4 4 0 0 1 10.1 9zm2.2 1.3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill-rule="evenodd"/><path d="M16 9.3a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6z"/><path clip-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zm3-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" fill-rule="evenodd"/></svg>',
     'onedrive': '<svg height="24" width="24"><path d="M4 13.7h1zm16 .7h-1zm-11.7-4A4.4 4.4 0 0 1 12.1 8V6a6.4 6.4 0 0 0-5.6 3.4l1.8 1zM12.1 8c2 0 3.6 1.4 4 2.8l2-.5A6.3 6.3 0 0 0 12 6v2zm8.1 6.8-9.8-5.5-1 1.8 9.8 5.5 1-1.8zm-9.8-5.5A5 5 0 0 0 3 13.7h2A3 3 0 0 1 9.5 11l1-1.8zM3 13.7a5 5 0 0 0 1 2.8l1.5-1.1a3 3 0 0 1-.5-1.7zm15.8 1.6a2.3 2.3 0 0 1-2 1.4v2a4.3 4.3 0 0 0 3.9-2.6zm-2 1.4H8v2h8.7zm-8.8 0a3 3 0 0 1-2.5-1.3L4 16.5a5 5 0 0 0 4 2.2v-2zm12.7-.6c.2-.6.3-1.1.3-1.7h-2c0 .3 0 .6-.2.9zm.3-1.7c0-3-3.1-5.1-6-4l.8 1.9a2.3 2.3 0 0 1 3.2 2h2zm-6-4L4.4 15l.8 1.9 10.7-4.6-.7-1.8z"/></svg>',
+    'photo-filter': '<svg height="24" width="24"><path d="M4.4 21c-.3 0-.6-.2-.9-.5-.3-.3-.4-.6-.5-.9L19.6 3c.3 0 .6.3.9.5l.5.9zM3 14.7v-2.8L11.9 3h2.8zM3 7V5c0-.6.2-1 .6-1.4A2 2 0 0 1 5 3h2zm14 14 4-4v2c0 .6-.2 1-.6 1.4a2 2 0 0 1-1.4.6zm-7.7 0L21 9.3v2.8L12 21z"/></svg>',
     'revert-changes': '<svg height="24" width="24"><path d="m8.9 18.8.4 3.2H13v-2h-2v-2.6a4.6 4.6 0 0 1-1.6-.6 5.9 5.9 0 0 1-1.3-1l-2.5 1-1-1.7 2.2-1.6a4 4 0 0 1-.2-.7 5.9 5.9 0 0 1 0-.8v-.8l.2-.8-2.2-1.6 1-1.7 2.5 1a6 6 0 0 1 1.2-.9l1.4-.6.4-2.6h2l.3 2.6A5.6 5.6 0 0 1 16 8.2l2.5-1 1 1.6-2.2 1.7.2.7v.8a5 5 0 0 1 0 1h2a2.6 2.6 0 0 0 0-.5V11.3l2.6-2-2.8-4.7-3 1.3a8.2 8.2 0 0 0-.5-.4 3.8 3.8 0 0 0-.6-.3L14.8 2H9.3l-.4 3.2a5 5 0 0 0-1.2.7l-3-1.3L2 9.4l2.6 2V12.6l-2.6 2 2.7 4.7 3-1.3a8 8 0 0 0 1.2.7z"/><path d="m14.5 20.3 2.1-2-2.1-2.2 1.4-1.4 2.1 2.1 2.1-2 1.4 1.3-2 2.1 2 2.1-1.4 1.4-2.1-2-2.1 2zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>',
-    'saturation': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12 20.5a6 6 0 1 1-5.9-10.2 6 6 0 1 1 11.8 0A6 6 0 1 1 12 20.5Zm-1.1-7.7a6 6 0 0 0-.2.3 4.3 4.3 0 0 1-2-1.3c.9.1 1.6.5 2.2 1Zm2.4.3a6 6 0 0 0-.2-.3 4.3 4.3 0 0 1 2.2-1 4.3 4.3 0 0 1-2 1.3ZM12.2 15a6.3 6.3 0 0 1-.4 0 4.3 4.3 0 0 0 .2 2.5 4.3 4.3 0 0 0 .2-2.5Zm.9 4.2a6 6 0 0 0 .8-4.5 6 6 0 0 0 3.4-2.8 4.3 4.3 0 0 1-1.3 8.4 4.3 4.3 0 0 1-2.9-1.1Zm-2.2 0a4.3 4.3 0 1 1-4.2-7.3 6 6 0 0 0 3.4 2.8 6 6 0 0 0 .8 4.5Zm-3-9.2a4.3 4.3 0 1 1 8.3 0 6 6 0 0 0-4.2 1.5A6 6 0 0 0 7.8 10Z" clip-rule="evenodd"/></svg>',
+    'saturation': '<svg width="24" height="24"><path fill-rule="evenodd" d="M12 20.5a6 6 0 1 1-5.9-10.2 6 6 0 1 1 11.8 0A6 6 0 1 1 12 20.5Zm-1.1-7.7a6 6 0 0 0-.2.3 4.3 4.3 0 0 1-2-1.3c.9.1 1.6.5 2.2 1Zm2.4.3a6 6 0 0 0-.2-.3 4.3 4.3 0 0 1 2.2-1 4.3 4.3 0 0 1-2 1.3ZM12.2 15a6.3 6.3 0 0 1-.4 0 4.3 4.3 0 0 0 .2 2.5 4.3 4.3 0 0 0 .2-2.5Zm.9 4.2a6 6 0 0 0 .8-4.5 6 6 0 0 0 3.4-2.8 4.3 4.3 0 0 1-1.3 8.4 4.3 4.3 0 0 1-2.9-1.1Zm-2.2 0a4.3 4.3 0 1 1-4.2-7.3 6 6 0 0 0 3.4 2.8 6 6 0 0 0 .8 4.5Zm-3-9.2a4.3 4.3 0 1 1 8.3 0 6 6 0 0 0-4.2 1.5A6 6 0 0 0 7.8 10Z"/></svg>',
     'transform-image': '<svg height="24" width="24"><path d="M3 21v-6h2V9H3V3h6v2h6V3h6v6h-2v6h2v6h-6v-2H9v2zm6-4h6v-2h2V9h-2V7H9v2H7v6h2zM5 7h2V5H5zm12 0h2V5h-2zm0 12h2v-2h-2zM5 19h2v-2H5z"/></svg>',
-    'vibrance': '<svg height="24" width="24"><path clip-rule="evenodd" d="M12 20 22 4H2zm2.6-8 1.3-2H8l1.3 2h5.2zm-1.2 2h-2.8l1.4 2.2zm5-8L17 8H7L5.6 6h12.8z" fill-rule="evenodd"/></svg>',
+    'vibrance': '<svg height="24" width="24"><path d="M12 20 22 4H2zm2.6-8 1.3-2H8l1.3 2h5.2zm-1.2 2h-2.8l1.4 2.2zm5-8L17 8H7L5.6 6h12.8z" fill-rule="evenodd"/></svg>',
     'vk': '<svg width="24" height="24"><path fill-rule="evenodd" d="M14.8 17.4a2 2 0 0 1-1.3.7 8 8 0 0 1-7.7-3.6c-1.4-2-2.2-4.4-2.6-5.7L3 8.6A2 2 0 0 1 5 6h2.5c.4 0 .8.1 1.2.4A2 2 0 0 1 9.8 6h3.5a2 2 0 0 1 1.4.6 2 2 0 0 1 1.5-.6h2.4a2 2 0 0 1 2 2.5c-.5 1.5-1.2 2.6-1.8 3.6a12.5 12.5 0 0 1 2 3.2A2 2 0 0 1 19 18h-2.6a2 2 0 0 1-1.3-.5 6.9 6.9 0 0 1-.3-.2Zm.5-2.5-1.2-1a3 3 0 0 0-.8-.2v2.4h-1.7a5.6 5.6 0 0 1-.3 0c-3-.7-4.7-3.7-5.6-6.1A38.1 38.1 0 0 1 5 8.1V8h2.5a80.5 80.5 0 0 1 1.2 2.5c.6 1.2 1.2 2 2 2.1V9l-.9-1h3.5v4.1a5 5 0 0 0 .4-.3c.7-.7 1.2-1.4 1.6-2.2l.2-.3.7-1.3h2.4a8.5 8.5 0 0 1-.8 2l-1.3 2-.3.3a10.5 10.5 0 0 1 2.8 3.8h-2.6l-.8-.9a20.6 20.6 0 0 0-.3-.3Z" clip-rule="evenodd"/></svg>',
     'warmth': '<svg height="24" width="24"><path d="M12 21.1c-1.4 0-2.6-.5-3.6-1.5s-1.5-2.1-1.5-3.5c0-.8.2-1.6.6-2.2A5 5 0 0 1 8.9 12v-6c0-.8.3-1.5 1-2.1a2.9 2.9 0 0 1 2-.9c.9 0 1.6.3 2.2.9.5.6.8 1.3.8 2.1v6a5 5 0 0 1 1.5 1.8A4.9 4.9 0 0 1 17 16c0 1.4-.5 2.6-1.4 3.5s-2.2 1.5-3.6 1.5zm-3-5h6c0-.5-.2-1-.4-1.4a3 3 0 0 0-.9-1l-.8-.6v-7a1 1 0 0 0-.3-.7A1 1 0 0 0 12 5a1 1 0 0 0-.7.3 1 1 0 0 0-.3.7v7l-.8.6a2.9 2.9 0 0 0-.9 1 3 3 0 0 0-.3 1.4z"/></svg>',
     'user': '<svg width="24" height="24"><path d="M12 24a12 12 0 1 1 0-24 12 12 0 0 1 0 24Zm-8.7-5.3a11 11 0 0 0 17.4 0C19.4 16.3 14.6 15 12 15c-2.6 0-7.4 1.3-8.7 3.7ZM12 13c2.2 0 4-2 4-4.5S14.2 4 12 4 8 6 8 8.5 9.8 13 12 13Z" fill-rule="nonzero"/></svg>',
@@ -32517,7 +32554,7 @@ __webpack_require__(4);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -40665,7 +40702,7 @@ __webpack_require__(4);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -42187,7 +42224,74 @@ __webpack_require__(4);
       };
     };
 
-    var global$a = tinymce.util.Tools.resolve('tinymce.ThemeManager');
+    var ClosestOrAncestor = (is, ancestor, scope, a, isRoot) => {
+      if (is(scope, a)) {
+        return Optional.some(scope);
+      } else if (isFunction(isRoot) && isRoot(scope)) {
+        return Optional.none();
+      } else {
+        return ancestor(scope, a, isRoot);
+      }
+    };
+
+    const ancestor$2 = (scope, predicate, isRoot) => {
+      let element = scope.dom;
+      const stop = isFunction(isRoot) ? isRoot : never;
+      while (element.parentNode) {
+        element = element.parentNode;
+        const el = SugarElement.fromDom(element);
+        if (predicate(el)) {
+          return Optional.some(el);
+        } else if (stop(el)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+    const closest$4 = (scope, predicate, isRoot) => {
+      const is = (s, test) => test(s);
+      return ClosestOrAncestor(is, ancestor$2, scope, predicate, isRoot);
+    };
+    const sibling$1 = (scope, predicate) => {
+      const element = scope.dom;
+      if (!element.parentNode) {
+        return Optional.none();
+      }
+      return child$1(SugarElement.fromDom(element.parentNode), x => !eq(scope, x) && predicate(x));
+    };
+    const child$1 = (scope, predicate) => {
+      const pred = node => predicate(SugarElement.fromDom(node));
+      const result = find$5(scope.dom.childNodes, pred);
+      return result.map(SugarElement.fromDom);
+    };
+    const descendant$1 = (scope, predicate) => {
+      const descend = node => {
+        for (let i = 0; i < node.childNodes.length; i++) {
+          const child = SugarElement.fromDom(node.childNodes[i]);
+          if (predicate(child)) {
+            return Optional.some(child);
+          }
+          const res = descend(node.childNodes[i]);
+          if (res.isSome()) {
+            return res;
+          }
+        }
+        return Optional.none();
+      };
+      return descend(scope.dom);
+    };
+
+    const first$1 = selector => one(selector);
+    const ancestor$1 = (scope, selector, isRoot) => ancestor$2(scope, e => is(e, selector), isRoot);
+    const sibling = (scope, selector) => sibling$1(scope, e => is(e, selector));
+    const child = (scope, selector) => child$1(scope, e => is(e, selector));
+    const descendant = (scope, selector) => one(selector, scope);
+    const closest$3 = (scope, selector, isRoot) => {
+      const is$1 = (element, selector) => is(element, selector);
+      return ClosestOrAncestor(is$1, ancestor$1, scope, selector, isRoot);
+    };
+
+    var global$b = tinymce.util.Tools.resolve('tinymce.ThemeManager');
 
     const value$3 = value => {
       const applyHelper = fn => fn(value);
@@ -42837,7 +42941,7 @@ __webpack_require__(4);
     };
 
     const ensureIsRoot = isRoot => isFunction(isRoot) ? isRoot : never;
-    const ancestor$2 = (scope, transform, isRoot) => {
+    const ancestor = (scope, transform, isRoot) => {
       let element = scope.dom;
       const stop = ensureIsRoot(isRoot);
       while (element.parentNode) {
@@ -42852,10 +42956,10 @@ __webpack_require__(4);
       }
       return Optional.none();
     };
-    const closest$4 = (scope, transform, isRoot) => {
+    const closest$2 = (scope, transform, isRoot) => {
       const current = transform(scope);
       const stop = ensureIsRoot(isRoot);
-      return current.orThunk(() => stop(scope) ? Optional.none() : ancestor$2(scope, transform, stop));
+      return current.orThunk(() => stop(scope) ? Optional.none() : ancestor(scope, transform, stop));
     };
 
     const isSource = (component, simulatedEvent) => eq(component.element, simulatedEvent.event.target);
@@ -43049,7 +43153,7 @@ __webpack_require__(4);
       return run$1(name, (component, simulatedEvent) => {
         const ev = simulatedEvent.event;
         const target = component.getSystem().getByDom(ev.target).getOrThunk(() => {
-          const closest = closest$4(ev.target, el => component.getSystem().getByDom(el).toOptional(), never);
+          const closest = closest$2(ev.target, el => component.getSystem().getByDom(el).toOptional(), never);
           return closest.getOr(component);
         });
         f(component, target, simulatedEvent);
@@ -44540,78 +44644,11 @@ __webpack_require__(4);
     const build$1 = spec => buildOrPatch(spec, Optional.none());
     const premade = premade$1;
 
-    var ClosestOrAncestor = (is, ancestor, scope, a, isRoot) => {
-      if (is(scope, a)) {
-        return Optional.some(scope);
-      } else if (isFunction(isRoot) && isRoot(scope)) {
-        return Optional.none();
-      } else {
-        return ancestor(scope, a, isRoot);
-      }
-    };
-
-    const ancestor$1 = (scope, predicate, isRoot) => {
-      let element = scope.dom;
-      const stop = isFunction(isRoot) ? isRoot : never;
-      while (element.parentNode) {
-        element = element.parentNode;
-        const el = SugarElement.fromDom(element);
-        if (predicate(el)) {
-          return Optional.some(el);
-        } else if (stop(el)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-    const closest$3 = (scope, predicate, isRoot) => {
-      const is = (s, test) => test(s);
-      return ClosestOrAncestor(is, ancestor$1, scope, predicate, isRoot);
-    };
-    const sibling$1 = (scope, predicate) => {
-      const element = scope.dom;
-      if (!element.parentNode) {
-        return Optional.none();
-      }
-      return child$1(SugarElement.fromDom(element.parentNode), x => !eq(scope, x) && predicate(x));
-    };
-    const child$1 = (scope, predicate) => {
-      const pred = node => predicate(SugarElement.fromDom(node));
-      const result = find$5(scope.dom.childNodes, pred);
-      return result.map(SugarElement.fromDom);
-    };
-    const descendant$1 = (scope, predicate) => {
-      const descend = node => {
-        for (let i = 0; i < node.childNodes.length; i++) {
-          const child = SugarElement.fromDom(node.childNodes[i]);
-          if (predicate(child)) {
-            return Optional.some(child);
-          }
-          const res = descend(node.childNodes[i]);
-          if (res.isSome()) {
-            return res;
-          }
-        }
-        return Optional.none();
-      };
-      return descend(scope.dom);
-    };
-
-    const closest$2 = (scope, predicate, isRoot) => closest$3(scope, predicate, isRoot).isSome();
-
-    const first$1 = selector => one(selector);
-    const ancestor = (scope, selector, isRoot) => ancestor$1(scope, e => is(e, selector), isRoot);
-    const sibling = (scope, selector) => sibling$1(scope, e => is(e, selector));
-    const child = (scope, selector) => child$1(scope, e => is(e, selector));
-    const descendant = (scope, selector) => one(selector, scope);
-    const closest$1 = (scope, selector, isRoot) => {
-      const is$1 = (element, selector) => is(element, selector);
-      return ClosestOrAncestor(is$1, ancestor, scope, selector, isRoot);
-    };
+    const closest$1 = (scope, predicate, isRoot) => closest$4(scope, predicate, isRoot).isSome();
 
     const attribute = 'aria-controls';
     const find$1 = queryElem => {
-      const dependent = closest$3(queryElem, elem => {
+      const dependent = closest$4(queryElem, elem => {
         if (!isElement$1(elem)) {
           return false;
         }
@@ -44640,7 +44677,7 @@ __webpack_require__(4);
     };
 
     const isAriaPartOf = (component, queryElem) => find$1(queryElem).exists(owner => isPartOf$1(component, owner));
-    const isPartOf$1 = (component, queryElem) => closest$2(queryElem, el => eq(el, component.element), never) || isAriaPartOf(component, queryElem);
+    const isPartOf$1 = (component, queryElem) => closest$1(queryElem, el => eq(el, component.element), never) || isAriaPartOf(component, queryElem);
 
     const nu$6 = (x, y, bubble, direction, placement, boundsRestriction, labelPrefix, alwaysFit = false) => ({
       x,
@@ -45356,7 +45393,7 @@ __webpack_require__(4);
       AttributeValue['BottomToTop'] = 'bottomtotop';
     }(AttributeValue || (AttributeValue = {})));
     const Attribute = 'data-alloy-vertical-dir';
-    const isBottomToTopDir = el => closest$2(el, current => isElement$1(current) && get$g(current, 'data-alloy-vertical-dir') === AttributeValue.BottomToTop);
+    const isBottomToTopDir = el => closest$1(el, current => isElement$1(current) && get$g(current, 'data-alloy-vertical-dir') === AttributeValue.BottomToTop);
 
     const schema$y = () => optionObjOf('layouts', [
       required$1('onLtr'),
@@ -47258,7 +47295,7 @@ __webpack_require__(4);
         option$3('visibilitySelector')
       ].concat([cyclicField]);
       const isVisible = (tabbingConfig, element) => {
-        const target = tabbingConfig.visibilitySelector.bind(sel => closest$1(element, sel)).getOr(element);
+        const target = tabbingConfig.visibilitySelector.bind(sel => closest$3(element, sel)).getOr(element);
         return get$e(target) > 0;
       };
       const findInitial = (component, tabbingConfig) => {
@@ -47266,7 +47303,7 @@ __webpack_require__(4);
         const visibles = filter$2(tabstops, elem => isVisible(tabbingConfig, elem));
         return Optional.from(visibles[tabbingConfig.firstTabstop]);
       };
-      const findCurrent = (component, tabbingConfig) => tabbingConfig.focusManager.get(component).bind(elem => closest$1(elem, tabbingConfig.selector));
+      const findCurrent = (component, tabbingConfig) => tabbingConfig.focusManager.get(component).bind(elem => closest$3(elem, tabbingConfig.selector));
       const isTabstop = (tabbingConfig, element) => isVisible(tabbingConfig, element) && tabbingConfig.useTabstopAt(element);
       const focusIn = (component, tabbingConfig, _tabbingState) => {
         findInitial(component, tabbingConfig).each(target => {
@@ -47464,7 +47501,7 @@ __webpack_require__(4);
         gridConfig.focusManager.set(component, first);
       });
     };
-    const findCurrent$1 = (component, gridConfig) => gridConfig.focusManager.get(component).bind(elem => closest$1(elem, gridConfig.selector));
+    const findCurrent$1 = (component, gridConfig) => gridConfig.focusManager.get(component).bind(elem => closest$3(elem, gridConfig.selector));
     const execute$3 = (component, simulatedEvent, gridConfig, _gridState) => findCurrent$1(component, gridConfig).bind(focused => gridConfig.execute(component, simulatedEvent, focused));
     const doMove$2 = cycle => (element, focused, gridConfig, gridState) => locateVisible(element, focused, gridConfig.selector).bind(identified => cycle(identified.candidates, identified.index, gridState.getNumRows().getOr(gridConfig.initSize.numRows), gridState.getNumColumns().getOr(gridConfig.initSize.numColumns)));
     const handleTab = (_component, _simulatedEvent, gridConfig) => gridConfig.captureTab ? Optional.some(true) : Optional.none();
@@ -47522,7 +47559,7 @@ __webpack_require__(4);
       defaulted('allowHorizontal', true),
       defaulted('cycles', true)
     ];
-    const findCurrent = (component, flowConfig) => flowConfig.focusManager.get(component).bind(elem => closest$1(elem, flowConfig.selector));
+    const findCurrent = (component, flowConfig) => flowConfig.focusManager.get(component).bind(elem => closest$3(elem, flowConfig.selector));
     const execute$2 = (component, simulatedEvent, flowConfig) => findCurrent(component, flowConfig).bind(focused => flowConfig.execute(component, simulatedEvent, focused));
     const focusIn$3 = (component, flowConfig, _state) => {
       flowConfig.getInitial(component).orThunk(() => descendant(component.element, flowConfig.selector)).each(first => {
@@ -47609,7 +47646,7 @@ __webpack_require__(4);
     const toMatrix = (rows, matrixConfig) => map$2(rows, row => descendants(row, matrixConfig.selectors.cell));
     const doMove = (ifCycle, ifMove) => (element, focused, matrixConfig) => {
       const move = matrixConfig.cycles ? ifCycle : ifMove;
-      return closest$1(focused, matrixConfig.selectors.row).bind(inRow => {
+      return closest$3(focused, matrixConfig.selectors.row).bind(inRow => {
         const cellsInRow = descendants(inRow, matrixConfig.selectors.cell);
         return findIndex(cellsInRow, focused).bind(colIndex => {
           const allRows = descendants(element, matrixConfig.selectors.row);
@@ -48692,7 +48729,7 @@ __webpack_require__(4);
       const onLeft = (container, item) => inside(item.element) ? Optional.none() : collapseLeft(container, item);
       const onEscape = (container, item) => collapseLeft(container, item).orThunk(() => detail.onEscape(container, item).map(() => container));
       const keyOnItem = f => (container, simulatedEvent) => {
-        return closest$1(simulatedEvent.getSource(), `.${ detail.markers.item }`).bind(target => container.getSystem().getByDom(target).toOptional().bind(item => f(container, item).map(always)));
+        return closest$3(simulatedEvent.getSource(), `.${ detail.markers.item }`).bind(target => container.getSystem().getByDom(target).toOptional().bind(item => f(container, item).map(always)));
       };
       const events = derive$2([
         run$1(focus(), (tmenu, simulatedEvent) => {
@@ -49078,13 +49115,13 @@ __webpack_require__(4);
       }
     });
 
-    var global$9 = tinymce.util.Tools.resolve('tinymce.util.Delay');
+    var global$a = tinymce.util.Tools.resolve('tinymce.util.Delay');
 
-    var global$8 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
+    var global$9 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
 
-    var global$7 = tinymce.util.Tools.resolve('tinymce.EditorManager');
+    var global$8 = tinymce.util.Tools.resolve('tinymce.EditorManager');
 
-    var global$6 = tinymce.util.Tools.resolve('tinymce.Env');
+    var global$7 = tinymce.util.Tools.resolve('tinymce.Env');
 
     var ToolbarMode$1;
     (function (ToolbarMode) {
@@ -49102,8 +49139,8 @@ __webpack_require__(4);
     const option$2 = name => editor => editor.options.get(name);
     const wrapOptional = fn => editor => Optional.from(fn(editor));
     const register$f = editor => {
-      const isPhone = global$6.deviceType.isPhone();
-      const isMobile = global$6.deviceType.isTablet() || isPhone;
+      const isPhone = global$7.deviceType.isPhone();
+      const isMobile = global$7.deviceType.isTablet() || isPhone;
       const registerOption = editor.options.register;
       const stringOrFalseProcessor = value => isString(value) || value === false;
       const stringOrNumberProcessor = value => isString(value) || isNumber(value);
@@ -49118,7 +49155,7 @@ __webpack_require__(4);
       });
       registerOption('width', {
         processor: stringOrNumberProcessor,
-        default: global$8.DOM.getStyle(editor.getElement(), 'width')
+        default: global$9.DOM.getStyle(editor.getElement(), 'width')
       });
       registerOption('min_height', {
         processor: 'number',
@@ -49258,7 +49295,7 @@ __webpack_require__(4);
       });
       registerOption('resize', {
         processor: value => value === 'both' || isBoolean(value),
-        default: !global$6.deviceType.isTouch()
+        default: !global$7.deviceType.isTouch()
       });
       registerOption('sidebar_show', { processor: 'string' });
       registerOption('help_accessibility', {
@@ -49321,7 +49358,7 @@ __webpack_require__(4);
           return editor.documentBaseURI.toAbsolute(skinUrl);
         } else {
           const skin = editor.options.get('skin');
-          return global$7.baseURL + '/skins/ui/' + skin;
+          return global$8.baseURL + '/skins/ui/' + skin;
         }
       }
     };
@@ -51210,7 +51247,7 @@ __webpack_require__(4);
 
     const sanitizeHtmlString = html => purify().sanitize(html);
 
-    var global$5 = tinymce.util.Tools.resolve('tinymce.util.I18n');
+    var global$6 = tinymce.util.Tools.resolve('tinymce.util.I18n');
 
     const rtlTransform = {
       'indent': true,
@@ -51228,7 +51265,7 @@ __webpack_require__(4);
     const defaultIcon = icons => () => get$h(icons, defaultIconName).getOr('!not found!');
     const getIconName = (name, icons) => {
       const lcName = name.toLowerCase();
-      if (global$5.isRtl()) {
+      if (global$6.isRtl()) {
         const rtlName = ensureTrailing(lcName, '-rtl');
         return has$2(icons, rtlName) ? rtlName : lcName;
       } else {
@@ -51244,7 +51281,7 @@ __webpack_require__(4);
       const icons = iconProvider();
       return lookupIcon(name, icons).or(fallbackIcon).getOrThunk(defaultIcon(icons));
     };
-    const needsRtlTransform = iconName => global$5.isRtl() ? has$2(rtlTransform, iconName) : false;
+    const needsRtlTransform = iconName => global$6.isRtl() ? has$2(rtlTransform, iconName) : false;
     const addFocusableBehaviour = () => config('add-focusable', [runOnAttached(comp => {
         child(comp.element, 'svg').each(svg => set$9(svg, 'focusable', 'false'));
       })]);
@@ -51265,7 +51302,7 @@ __webpack_require__(4);
         ])
       };
     };
-    const render$3 = (iconName, spec, iconProvider, fallbackIcon = Optional.none()) => renderIcon$3(spec, iconName, iconProvider(), fallbackIcon);
+    const render$4 = (iconName, spec, iconProvider, fallbackIcon = Optional.none()) => renderIcon$3(spec, iconName, iconProvider(), fallbackIcon);
     const renderFirst = (iconNames, spec, iconProvider) => {
       const icons = iconProvider();
       const iconName = find$5(iconNames, name => has$2(icons, getIconName(name, icons)));
@@ -51362,7 +51399,7 @@ __webpack_require__(4);
           ],
           attributes: { 'aria-label': detail.backstageProvider.translate('Close') }
         },
-        components: [render$3('close', {
+        components: [render$4('close', {
             tag: 'span',
             classes: ['tox-icon']
           }, detail.iconProvider)],
@@ -51579,7 +51616,7 @@ __webpack_require__(4);
           });
         }
         if (isNumber(settings.timeout) && settings.timeout > 0) {
-          global$9.setEditorTimeout(editor, () => {
+          global$a.setEditorTimeout(editor, () => {
             close();
           }, settings.timeout);
         }
@@ -51681,6 +51718,8 @@ __webpack_require__(4);
     const tickedClass = 'tox-collection__item--enabled';
     const groupHeadingClass = 'tox-collection__group-heading';
     const iconClass = 'tox-collection__item-icon';
+    const imageClass = 'tox-collection__item-image';
+    const imageSelectorClasll = 'tox-collection__item-image-selector';
     const textClass = 'tox-collection__item-label';
     const accessoryClass = 'tox-collection__item-accessory';
     const caretClass = 'tox-collection__item-caret';
@@ -51952,6 +51991,27 @@ __webpack_require__(4);
             })]
         }]
     });
+    const forImageSelector = columns => ({
+      dom: {
+        tag: 'div',
+        classes: [
+          'tox-menu',
+          'tox-image-selector-menu'
+        ]
+      },
+      components: [{
+          dom: {
+            tag: 'div',
+            classes: ['tox-image-selector']
+          },
+          components: [Menu.parts.items({
+              preprocess: columns !== 'auto' ? chunk({
+                tag: 'div',
+                classes: ['tox-image-selector__row']
+              }, columns) : identity
+            })]
+        }]
+    });
     const forToolbar = columns => ({
       dom: {
         tag: 'div',
@@ -52048,7 +52108,7 @@ __webpack_require__(4);
         },
         components: [
           renderMenuSearcher({
-            i18n: global$5.translate,
+            i18n: global$6.translate,
             placeholder: searchField.placeholder
           }),
           {
@@ -52107,6 +52167,14 @@ __webpack_require__(4);
           components: structure.components,
           items
         };
+      } else if (menuLayout.menuType === 'imageselector' && columns !== 'auto') {
+        const structure = forImageSelector(columns);
+        return {
+          value,
+          dom: structure.dom,
+          components: structure.components,
+          items
+        };
       } else if (menuLayout.menuType === 'normal' && columns === 'auto') {
         const structure = forCollection(columns, items);
         return {
@@ -52147,6 +52215,7 @@ __webpack_require__(4);
     const text = requiredString('text');
     const title = requiredString('title');
     const icon = requiredString('icon');
+    const url = requiredString('url');
     const value$1 = requiredString('value');
     const fetch$1 = requiredFunction('fetch');
     const getSubmenuItems = requiredFunction('getSubmenuItems');
@@ -52240,7 +52309,7 @@ __webpack_require__(4);
       onAction,
       customField('original', identity)
     ]);
-    const launchButtonFields = baseToolbarButtonFields.concat([defaultedType('contextformbutton')]);
+    const launchButtonFields$1 = baseToolbarButtonFields.concat([defaultedType('contextformbutton')]);
     const launchToggleButtonFields = baseToolbarToggleButtonFields.concat([defaultedType('contextformtogglebutton')]);
     const toggleOrNormal = choose$1('type', {
       contextformbutton: contextButtonFields,
@@ -52250,7 +52319,7 @@ __webpack_require__(4);
       optionalLabel,
       requiredArrayOf('commands', toggleOrNormal),
       optionOf('launch', choose$1('type', {
-        contextformbutton: launchButtonFields,
+        contextformbutton: launchButtonFields$1,
         contextformtogglebutton: launchToggleButtonFields
       })),
       defaultedFunction('onInput', noop),
@@ -52287,8 +52356,10 @@ __webpack_require__(4);
     });
     const createContextForm = spec => asRaw('ContextForm', contextFormSchema, spec);
 
+    const launchButtonFields = baseToolbarButtonFields.concat([defaultedType('contexttoolbarbutton')]);
     const contextToolbarSchema = objOf([
       defaultedType('contexttoolbar'),
+      optionObjOf('launch', launchButtonFields),
       requiredOf('items', oneOf([
         string,
         arrOfObj([
@@ -52305,6 +52376,7 @@ __webpack_require__(4);
     });
     const contextToolbarToSpec = contextToolbar => ({
       ...contextToolbar,
+      launch: contextToolbar.launch.getOrUndefined(),
       items: isString(contextToolbar.items) ? contextToolbar.items : map$2(contextToolbar.items, toolbarGroupBackToSpec)
     });
     const createContextToolbar = spec => asRaw('ContextToolbar', contextToolbarSchema, spec);
@@ -52360,7 +52432,8 @@ __webpack_require__(4);
     const choiceMenuItemSchema = objOf([
       type,
       active,
-      optionalIcon
+      optionalIcon,
+      optionalLabel
     ].concat(commonMenuItemFields));
     const createChoiceMenuItem = spec => asRaw('choicemenuitem', choiceMenuItemSchema, spec);
 
@@ -52378,11 +52451,37 @@ __webpack_require__(4);
         optionArrayOf('colors', anyValue())
       ])
     ].concat(baseFields);
+    const imageSelectFields = [
+      optionFunction('select'),
+      requiredObjOf('initData', [
+        requiredNumber('columns'),
+        defaultedArrayOf('items', [], anyValue())
+      ])
+    ].concat(baseFields);
     const fancyMenuItemSchema = choose$1('fancytype', {
       inserttable: insertTableFields,
-      colorswatch: colorSwatchFields
+      colorswatch: colorSwatchFields,
+      imageselect: imageSelectFields
     });
     const createFancyMenuItem = spec => asRaw('fancymenuitem', fancyMenuItemSchema, spec);
+
+    const imageMenuItemSchema = objOf([
+      type,
+      active,
+      url,
+      optionalLabel,
+      optionalTooltip
+    ].concat(commonMenuItemFields));
+    const resetImageItemSchema = objOf([
+      type,
+      active,
+      icon,
+      label,
+      optionalTooltip,
+      value$1
+    ].concat(commonMenuItemFields));
+    const createImageMenuItem = spec => asRaw('imagemenuitem', imageMenuItemSchema, spec);
+    const createResetImageItem = spec => asRaw('resetimageitem', resetImageItemSchema, spec);
 
     const menuItemSchema = objOf([
       type,
@@ -52591,8 +52690,77 @@ __webpack_require__(4);
       }
     });
 
+    const image = image => new Promise((resolve, reject) => {
+      const loaded = () => {
+        destroy();
+        resolve(image);
+      };
+      const listeners = [
+        bind(image, 'load', loaded),
+        bind(image, 'error', () => {
+          destroy();
+          reject('Unable to load data from image: ' + image.dom.src);
+        })
+      ];
+      const destroy = () => each$1(listeners, l => l.unbind());
+      if (image.dom.complete) {
+        loaded();
+      }
+    });
+
+    const renderImage$1 = (spec, imageUrl) => {
+      var _a, _b;
+      const spinnerElement = SugarElement.fromTag('div');
+      add$2(spinnerElement, 'tox-image-selector-loading-spinner');
+      const addSpinnerElement = loadingElement => {
+        add$2(loadingElement, 'tox-image-selector-loading-spinner-wrapper');
+        append$2(loadingElement, spinnerElement);
+      };
+      const removeSpinnerElement = loadingElement => {
+        remove$3(loadingElement, 'tox-image-selector-loading-spinner-wrapper');
+        remove$6(spinnerElement);
+      };
+      return {
+        dom: {
+          tag: spec.tag,
+          attributes: (_a = spec.attributes) !== null && _a !== void 0 ? _a : {},
+          classes: spec.classes
+        },
+        components: [
+          {
+            dom: {
+              tag: 'div',
+              classes: ['tox-image-selector-image-wrapper']
+            },
+            components: [{
+                dom: {
+                  tag: 'img',
+                  attributes: { src: imageUrl },
+                  classes: ['tox-image-selector-image-img']
+                }
+              }]
+          },
+          ...spec.checkMark.toArray()
+        ],
+        behaviours: derive$1([
+          ...(_b = spec.behaviours) !== null && _b !== void 0 ? _b : [],
+          config('render-image-events', [runOnAttached(component => {
+              addSpinnerElement(component.element);
+              descendant(component.element, 'img').each(image$1 => {
+                image(image$1).catch(e => {
+                  console.error(e);
+                }).finally(() => {
+                  removeSpinnerElement(component.element);
+                });
+              });
+            })])
+        ])
+      };
+    };
+    const render$3 = (imageUrl, spec) => renderImage$1(spec, imageUrl);
+
     const convertText = source => {
-      const isMac = global$6.os.isMacOS() || global$6.os.isiOS();
+      const isMac = global$7.os.isMacOS() || global$7.os.isiOS();
       const mac = {
         alt: '\u2325',
         ctrl: '\u2303',
@@ -52613,7 +52781,7 @@ __webpack_require__(4);
       return isMac ? updated.join('') : updated.join('+');
     };
 
-    const renderIcon$2 = (name, icons, classes = [iconClass]) => render$3(name, {
+    const renderIcon$2 = (name, icons, classes = [iconClass]) => render$4(name, {
       tag: 'div',
       classes
     }, icons);
@@ -52622,7 +52790,7 @@ __webpack_require__(4);
         tag: 'div',
         classes: [textClass]
       },
-      components: [text$2(global$5.translate(text))]
+      components: [text$2(global$6.translate(text))]
     });
     const renderHtml = (html, classes) => ({
       dom: {
@@ -52641,7 +52809,7 @@ __webpack_require__(4);
             tag: style.tag,
             styles: style.styles
           },
-          components: [text$2(global$5.translate(text))]
+          components: [text$2(global$6.translate(text))]
         }]
     });
     const renderShortcut = shortcut => ({
@@ -52746,11 +52914,11 @@ __webpack_require__(4);
         optComponents: []
       };
     };
-    const renderItemDomStructure = ariaLabel => {
+    const renderItemDomStructure = (ariaLabel, classes) => {
       const domTitle = ariaLabel.map(label => ({
         attributes: {
           'id': generate$6('menu-item'),
-          'aria-label': global$5.translate(label)
+          'aria-label': global$6.translate(label)
         }
       })).getOr({});
       return {
@@ -52758,8 +52926,14 @@ __webpack_require__(4);
         classes: [
           navClass,
           selectableClass
-        ],
+        ].concat(classes),
         ...domTitle
+      };
+    };
+    const createLabel = label => {
+      return {
+        dom: { tag: 'label' },
+        components: [text$2(label)]
       };
     };
     const renderNormalItemStructure = (info, providersBackstage, renderIcons, fallbackIcon) => {
@@ -52767,20 +52941,35 @@ __webpack_require__(4);
         tag: 'div',
         classes: [iconClass]
       };
-      const renderIcon = iconName => render$3(iconName, iconSpec, providersBackstage.icons, fallbackIcon);
+      const renderIcon = iconName => render$4(iconName, iconSpec, providersBackstage.icons, fallbackIcon);
       const renderEmptyIcon = () => Optional.some({ dom: iconSpec });
       const leftIcon = renderIcons ? info.iconContent.map(renderIcon).orThunk(renderEmptyIcon) : Optional.none();
       const checkmark = info.checkMark;
       const textRender = Optional.from(info.meta).fold(() => renderText, meta => has$2(meta, 'style') ? curry(renderStyledText, meta.style) : renderText);
       const content = info.htmlContent.fold(() => info.textContent.map(textRender), html => Optional.some(renderHtml(html, [textClass])));
       const menuItem = {
-        dom: renderItemDomStructure(info.ariaLabel),
+        dom: renderItemDomStructure(info.ariaLabel, []),
         optComponents: [
           leftIcon,
           content,
           info.shortcutContent.map(renderShortcut),
           checkmark,
-          info.caret
+          info.caret,
+          info.labelContent.map(createLabel)
+        ]
+      };
+      return menuItem;
+    };
+    const renderImgItemStructure = info => {
+      const menuItem = {
+        dom: renderItemDomStructure(info.ariaLabel, [imageSelectorClasll]),
+        optComponents: [
+          Optional.some(render$3(info.iconContent.getOrDie(), {
+            tag: 'div',
+            classes: [imageClass],
+            checkMark: info.checkMark
+          })),
+          info.labelContent.map(createLabel)
         ]
       };
       return menuItem;
@@ -52788,6 +52977,8 @@ __webpack_require__(4);
     const renderItemStructure = (info, providersBackstage, renderIcons, fallbackIcon = Optional.none()) => {
       if (info.presets === 'color') {
         return renderColorStructure(info, providersBackstage, fallbackIcon);
+      } else if (info.presets === 'img') {
+        return renderImgItemStructure(info);
       } else {
         return renderNormalItemStructure(info, providersBackstage, renderIcons, fallbackIcon);
       }
@@ -52817,9 +53008,9 @@ __webpack_require__(4);
           mode: 'follow-highlight'
         })]).getOr([]);
     });
-    const encodeText = text => global$8.DOM.encode(text);
+    const encodeText = text => global$9.DOM.encode(text);
     const replaceText = (text, matchText) => {
-      const translated = global$5.translate(text);
+      const translated = global$6.translate(text);
       const encoded = encodeText(translated);
       if (matchText.length > 0) {
         const escapedMatchRegex = new RegExp(escape(matchText), 'gi');
@@ -52834,6 +53025,7 @@ __webpack_require__(4);
         textContent: Optional.none(),
         htmlContent: useText ? spec.text.map(text => replaceText(text, matchText)) : Optional.none(),
         ariaLabel: spec.text,
+        labelContent: Optional.none(),
         iconContent: spec.icon,
         shortcutContent: Optional.none(),
         checkMark: Optional.none(),
@@ -52880,7 +53072,7 @@ __webpack_require__(4);
         }
       });
       const structure = {
-        dom: renderItemDomStructure(spec.label),
+        dom: renderItemDomStructure(spec.label, []),
         optComponents: [Optional.some({
             dom: {
               tag: 'div',
@@ -52920,6 +53112,7 @@ __webpack_require__(4);
         presets,
         textContent: useText ? spec.text : Optional.none(),
         htmlContent: Optional.none(),
+        labelContent: spec.label,
         ariaLabel: spec.text,
         iconContent: spec.icon,
         shortcutContent: useText ? spec.shortcut : Optional.none(),
@@ -53187,11 +53380,11 @@ __webpack_require__(4);
     };
     const onActionExecCommand = (editor, command) => () => editor.execCommand(command);
 
-    var global$4 = tinymce.util.Tools.resolve('tinymce.util.LocalStorage');
+    var global$5 = tinymce.util.Tools.resolve('tinymce.util.LocalStorage');
 
     const cacheStorage = {};
     const ColorCache = (storageId, max = 10) => {
-      const storageString = global$4.getItem(storageId);
+      const storageString = global$5.getItem(storageId);
       const localstorage = isString(storageString) ? JSON.parse(storageString) : [];
       const prune = list => {
         const diff = max - list.length;
@@ -53204,7 +53397,7 @@ __webpack_require__(4);
         if (cache.length > max) {
           cache.pop();
         }
-        global$4.setItem(storageId, JSON.stringify(cache));
+        global$5.setItem(storageId, JSON.stringify(cache));
       };
       const remove = idx => {
         cache.splice(idx, 1);
@@ -53217,10 +53410,10 @@ __webpack_require__(4);
     };
     const getCacheForId = id => get$h(cacheStorage, id).getOrThunk(() => {
       const storageId = `tinymce-custom-colors-${ id }`;
-      const currentData = global$4.getItem(storageId);
+      const currentData = global$5.getItem(storageId);
       if (isNullable(currentData)) {
-        const legacyDefault = global$4.getItem('tinymce-custom-colors');
-        global$4.setItem(storageId, isNonNullable(legacyDefault) ? legacyDefault : '[]');
+        const legacyDefault = global$5.getItem('tinymce-custom-colors');
+        global$5.setItem(storageId, isNonNullable(legacyDefault) ? legacyDefault : '[]');
       }
       const storage = ColorCache(storageId, 10);
       cacheStorage[id] = storage;
@@ -53462,7 +53655,7 @@ __webpack_require__(4);
     const defaultBackgroundColor = 'rgba(0, 0, 0, 0)';
     const isValidBackgroundColor = value => fromString(value).exists(c => c.alpha !== 0);
     const getClosestCssBackgroundColorValue = scope => {
-      return closest$4(scope, node => {
+      return closest$2(scope, node => {
         if (isElement$1(node)) {
           const color = get$f(node, 'background-color');
           return someIf(isValidBackgroundColor(color), color);
@@ -53689,6 +53882,53 @@ __webpack_require__(4);
       registerTextColorMenuItem(editor, 'backcolor', 'hilitecolor', 'Background color', lastBackColor);
     };
 
+    const renderImgItem = (spec, onItemValueHandler, isSelected, itemResponse, providersBackstage) => {
+      const getApi = component => ({
+        setActive: state => {
+          Toggling.set(component, state);
+        },
+        isActive: () => Toggling.isOn(component),
+        isEnabled: () => !Disabling.isDisabled(component),
+        setEnabled: state => Disabling.set(component, !state)
+      });
+      const structure = renderItemStructure({
+        presets: 'img',
+        textContent: Optional.none(),
+        htmlContent: Optional.none(),
+        ariaLabel: spec.tooltip,
+        iconContent: Optional.some(spec.url),
+        labelContent: spec.label,
+        shortcutContent: Optional.none(),
+        checkMark: Optional.some(renderCheckmark(providersBackstage.icons)),
+        caret: Optional.none(),
+        value: spec.value
+      }, providersBackstage, true);
+      const optTooltipping = spec.tooltip.map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) })));
+      return deepMerge(renderCommonItem({
+        context: spec.context,
+        data: buildData(spec),
+        enabled: spec.enabled,
+        getApi,
+        onAction: api => {
+          onItemValueHandler(spec.value);
+          api.setActive(true);
+        },
+        onSetup: api => {
+          api.setActive(isSelected);
+          return noop;
+        },
+        triggersSubmenu: false,
+        itemBehaviours: [...optTooltipping.toArray()]
+      }, structure, itemResponse, providersBackstage), {
+        toggling: {
+          toggleClass: tickedClass,
+          toggleOnExecute: false,
+          selected: spec.active,
+          exclusive: true
+        }
+      });
+    };
+
     const createPartialChoiceMenu = (value, items, onItemValueHandler, columns, presets, itemResponse, select, providersBackstage) => {
       const hasIcons = menuHasIcons(items);
       const presetItemTypes = presets !== 'color' ? 'normal' : 'color';
@@ -53699,6 +53939,16 @@ __webpack_require__(4);
     const createChoiceItems = (items, onItemValueHandler, columns, itemPresets, itemResponse, select, providersBackstage) => cat(map$2(items, item => {
       if (item.type === 'choiceitem') {
         return createChoiceMenuItem(item).fold(handleError, d => Optional.some(renderChoiceItem(d, columns === 1, itemPresets, onItemValueHandler, select(d.value), itemResponse, providersBackstage, menuHasIcons(items))));
+      } else if (item.type === 'imageitem') {
+        return createImageMenuItem(item).fold(handleError, d => Optional.some(renderImgItem(d, onItemValueHandler, select(d.value), itemResponse, providersBackstage)));
+      } else if (item.type === 'resetimage') {
+        return createResetImageItem(item).fold(handleError, d => Optional.some(renderChoiceItem({
+          ...d,
+          type: 'choiceitem',
+          text: d.tooltip,
+          icon: Optional.some(d.icon),
+          label: Optional.some(d.label)
+        }, columns === 1, itemPresets, onItemValueHandler, select(d.value), itemResponse, providersBackstage, menuHasIcons(items))));
       } else {
         return Optional.none();
       }
@@ -53721,7 +53971,12 @@ __webpack_require__(4);
           }
         };
       } else {
-        const rowClass = presets === 'color' ? 'tox-swatches__row' : 'tox-collection__group';
+        const rowClass = {
+          color: 'tox-swatches__row',
+          imageselector: 'tox-image-selector__row',
+          listpreview: 'tox-collection__group',
+          normal: 'tox-collection__group'
+        }[presets];
         return {
           mode: 'matrix',
           rowSelector: '.' + rowClass,
@@ -53785,6 +54040,33 @@ __webpack_require__(4);
     const getColorItems = (spec, backstage) => {
       const useCustomColors = spec.initData.allowCustomColors && backstage.colorinput.hasCustomColors();
       return spec.initData.colors.fold(() => getColors$1(backstage.colorinput.getColors(spec.initData.storageKey), spec.initData.storageKey, useCustomColors), colors => colors.concat(getAdditionalColors(useCustomColors)));
+    };
+
+    const renderImageSelector = (spec, backstage) => {
+      const presets = 'imageselector';
+      const columns = spec.initData.columns;
+      const menuSpec = createPartialChoiceMenu(generate$6('menu-value'), spec.initData.items, value => {
+        spec.onAction({ value });
+      }, columns, presets, ItemResponse$1.CLOSE_ON_EXECUTE, spec.select.getOr(never), backstage.shared.providers);
+      const widgetSpec = {
+        ...menuSpec,
+        markers: markers(presets),
+        movement: deriveMenuMovement(columns, presets),
+        showMenuRole: false
+      };
+      return {
+        type: 'widget',
+        data: { value: generate$6('widget-id') },
+        dom: {
+          tag: 'div',
+          classes: [
+            'tox-fancymenuitem',
+            'tox-collection--toolbar'
+          ]
+        },
+        autofocus: true,
+        components: [parts$f.widget(Menu.sketch(widgetSpec))]
+      };
     };
 
     const cellOverEvent = generate$6('cell-over');
@@ -53913,7 +54195,8 @@ __webpack_require__(4);
 
     const fancyMenuItems = {
       inserttable: renderInsertTableMenuItem,
-      colorswatch: renderColorSwatchItem
+      colorswatch: renderColorSwatchItem,
+      imageselect: renderImageSelector
     };
     const renderFancyMenuItem = (spec, backstage) => get$h(fancyMenuItems, spec.fancytype).map(render => render(spec, backstage));
 
@@ -53938,6 +54221,7 @@ __webpack_require__(4);
         textContent: spec.text,
         htmlContent: Optional.none(),
         ariaLabel: spec.text,
+        labelContent: Optional.none(),
         caret: Optional.some(caret),
         checkMark: Optional.none(),
         shortcutContent: spec.shortcut
@@ -53964,6 +54248,7 @@ __webpack_require__(4);
         iconContent: spec.icon,
         textContent: spec.text,
         htmlContent: Optional.none(),
+        labelContent: Optional.none(),
         ariaLabel: spec.text,
         caret: Optional.none(),
         checkMark: Optional.none(),
@@ -54006,6 +54291,7 @@ __webpack_require__(4);
         iconContent: spec.icon,
         textContent: spec.text,
         htmlContent: Optional.none(),
+        labelContent: Optional.none(),
         ariaLabel: spec.text,
         checkMark: Optional.some(renderCheckmark(providersBackstage.icons)),
         caret: Optional.none(),
@@ -54835,7 +55121,7 @@ __webpack_require__(4);
     };
     const Autocompleter = { register: register$c };
 
-    const closest = (scope, selector, isRoot) => closest$1(scope, selector, isRoot).isSome();
+    const closest = (scope, selector, isRoot) => closest$3(scope, selector, isRoot).isSome();
 
     const DelayedFunction = (fun, delay) => {
       let ref = null;
@@ -55149,7 +55435,7 @@ __webpack_require__(4);
       };
       const findHandler = (handlers, elem) => read(elem).bind(id => get$h(handlers, id)).map(descHandler => eventHandler(elem, descHandler));
       const filterByType = type => get$h(registry, type).map(handlers => mapToArray(handlers, (f, id) => broadcastHandler(id, f))).getOr([]);
-      const find = (isAboveRoot, type, target) => get$h(registry, type).bind(handlers => closest$4(target, elem => findHandler(handlers, elem), isAboveRoot));
+      const find = (isAboveRoot, type, target) => get$h(registry, type).bind(handlers => closest$2(target, elem => findHandler(handlers, elem), isAboveRoot));
       const unregisterId = id => {
         each(registry, (handlersById, _eventName) => {
           if (has$2(handlersById, id)) {
@@ -55489,7 +55775,7 @@ __webpack_require__(4);
       }
     });
 
-    var global$3 = tinymce.util.Tools.resolve('tinymce.html.Entities');
+    var global$4 = tinymce.util.Tools.resolve('tinymce.html.Entities');
 
     const renderFormFieldWith = (pLabel, pField, extraClasses, extraBehaviours) => {
       const spec = renderFormFieldSpecWith(pLabel, pField, extraClasses, extraBehaviours);
@@ -55533,7 +55819,7 @@ __webpack_require__(4);
         return (_a = icons[icon]) !== null && _a !== void 0 ? _a : icon;
       };
       const runOnItem = f => (comp, se) => {
-        closest$1(se.event.target, '[data-collection-item-value]').each(target => {
+        closest$3(se.event.target, '[data-collection-item-value]').each(target => {
           f(comp, se, target, get$g(target, 'data-collection-item-value'));
         });
       };
@@ -55541,7 +55827,7 @@ __webpack_require__(4);
         const disabled = providersBackstage.checkUiComponentContext('mode:design').shouldDisable || providersBackstage.isDisabled();
         const disabledClass = disabled ? ' tox-collection__item--state-disabled' : '';
         const htmlLines = map$2(items, item => {
-          const itemText = global$5.translate(item.text);
+          const itemText = global$6.translate(item.text);
           const textContent = spec.columns === 1 ? `<div class="tox-collection__item-label">${ itemText }</div>` : '';
           const iconContent = `<div class="tox-collection__item-icon">${ getIcon(item.icon) }</div>`;
           const mapItemName = {
@@ -55550,7 +55836,7 @@ __webpack_require__(4);
             '-': ' '
           };
           const ariaLabel = itemText.replace(/\_| \- |\-/g, match => mapItemName[match]);
-          return `<div data-mce-tooltip="${ ariaLabel }" class="tox-collection__item${ disabledClass }" tabindex="-1" data-collection-item-value="${ global$3.encodeAllRaw(item.value) }" aria-label="${ ariaLabel }">${ iconContent }${ textContent }</div>`;
+          return `<div data-mce-tooltip="${ ariaLabel }" class="tox-collection__item${ disabledClass }" tabindex="-1" data-collection-item-value="${ global$4.encodeAllRaw(item.value) }" aria-label="${ ariaLabel }">${ iconContent }${ textContent }</div>`;
         });
         const chunks = spec.columns !== 'auto' && spec.columns > 1 ? chunk$1(htmlLines, spec.columns) : [htmlLines];
         const html = map$2(chunks, ch => `<div class="tox-collection__group">${ ch.join('') }</div>`);
@@ -57408,7 +57694,7 @@ __webpack_require__(4);
     };
     const renderColorPicker = (_spec, providerBackstage, initialData) => {
       const getClass = key => 'tox-' + key;
-      const renderIcon = (name, errId, icon = name, label = name) => render$3(icon, {
+      const renderIcon = (name, errId, icon = name, label = name) => render$4(icon, {
         tag: 'div',
         classes: [
           'tox-icon',
@@ -57473,7 +57759,7 @@ __webpack_require__(4);
       };
     };
 
-    var global$2 = tinymce.util.Tools.resolve('tinymce.Resource');
+    var global$3 = tinymce.util.Tools.resolve('tinymce.Resource');
 
     const isOldCustomEditor = spec => has$2(spec, 'init');
     const renderCustomEditor = spec => {
@@ -57498,7 +57784,7 @@ __webpack_require__(4);
         behaviours: derive$1([
           config('custom-editor-events', [runOnAttached(component => {
               memReplaced.getOpt(component).each(ta => {
-                (isOldCustomEditor(spec) ? spec.init(ta.element.dom) : global$2.load(spec.scriptId, spec.scriptUrl).then(init => init(ta.element.dom, spec.settings))).then(ea => {
+                (isOldCustomEditor(spec) ? spec.init(ta.element.dom) : global$3.load(spec.scriptId, spec.scriptUrl).then(init => init(ta.element.dom, spec.settings))).then(ea => {
                   initialValue.on(cvalue => {
                     ea.setValue(cvalue);
                   });
@@ -57516,11 +57802,11 @@ __webpack_require__(4);
       };
     };
 
-    var global$1 = tinymce.util.Tools.resolve('tinymce.util.Tools');
+    var global$2 = tinymce.util.Tools.resolve('tinymce.util.Tools');
 
     const browseFilesEvent = generate$6('browse.files.event');
     const filterByExtension = (files, providersBackstage) => {
-      const allowedImageFileTypes = global$1.explode(providersBackstage.getOption('images_file_types'));
+      const allowedImageFileTypes = global$2.explode(providersBackstage.getOption('images_file_types'));
       const isFileInAllowedTypes = file => exists(allowedImageFileTypes, type => endsWith(file.name.toLowerCase(), `.${ type.toLowerCase() }`));
       return filter$2(from(files), isFileInAllowedTypes);
     };
@@ -57893,24 +58179,6 @@ __webpack_require__(4);
       return renderFormFieldWith(pLabel, pField, ['tox-form__group--stretched'], []);
     };
 
-    const image = image => new Promise((resolve, reject) => {
-      const loaded = () => {
-        destroy();
-        resolve(image);
-      };
-      const listeners = [
-        bind(image, 'load', loaded),
-        bind(image, 'error', () => {
-          destroy();
-          reject('Unable to load data from image: ' + image.dom.src);
-        })
-      ];
-      const destroy = () => each$1(listeners, l => l.unbind());
-      if (image.dom.complete) {
-        loaded();
-      }
-    });
-
     const calculateImagePosition = (panelWidth, panelHeight, imageWidth, imageHeight, zoom) => {
       const width = imageWidth * zoom;
       const height = imageHeight * zoom;
@@ -58084,7 +58352,7 @@ __webpack_require__(4);
 
     const forceInitialSize = comp => set$8(comp.element, 'width', get$f(comp.element, 'width'));
 
-    const renderIcon$1 = (iconName, iconsProvider, behaviours) => render$3(iconName, {
+    const renderIcon$1 = (iconName, iconsProvider, behaviours) => render$4(iconName, {
       tag: 'span',
       classes: [
         'tox-icon',
@@ -58105,8 +58373,10 @@ __webpack_require__(4);
 
     const updateMenuText = generate$6('update-menu-text');
     const updateMenuIcon = generate$6('update-menu-icon');
+    const updateTooltiptext = generate$6('update-tooltip-text');
     const renderCommonDropdown = (spec, prefix, sharedBackstage, btnName) => {
       const editorOffCell = Cell(noop);
+      const tooltip = Cell(spec.tooltip);
       const optMemDisplayText = spec.text.map(text => record(renderLabel$1(text, prefix, sharedBackstage.providers)));
       const optMemDisplayIcon = spec.icon.map(iconName => record(renderReplaceableIconFromPack(iconName, sharedBackstage.providers.icons)));
       const onLeftOrRightInMenu = (comp, se) => {
@@ -58122,7 +58392,7 @@ __webpack_require__(4);
         const translatedAriaLabel = sharedBackstage.providers.translate(ariaLabel);
         return { 'aria-label': translatedAriaLabel };
       });
-      const iconSpec = render$3('chevron-down', {
+      const iconSpec = render$4('chevron-down', {
         tag: 'div',
         classes: [`${ prefix }__select-chevron`]
       }, sharedBackstage.providers.icons);
@@ -58161,7 +58431,15 @@ __webpack_require__(4);
           toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
           Unselecting.config({}),
           Replacing.config({}),
-          ...spec.tooltip.map(t => Tooltipping.config(sharedBackstage.providers.tooltips.getConfig({ tooltipText: sharedBackstage.providers.translate(t) }))).toArray(),
+          ...spec.tooltip.map(t => Tooltipping.config(sharedBackstage.providers.tooltips.getConfig({
+            tooltipText: sharedBackstage.providers.translate(t),
+            onShow: comp => {
+              if (lift2(tooltip.get(), spec.tooltip, (tooltipStr, tt) => tt !== tooltipStr).getOr(false)) {
+                const translatedTooltip = sharedBackstage.providers.translate(tooltip.get().getOr(''));
+                Tooltipping.setComponents(comp, sharedBackstage.providers.tooltips.getComponents({ tooltipText: translatedTooltip }));
+              }
+            }
+          }))).toArray(),
           config(customEventsName, [
             onControlAttached(spec, editorOffCell),
             onControlDetached(spec, editorOffCell)
@@ -58182,6 +58460,11 @@ __webpack_require__(4);
               optMemDisplayIcon.bind(mem => mem.getOpt(comp)).each(displayIcon => {
                 Replacing.set(displayIcon, [renderReplaceableIconFromPack(se.event.icon, sharedBackstage.providers.icons)]);
               });
+            }),
+            run$1(updateTooltiptext, (comp, se) => {
+              const translatedTooltip = sharedBackstage.providers.translate(se.event.text);
+              set$9(comp.element, 'aria-label', translatedTooltip);
+              tooltip.set(Optional.some(se.event.text));
             })
           ])
         ]),
@@ -58521,7 +58804,7 @@ __webpack_require__(4);
             })])
         ])
       });
-      const chevron = spec.size > 1 ? Optional.none() : Optional.some(render$3('chevron-down', {
+      const chevron = spec.size > 1 ? Optional.none() : Optional.some(render$4('chevron-down', {
         tag: 'div',
         classes: ['tox-selectfield__icon-js']
       }, providersBackstage.icons));
@@ -58734,7 +59017,7 @@ __webpack_require__(4);
     const renderSizeInput = (spec, providersBackstage) => {
       let converter = noSizeConversion;
       const ratioEvent = generate$6('ratio-event');
-      const makeIcon = iconName => render$3(iconName, {
+      const makeIcon = iconName => render$4(iconName, {
         tag: 'span',
         classes: [
           'tox-icon',
@@ -59300,12 +59583,16 @@ __webpack_require__(4);
         }
       },
       isActive: () => has(component.element, 'tox-tbtn--enabled'),
+      setTooltip: tooltip => {
+        emitWith(component, updateTooltiptext, { text: tooltip });
+      },
       setText: text => {
         emitWith(component, updateMenuText, { text });
       },
       setIcon: icon => emitWith(component, updateMenuIcon, { icon })
     });
     const renderMenuButton = (spec, prefix, backstage, role, tabstopping = true, btnName) => {
+      const classes = spec.buttonType === 'bordered' ? ['bordered'] : [];
       return renderCommonDropdown({
         text: spec.text,
         icon: spec.icon,
@@ -59323,10 +59610,10 @@ __webpack_require__(4);
           }, fetchContext, getMenuButtonApi(dropdownComp));
         },
         onSetup: spec.onSetup,
-        getApi: getMenuButtonApi,
+        getApi: comp => getMenuButtonApi(comp),
         columns: 1,
         presets: 'normal',
-        classes: [],
+        classes,
         dropdownBehaviours: [...tabstopping ? [Tabstopping.config({})] : []],
         context: spec.context
       }, prefix, backstage.shared, btnName);
@@ -59428,7 +59715,7 @@ __webpack_require__(4);
               const isLeftArrowKey = se.event.raw.code === 'ArrowLeft';
               const isRightArrowKey = se.event.raw.code === 'ArrowRight';
               if (isLeftArrowKey) {
-                ancestor(comp.element, '.tox-tree--directory').each(dirElement => {
+                ancestor$1(comp.element, '.tox-tree--directory').each(dirElement => {
                   comp.getSystem().getByDom(dirElement).each(dirComp => {
                     child(dirElement, '.tox-tree--directory__label').each(dirLabelElement => {
                       dirComp.getSystem().getByDom(dirLabelElement).each(Focusing.focus);
@@ -59444,7 +59731,7 @@ __webpack_require__(4);
         ])
       });
     };
-    const renderIcon = (iconName, iconsProvider, behaviours, extraClasses, extraAttributes) => render$3(iconName, {
+    const renderIcon = (iconName, iconsProvider, behaviours, extraClasses, extraAttributes) => render$4(iconName, {
       tag: 'span',
       classes: [
         'tox-tree__icon-wrap',
@@ -59472,7 +59759,7 @@ __webpack_require__(4);
         components.push(btn);
       });
       const toggleExpandChildren = button => {
-        ancestor(button.element, '.tox-tree--directory').each(directoryEle => {
+        ancestor$1(button.element, '.tox-tree--directory').each(directoryEle => {
           button.getSystem().getByDom(directoryEle).each(directoryComp => {
             const willExpand = !Toggling.isOn(directoryComp);
             Toggling.toggle(directoryComp);
@@ -59508,13 +59795,13 @@ __webpack_require__(4);
                 se.stop();
               }
               if (isRightArrowKey || isLeftArrowKey) {
-                ancestor(comp.element, '.tox-tree--directory').each(directoryEle => {
+                ancestor$1(comp.element, '.tox-tree--directory').each(directoryEle => {
                   comp.getSystem().getByDom(directoryEle).each(directoryComp => {
                     if (!Toggling.isOn(directoryComp) && isRightArrowKey || Toggling.isOn(directoryComp) && isLeftArrowKey) {
                       toggleExpandChildren(comp);
                       se.stop();
                     } else if (isLeftArrowKey && !Toggling.isOn(directoryComp)) {
-                      ancestor(directoryComp.element, '.tox-tree--directory').each(parentDirElement => {
+                      ancestor$1(directoryComp.element, '.tox-tree--directory').each(parentDirElement => {
                         child(parentDirElement, '.tox-tree--directory__label').each(parentDirLabelElement => {
                           directoryComp.getSystem().getByDom(parentDirLabelElement).each(Focusing.focus);
                         });
@@ -60330,6 +60617,7 @@ __webpack_require__(4);
         const menuButtonSpec = spec;
         const fixedSpec = {
           ...spec,
+          buttonType: 'default',
           type: 'menubutton',
           search: Optional.none(),
           onSetup: api => {
@@ -60538,7 +60826,7 @@ __webpack_require__(4);
         factory: Typeahead
       });
       const pLabel = spec.label.map(label => renderLabel$3(label, providersBackstage));
-      const makeIcon = (name, errId, icon = name, label = name) => render$3(icon, {
+      const makeIcon = (name, errId, icon = name, label = name) => render$4(icon, {
         tag: 'div',
         classes: [
           'tox-icon',
@@ -60727,7 +61015,7 @@ __webpack_require__(4);
       });
       const makeIcon = className => {
         const iconName = className === 'checked' ? 'selected' : 'unselected';
-        return render$3(iconName, {
+        return render$4(iconName, {
           tag: 'span',
           classes: [
             'tox-icon',
@@ -61420,7 +61708,7 @@ __webpack_require__(4);
     };
 
     const isElement = node => isNonNullable(node) && node.nodeType === 1;
-    const trim = global$1.trim;
+    const trim = global$2.trim;
     const hasContentEditableState = value => {
       return node => {
         if (isElement(node)) {
@@ -61520,7 +61808,7 @@ __webpack_require__(4);
     const isArrayOfUrl = a => isArray(a) && a.length <= HISTORY_LENGTH && forall(a, isHttpUrl);
     const isRecordOfUrlArray = r => isObject(r) && find$4(r, value => !isArrayOfUrl(value)).isNone();
     const getAllHistory = () => {
-      const unparsedHistory = global$4.getItem(STORAGE_KEY);
+      const unparsedHistory = global$5.getItem(STORAGE_KEY);
       if (unparsedHistory === null) {
         return {};
       }
@@ -61544,7 +61832,7 @@ __webpack_require__(4);
       if (!isRecordOfUrlArray(history)) {
         throw new Error('Bad format for history:\n' + JSON.stringify(history));
       }
-      global$4.setItem(STORAGE_KEY, JSON.stringify(history));
+      global$5.setItem(STORAGE_KEY, JSON.stringify(history));
     };
     const getHistory = fileType => {
       const history = getAllHistory();
@@ -61562,7 +61850,7 @@ __webpack_require__(4);
     };
 
     const isTruthy = value => !!value;
-    const makeMap = value => map$1(global$1.makeMap(value, /[, ]/), isTruthy);
+    const makeMap = value => map$1(global$2.makeMap(value, /[, ]/), isTruthy);
     const getPicker = editor => Optional.from(getFilePickerCallback(editor));
     const getPickerTypes = editor => {
       const optFileTypes = Optional.from(getFilePickerTypes(editor)).filter(isTruthy).map(makeMap);
@@ -61623,7 +61911,7 @@ __webpack_require__(4);
       const providers = {
         icons: () => editor.ui.registry.getAll().icons,
         menuItems: () => editor.ui.registry.getAll().menuItems,
-        translate: global$5.translate,
+        translate: global$6.translate,
         isDisabled: () => !editor.ui.isEnabled(),
         getOption: editor.options.get,
         tooltips: TooltipsBackstage(lazySinks.dialog),
@@ -62171,6 +62459,7 @@ __webpack_require__(4);
     const createGroupToolbarButton = spec => asRaw('GroupToolbarButton', groupToolbarButtonSchema, spec);
 
     const baseMenuButtonFields = [
+      defaultedString('buttonType', 'default'),
       optionString('text'),
       optionString('tooltip'),
       optionString('icon'),
@@ -62247,7 +62536,7 @@ __webpack_require__(4);
             }),
             run$1(mouseover(), (comp, se) => {
               descendant(comp.element, '.' + 'tox-mbtn--active').each(activeButton => {
-                closest$1(se.event.target, '.' + 'tox-mbtn').each(hoveredButton => {
+                closest$3(se.event.target, '.' + 'tox-mbtn').each(hoveredButton => {
                   if (!eq(activeButton, hoveredButton)) {
                     comp.getSystem().getByDom(activeButton).each(activeComp => {
                       comp.getSystem().getByDom(hoveredButton).each(hoveredComp => {
@@ -62305,25 +62594,26 @@ __webpack_require__(4);
       }
     });
 
-    const promotionMessage = '\u26A1\ufe0fUpgrade';
-    const promotionLink = 'https://www.tiny.cloud/tinymce-self-hosted-premium-features/?utm_campaign=self_hosted_upgrade_promo&utm_source=tiny&utm_medium=referral';
+    const promotionMessage = '\uD83D\uDC9DGet all features';
+    const promotionLink = 'https://www.tiny.cloud/tinymce-upgrade-to-cloud/?utm_campaign=self_hosted_upgrade_promo&utm_source=tiny&utm_medium=referral';
     const renderPromotion = spec => {
+      const components = spec.promotionLink ? [{
+          dom: {
+            tag: 'a',
+            attributes: {
+              'href': promotionLink,
+              'rel': 'noopener',
+              'target': '_blank',
+              'aria-hidden': 'true'
+            },
+            classes: ['tox-promotion-link'],
+            innerHtml: promotionMessage
+          }
+        }] : [];
       return {
         uid: spec.uid,
         dom: spec.dom,
-        components: [{
-            dom: {
-              tag: 'a',
-              attributes: {
-                'href': promotionLink,
-                'rel': 'noopener',
-                'target': '_blank',
-                'aria-hidden': 'true'
-              },
-              classes: ['tox-promotion-link'],
-              innerHtml: promotionMessage
-            }
-          }]
+        components
       };
     };
 
@@ -62776,7 +63066,7 @@ __webpack_require__(4);
       editor.on('ProgressState', e => {
         timer.on(clearTimeout);
         if (isNumber(e.time)) {
-          const timerId = global$9.setEditorTimeout(editor, () => toggle(e.state), e.time);
+          const timerId = global$a.setEditorTimeout(editor, () => toggle(e.state), e.time);
           timer.set(timerId);
         } else {
           toggle(e.state);
@@ -64132,7 +64422,10 @@ __webpack_require__(4);
     const partPromotion = partType.optional({
       factory: { sketch: renderPromotion },
       name: 'promotion',
-      schema: [required$1('dom')]
+      schema: [
+        required$1('dom'),
+        required$1('promotionLink')
+      ]
     });
     const partSocket = partType.optional({
       name: 'socket',
@@ -64403,7 +64696,7 @@ __webpack_require__(4);
       if (!isInShadowRoot$1) {
         return Promise.resolve();
       } else {
-        const loader = global$8.DOM.styleSheetLoader;
+        const loader = global$9.DOM.styleSheetLoader;
         const decision = determineCSSDecision(editor, 'skin.shadowdom', skinUrl);
         switch (decision._kind) {
         case 'load-raw':
@@ -64457,6 +64750,614 @@ __webpack_require__(4);
     };
     const iframe = curry(loadSkin, false);
     const inline = curry(loadSkin, true);
+
+    const schema$7 = constant$1([
+      required$1('toggleClass'),
+      required$1('fetch'),
+      onStrictHandler('onExecute'),
+      defaulted('getHotspot', Optional.some),
+      defaulted('getAnchorOverrides', constant$1({})),
+      schema$y(),
+      onStrictHandler('onItemExecute'),
+      option$3('lazySink'),
+      required$1('dom'),
+      onHandler('onOpen'),
+      field('splitDropdownBehaviours', [
+        Coupling,
+        Keying,
+        Focusing
+      ]),
+      defaulted('matchWidth', false),
+      defaulted('useMinWidth', false),
+      defaulted('eventOrder', {}),
+      option$3('role'),
+      option$3('listRole')
+    ].concat(sandboxFields()));
+    const arrowPart = required({
+      factory: Button,
+      schema: [required$1('dom')],
+      name: 'arrow',
+      defaults: () => {
+        return { buttonBehaviours: derive$1([Focusing.revoke()]) };
+      },
+      overrides: detail => {
+        return {
+          dom: {
+            tag: 'span',
+            attributes: { role: 'presentation' }
+          },
+          action: arrow => {
+            arrow.getSystem().getByUid(detail.uid).each(emitExecute);
+          },
+          buttonBehaviours: derive$1([Toggling.config({
+              toggleOnExecute: false,
+              toggleClass: detail.toggleClass
+            })])
+        };
+      }
+    });
+    const buttonPart = required({
+      factory: Button,
+      schema: [required$1('dom')],
+      name: 'button',
+      defaults: () => {
+        return { buttonBehaviours: derive$1([Focusing.revoke()]) };
+      },
+      overrides: detail => {
+        return {
+          dom: {
+            tag: 'span',
+            attributes: { role: 'presentation' }
+          },
+          action: btn => {
+            btn.getSystem().getByUid(detail.uid).each(splitDropdown => {
+              detail.onExecute(splitDropdown, btn);
+            });
+          }
+        };
+      }
+    });
+    const parts$3 = constant$1([
+      arrowPart,
+      buttonPart,
+      optional({
+        factory: {
+          sketch: spec => {
+            return {
+              uid: spec.uid,
+              dom: {
+                tag: 'span',
+                styles: { display: 'none' },
+                attributes: { 'aria-hidden': 'true' },
+                innerHtml: spec.text
+              }
+            };
+          }
+        },
+        schema: [required$1('text')],
+        name: 'aria-descriptor'
+      }),
+      external({
+        schema: [tieredMenuMarkers()],
+        name: 'menu',
+        defaults: detail => {
+          return {
+            onExecute: (tmenu, item) => {
+              tmenu.getSystem().getByUid(detail.uid).each(splitDropdown => {
+                detail.onItemExecute(splitDropdown, tmenu, item);
+              });
+            }
+          };
+        }
+      }),
+      partType$1()
+    ]);
+
+    const factory$5 = (detail, components, spec, externals) => {
+      const switchToMenu = sandbox => {
+        Composing.getCurrent(sandbox).each(current => {
+          Highlighting.highlightFirst(current);
+          Keying.focusIn(current);
+        });
+      };
+      const action = component => {
+        const onOpenSync = switchToMenu;
+        togglePopup(detail, identity, component, externals, onOpenSync, HighlightOnOpen.HighlightMenuAndItem).get(noop);
+      };
+      const openMenu = comp => {
+        action(comp);
+        return Optional.some(true);
+      };
+      const executeOnButton = comp => {
+        const button = getPartOrDie(comp, detail, 'button');
+        emitExecute(button);
+        return Optional.some(true);
+      };
+      const buttonEvents = {
+        ...derive$2([runOnAttached((component, _simulatedEvent) => {
+            const ariaDescriptor = getPart(component, detail, 'aria-descriptor');
+            ariaDescriptor.each(descriptor => {
+              const descriptorId = generate$6('aria');
+              set$9(descriptor.element, 'id', descriptorId);
+              set$9(component.element, 'aria-describedby', descriptorId);
+            });
+          })]),
+        ...events$9(Optional.some(action))
+      };
+      const apis = {
+        repositionMenus: comp => {
+          if (Toggling.isOn(comp)) {
+            repositionMenus(comp);
+          }
+        }
+      };
+      return {
+        uid: detail.uid,
+        dom: detail.dom,
+        components,
+        apis,
+        eventOrder: {
+          ...detail.eventOrder,
+          [execute$5()]: [
+            'disabling',
+            'toggling',
+            'alloy.base.behaviour'
+          ]
+        },
+        events: buttonEvents,
+        behaviours: augment(detail.splitDropdownBehaviours, [
+          Coupling.config({
+            others: {
+              sandbox: hotspot => {
+                const arrow = getPartOrDie(hotspot, detail, 'arrow');
+                const extras = {
+                  onOpen: () => {
+                    Toggling.on(arrow);
+                    Toggling.on(hotspot);
+                  },
+                  onClose: () => {
+                    Toggling.off(arrow);
+                    Toggling.off(hotspot);
+                  }
+                };
+                return makeSandbox$1(detail, hotspot, extras);
+              }
+            }
+          }),
+          Keying.config({
+            mode: 'special',
+            onSpace: executeOnButton,
+            onEnter: executeOnButton,
+            onDown: openMenu
+          }),
+          Focusing.config({}),
+          Toggling.config({
+            toggleOnExecute: false,
+            aria: { mode: 'expanded' }
+          })
+        ]),
+        domModification: {
+          attributes: {
+            'role': detail.role.getOr('button'),
+            'aria-haspopup': true
+          }
+        }
+      };
+    };
+    const SplitDropdown = composite({
+      name: 'SplitDropdown',
+      configFields: schema$7(),
+      partFields: parts$3(),
+      factory: factory$5,
+      apis: { repositionMenus: (apis, comp) => apis.repositionMenus(comp) }
+    });
+
+    const getButtonApi = component => ({
+      isEnabled: () => !Disabling.isDisabled(component),
+      setEnabled: state => Disabling.set(component, !state),
+      setText: text => emitWith(component, updateMenuText, { text }),
+      setIcon: icon => emitWith(component, updateMenuIcon, { icon })
+    });
+    const getToggleApi = component => ({
+      setActive: state => {
+        Toggling.set(component, state);
+      },
+      isActive: () => Toggling.isOn(component),
+      isEnabled: () => !Disabling.isDisabled(component),
+      setEnabled: state => Disabling.set(component, !state),
+      setText: text => emitWith(component, updateMenuText, { text }),
+      setIcon: icon => emitWith(component, updateMenuIcon, { icon })
+    });
+    const getTooltipAttributes = (tooltip, providersBackstage) => tooltip.map(tooltip => ({ 'aria-label': providersBackstage.translate(tooltip) })).getOr({});
+    const focusButtonEvent = generate$6('focus-button');
+    const renderCommonStructure = (optIcon, optText, tooltip, behaviours, providersBackstage, context, btnName) => {
+      const optMemDisplayText = optText.map(text => record(renderLabel$1(text, 'tox-tbtn', providersBackstage)));
+      const optMemDisplayIcon = optIcon.map(icon => record(renderReplaceableIconFromPack(icon, providersBackstage.icons)));
+      return {
+        dom: {
+          tag: 'button',
+          classes: ['tox-tbtn'].concat(optText.isSome() ? ['tox-tbtn--select'] : []),
+          attributes: {
+            ...getTooltipAttributes(tooltip, providersBackstage),
+            ...isNonNullable(btnName) ? { 'data-mce-name': btnName } : {}
+          }
+        },
+        components: componentRenderPipeline([
+          optMemDisplayIcon.map(mem => mem.asSpec()),
+          optMemDisplayText.map(mem => mem.asSpec())
+        ]),
+        eventOrder: {
+          [mousedown()]: [
+            'focusing',
+            'alloy.base.behaviour',
+            commonButtonDisplayEvent
+          ],
+          [attachedToDom()]: [
+            commonButtonDisplayEvent,
+            'toolbar-group-button-events'
+          ],
+          [detachedFromDom()]: [
+            commonButtonDisplayEvent,
+            'toolbar-group-button-events',
+            'tooltipping'
+          ]
+        },
+        buttonBehaviours: derive$1([
+          DisablingConfigs.toolbarButton(() => providersBackstage.checkUiComponentContext(context).shouldDisable),
+          toggleOnReceive(() => providersBackstage.checkUiComponentContext(context)),
+          config(commonButtonDisplayEvent, [
+            runOnAttached((comp, _se) => forceInitialSize(comp)),
+            run$1(updateMenuText, (comp, se) => {
+              optMemDisplayText.bind(mem => mem.getOpt(comp)).each(displayText => {
+                Replacing.set(displayText, [text$2(providersBackstage.translate(se.event.text))]);
+              });
+            }),
+            run$1(updateMenuIcon, (comp, se) => {
+              optMemDisplayIcon.bind(mem => mem.getOpt(comp)).each(displayIcon => {
+                Replacing.set(displayIcon, [renderReplaceableIconFromPack(se.event.icon, providersBackstage.icons)]);
+              });
+            }),
+            run$1(mousedown(), (button, se) => {
+              se.event.prevent();
+              emit(button, focusButtonEvent);
+            })
+          ])
+        ].concat(behaviours.getOr([])))
+      };
+    };
+    const renderFloatingToolbarButton = (spec, backstage, identifyButtons, attributes, btnName) => {
+      const sharedBackstage = backstage.shared;
+      const editorOffCell = Cell(noop);
+      const specialisation = {
+        toolbarButtonBehaviours: [],
+        getApi: getButtonApi,
+        onSetup: spec.onSetup
+      };
+      const behaviours = [
+        config('toolbar-group-button-events', [
+          onControlAttached(specialisation, editorOffCell),
+          onControlDetached(specialisation, editorOffCell)
+        ]),
+        ...spec.tooltip.map(t => Tooltipping.config(backstage.shared.providers.tooltips.getConfig({ tooltipText: backstage.shared.providers.translate(t) }))).toArray()
+      ];
+      return FloatingToolbarButton.sketch({
+        lazySink: sharedBackstage.getSink,
+        fetch: () => Future.nu(resolve => {
+          resolve(map$2(identifyButtons(spec.items), renderToolbarGroup));
+        }),
+        markers: { toggledClass: 'tox-tbtn--enabled' },
+        parts: {
+          button: renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.some(behaviours), sharedBackstage.providers, spec.context, btnName),
+          toolbar: {
+            dom: {
+              tag: 'div',
+              classes: ['tox-toolbar__overflow'],
+              attributes
+            }
+          }
+        }
+      });
+    };
+    const renderCommonToolbarButton = (spec, specialisation, providersBackstage, btnName) => {
+      var _d;
+      const editorOffCell = Cell(noop);
+      const structure = renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.none(), providersBackstage, spec.context, btnName);
+      return Button.sketch({
+        dom: structure.dom,
+        components: structure.components,
+        eventOrder: toolbarButtonEventOrder,
+        buttonBehaviours: {
+          ...derive$1([
+            config('toolbar-button-events', [
+              onToolbarButtonExecute({
+                onAction: spec.onAction,
+                getApi: specialisation.getApi
+              }),
+              onControlAttached(specialisation, editorOffCell),
+              onControlDetached(specialisation, editorOffCell)
+            ]),
+            ...spec.tooltip.map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) + spec.shortcut.map(shortcut => ` (${ convertText(shortcut) })`).getOr('') }))).toArray(),
+            DisablingConfigs.toolbarButton(() => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
+            toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
+          ].concat(specialisation.toolbarButtonBehaviours)),
+          [commonButtonDisplayEvent]: (_d = structure.buttonBehaviours) === null || _d === void 0 ? void 0 : _d[commonButtonDisplayEvent]
+        }
+      });
+    };
+    const renderToolbarButton = (spec, providersBackstage, btnName) => renderToolbarButtonWith(spec, providersBackstage, [], btnName);
+    const renderToolbarButtonWith = (spec, providersBackstage, bonusEvents, btnName) => renderCommonToolbarButton(spec, {
+      toolbarButtonBehaviours: bonusEvents.length > 0 ? [config('toolbarButtonWith', bonusEvents)] : [],
+      getApi: getButtonApi,
+      onSetup: spec.onSetup
+    }, providersBackstage, btnName);
+    const renderToolbarToggleButton = (spec, providersBackstage, btnName) => renderToolbarToggleButtonWith(spec, providersBackstage, [], btnName);
+    const renderToolbarToggleButtonWith = (spec, providersBackstage, bonusEvents, btnName) => renderCommonToolbarButton(spec, {
+      toolbarButtonBehaviours: [
+        Replacing.config({}),
+        Toggling.config({
+          toggleClass: 'tox-tbtn--enabled',
+          aria: { mode: 'pressed' },
+          toggleOnExecute: false
+        })
+      ].concat(bonusEvents.length > 0 ? [config('toolbarToggleButtonWith', bonusEvents)] : []),
+      getApi: getToggleApi,
+      onSetup: spec.onSetup
+    }, providersBackstage, btnName);
+    const fetchChoices = (getApi, spec, providersBackstage) => comp => Future.nu(callback => spec.fetch(callback)).map(items => Optional.from(createTieredDataFrom(deepMerge(createPartialChoiceMenu(generate$6('menu-value'), items, value => {
+      spec.onItemAction(getApi(comp), value);
+    }, spec.columns, spec.presets, ItemResponse$1.CLOSE_ON_EXECUTE, spec.select.getOr(never), providersBackstage), {
+      movement: deriveMenuMovement(spec.columns, spec.presets),
+      menuBehaviours: SimpleBehaviours.unnamedEvents(spec.columns !== 'auto' ? [] : [runOnAttached((comp, _se) => {
+          detectSize(comp, 4, classForPreset(spec.presets)).each(({numRows, numColumns}) => {
+            Keying.setGridSize(comp, numRows, numColumns);
+          });
+        })])
+    }))));
+    const renderSplitButton = (spec, sharedBackstage, btnName) => {
+      const tooltipString = Cell(spec.tooltip.getOr(''));
+      const getApi = comp => ({
+        isEnabled: () => !Disabling.isDisabled(comp),
+        setEnabled: state => Disabling.set(comp, !state),
+        setIconFill: (id, value) => {
+          descendant(comp.element, `svg path[class="${ id }"], rect[class="${ id }"]`).each(underlinePath => {
+            set$9(underlinePath, 'fill', value);
+          });
+        },
+        setActive: state => {
+          set$9(comp.element, 'aria-pressed', state);
+          descendant(comp.element, 'span').each(button => {
+            comp.getSystem().getByDom(button).each(buttonComp => Toggling.set(buttonComp, state));
+          });
+        },
+        isActive: () => descendant(comp.element, 'span').exists(button => comp.getSystem().getByDom(button).exists(Toggling.isOn)),
+        setText: text => descendant(comp.element, 'span').each(button => comp.getSystem().getByDom(button).each(buttonComp => emitWith(buttonComp, updateMenuText, { text }))),
+        setIcon: icon => descendant(comp.element, 'span').each(button => comp.getSystem().getByDom(button).each(buttonComp => emitWith(buttonComp, updateMenuIcon, { icon }))),
+        setTooltip: tooltip => {
+          const translatedTooltip = sharedBackstage.providers.translate(tooltip);
+          set$9(comp.element, 'aria-label', translatedTooltip);
+          tooltipString.set(tooltip);
+        }
+      });
+      const editorOffCell = Cell(noop);
+      const specialisation = {
+        getApi,
+        onSetup: spec.onSetup
+      };
+      return SplitDropdown.sketch({
+        dom: {
+          tag: 'div',
+          classes: ['tox-split-button'],
+          attributes: {
+            'aria-pressed': false,
+            ...getTooltipAttributes(spec.tooltip, sharedBackstage.providers),
+            ...isNonNullable(btnName) ? { 'data-mce-name': btnName } : {}
+          }
+        },
+        onExecute: button => {
+          const api = getApi(button);
+          if (api.isEnabled()) {
+            spec.onAction(api);
+          }
+        },
+        onItemExecute: (_a, _b, _c) => {
+        },
+        splitDropdownBehaviours: derive$1([
+          config('split-dropdown-events', [
+            runOnAttached((comp, _se) => forceInitialSize(comp)),
+            run$1(focusButtonEvent, Focusing.focus),
+            onControlAttached(specialisation, editorOffCell),
+            onControlDetached(specialisation, editorOffCell)
+          ]),
+          DisablingConfigs.splitButton(() => sharedBackstage.providers.isDisabled() || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable),
+          toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
+          Unselecting.config({}),
+          ...spec.tooltip.map(tooltip => {
+            return Tooltipping.config({
+              ...sharedBackstage.providers.tooltips.getConfig({
+                tooltipText: sharedBackstage.providers.translate(tooltip),
+                onShow: comp => {
+                  if (tooltipString.get() !== tooltip) {
+                    const translatedTooltip = sharedBackstage.providers.translate(tooltipString.get());
+                    Tooltipping.setComponents(comp, sharedBackstage.providers.tooltips.getComponents({ tooltipText: translatedTooltip }));
+                  }
+                }
+              })
+            });
+          }).toArray()
+        ]),
+        eventOrder: {
+          [attachedToDom()]: [
+            'alloy.base.behaviour',
+            'split-dropdown-events',
+            'tooltipping'
+          ],
+          [detachedFromDom()]: [
+            'split-dropdown-events',
+            'tooltipping'
+          ]
+        },
+        toggleClass: 'tox-tbtn--enabled',
+        lazySink: sharedBackstage.getSink,
+        fetch: fetchChoices(getApi, spec, sharedBackstage.providers),
+        parts: { menu: part(false, spec.columns, spec.presets) },
+        components: [
+          SplitDropdown.parts.button(renderCommonStructure(spec.icon, spec.text, Optional.none(), Optional.some([
+            Toggling.config({
+              toggleClass: 'tox-tbtn--enabled',
+              toggleOnExecute: false
+            }),
+            DisablingConfigs.toolbarButton(never),
+            toggleOnReceive(constant$1({
+              contextType: 'any',
+              shouldDisable: false
+            }))
+          ]), sharedBackstage.providers, spec.context)),
+          SplitDropdown.parts.arrow({
+            dom: {
+              tag: 'button',
+              classes: [
+                'tox-tbtn',
+                'tox-split-button__chevron'
+              ],
+              innerHtml: get$3('chevron-down', sharedBackstage.providers.icons)
+            },
+            buttonBehaviours: derive$1([
+              DisablingConfigs.splitButton(never),
+              toggleOnReceive(constant$1({
+                contextType: 'any',
+                shouldDisable: false
+              }))
+            ])
+          }),
+          SplitDropdown.parts['aria-descriptor']({ text: sharedBackstage.providers.translate('To open the popup, press Shift+Enter') })
+        ]
+      });
+    };
+
+    const contextFormInputSelector = '.tox-toolbar-slider__input,.tox-toolbar-textfield';
+    const focusIn = contextbar => {
+      InlineView.getContent(contextbar).each(comp => {
+        descendant(comp.element, contextFormInputSelector).fold(() => Keying.focusIn(comp), focus$3);
+      });
+    };
+    const focusParent = comp => search(comp.element).each(focus => {
+      ancestor$1(focus, '[tabindex="-1"]').each(parent => {
+        focus$3(parent);
+      });
+    });
+
+    const forwardSlideEvent = generate$6('forward-slide');
+    const backSlideEvent = generate$6('backward-slide');
+    const changeSlideEvent = generate$6('change-slide-event');
+    const resizingClass = 'tox-pop--resizing';
+    const renderContextToolbar = spec => {
+      const stack = Cell([]);
+      const sketch = InlineView.sketch({
+        dom: {
+          tag: 'div',
+          classes: ['tox-pop']
+        },
+        fireDismissalEventInstead: { event: 'doNotDismissYet' },
+        onShow: comp => {
+          stack.set([]);
+          InlineView.getContent(comp).each(c => {
+            remove$7(c.element, 'visibility');
+          });
+          remove$3(comp.element, resizingClass);
+          remove$7(comp.element, 'width');
+        },
+        onHide: () => {
+          stack.set([]);
+          spec.onHide();
+        },
+        inlineBehaviours: derive$1([
+          config('context-toolbar-events', [
+            runOnSource(transitionend(), (comp, se) => {
+              if (se.event.raw.propertyName === 'width') {
+                remove$3(comp.element, resizingClass);
+                remove$7(comp.element, 'width');
+              }
+            }),
+            run$1(changeSlideEvent, (comp, se) => {
+              const elem = comp.element;
+              remove$7(elem, 'width');
+              const currentWidth = get$d(elem);
+              const hadFocus = search(comp.element).isSome();
+              remove$7(elem, 'left');
+              remove$7(elem, 'right');
+              remove$7(elem, 'max-width');
+              InlineView.setContent(comp, se.event.contents);
+              add$2(elem, resizingClass);
+              const newWidth = get$d(elem);
+              set$8(elem, 'transition', 'none');
+              InlineView.reposition(comp);
+              remove$7(elem, 'transition');
+              set$8(elem, 'width', currentWidth + 'px');
+              se.event.focus.fold(() => {
+                if (hadFocus) {
+                  focusIn(comp);
+                }
+              }, f => {
+                active$1(getRootNode(comp.element)).fold(() => focus$3(f), active => {
+                  if (!eq(active, f)) {
+                    focus$3(f);
+                  }
+                });
+              });
+              setTimeout(() => {
+                set$8(comp.element, 'width', newWidth + 'px');
+              }, 0);
+            }),
+            run$1(forwardSlideEvent, (comp, se) => {
+              InlineView.getContent(comp).each(oldContents => {
+                stack.set(stack.get().concat([{
+                    bar: oldContents,
+                    focus: active$1(getRootNode(comp.element))
+                  }]));
+              });
+              emitWith(comp, changeSlideEvent, {
+                contents: se.event.forwardContents,
+                focus: Optional.none()
+              });
+            }),
+            run$1(backSlideEvent, (comp, _se) => {
+              spec.onBack();
+              last$1(stack.get()).each(last => {
+                stack.set(stack.get().slice(0, stack.get().length - 1));
+                emitWith(comp, changeSlideEvent, {
+                  contents: premade(last.bar),
+                  focus: last.focus
+                });
+              });
+            })
+          ]),
+          Keying.config({
+            mode: 'special',
+            onEscape: comp => last$1(stack.get()).fold(() => spec.onEscape(), _ => {
+              emit(comp, backSlideEvent);
+              return Optional.some(true);
+            })
+          })
+        ]),
+        lazySink: () => Result.value(spec.sink)
+      });
+      return {
+        sketch,
+        inSubtoolbar: () => stack.get().length > 0
+      };
+    };
+
+    const createNavigateBackButton = (editor, backstage) => {
+      const bridged = getOrDie(createToolbarButton({
+        type: 'button',
+        icon: 'chevron-left',
+        tooltip: 'Back',
+        onAction: noop
+      }));
+      return renderToolbarButtonWith(bridged, backstage.shared.providers, [run$1(internalToolbarButtonExecute, comp => {
+          emit(comp, backSlideEvent);
+        })]);
+    };
 
     const makeTooltipText = (editor, labelWithPlaceholder, value) => isEmpty(value) ? editor.translate(labelWithPlaceholder) : editor.translate([
       labelWithPlaceholder,
@@ -65328,489 +66229,6 @@ __webpack_require__(4);
       });
     };
 
-    const schema$7 = constant$1([
-      required$1('toggleClass'),
-      required$1('fetch'),
-      onStrictHandler('onExecute'),
-      defaulted('getHotspot', Optional.some),
-      defaulted('getAnchorOverrides', constant$1({})),
-      schema$y(),
-      onStrictHandler('onItemExecute'),
-      option$3('lazySink'),
-      required$1('dom'),
-      onHandler('onOpen'),
-      field('splitDropdownBehaviours', [
-        Coupling,
-        Keying,
-        Focusing
-      ]),
-      defaulted('matchWidth', false),
-      defaulted('useMinWidth', false),
-      defaulted('eventOrder', {}),
-      option$3('role'),
-      option$3('listRole')
-    ].concat(sandboxFields()));
-    const arrowPart = required({
-      factory: Button,
-      schema: [required$1('dom')],
-      name: 'arrow',
-      defaults: () => {
-        return { buttonBehaviours: derive$1([Focusing.revoke()]) };
-      },
-      overrides: detail => {
-        return {
-          dom: {
-            tag: 'span',
-            attributes: { role: 'presentation' }
-          },
-          action: arrow => {
-            arrow.getSystem().getByUid(detail.uid).each(emitExecute);
-          },
-          buttonBehaviours: derive$1([Toggling.config({
-              toggleOnExecute: false,
-              toggleClass: detail.toggleClass
-            })])
-        };
-      }
-    });
-    const buttonPart = required({
-      factory: Button,
-      schema: [required$1('dom')],
-      name: 'button',
-      defaults: () => {
-        return { buttonBehaviours: derive$1([Focusing.revoke()]) };
-      },
-      overrides: detail => {
-        return {
-          dom: {
-            tag: 'span',
-            attributes: { role: 'presentation' }
-          },
-          action: btn => {
-            btn.getSystem().getByUid(detail.uid).each(splitDropdown => {
-              detail.onExecute(splitDropdown, btn);
-            });
-          }
-        };
-      }
-    });
-    const parts$3 = constant$1([
-      arrowPart,
-      buttonPart,
-      optional({
-        factory: {
-          sketch: spec => {
-            return {
-              uid: spec.uid,
-              dom: {
-                tag: 'span',
-                styles: { display: 'none' },
-                attributes: { 'aria-hidden': 'true' },
-                innerHtml: spec.text
-              }
-            };
-          }
-        },
-        schema: [required$1('text')],
-        name: 'aria-descriptor'
-      }),
-      external({
-        schema: [tieredMenuMarkers()],
-        name: 'menu',
-        defaults: detail => {
-          return {
-            onExecute: (tmenu, item) => {
-              tmenu.getSystem().getByUid(detail.uid).each(splitDropdown => {
-                detail.onItemExecute(splitDropdown, tmenu, item);
-              });
-            }
-          };
-        }
-      }),
-      partType$1()
-    ]);
-
-    const factory$5 = (detail, components, spec, externals) => {
-      const switchToMenu = sandbox => {
-        Composing.getCurrent(sandbox).each(current => {
-          Highlighting.highlightFirst(current);
-          Keying.focusIn(current);
-        });
-      };
-      const action = component => {
-        const onOpenSync = switchToMenu;
-        togglePopup(detail, identity, component, externals, onOpenSync, HighlightOnOpen.HighlightMenuAndItem).get(noop);
-      };
-      const openMenu = comp => {
-        action(comp);
-        return Optional.some(true);
-      };
-      const executeOnButton = comp => {
-        const button = getPartOrDie(comp, detail, 'button');
-        emitExecute(button);
-        return Optional.some(true);
-      };
-      const buttonEvents = {
-        ...derive$2([runOnAttached((component, _simulatedEvent) => {
-            const ariaDescriptor = getPart(component, detail, 'aria-descriptor');
-            ariaDescriptor.each(descriptor => {
-              const descriptorId = generate$6('aria');
-              set$9(descriptor.element, 'id', descriptorId);
-              set$9(component.element, 'aria-describedby', descriptorId);
-            });
-          })]),
-        ...events$9(Optional.some(action))
-      };
-      const apis = {
-        repositionMenus: comp => {
-          if (Toggling.isOn(comp)) {
-            repositionMenus(comp);
-          }
-        }
-      };
-      return {
-        uid: detail.uid,
-        dom: detail.dom,
-        components,
-        apis,
-        eventOrder: {
-          ...detail.eventOrder,
-          [execute$5()]: [
-            'disabling',
-            'toggling',
-            'alloy.base.behaviour'
-          ]
-        },
-        events: buttonEvents,
-        behaviours: augment(detail.splitDropdownBehaviours, [
-          Coupling.config({
-            others: {
-              sandbox: hotspot => {
-                const arrow = getPartOrDie(hotspot, detail, 'arrow');
-                const extras = {
-                  onOpen: () => {
-                    Toggling.on(arrow);
-                    Toggling.on(hotspot);
-                  },
-                  onClose: () => {
-                    Toggling.off(arrow);
-                    Toggling.off(hotspot);
-                  }
-                };
-                return makeSandbox$1(detail, hotspot, extras);
-              }
-            }
-          }),
-          Keying.config({
-            mode: 'special',
-            onSpace: executeOnButton,
-            onEnter: executeOnButton,
-            onDown: openMenu
-          }),
-          Focusing.config({}),
-          Toggling.config({
-            toggleOnExecute: false,
-            aria: { mode: 'expanded' }
-          })
-        ]),
-        domModification: {
-          attributes: {
-            'role': detail.role.getOr('button'),
-            'aria-haspopup': true
-          }
-        }
-      };
-    };
-    const SplitDropdown = composite({
-      name: 'SplitDropdown',
-      configFields: schema$7(),
-      partFields: parts$3(),
-      factory: factory$5,
-      apis: { repositionMenus: (apis, comp) => apis.repositionMenus(comp) }
-    });
-
-    const getButtonApi = component => ({
-      isEnabled: () => !Disabling.isDisabled(component),
-      setEnabled: state => Disabling.set(component, !state),
-      setText: text => emitWith(component, updateMenuText, { text }),
-      setIcon: icon => emitWith(component, updateMenuIcon, { icon })
-    });
-    const getToggleApi = component => ({
-      setActive: state => {
-        Toggling.set(component, state);
-      },
-      isActive: () => Toggling.isOn(component),
-      isEnabled: () => !Disabling.isDisabled(component),
-      setEnabled: state => Disabling.set(component, !state),
-      setText: text => emitWith(component, updateMenuText, { text }),
-      setIcon: icon => emitWith(component, updateMenuIcon, { icon })
-    });
-    const getTooltipAttributes = (tooltip, providersBackstage) => tooltip.map(tooltip => ({ 'aria-label': providersBackstage.translate(tooltip) })).getOr({});
-    const focusButtonEvent = generate$6('focus-button');
-    const renderCommonStructure = (optIcon, optText, tooltip, behaviours, providersBackstage, context, btnName) => {
-      const optMemDisplayText = optText.map(text => record(renderLabel$1(text, 'tox-tbtn', providersBackstage)));
-      const optMemDisplayIcon = optIcon.map(icon => record(renderReplaceableIconFromPack(icon, providersBackstage.icons)));
-      return {
-        dom: {
-          tag: 'button',
-          classes: ['tox-tbtn'].concat(optText.isSome() ? ['tox-tbtn--select'] : []),
-          attributes: {
-            ...getTooltipAttributes(tooltip, providersBackstage),
-            ...isNonNullable(btnName) ? { 'data-mce-name': btnName } : {}
-          }
-        },
-        components: componentRenderPipeline([
-          optMemDisplayIcon.map(mem => mem.asSpec()),
-          optMemDisplayText.map(mem => mem.asSpec())
-        ]),
-        eventOrder: {
-          [mousedown()]: [
-            'focusing',
-            'alloy.base.behaviour',
-            commonButtonDisplayEvent
-          ],
-          [attachedToDom()]: [
-            commonButtonDisplayEvent,
-            'toolbar-group-button-events'
-          ],
-          [detachedFromDom()]: [
-            commonButtonDisplayEvent,
-            'toolbar-group-button-events',
-            'tooltipping'
-          ]
-        },
-        buttonBehaviours: derive$1([
-          DisablingConfigs.toolbarButton(() => providersBackstage.checkUiComponentContext(context).shouldDisable),
-          toggleOnReceive(() => providersBackstage.checkUiComponentContext(context)),
-          config(commonButtonDisplayEvent, [
-            runOnAttached((comp, _se) => forceInitialSize(comp)),
-            run$1(updateMenuText, (comp, se) => {
-              optMemDisplayText.bind(mem => mem.getOpt(comp)).each(displayText => {
-                Replacing.set(displayText, [text$2(providersBackstage.translate(se.event.text))]);
-              });
-            }),
-            run$1(updateMenuIcon, (comp, se) => {
-              optMemDisplayIcon.bind(mem => mem.getOpt(comp)).each(displayIcon => {
-                Replacing.set(displayIcon, [renderReplaceableIconFromPack(se.event.icon, providersBackstage.icons)]);
-              });
-            }),
-            run$1(mousedown(), (button, se) => {
-              se.event.prevent();
-              emit(button, focusButtonEvent);
-            })
-          ])
-        ].concat(behaviours.getOr([])))
-      };
-    };
-    const renderFloatingToolbarButton = (spec, backstage, identifyButtons, attributes, btnName) => {
-      const sharedBackstage = backstage.shared;
-      const editorOffCell = Cell(noop);
-      const specialisation = {
-        toolbarButtonBehaviours: [],
-        getApi: getButtonApi,
-        onSetup: spec.onSetup
-      };
-      const behaviours = [
-        config('toolbar-group-button-events', [
-          onControlAttached(specialisation, editorOffCell),
-          onControlDetached(specialisation, editorOffCell)
-        ]),
-        ...spec.tooltip.map(t => Tooltipping.config(backstage.shared.providers.tooltips.getConfig({ tooltipText: backstage.shared.providers.translate(t) }))).toArray()
-      ];
-      return FloatingToolbarButton.sketch({
-        lazySink: sharedBackstage.getSink,
-        fetch: () => Future.nu(resolve => {
-          resolve(map$2(identifyButtons(spec.items), renderToolbarGroup));
-        }),
-        markers: { toggledClass: 'tox-tbtn--enabled' },
-        parts: {
-          button: renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.some(behaviours), sharedBackstage.providers, spec.context, btnName),
-          toolbar: {
-            dom: {
-              tag: 'div',
-              classes: ['tox-toolbar__overflow'],
-              attributes
-            }
-          }
-        }
-      });
-    };
-    const renderCommonToolbarButton = (spec, specialisation, providersBackstage, btnName) => {
-      var _d;
-      const editorOffCell = Cell(noop);
-      const structure = renderCommonStructure(spec.icon, spec.text, spec.tooltip, Optional.none(), providersBackstage, spec.context, btnName);
-      return Button.sketch({
-        dom: structure.dom,
-        components: structure.components,
-        eventOrder: toolbarButtonEventOrder,
-        buttonBehaviours: {
-          ...derive$1([
-            config('toolbar-button-events', [
-              onToolbarButtonExecute({
-                onAction: spec.onAction,
-                getApi: specialisation.getApi
-              }),
-              onControlAttached(specialisation, editorOffCell),
-              onControlDetached(specialisation, editorOffCell)
-            ]),
-            ...spec.tooltip.map(t => Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate(t) + spec.shortcut.map(shortcut => ` (${ convertText(shortcut) })`).getOr('') }))).toArray(),
-            DisablingConfigs.toolbarButton(() => !spec.enabled || providersBackstage.checkUiComponentContext(spec.context).shouldDisable),
-            toggleOnReceive(() => providersBackstage.checkUiComponentContext(spec.context))
-          ].concat(specialisation.toolbarButtonBehaviours)),
-          [commonButtonDisplayEvent]: (_d = structure.buttonBehaviours) === null || _d === void 0 ? void 0 : _d[commonButtonDisplayEvent]
-        }
-      });
-    };
-    const renderToolbarButton = (spec, providersBackstage, btnName) => renderToolbarButtonWith(spec, providersBackstage, [], btnName);
-    const renderToolbarButtonWith = (spec, providersBackstage, bonusEvents, btnName) => renderCommonToolbarButton(spec, {
-      toolbarButtonBehaviours: bonusEvents.length > 0 ? [config('toolbarButtonWith', bonusEvents)] : [],
-      getApi: getButtonApi,
-      onSetup: spec.onSetup
-    }, providersBackstage, btnName);
-    const renderToolbarToggleButton = (spec, providersBackstage, btnName) => renderToolbarToggleButtonWith(spec, providersBackstage, [], btnName);
-    const renderToolbarToggleButtonWith = (spec, providersBackstage, bonusEvents, btnName) => renderCommonToolbarButton(spec, {
-      toolbarButtonBehaviours: [
-        Replacing.config({}),
-        Toggling.config({
-          toggleClass: 'tox-tbtn--enabled',
-          aria: { mode: 'pressed' },
-          toggleOnExecute: false
-        })
-      ].concat(bonusEvents.length > 0 ? [config('toolbarToggleButtonWith', bonusEvents)] : []),
-      getApi: getToggleApi,
-      onSetup: spec.onSetup
-    }, providersBackstage, btnName);
-    const fetchChoices = (getApi, spec, providersBackstage) => comp => Future.nu(callback => spec.fetch(callback)).map(items => Optional.from(createTieredDataFrom(deepMerge(createPartialChoiceMenu(generate$6('menu-value'), items, value => {
-      spec.onItemAction(getApi(comp), value);
-    }, spec.columns, spec.presets, ItemResponse$1.CLOSE_ON_EXECUTE, spec.select.getOr(never), providersBackstage), {
-      movement: deriveMenuMovement(spec.columns, spec.presets),
-      menuBehaviours: SimpleBehaviours.unnamedEvents(spec.columns !== 'auto' ? [] : [runOnAttached((comp, _se) => {
-          detectSize(comp, 4, classForPreset(spec.presets)).each(({numRows, numColumns}) => {
-            Keying.setGridSize(comp, numRows, numColumns);
-          });
-        })])
-    }))));
-    const renderSplitButton = (spec, sharedBackstage, btnName) => {
-      const tooltipString = Cell(spec.tooltip.getOr(''));
-      const getApi = comp => ({
-        isEnabled: () => !Disabling.isDisabled(comp),
-        setEnabled: state => Disabling.set(comp, !state),
-        setIconFill: (id, value) => {
-          descendant(comp.element, `svg path[class="${ id }"], rect[class="${ id }"]`).each(underlinePath => {
-            set$9(underlinePath, 'fill', value);
-          });
-        },
-        setActive: state => {
-          set$9(comp.element, 'aria-pressed', state);
-          descendant(comp.element, 'span').each(button => {
-            comp.getSystem().getByDom(button).each(buttonComp => Toggling.set(buttonComp, state));
-          });
-        },
-        isActive: () => descendant(comp.element, 'span').exists(button => comp.getSystem().getByDom(button).exists(Toggling.isOn)),
-        setText: text => descendant(comp.element, 'span').each(button => comp.getSystem().getByDom(button).each(buttonComp => emitWith(buttonComp, updateMenuText, { text }))),
-        setIcon: icon => descendant(comp.element, 'span').each(button => comp.getSystem().getByDom(button).each(buttonComp => emitWith(buttonComp, updateMenuIcon, { icon }))),
-        setTooltip: tooltip => {
-          const translatedTooltip = sharedBackstage.providers.translate(tooltip);
-          set$9(comp.element, 'aria-label', translatedTooltip);
-          tooltipString.set(tooltip);
-        }
-      });
-      const editorOffCell = Cell(noop);
-      const specialisation = {
-        getApi,
-        onSetup: spec.onSetup
-      };
-      return SplitDropdown.sketch({
-        dom: {
-          tag: 'div',
-          classes: ['tox-split-button'],
-          attributes: {
-            'aria-pressed': false,
-            ...getTooltipAttributes(spec.tooltip, sharedBackstage.providers),
-            ...isNonNullable(btnName) ? { 'data-mce-name': btnName } : {}
-          }
-        },
-        onExecute: button => {
-          const api = getApi(button);
-          if (api.isEnabled()) {
-            spec.onAction(api);
-          }
-        },
-        onItemExecute: (_a, _b, _c) => {
-        },
-        splitDropdownBehaviours: derive$1([
-          config('split-dropdown-events', [
-            runOnAttached((comp, _se) => forceInitialSize(comp)),
-            run$1(focusButtonEvent, Focusing.focus),
-            onControlAttached(specialisation, editorOffCell),
-            onControlDetached(specialisation, editorOffCell)
-          ]),
-          DisablingConfigs.splitButton(() => sharedBackstage.providers.isDisabled() || sharedBackstage.providers.checkUiComponentContext(spec.context).shouldDisable),
-          toggleOnReceive(() => sharedBackstage.providers.checkUiComponentContext(spec.context)),
-          Unselecting.config({}),
-          ...spec.tooltip.map(tooltip => {
-            return Tooltipping.config({
-              ...sharedBackstage.providers.tooltips.getConfig({
-                tooltipText: sharedBackstage.providers.translate(tooltip),
-                onShow: comp => {
-                  if (tooltipString.get() !== tooltip) {
-                    const translatedTooltip = sharedBackstage.providers.translate(tooltipString.get());
-                    Tooltipping.setComponents(comp, sharedBackstage.providers.tooltips.getComponents({ tooltipText: translatedTooltip }));
-                  }
-                }
-              })
-            });
-          }).toArray()
-        ]),
-        eventOrder: {
-          [attachedToDom()]: [
-            'alloy.base.behaviour',
-            'split-dropdown-events',
-            'tooltipping'
-          ],
-          [detachedFromDom()]: [
-            'split-dropdown-events',
-            'tooltipping'
-          ]
-        },
-        toggleClass: 'tox-tbtn--enabled',
-        lazySink: sharedBackstage.getSink,
-        fetch: fetchChoices(getApi, spec, sharedBackstage.providers),
-        parts: { menu: part(false, spec.columns, spec.presets) },
-        components: [
-          SplitDropdown.parts.button(renderCommonStructure(spec.icon, spec.text, Optional.none(), Optional.some([
-            Toggling.config({
-              toggleClass: 'tox-tbtn--enabled',
-              toggleOnExecute: false
-            }),
-            DisablingConfigs.toolbarButton(never),
-            toggleOnReceive(constant$1({
-              contextType: 'any',
-              shouldDisable: false
-            }))
-          ]), sharedBackstage.providers, spec.context)),
-          SplitDropdown.parts.arrow({
-            dom: {
-              tag: 'button',
-              classes: [
-                'tox-tbtn',
-                'tox-split-button__chevron'
-              ],
-              innerHtml: get$3('chevron-down', sharedBackstage.providers.icons)
-            },
-            buttonBehaviours: derive$1([
-              DisablingConfigs.splitButton(never),
-              toggleOnReceive(constant$1({
-                contextType: 'any',
-                shouldDisable: false
-              }))
-            ])
-          }),
-          SplitDropdown.parts['aria-descriptor']({ text: sharedBackstage.providers.translate('To open the popup, press Shift+Enter') })
-        ]
-      });
-    };
-
     const defaultToolbar = [
       {
         name: 'history',
@@ -65897,7 +66315,8 @@ __webpack_require__(4);
       fontsizeinput: createFontSizeInputButton,
       fontfamily: createFontFamilyButton,
       blocks: createBlocksButton,
-      align: createAlignButton
+      align: createAlignButton,
+      navigateback: createNavigateBackButton
     };
     const removeUnusedDefaults = buttons => {
       const filteredItemGroups = map$2(defaultToolbar, group => {
@@ -66130,16 +66549,35 @@ __webpack_require__(4);
       const maxOverride = maxSize.filter(max => size > max);
       return minOverride.or(maxOverride).getOr(size);
     };
+    const convertValueToPx = (element, value) => {
+      if (typeof value === 'number') {
+        return Optional.from(value);
+      }
+      const splitValue = /^([0-9.]+)(pt|em|px)$/.exec(value.trim());
+      if (splitValue) {
+        const type = splitValue[2];
+        const parsed = Number.parseFloat(splitValue[1]);
+        if (Number.isNaN(parsed) || parsed < 0) {
+          return Optional.none();
+        } else if (type === 'em') {
+          return Optional.from(parsed * Number.parseFloat(window.getComputedStyle(element.dom).fontSize));
+        } else if (type === 'pt') {
+          return Optional.from(parsed * (72 / 96));
+        } else if (type === 'px') {
+          return Optional.from(parsed);
+        }
+      }
+      return Optional.none();
+    };
 
     const getHeight = editor => {
-      const baseHeight = getHeightOption(editor);
+      const baseHeight = convertValueToPx(SugarElement.fromDom(editor.targetElm), getHeightOption(editor));
       const minHeight = getMinHeightOption(editor);
       const maxHeight = getMaxHeightOption(editor);
-      return parseToInt(baseHeight).map(height => calcCappedSize(height, minHeight, maxHeight));
+      return baseHeight.map(height => calcCappedSize(height, minHeight, maxHeight));
     };
     const getHeightWithFallback = editor => {
-      const height = getHeight(editor);
-      return height.getOr(getHeightOption(editor));
+      return getHeight(editor).getOr(getHeightOption(editor));
     };
     const getWidth = editor => {
       const baseWidth = getWidthOption(editor);
@@ -66156,7 +66594,7 @@ __webpack_require__(4);
     const maximumDistanceToEdge = 40;
     const InlineHeader = (editor, targetElm, uiRefs, backstage, floatContainer) => {
       const {mainUi, uiMotherships} = uiRefs;
-      const DOM = global$8.DOM;
+      const DOM = global$9.DOM;
       const useFixedToolbarContainer = useFixedContainer(editor);
       const isSticky = isStickyToolbar(editor);
       const editorMaxWidthOpt = getMaxWidthOption(editor).or(getWidth(editor));
@@ -66499,110 +66937,10 @@ __webpack_require__(4);
       };
     };
 
+    var global$1 = tinymce.util.Tools.resolve('tinymce.util.VK');
+
     const showContextToolbarEvent = 'contexttoolbar-show';
     const hideContextToolbarEvent = 'contexttoolbar-hide';
-
-    const contextFormInputSelector = '.tox-toolbar-slider__input,.tox-toolbar-textfield';
-    const focusIn = contextbar => {
-      InlineView.getContent(contextbar).each(comp => {
-        descendant(comp.element, contextFormInputSelector).fold(() => Keying.focusIn(comp), focus$3);
-      });
-    };
-    const focusParent = comp => search(comp.element).each(focus => {
-      ancestor(focus, '[tabindex="-1"]').each(parent => {
-        focus$3(parent);
-      });
-    });
-
-    const forwardSlideEvent = generate$6('forward-slide');
-    const backSlideEvent = generate$6('backward-slide');
-    const changeSlideEvent = generate$6('change-slide-event');
-    const resizingClass = 'tox-pop--resizing';
-    const renderContextToolbar = spec => {
-      const stack = Cell([]);
-      return InlineView.sketch({
-        dom: {
-          tag: 'div',
-          classes: ['tox-pop']
-        },
-        fireDismissalEventInstead: { event: 'doNotDismissYet' },
-        onShow: comp => {
-          stack.set([]);
-          InlineView.getContent(comp).each(c => {
-            remove$7(c.element, 'visibility');
-          });
-          remove$3(comp.element, resizingClass);
-          remove$7(comp.element, 'width');
-        },
-        onHide: () => {
-          spec.onHide();
-        },
-        inlineBehaviours: derive$1([
-          config('context-toolbar-events', [
-            runOnSource(transitionend(), (comp, se) => {
-              if (se.event.raw.propertyName === 'width') {
-                remove$3(comp.element, resizingClass);
-                remove$7(comp.element, 'width');
-              }
-            }),
-            run$1(changeSlideEvent, (comp, se) => {
-              const elem = comp.element;
-              remove$7(elem, 'width');
-              const currentWidth = get$d(elem);
-              remove$7(elem, 'left');
-              remove$7(elem, 'right');
-              remove$7(elem, 'max-width');
-              InlineView.setContent(comp, se.event.contents);
-              add$2(elem, resizingClass);
-              const newWidth = get$d(elem);
-              set$8(elem, 'transition', 'none');
-              InlineView.reposition(comp);
-              remove$7(elem, 'transition');
-              set$8(elem, 'width', currentWidth + 'px');
-              se.event.focus.fold(() => focusIn(comp), f => {
-                focus$3(f);
-                if (search(elem).isNone()) {
-                  focusIn(comp);
-                }
-              });
-              setTimeout(() => {
-                set$8(comp.element, 'width', newWidth + 'px');
-              }, 0);
-            }),
-            run$1(forwardSlideEvent, (comp, se) => {
-              InlineView.getContent(comp).each(oldContents => {
-                stack.set(stack.get().concat([{
-                    bar: oldContents,
-                    focus: active$1(getRootNode(comp.element))
-                  }]));
-              });
-              emitWith(comp, changeSlideEvent, {
-                contents: se.event.forwardContents,
-                focus: Optional.none()
-              });
-            }),
-            run$1(backSlideEvent, (comp, _se) => {
-              spec.onBack();
-              last$1(stack.get()).each(last => {
-                stack.set(stack.get().slice(0, stack.get().length - 1));
-                emitWith(comp, changeSlideEvent, {
-                  contents: premade(last.bar),
-                  focus: last.focus
-                });
-              });
-            })
-          ]),
-          Keying.config({
-            mode: 'special',
-            onEscape: comp => last$1(stack.get()).fold(() => spec.onEscape(), _ => {
-              emit(comp, backSlideEvent);
-              return Optional.some(true);
-            })
-          })
-        ]),
-        lazySink: () => Result.value(spec.sink)
-      });
-    };
 
     const getFormApi = (input, valueState, focusfallbackElement) => {
       return {
@@ -66685,7 +67023,7 @@ __webpack_require__(4);
       const enabled = true;
       const ratioEvent = generate$6('ratio-event');
       const getApi = comp => getFormApi(comp, valueState);
-      const makeIcon = iconName => render$3(iconName, {
+      const makeIcon = iconName => render$4(iconName, {
         tag: 'span',
         classes: [
           'tox-icon',
@@ -66727,7 +67065,7 @@ __webpack_require__(4);
         components
       });
       const goToParent = comp => {
-        const focussableWrapperOpt = ancestor(comp.element, 'div.tox-focusable-wrapper');
+        const focussableWrapperOpt = ancestor$1(comp.element, 'div.tox-focusable-wrapper');
         return focussableWrapperOpt.fold(Optional.none, focussableWrapper => {
           focus$3(focussableWrapper);
           return Optional.some(true);
@@ -66797,6 +67135,7 @@ __webpack_require__(4);
       const editorOffCell = Cell(noop);
       const controlLifecycleHandlers = [
         onControlAttached({
+          onBeforeSetup: comp => descendant(comp.element, 'input').each(focus$3),
           onSetup: ctx.onSetup,
           getApi
         }, editorOffCell),
@@ -66981,7 +67320,7 @@ __webpack_require__(4);
             onControlAttached({
               onSetup: ctx.onSetup,
               getApi: comp => {
-                const closestFocussableOpt = ancestor(comp.element, '.tox-toolbar').bind(toolbar => descendant(toolbar, 'button:enabled'));
+                const closestFocussableOpt = ancestor$1(comp.element, '.tox-toolbar').bind(toolbar => descendant(toolbar, 'button:enabled'));
                 return closestFocussableOpt.fold(() => getFormApi(comp, valueState), closestFocussable => getFormApi(comp, valueState, closestFocussable));
               },
               onBeforeSetup: Keying.focusIn
@@ -67310,7 +67649,7 @@ __webpack_require__(4);
       if (isRoot(startNode)) {
         return Optional.none();
       } else {
-        return ancestor$2(startNode, ancestorElem => {
+        return ancestor(startNode, ancestorElem => {
           if (isElement$1(ancestorElem)) {
             const {contextToolbars, contextForms} = matchTargetWith(ancestorElem, scopes.inNodeScope);
             const toolbars = contextForms.length > 0 ? contextForms : filterByPositionForAncestorNode(contextToolbars);
@@ -67362,6 +67701,15 @@ __webpack_require__(4);
       };
       const registerToolbar = (key, toolbarSpec) => {
         createContextToolbar(toolbarSpec).each(contextToolbar => {
+          if (contextToolbar.launch.isSome()) {
+            formNavigators['toolbar:' + key + ''] = {
+              ...toolbarSpec.launch,
+              type: 'button',
+              onAction: () => {
+                navigate(contextToolbar);
+              }
+            };
+          }
           if (toolbarSpec.scope === 'editor') {
             inEditorScope.push(contextToolbar);
           } else {
@@ -67389,6 +67737,7 @@ __webpack_require__(4);
     };
 
     const transitionClass = 'tox-pop--transition';
+    const isToolbarActionKey = keyCode => keyCode === global$1.ENTER || keyCode === global$1.SPACEBAR;
     const register$a = (editor, registryContextToolbars, sink, extras) => {
       const backstage = extras.backstage;
       const sharedBackstage = backstage.shared;
@@ -67396,7 +67745,7 @@ __webpack_require__(4);
       const lastElement = value$4();
       const lastTrigger = value$4();
       const lastContextPosition = value$4();
-      const contextbar = build$1(renderContextToolbar({
+      const contextToolbarResult = renderContextToolbar({
         sink,
         onEscape: () => {
           editor.focus();
@@ -67409,7 +67758,8 @@ __webpack_require__(4);
         onBack: () => {
           fireContextFormSlideBack(editor);
         }
-      }));
+      });
+      const contextbar = build$1(contextToolbarResult.sketch);
       const getBounds = () => {
         const position = lastContextPosition.get().getOr('node');
         const margin = shouldUseInsetLayouts(position) ? 1 : 0;
@@ -67464,16 +67814,20 @@ __webpack_require__(4);
           ])
         ])
       });
-      const getScopes = cached(() => categorise(registryContextToolbars, toolbarApi => {
+      const navigate = toolbarApi => {
         const alloySpec = buildToolbar([toolbarApi]);
         emitWith(contextbar, forwardSlideEvent, { forwardContents: wrapInPopDialog(alloySpec) });
-      }));
+      };
+      const getScopes = cached(() => categorise(registryContextToolbars, navigate));
       const buildContextToolbarGroups = (allButtons, ctx) => {
         return identifyButtons(editor, {
           buttons: allButtons,
           toolbar: ctx.items,
           allowToolbarGroups: false
-        }, extras.backstage, Optional.some(['form:']));
+        }, extras.backstage, Optional.some([
+          'form:',
+          'toolbar:'
+        ]));
       };
       const buildContextFormGroups = (ctx, providers) => ContextForm.buildInitGroups(ctx, providers);
       const buildToolbar = toolbars => {
@@ -67531,6 +67885,11 @@ __webpack_require__(4);
           set$8(contextBarEle, 'display', 'none');
         }
       };
+      const instantReposition = () => {
+        set$8(contextbar.element, 'transition', 'none');
+        hideOrRepositionIfNecessary();
+        remove$7(contextbar.element, 'transition');
+      };
       let isDragging = false;
       const launchContextToolbar = last(() => {
         if (!editor.hasFocus() || editor.removed || isDragging) {
@@ -67548,7 +67907,12 @@ __webpack_require__(4);
       editor.on('init', () => {
         editor.on('remove', close);
         editor.on('ScrollContent ScrollWindow ObjectResized ResizeEditor longpress', hideOrRepositionIfNecessary);
-        editor.on('click keyup focus SetContent', launchContextToolbar.throttle);
+        editor.on('click focus SetContent', launchContextToolbar.throttle);
+        editor.on('keyup', e => {
+          if (!isToolbarActionKey(e.keyCode) || !contextToolbarResult.inSubtoolbar()) {
+            launchContextToolbar.throttle();
+          }
+        });
         editor.on(hideContextToolbarEvent, close);
         editor.on(showContextToolbarEvent, e => {
           const scopes = getScopes();
@@ -67558,8 +67922,8 @@ __webpack_require__(4);
           });
         });
         editor.on('focusout', _e => {
-          global$9.setEditorTimeout(editor, () => {
-            if (search(sink.element).isNone() && search(contextbar.element).isNone()) {
+          global$a.setEditorTimeout(editor, () => {
+            if (search(sink.element).isNone() && search(contextbar.element).isNone() && !editor.hasFocus()) {
               close();
             }
           }, 0);
@@ -67593,7 +67957,11 @@ __webpack_require__(4);
           isDragging = false;
         });
         editor.on('NodeChange', _e => {
-          search(contextbar.element).fold(launchContextToolbar.throttle, noop);
+          if (!contextToolbarResult.inSubtoolbar()) {
+            search(contextbar.element).fold(launchContextToolbar.throttle, noop);
+          } else {
+            instantReposition();
+          }
         });
       });
     };
@@ -67715,7 +68083,7 @@ __webpack_require__(4);
         },
         getCurrent: editor => {
           const node = SugarElement.fromDom(editor.selection.getNode());
-          return closest$4(node, n => Optional.some(n).filter(isElement$1).bind(ele => {
+          return closest$2(node, n => Optional.some(n).filter(isElement$1).bind(ele => {
             const codeOpt = getOpt(ele, 'lang');
             return codeOpt.map(code => {
               const customCode = getOpt(ele, 'data-mce-lang').getOrUndefined();
@@ -67818,7 +68186,7 @@ __webpack_require__(4);
       editor.execCommand('mceToggleFormat', false, fmt);
     };
     const registerFormatButtons = editor => {
-      global$1.each([
+      global$2.each([
         {
           name: 'bold',
           text: 'Bold',
@@ -67874,7 +68242,7 @@ __webpack_require__(4);
       }
     };
     const registerCommandButtons = editor => {
-      global$1.each([
+      global$2.each([
         {
           name: 'copy',
           text: 'Copy',
@@ -67921,7 +68289,7 @@ __webpack_require__(4);
           context: btn.context
         });
       });
-      global$1.each([
+      global$2.each([
         {
           name: 'cut',
           text: 'Cut',
@@ -67962,7 +68330,7 @@ __webpack_require__(4);
       });
     };
     const registerCommandToggleButtons = editor => {
-      global$1.each([{
+      global$2.each([{
           name: 'blockquote',
           text: 'Blockquote',
           action: 'mceBlockQuote',
@@ -67982,7 +68350,7 @@ __webpack_require__(4);
       registerCommandToggleButtons(editor);
     };
     const registerMenuItems$2 = editor => {
-      global$1.each([
+      global$2.each([
         {
           name: 'newdocument',
           text: 'New document',
@@ -68022,7 +68390,7 @@ __webpack_require__(4);
           context: menuitem.context
         });
       });
-      global$1.each([
+      global$2.each([
         {
           name: 'bold',
           text: 'Bold',
@@ -68261,7 +68629,7 @@ __webpack_require__(4);
       }
     };
     const transposeContentAreaContainer = (element, pos) => {
-      const containerPos = global$8.DOM.getPos(element);
+      const containerPos = global$9.DOM.getPos(element);
       return transpose(pos, containerPos.x, containerPos.y);
     };
     const getPointAnchor = (editor, e) => {
@@ -68367,7 +68735,7 @@ __webpack_require__(4);
     const setupiOSOverrides = editor => {
       const originalSelection = editor.selection.getRng();
       const selectionReset = () => {
-        global$9.setEditorTimeout(editor, () => {
+        global$a.setEditorTimeout(editor, () => {
           editor.selection.setRng(originalSelection);
         }, 10);
         unbindEventListeners();
@@ -69388,7 +69756,7 @@ __webpack_require__(4);
         return Optional.none();
       }
       const resizeLabel = resizeType === ResizeTypes.Both ? 'Press the arrow keys to resize the editor.' : 'Press the Up and Down arrow keys to resize the editor.';
-      return Optional.some(render$3('resize-handle', {
+      return Optional.some(render$4('resize-handle', {
         tag: 'div',
         classes: ['tox-statusbar__resize-handle'],
         attributes: {
@@ -69512,7 +69880,7 @@ __webpack_require__(4);
             tag: 'div',
             classes: ['tox-statusbar__help-text']
           },
-          components: [text$2(global$5.translate([
+          components: [text$2(global$6.translate([
               text,
               shortcutText
             ]))]
@@ -69683,8 +70051,8 @@ __webpack_require__(4);
         const hasMultipleToolbar = isMultipleToolbars(editor);
         const hasToolbar = isToolbarEnabled(editor);
         const hasMenubar = isMenubarEnabled(editor);
-        const shouldHavePromotion = promotionEnabled(editor);
-        const partPromotion = makePromotion();
+        const shouldHavePromotionLink = promotionEnabled(editor);
+        const partPromotion = makePromotion(shouldHavePromotionLink);
         const hasAnyContents = hasMultipleToolbar || hasToolbar || hasMenubar;
         const getPartToolbar = () => {
           if (hasMultipleToolbar) {
@@ -69695,10 +70063,10 @@ __webpack_require__(4);
             return [];
           }
         };
-        const menubarCollection = shouldHavePromotion ? [
+        const menubarCollection = [
           partPromotion,
           partMenubar
-        ] : [partMenubar];
+        ];
         return OuterContainer.parts.header({
           dom: {
             tag: 'div',
@@ -69715,12 +70083,13 @@ __webpack_require__(4);
           sharedBackstage: backstages.popup.shared
         });
       };
-      const makePromotion = () => {
+      const makePromotion = promotionLink => {
         return OuterContainer.parts.promotion({
           dom: {
             tag: 'div',
             classes: ['tox-promotion']
-          }
+          },
+          promotionLink
         });
       };
       const makeSidebarDefinition = () => {
@@ -69758,7 +70127,7 @@ __webpack_require__(4);
               'tox-silver-sink',
               'tox-tinymce-aux'
             ].concat(deviceClasses),
-            attributes: { ...global$5.isRtl() ? { dir: 'rtl' } : {} }
+            attributes: { ...global$6.isRtl() ? { dir: 'rtl' } : {} }
           },
           behaviours: derive$1([Positioning.config({ useFixed: () => header.isDocked(lazyHeader) })])
         };
@@ -69786,7 +70155,7 @@ __webpack_require__(4);
               'tox-silver-popup-sink',
               'tox-tinymce-aux'
             ].concat(deviceClasses),
-            attributes: { ...global$5.isRtl() ? { dir: 'rtl' } : {} }
+            attributes: { ...global$6.isRtl() ? { dir: 'rtl' } : {} }
           },
           behaviours: derive$1([Positioning.config({
               useFixed: () => header.isDocked(lazyHeader),
@@ -69827,7 +70196,7 @@ __webpack_require__(4);
         const isHidden = isDistractionFree(editor);
         const attributes = {
           role: 'application',
-          ...global$5.isRtl() ? { dir: 'rtl' } : {},
+          ...global$6.isRtl() ? { dir: 'rtl' } : {},
           ...isHidden ? { 'aria-hidden': 'true' } : {}
         };
         const outerContainer = build$1(OuterContainer.sketch({
@@ -69998,7 +70367,7 @@ __webpack_require__(4);
             behaviours: derive$1([Dragging.config({
                 mode: 'mouse',
                 getTarget: handle => {
-                  return ancestor(handle, '[role="dialog"]').getOr(handle);
+                  return ancestor$1(handle, '[role="dialog"]').getOr(handle);
                 },
                 blockerClass: detail.dragBlockClass.getOrDie(new Error('The drag blocker class was not specified for a dialog with a drag handle: \n' + JSON.stringify(spec, null, 2)).message),
                 getBounds: detail.getDragBounds
@@ -71009,7 +71378,7 @@ __webpack_require__(4);
     }));
     const getMaxTabviewHeight = (dialog, tabview, tablist) => {
       const documentElement$1 = documentElement(dialog).dom;
-      const rootElm = ancestor(dialog, '.tox-dialog-wrap').getOr(dialog);
+      const rootElm = ancestor$1(dialog, '.tox-dialog-wrap').getOr(dialog);
       const isFixed = get$f(rootElm, 'position') === 'fixed';
       let maxHeight;
       if (isFixed) {
@@ -71034,7 +71403,7 @@ __webpack_require__(4);
       set$8(tabview, 'flex-basis', height + 'px');
     };
     const updateTabviewHeight = (dialogBody, tabview, maxTabHeight) => {
-      ancestor(dialogBody, '[role="dialog"]').each(dialog => {
+      ancestor$1(dialogBody, '[role="dialog"]').each(dialog => {
         descendant(dialog, '[role="tablist"]').each(tablist => {
           maxTabHeight.get().map(height => {
             set$8(tabview, 'height', '0');
@@ -71281,7 +71650,7 @@ __webpack_require__(4);
       return ModalDialog.parts.body(bodySpec);
     };
 
-    const isTouch = global$6.deviceType.isTouch();
+    const isTouch = global$7.deviceType.isTouch();
     const hiddenHeader = (title, close) => ({
       dom: {
         tag: 'div',
@@ -71449,7 +71818,7 @@ __webpack_require__(4);
         Tabstopping.config({}),
         Tooltipping.config(providersBackstage.tooltips.getConfig({ tooltipText: providersBackstage.translate('Close') }))
       ]),
-      components: [render$3('close', {
+      components: [render$4('close', {
           tag: 'span',
           classes: ['tox-icon']
         }, providersBackstage.icons)],
@@ -71485,12 +71854,15 @@ __webpack_require__(4);
           mode: 'mouse',
           blockerClass: 'blocker',
           getTarget: handle => {
-            return closest$1(handle, '[role="dialog"]').getOrDie();
+            return closest$3(handle, '[role="dialog"]').getOrDie();
           },
           snaps: {
             getSnapPoints: () => [],
             leftAttr: 'data-drag-left',
             topAttr: 'data-drag-top'
+          },
+          onDrag: (comp, target) => {
+            comp.getSystem().broadcastOn([dismissPopups()], { target });
           }
         })])
     });
@@ -72548,7 +72920,7 @@ __webpack_require__(4);
       register(editor);
     };
     var Theme = () => {
-      global$a.add('silver', editor => {
+      global$b.add('silver', editor => {
         registerOptions(editor);
         let popupSinkBounds = () => win();
         const {
@@ -72576,10 +72948,14 @@ __webpack_require__(4);
         });
         const notificationRegion = value$4();
         const getNotificationManagerImpl = () => NotificationManagerImpl(editor, { backstage: popups.backstage }, popups.getMothership(), notificationRegion);
+        const getPromotionElement = () => {
+          return descendant(SugarElement.fromDom(editor.getContainer()), '.tox-promotion').map(promotion => promotion.dom).getOrNull();
+        };
         return {
           renderUI,
           getWindowManagerImpl: constant$1(windowMgr),
-          getNotificationManagerImpl
+          getNotificationManagerImpl,
+          getPromotionElement
         };
       });
     };
@@ -72606,7 +72982,7 @@ __webpack_require__(7);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -72852,7 +73228,7 @@ __webpack_require__(9);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -73049,7 +73425,7 @@ __webpack_require__(11);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -73152,7 +73528,7 @@ __webpack_require__(13);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -73560,7 +73936,7 @@ __webpack_require__(15);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -74180,7 +74556,7 @@ __webpack_require__(18);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -75459,7 +75835,7 @@ __webpack_require__(20);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -76985,7 +77361,7 @@ __webpack_require__(22);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -78335,7 +78711,7 @@ __webpack_require__(24);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -80534,7 +80910,7 @@ __webpack_require__(26);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -81010,7 +81386,7 @@ __webpack_require__(28);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {
@@ -82126,7 +82502,7 @@ __webpack_require__(30);
 /***/ (() => {
 
 /**
- * TinyMCE version 7.7.2 (2025-03-19)
+ * TinyMCE version 7.8.0 (TBD)
  */
 
 (function () {

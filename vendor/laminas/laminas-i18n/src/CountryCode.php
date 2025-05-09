@@ -17,7 +17,7 @@ use function strtoupper;
 final class CountryCode
 {
     /** @param non-empty-string $code */
-    private function __construct(private string $code)
+    private function __construct(private readonly string $code)
     {
     }
 
@@ -72,7 +72,6 @@ final class CountryCode
     public static function fromLocaleString(string $locale): self
     {
         $region = Locale::getRegion($locale);
-        /** @psalm-suppress TypeDoesNotContainNull */
         if ($region === null || $region === '') {
             throw InvalidArgumentException::withUnrecognizableLocaleString($locale);
         }

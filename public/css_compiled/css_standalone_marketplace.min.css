@@ -140,8 +140,7 @@
   backdrop-filter: blur(2px);
   background-color: rgba(0, 0, 0, 0.5);
 }
-.marketplace .right-panel .plugins .loading-plugins i.fas,
-.marketplace .right-panel .plugins .loading-plugins i.fa-solid {
+.marketplace .right-panel .plugins .loading-plugins .spinner-border {
   position: absolute;
   top: 50%;
   left: calc(50% - 1.5rem);

@@ -207,6 +207,11 @@
             </button>
         </div>
 
+        {# Visibility dropdown #}
+        {{ include('pages/admin/form/submit_button_conditional_visibility_dropdown.html.twig', {
+            'item'      : item,
+        }, with_context = false) }}
+
         {# Move to trashbin form action #}
         {% if item.canDelete() %}
             {# Hidden if the item is still in draft mode #}
@@ -286,6 +291,9 @@
     {# Form id #}
     <input type="hidden" name="id" value="{{ item.fields.id }}">
 
+    {# Form uuid #}
+    <input type="hidden" name="uuid" value="{{ item.fields.uuid }}">
+
     {# Special inputs to indicate that missing sections and question must be deleted #}
     <input type="hidden" name="_delete_missing_questions" value="1">
     <input type="hidden" name="_delete_missing_sections" value="1">
@@ -302,6 +310,9 @@
 
     {# Move section modal #}
     {{ include('pages/admin/form/move_section_modal.html.twig') }}
+
+    {# Block has conditions modal #}
+    {{ include('pages/admin/form/item_has_conditions_modal.html.twig') }}
 </form>
 
 {% if item.canUpdate() %}
@@ -382,9 +393,9 @@
 <script defer type="module">
 (async () => {
     const modules = await Promise.all([
-        import("{{ js_path('js/modules/Forms/EditorController.js') }}"),
-        import("{{ js_path('js/modules/Forms/EditorConvertedExtractedDefaultValue.js') }}"),
-        import("{{ js_path('js/modules/Forms/EditorConvertedExtractedSelectableDefaultValue.js') }}")
+        import("js/modules/Forms/EditorController"),
+        import("js/modules/Forms/EditorConvertedExtractedDefaultValue"),
+        import("js/modules/Forms/EditorConvertedExtractedSelectableDefaultValue")
     ]);
     const GlpiFormEditorController = modules[0].GlpiFormEditorController;
     const EditorConvertedExtractedDefaultValue = modules[1].GlpiFormEditorConvertedExtractedDefaultValue;
@@ -395,7 +406,12 @@
         container_selector,
         {{ item.fields.is_draft ? "true" : "false" }},
         "{{ question_types_manager.getDefaultTypeClass()|escape('js') }}",
-        "[data-glpi-form-editor-templates]"
+        "[data-glpi-form-editor-templates]",
+        {{ item.getDestinations()|map(destination => {
+            'id': destination.fields.id,
+            'name': destination.fields.name,
+            'conditions': destination.getConfiguredConditionsData(),
+        })|json_encode|raw }}
     );
 
     // Temporary solution, would be better to import it directly where it is needed but the current

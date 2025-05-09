@@ -2,7 +2,7 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1423:
+/***/ 1422:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -84,8 +84,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   toCamelCase: () => (/* reexport safe */ _cropper_utils__WEBPACK_IMPORTED_MODULE_0__.toCamelCase),
 /* harmony export */   toKebabCase: () => (/* reexport safe */ _cropper_utils__WEBPACK_IMPORTED_MODULE_0__.toKebabCase)
 /* harmony export */ });
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1424);
-/* harmony import */ var _cropper_elements__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1423);
+/* harmony import */ var _cropper_elements__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
 /*! Cropper.js v2.0.0 | (c) 2015-present Chen Fengyuan | MIT */
 
 
@@ -202,7 +202,7 @@ Cropper.version = '2.0.0';
 
 /***/ }),
 
-/***/ 1424:
+/***/ 1423:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -586,7 +586,7 @@ function multiplyMatrices(matrix, ...args) {
 
 /***/ }),
 
-/***/ 1425:
+/***/ 1424:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -601,15 +601,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   CropperShade: () => (/* reexport safe */ _cropper_element_shade__WEBPACK_IMPORTED_MODULE_3__["default"]),
 /* harmony export */   CropperViewer: () => (/* reexport safe */ _cropper_element_viewer__WEBPACK_IMPORTED_MODULE_8__["default"])
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_element_canvas__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1427);
-/* harmony import */ var _cropper_element_image__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1428);
-/* harmony import */ var _cropper_element_shade__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1429);
-/* harmony import */ var _cropper_element_handle__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1430);
-/* harmony import */ var _cropper_element_selection__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1431);
-/* harmony import */ var _cropper_element_grid__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(1432);
-/* harmony import */ var _cropper_element_crosshair__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(1433);
-/* harmony import */ var _cropper_element_viewer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(1434);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_element_canvas__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1426);
+/* harmony import */ var _cropper_element_image__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1427);
+/* harmony import */ var _cropper_element_shade__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1428);
+/* harmony import */ var _cropper_element_handle__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1429);
+/* harmony import */ var _cropper_element_selection__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1430);
+/* harmony import */ var _cropper_element_grid__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(1431);
+/* harmony import */ var _cropper_element_crosshair__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(1432);
+/* harmony import */ var _cropper_element_viewer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(1433);
 
 
 
@@ -623,14 +623,14 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 1426:
+/***/ 1425:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperElement)
 /* harmony export */ });
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1423);
 
 
 var style = `:host([hidden]){display:none!important}`;
@@ -874,15 +874,15 @@ CropperElement.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1427:
+/***/ 1426:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperCanvas)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -1336,15 +1336,15 @@ CropperCanvas.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1428:
+/***/ 1427:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperImage)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -1900,15 +1900,15 @@ CropperImage.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1429:
+/***/ 1428:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperShade)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -2046,15 +2046,15 @@ CropperShade.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1430:
+/***/ 1429:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperHandle)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -2086,15 +2086,15 @@ CropperHandle.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1431:
+/***/ 1430:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperSelection)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -2935,15 +2935,15 @@ CropperSelection.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1432:
+/***/ 1431:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperGrid)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -3010,15 +3010,15 @@ CropperGrid.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1433:
+/***/ 1432:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ CropperCrosshair)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -3046,7 +3046,7 @@ CropperCrosshair.$version = '2.0.0';
 
 /***/ }),
 
-/***/ 1434:
+/***/ 1433:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -3057,8 +3057,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   RESIZE_VERTICAL: () => (/* binding */ RESIZE_VERTICAL),
 /* harmony export */   "default": () => (/* binding */ CropperViewer)
 /* harmony export */ });
-/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1426);
-/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1424);
+/* harmony import */ var _cropper_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1425);
+/* harmony import */ var _cropper_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1423);
 
 
 
@@ -3320,7 +3320,7 @@ var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var cropperjs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1423);
+/* harmony import */ var cropperjs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1422);
 /**
  * ---------------------------------------------------------------------
  *

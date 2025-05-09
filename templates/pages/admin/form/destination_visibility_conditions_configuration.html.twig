@@ -48,9 +48,7 @@
     </div>
 
     <script defer type="module">
-        import {
-            GlpiFormConditionEditorController
-        } from '{{ js_path('js/modules/Forms/ConditionEditorController.js') }}';
+        import { GlpiFormConditionEditorController } from 'js/modules/Forms/ConditionEditorController';
 
         // Load form sections state from backend
         const sections = [];
@@ -68,6 +66,7 @@
                 uuid: '{{ question_data.getUuid()|escape('js') }}',
                 name: '{{ question_data.getName()|escape('js') }}',
                 type: '{{ get_class(question_data.getType())|escape('js') }}',
+                extra_data: {{ question_data.getExtraData()|json_encode|raw }},
             });
         {% endfor %}
 

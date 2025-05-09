@@ -299,7 +299,7 @@ class DateTime extends AbstractValidator
                 $this->invalidateFormatter = true;
                 return false;
             }
-        } catch (IntlException $intlException) {
+        } catch (IntlException) {
             $this->error(self::INVALID_DATETIME);
             $this->invalidateFormatter = true;
             return false;

@@ -4,7 +4,7 @@
 /***/ 1042:
 /***/ (() => {
 
-﻿/*! RateIt | v1.1.6 / 20/03/2024
+/*! RateIt | v1.1.6 / 20/03/2024
     https://github.com/gjunge/rateit.js | Twitter: @gjunge
 */
 (function ($) {

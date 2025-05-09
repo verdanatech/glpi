@@ -174,7 +174,7 @@ class IsInt extends AbstractValidator
                 $this->error(self::NOT_INT);
                 return false;
             }
-        } catch (IntlException $intlException) {
+        } catch (IntlException) {
             $this->error(self::NOT_INT);
             return false;
         }

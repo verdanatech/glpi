@@ -12,16 +12,14 @@ use function sprintf;
 
 /**
  * PHP Memory array loader.
+ *
+ * @final
  */
 class PhpMemoryArray implements RemoteLoaderInterface
 {
-    /** @var array */
-    protected $messages;
-
     /** @param array $messages */
-    public function __construct($messages)
+    public function __construct(protected $messages)
     {
-        $this->messages = $messages;
     }
 
     /**

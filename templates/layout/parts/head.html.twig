@@ -31,7 +31,7 @@
  #}
 
 <!DOCTYPE html>
-<html lang="{{ lang }}"
+<html lang="{{ lang ?? 'en' }}"
     {% if session('glpihighcontrast_css') %}
         data-high-contrast="1"
     {% endif %}
@@ -44,7 +44,7 @@
     {% endif %}
 >
 <head>
-   <title>{{ title }} - {{ config('app_name') }}</title>
+   <title>{% if title is defined %}{{ title }} - {% endif %}{{ config('app_name') }}</title>
 
    <meta charset="utf-8" />
 
@@ -71,6 +71,8 @@
    {{ custom_css() }}
 
    <link rel="shortcut icon" type="images/x-icon" href="{{ asset_path('/pics/favicon.ico') }}" />
+
+   {{ importmap() }}
 
    {% for js_file in js_files %}
       <script type="text/javascript" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>

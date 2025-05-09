@@ -40,6 +40,7 @@
 {% set order = order|default('ASC') %}
 {% set csv_url = csv_url|default('') %}
 {% set footers = footers|default([]) %}
+{% set showmassiveactions = showmassiveactions|default(false) %}
 
 {% if total_number < 1 and filters|length == 0 %}
     <table id="{{ datatable_id }}" class="table">
@@ -132,13 +133,13 @@
                                <span class="float-end log-toolbar mb-0">
                                    {% if nofilter is not defined %}
                                        <button class="btn btn-sm show_filters {{ filters|length > 0 ? 'btn-secondary active' : 'btn-outline-secondary' }}">
-                                           <i class="fas fa-filter"></i>
+                                           <i class="ti ti-filter"></i>
                                            <span class="d-none d-xl-block">{{ __('Filter') }}</span>
                                        </button>
                                    {% endif %}
                                    {% if csv_url|length %}
                                        <a href="{{ csv_url }}" class="btn btn-sm text-capitalize btn-outline-secondary">
-                                           <i class="fas fa-file-download"></i>
+                                           <i class="ti ti-download"></i>
                                            <span class="d-none d-xl-block">{{ __('Export') }}</span>
                                        </a>
                                    {% endif %}

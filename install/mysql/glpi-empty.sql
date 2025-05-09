@@ -3156,11 +3156,13 @@ CREATE TABLE `glpi_groups_users` (
   `groups_id` int unsigned NOT NULL DEFAULT '0',
   `is_dynamic` tinyint NOT NULL DEFAULT '0',
   `is_manager` tinyint NOT NULL DEFAULT '0',
+  `is_userdelegate` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unicity` (`users_id`,`groups_id`),
   KEY `groups_id` (`groups_id`),
   KEY `is_dynamic` (`is_dynamic`),
-  KEY `is_manager` (`is_manager`)
+  KEY `is_manager` (`is_manager`),
+  KEY `is_userdelegate` (`is_userdelegate`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 ### Dump table glpi_helpdesks_tiles_profiles_tiles
@@ -9491,6 +9493,7 @@ CREATE TABLE `glpi_forms_categories` (
 DROP TABLE IF EXISTS `glpi_forms_forms`;
 CREATE TABLE `glpi_forms_forms` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `uuid` varchar(255) NOT NULL DEFAULT '',
     `entities_id` int unsigned NOT NULL DEFAULT '0',
     `is_recursive` tinyint NOT NULL DEFAULT '0',
     `is_active` tinyint NOT NULL DEFAULT '0',
@@ -9503,9 +9506,12 @@ CREATE TABLE `glpi_forms_forms` (
     `description` longtext,
     `forms_categories_id` int unsigned NOT NULL DEFAULT '0',
     `usage_count` int unsigned NOT NULL DEFAULT '0',
+    `submit_button_visibility_strategy` varchar(30) NOT NULL DEFAULT '',
+    `submit_button_conditions` JSON NOT NULL,
     `date_mod` timestamp NULL DEFAULT NULL,
     `date_creation` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uuid` (`uuid`),
     KEY `name` (`name`),
     KEY `entities_id` (`entities_id`),
     KEY `is_recursive` (`is_recursive`),
