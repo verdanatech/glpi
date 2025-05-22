@@ -296,7 +296,6 @@ TWIG;
 
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'super_header' => _n('Locked field', 'Locked fields', Session::getPluralNumber()),
@@ -424,7 +423,6 @@ TWIG, $twig_params);
                 ],
             ]);
             $subtable = [
-                'nopager' => true,
                 'nosort' => true,
                 'nofilter' => true,
                 'columns' => [
@@ -467,7 +465,6 @@ TWIG, $twig_params);
             ]);
 
             $subtable = [
-                'nopager' => true,
                 'nosort' => true,
                 'nofilter' => true,
                 'columns' => [
@@ -1033,7 +1030,6 @@ TWIG, $twig_params);
             // Common Params
             $datatable_params['is_tab'] = true;
             $datatable_params['nosort'] = true;
-            $datatable_params['nopager'] = true;
             $datatable_params['nofilter'] = true;
             $datatable_params['total_number'] = count($datatable_params['entries']);
             $datatable_params['filtered_number'] = count($datatable_params['entries']);
@@ -1045,7 +1041,6 @@ TWIG, $twig_params);
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
             'table_class_style' => 'table-sm',
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'super_header' => __('Locked items'),
@@ -1302,11 +1297,15 @@ TWIG);
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
+        if (!is_subclass_of($itemtype, CommonDBTM::class)) {
+            return;
+        }
+
         $action_unlock_component = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_component';
         $action_unlock_fields = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_fields';
 
         if (
-            Session::haveRight(strtolower($itemtype), UPDATE)
+            Session::haveRight($itemtype::$rightname, UPDATE)
             && in_array($itemtype, $CFG_GLPI['inventory_types'] + $CFG_GLPI['inventory_lockable_objects'], true)
         ) {
             $actions[$action_unlock_component] = __('Unlock components');

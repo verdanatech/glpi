@@ -76,9 +76,6 @@ function header_html($etape)
         'custom_header_tags' => [],
     ]);
 
-    // CFG
-    echo Html::getCoreVariablesForJavascript();
-
     echo "<body>";
     echo "<div id='principal'>";
     echo "<div id='bloc'>";
@@ -351,11 +348,10 @@ function step4($databasename, $newdatabasename)
         echo \sprintf(
             <<<HTML
                 <script defer type="module">
-                    import { init_database } from '%s/js/modules/GlpiInstall.js';
+                    import { init_database } from '/js/modules/GlpiInstall.js';
                     init_database("%s");
                 </script>
-            HTML,
-            $CFG_GLPI['root_doc'],
+HTML,
             \Glpi\Controller\InstallController::PROGRESS_KEY_INIT_DATABASE,
         );
     } else { // can't create config_db file
@@ -416,16 +412,6 @@ function step8()
         [
             'context'   => 'core',
             'name'      => 'url_base',
-        ]
-    );
-
-    $url_base_api = "$url_base/apirest.php/";
-    $DB->update(
-        'glpi_configs',
-        ['value' => $url_base_api],
-        [
-            'context'   => 'core',
-            'name'      => 'url_base_api',
         ]
     );
 

@@ -7267,7 +7267,7 @@ abstract class CommonITILObject extends CommonDBTM
                 }
 
                 if (count($items)) {
-                    $entry['planification'] = "<span class='pointer' id='{$itemtype}{$item->fields["id"]}planning{$rand}'>" . count($items) . '</span>';
+                    $entry['planification'] = "<span class='pointer' id='{$itemtype}{$item->fields['id']}planning{$rand}'>" . count($items) . '</span>';
                     $entry['planification'] = sprintf(
                         __('%1$s %2$s'),
                         $entry['planification'],
@@ -7275,7 +7275,7 @@ abstract class CommonITILObject extends CommonDBTM
                             $planned_infos,
                             [
                                 'display' => false,
-                                'applyto' => "{$itemtype}{$item->fields["id"]}planning{$rand}",
+                                'applyto' => "{$itemtype}{$item->fields['id']}planning{$rand}",
                             ]
                         )
                     );
@@ -8333,8 +8333,8 @@ abstract class CommonITILObject extends CommonDBTM
                 $newtype = $tt->predefined['type'];
             }
             if (
-                $newtype
-                && $newitilcategories_id
+                $newtype != $type
+                && $newitilcategories_id != $itilcategories_id
             ) {
                 $categ = new ITILCategory();
                 if ($categ->getFromDB($newitilcategories_id)) {

@@ -379,7 +379,7 @@ class FieldUnicity extends CommonDropdown
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -577,7 +577,6 @@ class FieldUnicity extends CommonDropdown
         $columns['number'] = _x('quantity', 'Number');
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'columns' => $columns,
             'entries' => $entries,

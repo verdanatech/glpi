@@ -41,7 +41,6 @@ use Glpi\Event;
 use Glpi\Form\Form;
 use Glpi\Helpdesk\Tile\LinkableToTilesInterface;
 use Glpi\Helpdesk\Tile\TilesManager;
-use Glpi\RichText\UserMention;
 use Glpi\Toolbox\ArrayNormalizer;
 
 /**
@@ -739,22 +738,12 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
 
     public function showLegend()
     {
-        echo "<div class='spaced'>";
-        echo "<table class='tab_cadre_fixe'>";
-        echo "<tr class='tab_bg_2'><td width='70' style='text-decoration:underline' class='b'>";
-        echo __s('Caption') . "</td>";
-        echo "<td class='tab_bg_4' width='15' style='border:1px solid black'></td>";
-        echo "<td class='b'>" . __s('Global right') . "</td></tr>";
-        echo "<tr class='tab_bg_2'><td></td>";
-        echo "<td class='tab_bg_2' width='15' style='border:1px solid black'></td>";
-        echo "<td class='b'>" . __s('Entity right') . "</td></tr>";
-        echo "</table></div>";
+        TemplateRenderer::getInstance()->display('pages/admin/profile/legend.html.twig');
     }
 
     public function post_getEmpty()
     {
         $this->fields["interface"] = "helpdesk";
-        $this->fields["name"]      = __('Without name');
         ProfileRight::cleanAllPossibleRights();
         $this->fields = array_merge($this->fields, ProfileRight::getAllPossibleRights());
     }
@@ -771,61 +760,12 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public function showForm($ID, array $options = [])
     {
-        $onfocus = "";
-        $new     = false;
-        $rowspan = 4;
-        if ($ID > 0) {
-            $rowspan++;
-            $this->check($ID, READ);
-        } else {
-            // Create item
-            $this->check(-1, CREATE);
-            $onfocus = "onfocus=\"if (this.value==" . htmlescape(json_encode($this->fields["name"])) . ") this.value='';\"";
-            $new     = true;
-        }
-
-        $rand = mt_rand();
-
-        $this->showFormHeader($options);
-
-        echo "<tr class='tab_bg_1'><td>" . __s('Name') . "</td>";
-        echo "<td><input type='text' name='name' class='form-control' value=\"" . htmlescape($this->fields["name"]) . "\" $onfocus></td>";
-        echo "<td rowspan='$rowspan' class='middle right'>" . __s('Comments') . "</td>";
-        echo "<td class='center middle' rowspan='$rowspan'>";
-        echo "<textarea class='form-control' rows='4' name='comment' class='form-control'>" . htmlescape($this->fields["comment"]) . "</textarea>";
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __s('Default profile') . "</td><td>";
-        Html::showCheckbox(['name'    => 'is_default',
-            'checked' => $this->fields['is_default'],
+        $this->initForm($ID, $options);
+        TemplateRenderer::getInstance()->display('pages/admin/profile/form.html.twig', [
+            'item' => $this,
+            'interfaces' => self::getInterfaces(),
+            'last_super_admin_profile' => $this->isLastSuperAdminProfile(),
         ]);
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __s("Profile's interface") . "</td>";
-        echo "<td>";
-        Dropdown::showFromArray(
-            'interface',
-            self::getInterfaces(),
-            [
-                'value' => $this->fields["interface"],
-                'readonly' => $this->isLastSuperAdminProfile() && $this->fields['interface'] == 'central',
-            ]
-        );
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __s('Update own password') . "</td><td>";
-        Html::showCheckbox(['name'    => '_password_update',
-            'checked' => $this->fields['password_update'],
-        ]);
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __s('Ticket creation form on login') . "</td><td>";
-        Html::showCheckbox(['name'    => 'create_ticket_on_login',
-            'checked' => $this->fields['create_ticket_on_login'],
-        ]);
-        echo "</td></tr>";
-
-        $this->showFormButtons($options);
 
         return true;
     }
@@ -1193,539 +1133,87 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
     }
 
     /**
-     * Print the helpdesk right form for the current profile
-     *
-     * @since 0.85
-     **/
-    public function showFormTrackingHelpdesk()
+     * Print the helpdesk right form for the current profile.
+     */
+    private function showFormTrackingHelpdesk(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-        if ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE])) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $matrix_options = ['canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-        ];
-
-        $matrix_options['title'] = __('Assistance');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('helpdesk', 'tracking', 'general'), $matrix_options);
-
-        echo "<div class='mt-4 mx-n2'>";
-        echo "<table class='table table-hover card-table'>";
-        echo "<thead>";
-        echo "<tr class='border-top'><th colspan='2'><h4>" . __s('Association') . "</h4></th></tr>";
-        echo "</thead>";
-
-        echo "<tr'>";
-        echo "<td>" . __s('See hardware of my groups') . "</td>";
-        echo "<td>";
-        Html::showCheckbox([
-            'name'    => '_show_group_hardware',
-            'checked' => $this->fields['show_group_hardware'],
+        TemplateRenderer::getInstance()->display('pages/admin/profile/assistance_simple.html.twig', [
+            'item' => $this,
         ]);
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Link with items for the creation of tickets') . "</td>";
-        echo "<td>";
-        self::getLinearRightChoice(
-            self::getHelpdeskHardwareTypes(true),
-            ['field' => 'helpdesk_hardware',
-                'value' => $this->fields['helpdesk_hardware'],
-            ]
-        );
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Associable items to tickets, changes and problems') . "</td>";
-        echo "<td>";
-        self::dropdownHelpdeskItemtypes(['values' => $this->fields["helpdesk_item_type"]]);
-
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Default ticket template') . "</td>";
-        echo "<td>";
-        // Only root entity ones and recursive
-        $options = ['value'     => $this->fields["tickettemplates_id"],
-            'entity'    => 0,
-        ];
-        if (Session::isMultiEntitiesMode()) {
-            $options['condition'] = ['is_recursive' => 1];
-        }
-        // Only add profile if on root entity
-        if (!isset($_SESSION['glpiactiveentities'][0])) {
-            $options['addicon'] = false;
-        }
-        TicketTemplate::dropdown($options);
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Default change template') . "</td>";
-        echo "<td>";
-        // Only root entity ones and recursive
-        $options = ['value'     => $this->fields["changetemplates_id"],
-            'entity'    => 0,
-        ];
-        if (Session::isMultiEntitiesMode()) {
-            $options['condition'] = ['is_recursive' => 1];
-        }
-        // Only add profile if on root entity
-        if (!isset($_SESSION['glpiactiveentities'][0])) {
-            $options['addicon'] = false;
-        }
-        ChangeTemplate::dropdown($options);
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Default problem template') . "</td>";
-        echo "<td>";
-        // Only root entity ones and recursive
-        $options = ['value'     => $this->fields["problemtemplates_id"],
-            'entity'    => 0,
-        ];
-        if (Session::isMultiEntitiesMode()) {
-            $options['condition'] = ['is_recursive' => 1];
-        }
-        // Only add profile if on root entity
-        if (!isset($_SESSION['glpiactiveentities'][0])) {
-            $options['addicon'] = false;
-        }
-        ProblemTemplate::dropdown($options);
-        echo "</td>";
-        echo "</tr>";
-
-        if ($canedit) {
-            echo "<tr'>";
-            echo "<td colspan='4' class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</td></tr>";
-            echo "</table>";
-            Html::closeForm();
-        } else {
-            echo "</table>";
-        }
-        echo "</div>";
-        echo "</div>";
     }
 
     /**
-     * Print the helpdesk right form for the current profile
-     *
-     * @since 0.85
-     **/
-    public function showFormToolsHelpdesk()
+     * Print the helpdesk right form for the current profile.
+     */
+    private function showFormToolsHelpdesk(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-        if ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE])) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $matrix_options = ['canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-        ];
-
-        $matrix_options['title'] = __('Tools');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('helpdesk', 'tools', 'general'), $matrix_options);
-
-        if ($canedit) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-    }
-
-    /**
-     * Print the Asset rights form for the current profile
-     *
-     * @since 0.85
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     *
-     **/
-    public function showFormAsset($openform = true, $closeform = true)
-    {
-        if (!self::canView()) {
-            return false;
-        }
-
-        echo "<div class='spaced'>";
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [UPDATE, CREATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'assets', 'general'), [
-            'canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-            'title'         => _n('Asset', 'Assets', Session::getPluralNumber()),
+        TemplateRenderer::getInstance()->display('pages/admin/profile/tools_simple.html.twig', [
+            'item' => $this,
         ]);
-
-        $custom_asset_rights = self::getRightsForForm('central', 'assets', 'custom_assets');
-        if (count($custom_asset_rights)) {
-            $this->displayRightsChoiceMatrix($custom_asset_rights, [
-                'canedit' => $canedit,
-                'default_class' => 'tab_bg_2',
-                'title' => _n('Custom asset', 'Custom assets', Session::getPluralNumber()),
-            ]);
-        }
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-
-        echo "</div>";
     }
 
     /**
-     * Print the Management rights form for the current profile
-     *
-     * @since 0.85 (before showFormInventory)
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormManagement($openform = true, $closeform = true)
+     * Print the Asset rights form for the current profile.
+     */
+    private function showFormAsset(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [UPDATE, CREATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $matrix_options = ['canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-        ];
-
-        $matrix_options['title'] = __('Management');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'management', 'general'), $matrix_options);
-
-        echo "<div class='tab_cadre_fixehov mx-n2'>";
-        $rand = rand();
-        echo "<label for='dropdown_managed_domainrecordtypes$rand'>" . __s('Manageable domain records') . "</label>";
-        $values = ['-1' => __('All')];
-        $values += $this->getDomainRecordTypes();
-        Dropdown::showFromArray(
-            'managed_domainrecordtypes',
-            $values,
-            [
-                'display'   => true,
-                'multiple'  => true,
-                'size'      => 3,
-                'rand'      => $rand,
-                'values'    => $this->fields['managed_domainrecordtypes'],
-            ]
-        );
-        echo "</div>";
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-    }
-
-    /**
-     * Print the Tools rights form for the current profile
-     *
-     * @since 0.85
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormTools($openform = true, $closeform = true)
-    {
-        if (!self::canView()) {
-            return false;
-        }
-
-        echo "<div class='spaced'>";
-
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [UPDATE, CREATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $matrix_options = ['canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-        ];
-
-        $matrix_options['title'] = __('Tools');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tools', 'general'), $matrix_options);
-
-        $matrix_options['title'] = _n('Project', 'Projects', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tools', 'projects'), $matrix_options);
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-    }
-
-    /**
-     * Print the Tracking right form for the current profile
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormTracking($openform = true, $closeform = true)
-    {
-        /** @var array $CFG_GLPI */
-
-        global $CFG_GLPI;
-
-        if (!self::canView()) {
-            return false;
-        }
-
-        echo "<div class='spaced'>";
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        echo "<div class='mt-n2 mx-n2 mb-4'>";
-        echo "<table class='table table-hover card-table'>";
-        // Assistance / Tracking-helpdesk
-        echo "<thead>";
-        echo "<tr><th colspan='2'><h4>" . __s('ITIL Templates') . "<h4></th></tr>";
-        echo "</thead>";
-
-        echo "<tbody>";
-        foreach (['Ticket', 'Change', 'Problem'] as $itiltype) {
-            $object = new $itiltype();
-            echo "<tr>";
-            echo "<td>" . sprintf(__s('Default %1$s template'), $object->getTypeName()) . "</td><td>";
-            // Only root entity ones and recursive
-            $options = [
-                'value'     => $this->fields[strtolower($itiltype) . "templates_id"],
-                'condition' => ['entities_id' => 0],
-            ];
-            if (Session::isMultiEntitiesMode()) {
-                $options['condition']['is_recursive'] = 1;
-            }
-            // Only add profile if on root entity
-            if (!isset($_SESSION['glpiactiveentities'][0])) {
-                $options['addicon'] = false;
-            }
-
-            $tpl_class = $itiltype . 'Template';
-            $tpl_class::dropdown($options);
-            echo "</td></tr>";
-        }
-
-        echo "</tbody>";
-        echo "</table>";
-        echo "</div>";
-
-        $matrix_options = ['canedit'       => $canedit,
-            'default_class' => 'tab_bg_2',
-        ];
-
-        $matrix_options['title'] = _n('ITIL object', 'ITIL objects', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'itilobjects'), $matrix_options);
-
-        $matrix_options['title'] = _n('Ticket', 'Tickets', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'tickets'), $matrix_options);
-
-        $matrix_options['title'] = _n('Followup', 'Followups', Session::getPluralNumber()) . " / " . _n('Task', 'Tasks', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'followups_tasks'), $matrix_options);
-
-        echo "<div class='mt-n2 mx-n2 mb-4'>";
-        echo "<table class='table table-hover card-table'>";
-        echo "<thead>";
-        echo "<tr><th colspan='2'><h4>" . __s('Users mentions') . "<h4></th></tr>";
-
-        echo "</thead>";
-
-        echo "<tbody>";
-
-        $description = __s('Enables or disables the ability to mention users within the application.') . "<br><br>";
-        $description .= "<b>" . __s('Disabled') . "</b> : " . __('User mentions are disabled for this profile.') . "<br><br>";
-        $description .= "<b>" . __s('Full') . "</b> : " . __('Displays all users. Mentioned users will be added as observers if they are not already actors.') . "<br><br>";
-        $description .= "<b>" . __s('Restricted') . "</b> : " . __('Limits the display to actors directly involved in the ticket.') . "<br><br><br>";
-
-        $disabled = false;
-
-        if ($CFG_GLPI['use_notifications'] == '0') {
-            $disabled = true;
-        }
-
-        echo "<tr>";
-        echo "<td>" . __s('Mentions configuration');
-        echo "<span class='ms-2 form-help'
-              data-bs-toggle='popover'
-              data-bs-placement='top'
-              data-bs-html='true'
-              data-bs-content='" . htmlspecialchars($description) . "'>
-            ?
-        </span>";
-        echo "</td><td>";
-
-        echo Dropdown::showFromArray(
-            'use_mentions',
-            self::getUseMentionsChoices($disabled),
-            [
-                'value' => $this->fields['use_mentions'],
-                'display' => false,
-                'disabled' => $disabled,
-            ]
-        );
-
-        if ($disabled) {
-            $warning = __s('Notifications must be enabled to activate mentions.');
-            echo "<span class='form-help ms-2'
-                  data-bs-toggle='popover'
-                  data-bs-placement='top'
-                  data-bs-html='true'
-                  data-bs-content='" . $warning . "'>
-                ?
-            </span>";
-        }
-
-        echo "</td></tr>";
-
-        echo "</tbody>";
-        echo "</table>";
-        echo "</div>";
-
-        $matrix_options['title'] = _n('Validation', 'Validations', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'validations'), $matrix_options);
-
-        echo "<div class='mx-n2 my-4'>";
-        echo "<table class='table table-hover card-table'>";
-
-        echo "<thead>";
-        echo "<tr class='border-top'><th colspan='2'><h4>" . __s('Association') . "<h4></th></tr>";
-        echo "</thead>";
-
-        echo "<tr>";
-        echo "<td>" . __s('See hardware of my groups') . "</td>";
-        echo "<td>";
-        Html::showCheckbox(['name'    => '_show_group_hardware',
-            'checked' => $this->fields['show_group_hardware'],
+        TemplateRenderer::getInstance()->display('pages/admin/profile/assets.html.twig', [
+            'item' => $this,
         ]);
-        echo "</td></tr>";
+    }
 
-        echo "<tr>";
-        echo "<td>" . __s('Link with items for the creation of tickets') . "</td>";
-        echo "<td>";
-        self::getLinearRightChoice(
-            self::getHelpdeskHardwareTypes(true),
-            ['field' => 'helpdesk_hardware',
-                'value' => $this->fields['helpdesk_hardware'],
-            ]
-        );
-        echo "</td></tr>";
-
-        echo "<tr>";
-        echo "<td>" . __s('Associable items to tickets, changes and problems') . "</td>";
-        echo "<td>";
-        self::dropdownHelpdeskItemtypes(['values' => $this->fields["helpdesk_item_type"]]);
-        echo "</td>";
-        echo "</tr>";
-        echo "</table>";
-        echo "</div>";
-
-        $matrix_options['title'] = __('Visibility');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'visibility'), $matrix_options);
-
-        $matrix_options['title'] = __('Planning');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'planning'), $matrix_options);
-
-        $matrix_options['title'] = Problem::getTypeName(Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'problems'), $matrix_options);
-
-        $matrix_options['title'] = _n('Change', 'Changes', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'tracking', 'changes'), $matrix_options);
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
+    /**
+     * Print the Management rights form for the current profile.
+     */
+    private function showFormManagement(): void
+    {
+        if (!self::canView()) {
+            return;
         }
-        echo "</div>";
+
+        TemplateRenderer::getInstance()->display('pages/admin/profile/management.html.twig', [
+            'item' => $this,
+        ]);
+    }
+
+    /**
+     * Print the Tools rights form for the current profile.
+     */
+    private function showFormTools(): void
+    {
+        if (!self::canView()) {
+            return;
+        }
+
+        TemplateRenderer::getInstance()->display('pages/admin/profile/tools.html.twig', [
+            'item' => $this,
+        ]);
+    }
+
+    /**
+     * Print the Tracking right form for the current profile.
+     */
+    private function showFormTracking(): void
+    {
+        if (!self::canView()) {
+            return;
+        }
+
+        TemplateRenderer::getInstance()->display('pages/admin/profile/assistance.html.twig', [
+            'item' => $this,
+        ]);
     }
 
     /**
@@ -1740,6 +1228,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      * @param boolean $canedit        can we edit the elements ?
      *
      * @return void
+     * @used-by templates/pages/admin/profile/base_tab.html.twig
      **/
     public function displayLifeCycleMatrix($title, $html_field, $db_field, $statuses, $canedit)
     {
@@ -1778,65 +1267,17 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
     }
 
     /**
-     * Print the Life Cycles form for the current profile
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormLifeCycle($openform = true, $closeform = true)
+     * Print the Life Cycles form for the current profile.
+     */
+    private function showFormLifeCycle(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $this->displayLifeCycleMatrix(
-            __('Life cycle of tickets'),
-            '_cycle_ticket',
-            'ticket_status',
-            Ticket::getAllStatusArray(),
-            $canedit
-        );
-
-        $this->displayLifeCycleMatrix(
-            __('Life cycle of problems'),
-            '_cycle_problem',
-            'problem_status',
-            Problem::getAllStatusArray(),
-            $canedit
-        );
-
-        $this->displayLifeCycleMatrix(
-            __('Life cycle of changes'),
-            '_cycle_change',
-            'change_status',
-            Change::getAllStatusArray(),
-            $canedit
-        );
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
+        TemplateRenderer::getInstance()->display('pages/admin/profile/lifecycle.html.twig', [
+            'item' => $this,
+        ]);
     }
 
     /**
@@ -1850,6 +1291,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      * @param boolean $canedit        can we edit the elements ?
      *
      * @return void
+     * @used-by templates/pages/admin/profile/lifecycle_simple.html.twig
      **/
     public function displayLifeCycleMatrixTicketHelpdesk($title, $html_field, $db_field, $canedit)
     {
@@ -1910,209 +1352,69 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
     }
 
     /**
-     * Print the Life Cycles form for the current profile
-     *
-     *  @since 0.85
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormLifeCycleHelpdesk($openform = true, $closeform = true)
+     * Print the Life Cycles form for the current profile.
+     */
+    private function showFormLifeCycleHelpdesk(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $this->displayLifeCycleMatrixTicketHelpdesk(
-            __('Life cycle of tickets'),
-            '_cycle_ticket',
-            'ticket_status',
-            $canedit
-        );
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-    }
-
-    /**
-     * Print the administration form for a profile
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormAdmin($openform = true, $closeform = true)
-    {
-        if (!self::canView()) {
-            return false;
-        }
-
-        echo "<div class='spaced'>";
-
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $matrix_options = [
-            'canedit'       => $canedit,
-        ];
-
-        $matrix_options['title'] = __('Administration');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'admin', 'general'), $matrix_options);
-
-        $matrix_options['title'] = __('Inventory');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'admin', 'inventory'), $matrix_options);
-
-        $matrix_options['title'] = _n('Rule', 'Rules', Session::getPluralNumber());
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'admin', 'rules'), $matrix_options);
-
-        $matrix_options['title'] = __('Dropdowns dictionary');
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'admin', 'dictionaries'), $matrix_options);
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-
-        $this->showLegend();
-    }
-
-    /**
-     * Print the setup form for a profile
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormSetup($openform = true, $closeform = true)
-    {
-        if (!self::canView()) {
-            return false;
-        }
-
-        echo "<div class='spaced'>";
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('central', 'setup', 'general'), [
-            'canedit'       => $canedit,
-            'title'         => __('Setup'),
+        TemplateRenderer::getInstance()->display('pages/admin/profile/lifecycle_simple.html.twig', [
+            'item' => $this,
         ]);
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-
-        $this->showLegend();
     }
 
     /**
-     * Print the Setup rights form for a helpdesk profile
-     *
-     * @since 9.4.0
-     *
-     * @param boolean $openform  open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     *
-     * @return void
-     *
-     **/
-    public function showFormSetupHelpdesk($openform = true, $closeform = true)
+     * Print the administration form for a profile.
+     */
+    private function showFormAdmin(): void
     {
         if (!self::canView()) {
-            return false;
+            return;
         }
 
-        echo "<div class='spaced'>";
-        if (
-            ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-            && $openform
-        ) {
-            echo "<form method='post' action='" . $this->getFormURL() . "' data-track-changes='true'>";
-        }
-
-        $this->displayRightsChoiceMatrix(self::getRightsForForm('helpdesk', 'setup', 'general'), [
-            'canedit'       => $canedit,
-            'title'         => __('Setup'),
+        TemplateRenderer::getInstance()->display('pages/admin/profile/admin.html.twig', [
+            'item' => $this,
         ]);
-
-        if (
-            $canedit
-            && $closeform
-        ) {
-            echo "<div class='center'>";
-            echo "<input type='hidden' name='id' value='" . $this->getID() . "'>";
-            echo Html::submit(_x('button', 'Save'), [
-                'class' => 'btn btn-primary mt-2',
-                'icon'  => 'ti ti-device-floppy',
-                'name'  => 'update',
-            ]);
-            echo "</div>";
-            Html::closeForm();
-        }
-        echo "</div>";
-
-        $this->showLegend();
     }
 
     /**
-     * Print the Security form for a profile
-     *
-     * @param boolean $openform open the form (true by default)
-     * @param boolean $closeform close the form (true by default)
-     **/
-    public function showFormSecurity($openform = true, $closeform = true)
+     * Print the setup form for a profile.
+     */
+    private function showFormSetup(): void
     {
+        if (!self::canView()) {
+            return;
+        }
+
+        TemplateRenderer::getInstance()->display('pages/admin/profile/setup.html.twig', [
+            'item' => $this,
+        ]);
+    }
+
+    /**
+     * Print the Setup rights form for a helpdesk profile.
+     */
+    private function showFormSetupHelpdesk(): void
+    {
+        if (!self::canView()) {
+            return;
+        }
+
+        TemplateRenderer::getInstance()->display('pages/admin/profile/setup_simple.html.twig', [
+            'item' => $this,
+        ]);
+    }
+
+    /**
+     * Print the Security form for a profile.
+     */
+    private function showFormSecurity(): void
+    {
+        if (!self::canView()) {
+            return;
+        }
         $canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]);
         TemplateRenderer::getInstance()->display('pages/2fa/2fa_config.html.twig', [
             'canedit' => $canedit,
@@ -2197,7 +1499,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -3745,6 +3047,25 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
             ],
         ];
 
+        // Add custom asset definition rights
+        $custom_assets_right_offset = 1000;
+        foreach (AssetDefinitionManager::getInstance()->getDefinitions(true) as $definition) {
+            $asset = $definition->getAssetClassName();
+            $tab[] = [
+                'id'                 => $custom_assets_right_offset + $definition->getID(),
+                'table'              => 'glpi_profilerights',
+                'field'              => 'rights',
+                'name'               => $asset::getTypeName(1),
+                'datatype'           => 'right',
+                'rightclass'         => $asset,
+                'rightname'          => $asset::$rightname,
+                'joinparams'         => [
+                    'jointype'           => 'child',
+                    'condition'          => ['NEWTABLE.name' => $asset::$rightname],
+                ],
+            ];
+        }
+
         return $tab;
     }
 
@@ -4033,6 +3354,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      * Get domains records types
      *
      * @return array
+     * @used-by templates/pages/admin/profile/management.html.twig
      */
     public function getDomainRecordTypes()
     {
@@ -4077,24 +3399,6 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         $p['multiple'] = true;
         $p['size']     = 3;
         return Dropdown::showFromArray($p['name'], $values, $p);
-    }
-
-    /**
-     * @return array<int, string>
-     **/
-    private static function getUseMentionsChoices(bool $disabled): array
-    {
-        if ($disabled) {
-            return [
-                UserMention::USER_MENTION_DISABLED => __('Disabled'),
-            ];
-        }
-
-        return [
-            UserMention::USER_MENTION_DISABLED     => __('Disabled'),
-            UserMention::USER_MENTION_FULL        => __('Full'),
-            UserMention::USER_MENTION_RESTRICTED  => __('Restricted'),
-        ];
     }
 
     /**
@@ -4193,6 +3497,10 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         $param['canedit']       = true;
         $param['default_class'] = '';
 
+        if (empty($rights)) {
+            return mt_rand();
+        }
+
         if (is_array($options) && count($options)) {
             foreach ($options as $key => $val) {
                 $param[$key] = $val;
@@ -4228,8 +3536,8 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                 if (!empty($info['row_class'])) {
                     $row['class'] = $info['row_class'];
                 } elseif (isset($info['scope'])) {
-                    $default_scope_class = !empty($param['default_class']) ? $param['default_class'] : 'tab_bg_2';
-                    $row['class'] = $info['scope'] === 'global' ? 'tab_bg_4' : $default_scope_class;
+                    $default_scope_class = !empty($param['default_class']) ? $param['default_class'] : '';
+                    $row['class'] = $info['scope'] === 'global' ? 'table-secondary' : $default_scope_class;
                 } else {
                     $row['class'] = $param['default_class'];
                 }
@@ -4326,6 +3634,8 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      *             'check_method'  method used to check the right
      *
      * @return string|void Return generated content if `display` parameter is true.
+     * @used-by templates/pages/admin/profile/assistance.html.twig
+     * @used-by templates/pages/admin/profile/assistance_simple.html.twig
      **/
     public static function getLinearRightChoice(array $elements, array $options = [])
     {
@@ -4465,12 +3775,10 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         return true;
     }
 
-    public function showHelpdeskHomeConfig(): bool
+    private function showHelpdeskHomeConfig(): void
     {
         $tiles_manager = new TilesManager();
         $tiles_manager->showConfigFormForItem($this);
-
-        return true;
     }
 
     #[Override]

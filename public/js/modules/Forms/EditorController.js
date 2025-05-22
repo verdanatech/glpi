@@ -33,7 +33,8 @@
 
 /* global _, tinymce_editor_configs, getUUID, getRealInputWidth, sortable, tinymce, glpi_toast_info, glpi_toast_error, bootstrap, setupAjaxDropdown, setupAdaptDropdown, setHasUnsavedChanges, hasUnsavedChanges */
 
-import { GlpiFormConditionEditorController } from 'js/modules/Forms/ConditionEditorController';
+import { GlpiFormConditionVisibilityEditorController } from '/js/modules/Forms/ConditionVisibilityEditorController.js';
+import { GlpiFormConditionValidationEditorController } from '/js/modules/Forms/ConditionValidationEditorController.js';
 
 /**
  * Client code to handle users actions on the form_editor template
@@ -83,7 +84,7 @@ export class GlpiFormEditorController
     #question_subtypes_options;
 
     /**
-     * @type {array<GlpiFormConditionEditorController>}
+     * @type {array<GlpiFormConditionVisibilityEditorController>}
      */
     #conditions_editors_controllers;
 
@@ -216,6 +217,22 @@ export class GlpiFormEditorController
                 ),
             );
 
+        // Handle validation editor dropdowns
+        // The dropdown content will be re-rendered each time it is opened.
+        // This ensure the selectable data is always up to date (i.e. the
+        // question selector has up to date questions names, contains all newly
+        // added questions and do not include deleted questions).
+        $(document)
+            .on(
+                'show.bs.dropdown',
+                '[data-glpi-form-editor-validation-dropdown]',
+                (e) => this.#renderValidationEditor(
+                    $(e.target)
+                        .parent()
+                        .find('[data-glpi-conditions-editor-container]')
+                ),
+            );
+
         // Compute state before submitting the form
         $(this.#target).on('submit', (event) => {
             try {
@@ -255,7 +272,7 @@ export class GlpiFormEditorController
 
         // Handle conditions strategy changes
         document.addEventListener('updated_strategy', (e) => {
-            this.#updateVisibilityBadge(
+            this.#updateConditionBadge(
                 $(e.detail.container).closest(
                     '[data-glpi-form-editor-block],[data-glpi-form-editor-section-details],[data-glpi-form-editor-container]'
                 ),
@@ -496,6 +513,12 @@ export class GlpiFormEditorController
 
             case "show-visibility-dropdown":
                 this.#showVisibilityDropdown(
+                    target.closest('[data-glpi-form-editor-block],[data-glpi-form-editor-section-details]')
+                );
+                break;
+
+            case "show-validation-dropdown":
+                this.#showValidationDropdown(
                     target.closest('[data-glpi-form-editor-block],[data-glpi-form-editor-section-details]')
                 );
                 break;
@@ -877,9 +900,9 @@ export class GlpiFormEditorController
                         return true;
                     }
 
-                    return item_container !== null
-                        && !$(element).is(item_container)
-                        && $(element).has(item_container).length === 0;
+                    return item_container === null
+                        || (!$(element).is(item_container)
+                        && $(element).has(item_container).length === 0);
                 })
                 .removeAttr(`data-glpi-form-editor-active-${type}`);
         });
@@ -990,6 +1013,9 @@ export class GlpiFormEditorController
         ).children();
 
         const new_question = this.#addBlock(target, template);
+
+        // Set UUID
+        this.#setUuid(new_question);
 
         // Mark as active
         this.#setActiveItem(new_question);
@@ -1880,6 +1906,9 @@ export class GlpiFormEditorController
 
         const new_comment = this.#addBlock(target, template);
 
+        // Set UUID
+        this.#setUuid(new_comment);
+
         // Mark as active
         this.#setActiveItem(new_comment);
 
@@ -2044,28 +2073,38 @@ export class GlpiFormEditorController
      */
     #enableSortable(sections) {
         // Sortable instance must be unique for each section
-        sections
-            .each((index, section) => {
-                const blocks_container = $(section)
-                    .find("[data-glpi-form-editor-section-blocks], [data-glpi-form-editor-horizontal-blocks], [data-glpi-form-editor-question-drag-merge], [data-glpi-form-editor-horizontal-block-placeholder]");
+        sections.each((index, section) => {
+            const blocks_container = $(section)
+                .find("[data-glpi-form-editor-section-blocks], [data-glpi-form-editor-horizontal-blocks], [data-glpi-form-editor-question-drag-merge], [data-glpi-form-editor-horizontal-block-placeholder]");
 
-                sortable(blocks_container, {
+            blocks_container.each((index, container) => {
+                const $container = $(container);
+
+                // Common sortable configuration
+                const sortableConfig = {
                     // Drag and drop handle selector
                     handle: '[data-glpi-form-editor-question-handle]',
 
                     // Restrict sortable items
                     items: '[data-glpi-form-editor-block], [data-glpi-form-editor-horizontal-block-placeholder]',
 
-                    // Limit the number of blocks in horizontal blocks
-                    maxItems: blocks_container.attr("data-glpi-form-editor-horizontal-blocks") !== typeof undefined ? 4 : 0,
-
                     // Accept from others sections
                     acceptFrom: '[data-glpi-form-editor-section-blocks], [data-glpi-form-editor-horizontal-blocks]',
 
                     // Placeholder class
                     placeholder: '<section class="glpi-form-editor-drag-question-placeholder"></section>',
-                });
+                };
+
+
+                // Add specific configuration based on container type
+                if ($container.is("[data-glpi-form-editor-horizontal-blocks]")) {
+                    sortableConfig.maxItems = 4; // Limit the number of blocks in horizontal blocks
+                }
+
+                // Initialize sortable with the configuration
+                sortable($container, sortableConfig);
             });
+        });
 
         // Keep track on unsaved changes if the sort order was updated
         sections
@@ -2078,9 +2117,17 @@ export class GlpiFormEditorController
 
         // Add a special class while a drag and drop is happening
         sections
-            .find("[data-glpi-form-editor-section-blocks]")
-            .on('sortstart', () => {
+            .find("[data-glpi-form-editor-section-blocks], [data-glpi-form-editor-horizontal-blocks], [data-glpi-form-editor-question-drag-merge], [data-glpi-form-editor-horizontal-block-placeholder]")
+            .on('sortstart', (e) => {
                 $(this.#target).addClass("disable-focus").attr('data-glpi-form-editor-sorting', '');
+
+                // If dragged item is active, store it to restore it later
+                if ($(e.detail.item).is('[data-glpi-form-editor-active-question],[data-glpi-form-editor-active-comment]')) {
+                    $(e.detail.item).attr('data-glpi-form-editor-restore-active-state', '');
+                }
+
+                // Remove active states
+                this.#setActiveItem(null);
             });
 
         // Run the post move process if any item was dragged, even if it was not
@@ -2130,6 +2177,13 @@ export class GlpiFormEditorController
                 // until our drag operation is over.
                 $(this.#target).removeClass("disable-focus").removeAttr('data-glpi-form-editor-sorting');
                 $('.content-editable-tinymce').removeClass('simulate-focus');
+
+                // Restore active state if needed
+                const restore_active_state = $(e.detail.item).attr('data-glpi-form-editor-restore-active-state');
+                if (restore_active_state !== undefined) {
+                    $(e.detail.item).removeAttr('data-glpi-form-editor-restore-active-state');
+                    this.#setActiveItem($(e.detail.item));
+                }
             });
     }
 
@@ -2435,16 +2489,37 @@ export class GlpiFormEditorController
         bootstrap.Dropdown.getOrCreateInstance(dropdown[0]).show();
     }
 
-    #updateVisibilityBadge(container, value) {
-        // Show/hide badges in the container
-        container.find('[data-glpi-editor-visibility-badge]')
+    #updateConditionBadge(container, value) {
+        // Determine which type of badge we're updating based on the container
+        let badgeType = null;
+        if (container.find(`[data-glpi-editor-visibility-badge=${value}]`).length > 0) {
+            badgeType = 'visibility';
+        } else if (container.find(`[data-glpi-editor-validation-badge=${value}]`).length > 0) {
+            badgeType = 'validation';
+        }
+
+        // Hide all badges of this type
+        container.find(`[data-glpi-editor-${badgeType}-badge]`)
             .removeClass('d-flex')
-            .addClass('d-none')
-        ;
-        container.find(`[data-glpi-editor-visibility-badge=${value}]`)
+            .addClass('d-none');
+
+        // Show only the specific badge for the current value
+        container.find(`[data-glpi-editor-${badgeType}-badge=${value}]`)
             .removeClass('d-none')
-            .addClass('d-flex')
+            .addClass('d-flex');
+    }
+
+    #showValidationDropdown(container) {
+        container
+            .find('[data-glpi-form-editor-validation-dropdown-container]')
+            .removeClass('d-none')
         ;
+
+        const dropdown = container
+            .find('[data-glpi-form-editor-validation-dropdown-container]')
+            .find('[data-glpi-form-editor-validation-dropdown]')
+        ;
+        bootstrap.Dropdown.getOrCreateInstance(dropdown[0]).show();
     }
 
     /**
@@ -2541,7 +2616,47 @@ export class GlpiFormEditorController
             ).data('glpi-form-editor-condition-type');
 
             // Init and register controller
-            controller = new GlpiFormConditionEditorController(
+            controller = new GlpiFormConditionVisibilityEditorController(
+                container[0],
+                uuid,
+                type,
+                this.#getSectionStateForConditionEditor(),
+                this.#getQuestionStateForConditionEditor(),
+                this.#getCommentStateForConditionEditor(),
+            );
+            container.attr(
+                'data-glpi-editor-condition-controller-index',
+                this.#conditions_editors_controllers.length,
+            );
+            this.#conditions_editors_controllers.push(controller);
+        } else {
+            // Refresh form data to make sure it is up to date
+            controller.setFormSections(this.#getSectionStateForConditionEditor());
+            controller.setFormQuestions(this.#getQuestionStateForConditionEditor());
+            controller.setFormComments(this.#getCommentStateForConditionEditor());
+        }
+
+        controller.renderEditor();
+    }
+
+    async #renderValidationEditor(container) {
+        let controller = this.#getConditionEditorController(container);
+
+        // Controller lazy loading
+        if (controller === null) {
+            // Read selected item uuid and type
+            const uuid = this.#getItemInput(
+                container.closest(
+                    '[data-glpi-form-editor-block], [data-glpi-form-editor-section-details], [data-glpi-form-editor-container]'
+                ),
+                'uuid',
+            );
+            const type = container.closest(
+                '[data-glpi-form-editor-condition-type]'
+            ).data('glpi-form-editor-condition-type');
+
+            // Init and register controller
+            controller = new GlpiFormConditionValidationEditorController(
                 container[0],
                 uuid,
                 type,

@@ -109,6 +109,12 @@ final class SubmitAnswerController extends AbstractController
         }
 
         $handler = AnswersHandler::getInstance();
+
+        // Check if answers are valid
+        if (!$handler->validateAnswers($form, $answers)->isValid()) {
+            throw new BadRequestHttpException();
+        }
+
         $answers = $handler->saveAnswers(
             $form,
             $answers,

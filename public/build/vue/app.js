@@ -20699,6 +20699,13 @@ var map = {
 		18,
 		19,
 		20
+	],
+	"./Kanban/KanbanApp.vue": [
+		167,
+		18,
+		19,
+		20,
+		21
 	]
 };
 function webpackAsyncContext(req) {
@@ -20792,7 +20799,7 @@ module.exports = webpackAsyncContext;
 /******/ 		// This function allow to reference async chunks
 /******/ 		__webpack_require__.u = (chunkId) => {
 /******/ 			// return url for filenames based on template
-/******/ 			return "" + {"0":"/vue-sfc/CustomObject-FieldPreview-Field-vue","1":"/vue-sfc/CustomObject-FieldPreview-FieldDisplay-vue","2":"/vue-sfc/CustomObject-FieldPreview-Sidebar-vue","3":"/vue-sfc/Debug-Toolbar-vue","4":"/vue-sfc/Debug-Widget-ClientPerformance-vue","5":"/vue-sfc/Debug-Widget-Globals-vue","6":"/vue-sfc/Debug-Widget-HTTPRequests-vue","7":"/vue-sfc/Debug-Widget-Profiler-vue","8":"/vue-sfc/Debug-Widget-ProfilerTable-vue","9":"/vue-sfc/Debug-Widget-RequestSummary-vue","10":"/vue-sfc/Debug-Widget-RequestTimeline-vue","11":"/vue-sfc/Debug-Widget-SQLRequests-vue","12":"/vue-sfc/Debug-Widget-SearchOptions-vue","13":"/vue-sfc/Debug-Widget-ServerPerformance-vue","14":"/vue-sfc/Debug-Widget-ThemeSwitcher-vue","15":"/vue-sfc/Debug-WidgetButton-vue","16":"/vue-sfc/FuzzySearch-Modal-vue","17":"/vue-sfc/Kanban-AddItemForm-vue","18":"/vue-sfc/Kanban-Card-vue","19":"/vue-sfc/Kanban-Column-vue","20":"/vue-sfc/Kanban-Kanban-vue"}[chunkId] + "-" + {"0":"fa41845a0dbfed719df8","1":"f9e89ef9b17ed8cd4939","2":"6766a4229614b043ef4a","3":"bdfed20da0ca99c90088","4":"79d7c95fb77480b7b233","5":"f552788ecd64efc27337","6":"2b683a0dd37015f914af","7":"9a42abe83ef74f6de872","8":"c518df9f199952df3a28","9":"e26c43376f8924bb308f","10":"e3ce47cfaa677fccfeec","11":"7026e741a2e1711469e4","12":"2ac055efd97c983bdfce","13":"43b73e32275a78aade3a","14":"e6ec113cb94bb49d9438","15":"c15ac4abd08000798d45","16":"409264fa64dc836973bd","17":"fd118f59f56dc17fb1e3","18":"f8037f49c0cf750d38fd","19":"b929a8ebe54e6786ed1f","20":"a39dc441e97d61ce1578"}[chunkId] + ".js";
+/******/ 			return "" + {"0":"/vue-sfc/CustomObject-FieldPreview-Field-vue","1":"/vue-sfc/CustomObject-FieldPreview-FieldDisplay-vue","2":"/vue-sfc/CustomObject-FieldPreview-Sidebar-vue","3":"/vue-sfc/Debug-Toolbar-vue","4":"/vue-sfc/Debug-Widget-ClientPerformance-vue","5":"/vue-sfc/Debug-Widget-Globals-vue","6":"/vue-sfc/Debug-Widget-HTTPRequests-vue","7":"/vue-sfc/Debug-Widget-Profiler-vue","8":"/vue-sfc/Debug-Widget-ProfilerTable-vue","9":"/vue-sfc/Debug-Widget-RequestSummary-vue","10":"/vue-sfc/Debug-Widget-RequestTimeline-vue","11":"/vue-sfc/Debug-Widget-SQLRequests-vue","12":"/vue-sfc/Debug-Widget-SearchOptions-vue","13":"/vue-sfc/Debug-Widget-ServerPerformance-vue","14":"/vue-sfc/Debug-Widget-ThemeSwitcher-vue","15":"/vue-sfc/Debug-WidgetButton-vue","16":"/vue-sfc/FuzzySearch-Modal-vue","17":"/vue-sfc/Kanban-AddItemForm-vue","18":"/vue-sfc/Kanban-Card-vue","19":"/vue-sfc/Kanban-Column-vue","20":"/vue-sfc/Kanban-Kanban-vue","21":"/vue-sfc/Kanban-KanbanApp-vue"}[chunkId] + "-" + {"0":"fa41845a0dbfed719df8","1":"f9e89ef9b17ed8cd4939","2":"6766a4229614b043ef4a","3":"bdfed20da0ca99c90088","4":"79d7c95fb77480b7b233","5":"f552788ecd64efc27337","6":"2b683a0dd37015f914af","7":"9a42abe83ef74f6de872","8":"c518df9f199952df3a28","9":"e26c43376f8924bb308f","10":"e3ce47cfaa677fccfeec","11":"7026e741a2e1711469e4","12":"2ac055efd97c983bdfce","13":"43b73e32275a78aade3a","14":"e6ec113cb94bb49d9438","15":"c15ac4abd08000798d45","16":"409264fa64dc836973bd","17":"fd118f59f56dc17fb1e3","18":"f8037f49c0cf750d38fd","19":"b929a8ebe54e6786ed1f","20":"5f219563437b360a202b","21":"0477b8c0be470438bcd0"}[chunkId] + ".js";
 /******/ 		};
 /******/ 	})();
 /******/ 	
@@ -20883,7 +20890,7 @@ module.exports = webpackAsyncContext;
 /******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
 /******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
 /******/ 		var installedChunks = {
-/******/ 			21: 0
+/******/ 			22: 0
 /******/ 		};
 /******/ 		
 /******/ 		__webpack_require__.f.j = (chunkId, promises) => {

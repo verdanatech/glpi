@@ -54,6 +54,12 @@ abstract class ITILTemplateField extends CommonDBChild
     // From CommonDBTM
     public $dohistory = true;
 
+    public static function getMultiplePredefinedValues(): array
+    {
+        // List of fields that are allowed to be defined multiples times.
+        return [];
+    }
+
 
     public function getForbiddenStandardMassiveAction()
     {
@@ -183,6 +189,15 @@ abstract class ITILTemplateField extends CommonDBChild
             $used[$data['num']]        = $data['num'];
         }
 
+        // Remove fields that are allowed to have multiple values from the 'used'
+        // list.
+        $multiple = static::getMultiplePredefinedValues();
+        foreach ($multiple as $val) {
+            if (isset($used[$val])) {
+                unset($used[$val]);
+            }
+        }
+
         $fields_dropdown_values = [];
         foreach ($fields as $k => $field) {
             $fields_dropdown_values[$k] = $field;
@@ -269,6 +284,7 @@ TWIG, $twig_params);
             'nofilter' => true,
             'columns' => $columns,
             'entries' => $entries,
+            'formatters' => ['value' => 'raw_html'],
             'total_number' => count($entries),
             'filtered_number' => count($entries),
             'showmassiveactions' => $canedit,

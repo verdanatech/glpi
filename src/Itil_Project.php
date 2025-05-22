@@ -214,7 +214,7 @@ TWIG, $twig_params);
         // insert 'itemtype_label' column after 'item_id' column
         $cols['columns'] = array_merge(
             ['item_id' => $cols['columns']['item_id']],
-            ['itemtype_label' => __('Type')],
+            ['itemtype_label' => _n('Type', 'Types', 1)],
             array_slice($cols['columns'], 1)
         );
         $entries = [];
@@ -228,7 +228,6 @@ TWIG, $twig_params);
         }
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'columns' => $cols['columns'],
@@ -343,7 +342,6 @@ TWIG, $twig_params);
 
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'columns' => $cols['columns'],

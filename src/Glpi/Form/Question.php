@@ -39,6 +39,7 @@ use CommonDBChild;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AccessControl\FormAccessControlManager;
+use Glpi\Form\Condition\ConditionableValidationTrait;
 use Glpi\Form\Condition\ConditionableVisibilityInterface;
 use Glpi\Form\Condition\ConditionableVisibilityTrait;
 use Glpi\Form\Export\Context\DatabaseMapper;
@@ -60,6 +61,7 @@ use RuntimeException;
 final class Question extends CommonDBChild implements BlockInterface, ConditionableVisibilityInterface
 {
     use ConditionableVisibilityTrait;
+    use ConditionableValidationTrait;
 
     public const TRANSLATION_KEY_NAME          = 'question_name';
     public const TRANSLATION_KEY_DESCRIPTION   = 'question_description';
@@ -143,6 +145,7 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
         return $handlers;
     }
 
+    #[Override]
     public function displayBlockForEditor(): void
     {
         TemplateRenderer::getInstance()->display('pages/admin/form/form_question.html.twig', [
@@ -154,6 +157,12 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
             'can_update'                   => $this->getForm()->canUpdate(),
             'allow_unauthenticated_access' => FormAccessControlManager::getInstance()->allowUnauthenticatedAccess($this->getForm()),
         ]);
+    }
+
+    #[Override]
+    public function getUntitledLabel(): string
+    {
+        return __('Untitled question');
     }
 
     /**
@@ -210,6 +219,10 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
         // JSON fields must have a value when created to prevent SQL errors
         if (!isset($input['conditions'])) {
             $input['conditions'] = json_encode([]);
+        }
+
+        if (!isset($input['validation_conditions'])) {
+            $input['validation_conditions'] = json_encode([]);
         }
 
         $input = $this->prepareInput($input);
@@ -294,6 +307,11 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
         if (isset($input['_conditions'])) {
             $input['conditions'] = json_encode($input['_conditions']);
             unset($input['_conditions']);
+        }
+
+        if (isset($input['_validation_conditions'])) {
+            $input['validation_conditions'] = json_encode($input['_validation_conditions']);
+            unset($input['_validation_conditions']);
         }
 
         $question_type = $this->getQuestionType();

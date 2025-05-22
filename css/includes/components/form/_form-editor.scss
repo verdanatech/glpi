@@ -394,8 +394,12 @@ input.value-selector {
     }
 }
 
-.visibility-dropdown-card {
-    width: 700px;
+.visibility-dropdown-card, .validation-dropdown-card {
+    min-width: 700px;
+    width: fit-content;
+
+    // Add scrolling as a last ressort, will not happen most of the time
+    overflow: scroll;
 }
 
 [data-glpi-form-editor-block] {

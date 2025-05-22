@@ -636,13 +636,12 @@ TWIG, $buttons_params);
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
             'nofilter' => true,
-            'nopager' => true,
             'superheader' => '',
             'columns' => [
                 'type' => __('Linked to'),
-                'link' => __('Link'),
-                'comment' => __('Comment'),
-                'actions' => __('Actions'),
+                'link' => _n('Link', 'Links', 1),
+                'comment' => _n('Comment', 'Comments', 1),
+                'actions' => _n('Action', 'Actions', Session::getPluralNumber()),
             ],
             'formatters' => [
                 'link' => 'raw_html',

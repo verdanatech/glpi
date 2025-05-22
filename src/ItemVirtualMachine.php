@@ -223,13 +223,12 @@ class ItemVirtualMachine extends CommonDBChild
                 }
                 TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
                     'is_tab' => true,
-                    'nopager' => true,
                     'nofilter' => true,
                     'nosort' => true,
                     'columns' => [
                         'name' => __('Name'),
                         'serial' => __('Serial number'),
-                        'comment' => __('Comments'),
+                        'comment' => _n('Comment', 'Comments', Session::getPluralNumber()),
                         'entity' => _n('Entity', 'Entities', 1),
                     ],
                     'formatters' => [
@@ -310,7 +309,6 @@ class ItemVirtualMachine extends CommonDBChild
 
             TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
                 'is_tab' => true,
-                'nopager' => true,
                 'nofilter' => true,
                 'nosort' => true,
                 'columns' => [

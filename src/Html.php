@@ -1666,8 +1666,6 @@ TWIG,
         }
         $FOOTER_LOADED = true;
 
-        echo self::getCoreVariablesForJavascript(true);
-
         if (isset($CFG_GLPI['notifications_ajax']) && $CFG_GLPI['notifications_ajax'] && !Session::isImpersonateActive()) {
             $options = [
                 'interval'  => ($CFG_GLPI['notifications_ajax_check_interval'] ?: 5) * 1000,
@@ -5060,7 +5058,7 @@ HTML;
             file_exists($prod_file)
             && $_SESSION['glpi_use_mode'] != Session::DEBUG_MODE
         ) {
-            $url = self::getPrefixedUrl(str_replace(GLPI_ROOT, '', $prod_file));
+            $url = self::getPrefixedUrl(str_replace(GLPI_ROOT . '/public', '', $prod_file));
         } else {
             $file = $url;
             $url = self::getPrefixedUrl('/front/css.php');
@@ -5963,9 +5961,6 @@ HTML;
          * @var array $PLUGIN_HOOKS
          */
         global $CFG_GLPI, $PLUGIN_HOOKS;
-
-        // transfer core variables to javascript side
-        echo self::getCoreVariablesForJavascript(true);
 
         //load on demand scripts
         if (isset($_SESSION['glpi_js_toload'])) {

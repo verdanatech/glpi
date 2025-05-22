@@ -441,7 +441,7 @@ class SoftwareLicense extends CommonTreeDropdown
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -561,23 +561,22 @@ class SoftwareLicense extends CommonTreeDropdown
 
         $tab[] = [
             'id'                 => '163',
-            'table'              => Item_SoftwareLicense::getTable(),
+            'table'              => static::getTable(),
             'field'              => 'id',
             'name'               => _x('quantity', 'Number of installations'),
             'forcegroupby'       => true,
             'usehaving'          => true,
-            'datatype'           => 'count',
+            'datatype'           => 'specific',
             'massiveaction'      => false,
-            'joinparams'         => [
-                'jointype'   => 'child',
-                'beforejoin' => [
-                    'table'      => static::getTable(),
-                    'joinparams' => ['jointype' => 'child'],
-                ],
-                'condition'  => [
-                    'NEWTABLE.is_deleted'          => 0,
-                ],
-            ],
+            'computation'        => '(' .
+                '(SELECT COUNT(*) FROM ' . Item_SoftwareLicense::getTable() .
+                ' WHERE softwarelicenses_id = TABLE.id AND is_deleted = 0)' .
+                ' + ' .
+                '(SELECT COUNT(*) FROM ' . SoftwareLicense_User::getTable() .
+                ' WHERE softwarelicenses_id = TABLE.id)' .
+                ')',
+            'computationgroupby' => true,
+            'computationtype' => 'count',
         ];
 
         // add objectlock search options
@@ -680,7 +679,7 @@ class SoftwareLicense extends CommonTreeDropdown
             'id'                 => '165',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'forcegroupby'       => true,
             'datatype'           => 'text',
             'massiveaction'      => false,
@@ -927,6 +926,33 @@ class SoftwareLicense extends CommonTreeDropdown
         }
 
         return $actions;
+    }
+
+    public function getForbiddenSingleMassiveActions()
+    {
+        $forbidden = parent::getForbiddenSingleMassiveActions();
+
+        $prefix = 'Item_SoftwareLicense' . MassiveAction::CLASS_ACTION_SEPARATOR;
+        $add_item_action = $prefix . 'add_item';
+
+        if (!static::canUpdate()) {
+            $forbidden[] = $add_item_action;
+            return $forbidden;
+        }
+
+        if (
+            !$this->fields['allow_overquota']
+            && $this->fields['number'] != -1
+        ) {
+            $number = Item_SoftwareLicense::countForLicense($this->getID());
+            $number += SoftwareLicense_User::countForLicense($this->getID());
+
+            if ($number >= $this->fields['number']) {
+                $forbidden[] = $add_item_action;
+            }
+        }
+
+        return $forbidden;
     }
 
     /**

@@ -762,7 +762,7 @@ class Rule extends CommonDBTM
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -2120,7 +2120,6 @@ JS
             'is_tab' => true,
             'nofilter' => true,
             'nosort' => true,
-            'nopager' => true,
             'super_header' => __('Result details'),
             'columns' => [
                 'criterion' => _n('Criterion', 'Criteria', 1),
@@ -2138,7 +2137,7 @@ JS
 
         $entries = [
             [
-                'action' => __('Validation'),
+                'action' => _n('Validation', 'Validations', 1),
                 'result' => htmlescape(Dropdown::getYesNo($global_result)),
             ],
         ];
@@ -2190,10 +2189,9 @@ JS
             'is_tab' => true,
             'nofilter' => true,
             'nosort' => true,
-            'nopager' => true,
             'super_header' => __('Rule results'),
             'columns' => [
-                'action' => __('Action'),
+                'action' => _n('Action', 'Actions', 1),
                 'result' => __('Result'),
             ],
             'formatters' => [
@@ -3009,7 +3007,6 @@ JS
             'is_tab' => true,
             'nofilter' => true,
             'nosort' => true,
-            'nopager' => true,
             'columns' => [
                 'name' => $this->getTitle(),
                 'description' => __('Description'),

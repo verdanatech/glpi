@@ -502,14 +502,14 @@ final class SQLProvider implements SearchProviderInterface
 
                     $add_minus = '';
                     if (isset($opt["datafields"][3])) {
-                        $add_minus = '-' . $DB::quoteName("{$table}{$addtable}.{$opt["datafields"][3]}");
+                        $add_minus = '-' . $DB::quoteName("{$table}{$addtable}.{$opt['datafields'][3]}");
                     }
                     if ($meta || $opt->isForceGroupBy()) {
                         return array_merge([
                             QueryFunction::groupConcat(
                                 expression: QueryFunction::dateAdd(
-                                    date: "{$table}{$addtable}.{$opt["datafields"][1]}",
-                                    interval: new QueryExpression($DB::quoteName("{$table}{$addtable}.{$opt["datafields"][2]}") . $add_minus),
+                                    date: "{$table}{$addtable}.{$opt['datafields'][1]}",
+                                    interval: new QueryExpression($DB::quoteName("{$table}{$addtable}.{$opt['datafields'][2]}") . $add_minus),
                                     interval_unit: $interval
                                 ),
                                 separator: \Search::LONGSEP,
@@ -4571,9 +4571,10 @@ final class SQLProvider implements SearchProviderInterface
                 $sopt["joinparams"]
             );
 
+            $ref_table = $m_itemtype::getTable() . self::getMetaTableUniqueSuffix($m_itemtype::getTable(), $m_itemtype);
             $FROM .= \Search::addLeftJoin(
                 $m_itemtype,
-                $m_itemtype::getTable(),
+                $ref_table,
                 $already_link_tables,
                 $sopt["table"],
                 $sopt["linkfield"],

@@ -820,7 +820,6 @@ TWIG, ['title' => $report['title'], 'counts' => $counts]);
 
         $datatable_params = [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'super_header' => $super_header,
@@ -1085,7 +1084,7 @@ TWIG, $twig_params);
         $columns['location'] = Location::getTypeName(1);
         $columns['buy_date'] = __('Date of purchase');
         $columns['warranty_expiration_date'] = __('Warranty expiration date');
-        $columns['contract_type'] = __('Contract type');
+        $columns['contract_type'] = _n('Contract type', 'Contract types', 1);
         $columns['begin_date'] = __('Start date');
         $columns['end_date'] = __('End date');
 
@@ -1098,7 +1097,6 @@ TWIG, $twig_params);
             if (!isset($datatable_params[$itemtype])) {
                 $datatable_params[$itemtype] = [
                     'is_tab' => true,
-                    'nopager' => true,
                     'nofilter' => true,
                     'nosort' => true,
                     'columns' => $columns,
@@ -1365,7 +1363,7 @@ TWIG, $twig_params);
         $columns['location'] = Location::getTypeName(1);
         $columns['buy_date'] = __('Date of purchase');
         $columns['warranty_expiration_date'] = __('Warranty expiration date');
-        $columns['contract_type'] = __('Contract type');
+        $columns['contract_type'] = _n('Contract type', 'Contract types', 1);
         $columns['begin_date'] = __('Start date');
         $columns['end_date'] = __('End date');
 
@@ -1378,7 +1376,6 @@ TWIG, $twig_params);
             if (!isset($datatable_params[$itemtype])) {
                 $datatable_params[$itemtype] = [
                     'is_tab' => true,
-                    'nopager' => true,
                     'nofilter' => true,
                     'nosort' => true,
                     'columns' => $columns,
@@ -1559,7 +1556,6 @@ TWIG, $twig_params);
             if (!isset($datatable_params[$itemtype])) {
                 $datatable_params[$itemtype] = [
                     'is_tab' => true,
-                    'nopager' => true,
                     'nofilter' => true,
                     'nosort' => true,
                     'columns' => $columns,

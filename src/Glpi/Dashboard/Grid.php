@@ -476,7 +476,7 @@ TWIG, $params);
                 </div>
             {% endif %}
             <script type="module">
-                import('{{ js_path('js/modules/Dashboard/Dashboard.js') }}').then((m) => {
+                import('/js/modules/Dashboard/Dashboard.js').then((m) => {
                     new m.GLPIDashboard({{ js_params|json_encode|raw }});
                 });
             </script>
@@ -1388,7 +1388,7 @@ HTML;
                 [
                     'ITILCategory' => __("Top ticket's categories"),
                     'Entity'       => __("Top ticket's entities"),
-                    'RequestType'  => __("Top ticket's request types"),
+                    'RequestType'  => __("Top ticket's request sources"),
                     'Location'     => __("Top ticket's locations"),
                 ] as $itemtype => $label
             ) {

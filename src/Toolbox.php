@@ -2091,7 +2091,7 @@ class Toolbox
         $default_lang_weight = 1;
         $cron_config_weight = 1;
         $number_of_steps += $init_form_weight + $init_rules_weight + $generate_keys_weight + $default_lang_weight;
-        if (defined('GLPI_SYSTEM_CRON')) {
+        if (GLPI_SYSTEM_CRON) {
             $number_of_steps += $cron_config_weight;
         }
 
@@ -2144,7 +2144,7 @@ class Toolbox
         $progress_indicator?->advance($init_form_weight);
         $progress_indicator?->addMessage(MessageType::Success, __('Default forms created.'));
 
-        $progress_indicator?->setProgressBarMessage(__('Initalizing default rules…'));
+        $progress_indicator?->setProgressBarMessage(__('Initializing default rules…'));
         RulesManager::initializeRules();
         $progress_indicator?->advance($init_rules_weight);
         $progress_indicator?->addMessage(MessageType::Success, __('Default rules initialized.'));
@@ -2175,7 +2175,7 @@ class Toolbox
         }
         $progress_indicator?->advance($default_lang_weight);
 
-        if (defined('GLPI_SYSTEM_CRON')) {
+        if (GLPI_SYSTEM_CRON) {
             // Downstream packages may provide a good system cron
             $database->update(
                 'glpi_crontasks',
@@ -2237,7 +2237,9 @@ class Toolbox
      **/
     public static function prepareArrayForInput(array $value)
     {
-        return base64_encode(json_encode($value));
+        $json = json_encode($value);
+        $compressed = gzcompress($json);
+        return base64_encode($compressed);
     }
 
 
@@ -2254,7 +2256,8 @@ class Toolbox
     {
 
         if ($dec = base64_decode($value)) {
-            if ($ret = json_decode($dec, true)) {
+            $json = gzuncompress($dec);
+            if ($ret = json_decode($json, true)) {
                 return $ret;
             }
         }
@@ -3095,8 +3098,8 @@ HTML;
     {
         // Based on https://github.com/symfony/symfony/blob/7.3/src/Symfony/Component/Validator/Constraints/UrlValidator.php
         $pattern = '~^
-            (https?)://                                 # protocol
-            (((?:[\_\.\pL\pN-]|%%[0-9A-Fa-f]{2})+:)?((?:[\_\.\pL\pN-]|%%[0-9A-Fa-f]{2})+)@)?  # basic auth
+            (http|https)://                                 # protocol
+            (((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+:)?((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+)@)?  # basic auth
             (
                 (?:
                     (?:xn--[a-z0-9-]++\.)*+xn--[a-z0-9-]++            # a domain name using punycode
@@ -3113,10 +3116,11 @@ HTML;
                 \]  # an IPv6 address
             )
             (:[0-9]+)?                              # a port (optional)
-            (?:/ (?:[\pL\pN\pS\pM\-._\~!$&\'()*+,;=:@]|%%[0-9A-Fa-f]{2})* )*    # a path
-            (?:\? (?:[\pL\pN\-._\~!$&\'\[\]()*+,;=:@/?]|%%[0-9A-Fa-f]{2})* )?   # a query (optional)
-            (?:\# (?:[\pL\pN\-._\~!$&\'()*+,;=:@/?]|%%[0-9A-Fa-f]{2})* )?       # a fragment (optional)
+            (?:/ (?:[\pL\pN\pS\pM\-._\~!$&\'()*+,;=:@]|%[0-9A-Fa-f]{2})* )*    # a path
+            (?:\? (?:[\pL\pN\-._\~!$&\'\[\]()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?   # a query (optional)
+            (?:\# (?:[\pL\pN\-._\~!$&\'()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?       # a fragment (optional)
         $~ixuD';
+
         return preg_match($pattern, $url) === 1;
     }
 
@@ -3297,7 +3301,7 @@ HTML;
         }
 
         if (!preg_match('/(\d+).*?(\w+)/', $size, $matches)) {
-            // Unkown format, keep the string as it is
+            // Unknown format, keep the string as it is
             return $size;
         }
         $supported_sizes = [

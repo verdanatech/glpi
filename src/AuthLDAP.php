@@ -168,12 +168,12 @@ class AuthLDAP extends CommonDBTM
     ];
 
     /**
-     * Message of last error occured during connection.
+     * Message of last error occurred during connection.
      * @var ?string
      */
     private static ?string $last_error;
     /**
-     * Numero of last error occured during connection.
+     * Numero of last error occurred during connection.
      * @var ?int
      */
     private static ?int $last_errno;
@@ -611,7 +611,6 @@ TWIG, ['authldaps_id' => $ID]);
 
             TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
                 'is_tab' => true,
-                'nopager' => true,
                 'nofilter' => true,
                 'nosort' => true,
                 'super_header' => __('List of LDAP directory replicates'),
@@ -793,7 +792,7 @@ TWIG, ['authldaps_id' => $ID]);
             'fields' => [
                 'realname_field'            => __('Surname'),
                 'firstname_field'           => __('First name'),
-                'comment_field'             => __('Comments'),
+                'comment_field'             => _n('Comment', 'Comments', Session::getPluralNumber()),
                 'registration_number_field' => _x('user', 'Administrative number'),
                 'email1_field'              => _n('Email', 'Emails', 1),
                 'email2_field'              => sprintf('%1$s %2$s', _n('Email', 'Emails', 1), '2'),
@@ -969,7 +968,7 @@ TWIG, ['authldaps_id' => $ID]);
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 

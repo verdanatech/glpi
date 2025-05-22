@@ -1245,6 +1245,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'thecodingmachine/safe' => array(
+            'pretty_version' => 'v3.3.0',
+            'version' => '3.3.0.0',
+            'reference' => '2cdd579eeaa2e78e51c7509b50cc9fb89a956236',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../thecodingmachine/safe',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'thenetworg/oauth2-azure' => array(
             'pretty_version' => 'v2.2.2',
             'version' => '2.2.2.0',

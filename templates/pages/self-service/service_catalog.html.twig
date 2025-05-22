@@ -40,7 +40,7 @@
 
 {% block content_title %}
     <div class="d-flex">
-        <ol class="breadcrumb breadcrumb-alternate" aria-label="{{ __("Service catalog categories") }}" role="navigation">
+        <ol class="breadcrumb breadcrumb-alternate" aria-label="{{ _n("Service catalog category", "Service catalog categories", get_plural_number()) }}" role="navigation">
             <li class="breadcrumb-item text-truncate active">
                 <a
                     href="?category=0"
@@ -111,7 +111,7 @@
     <script>
 
         (async function() {
-            const module = await import("js/modules/Forms/ServiceCatalogController");
+            const module = await import("/js/modules/Forms/ServiceCatalogController.js");
             const icons = {};
             {% for key, icon in icons %}
                 icons["{{ key|escape('js') }}"] = "{{ icon|escape('js') }}";

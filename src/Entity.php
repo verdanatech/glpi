@@ -477,7 +477,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         $path = realpath(GLPI_TMP_DIR . "/$file");
         if (!$path || !str_starts_with($path, GLPI_TMP_DIR)) {
             // File doest not exist or is outside upload directory
-            $message = __("An unexpected error occured.");
+            $message = __("An unexpected error occurred");
             Session::addMessageAfterRedirect($message);
             return null;
         }
@@ -922,7 +922,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 

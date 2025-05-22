@@ -2950,32 +2950,32 @@ body.debug-active .floating-buttons {
   gap: 0.5rem;
   align-items: stretch;
 }
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(2)) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(2)) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(2)) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
   /**
    * 0.5rem is the gap between blocks
    * 2.5rem is the width of the button
    */
   max-width: calc(100% / 2 - 0.5rem - 2.5rem / 2);
 }
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(3)) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(3)) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(3)) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
   /**
    * 0.5rem is the gap between blocks
    * 2.5rem is the width of the button
    */
   max-width: calc(100% / 3 - 0.5rem - 2.5rem / 3);
 }
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-block]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) [data-glpi-form-editor-horizontal-block-placeholder]:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]),
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])):not(:has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]))) .glpi-form-editor-drag-question-placeholder:not([data-glpi-form-editor-active-question], [data-glpi-form-editor-active-comment]) {
   max-width: calc(100% / 4 - 0.5rem * (4 - 1) / 4);
 }
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) [data-glpi-form-editor-horizontal-block-toolbar],
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) [data-glpi-form-editor-on-click=duplicate-question],
-[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:nth-of-type(4)) [data-glpi-form-editor-on-click=duplicate-comment] {
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])) [data-glpi-form-editor-horizontal-block-toolbar],
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])) [data-glpi-form-editor-on-click=duplicate-question],
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks]:has(> section:not([style*="display: none"])):has(> section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"]) ~ section:not([style*="display: none"])) [data-glpi-form-editor-on-click=duplicate-comment] {
   display: none !important;
 }
 [data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks] [data-glpi-form-editor-block] {
@@ -3016,6 +3016,9 @@ body.debug-active .floating-buttons {
 [data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks] [data-glpi-form-editor-horizontal-block-placeholder]:not(:has(.glpi-form-editor-drag-question-placeholder)) {
   border: 2px dashed var(--tblr-border-color);
   border-radius: var(--tblr-border-radius);
+}
+[data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks] [data-glpi-form-editor-horizontal-block-placeholder]:has(.glpi-form-editor-drag-question-placeholder) [data-glpi-form-editor-toolbar] {
+  display: none !important;
 }
 [data-glpi-form-editor-horizontal-blocks-container] [data-glpi-form-editor-horizontal-blocks] [data-glpi-form-editor-horizontal-block-placeholder] [data-glpi-form-editor-toolbar] {
   height: unset !important;
@@ -3281,8 +3284,10 @@ input.value-selector {
   width: 100%;
 }
 
-.visibility-dropdown-card {
-  width: 700px;
+.visibility-dropdown-card, .validation-dropdown-card {
+  min-width: 700px;
+  width: fit-content;
+  overflow: scroll;
 }
 
 [data-glpi-form-editor-block] {
@@ -3425,6 +3430,19 @@ html:has(.tab-pane.active > [data-glpi-form-editor-container]) {
 .form-renderer .input-group > div:not(.d-none):has(> span.select2-container):not(:last-of-type) .select2-selection {
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
+}
+.form-renderer [data-glpi-form-renderer-question]:has(select.is-invalid) .select2-container--default .select2-selection {
+  border-color: var(--tblr-form-invalid-border-color) !important;
+}
+.form-renderer [data-glpi-form-renderer-question]:has(textarea.is-invalid) .tox.tox-tinymce {
+  border-color: var(--tblr-form-invalid-border-color) !important;
+}
+.form-renderer [data-glpi-form-renderer-question] .invalid-tooltip {
+  position: relative;
+  background-color: unset;
+  color: var(--tblr-form-invalid-color);
+  padding: unset;
+  margin-top: 0.25rem;
 }
 
 /*!
@@ -6409,6 +6427,10 @@ html[data-glpi-theme-dark="1"] {
 
 .hover-bg:hover {
   background-color: var(--glpi-hover-bg) !important;
+}
+
+.border-transparent {
+  border-color: transparent;
 }
 
 /*!

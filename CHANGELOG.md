@@ -236,10 +236,13 @@ The present file will list all changes made to the project; according to the
 - `Software::merge()` method is now private.
 - The refusal of the collected emails corresponding to a GLPI notification will now be made based on a default rule.
 - The `$store_path` parameter has been removed from the `Dropdown::dropdownIcons()` method.
+- The `PLUGINS_DIRECTORIES` constant has been renamed to `GLPI_PLUGINS_DIRECTORIES`.
+- Most of the `Profile::show*()` methods have been made private.
 
 #### Deprecated
 - Usage of the `/marketplace` path for plugins URLs. All plugins URLs should now start with `/plugins`.
 - Usage of `GLPI_PLUGINS_PATH` javascript variable.
+- Usage of the `GLPI_FORCE_MAIL` constant.
 - Usage of `MAIL_SMTPSSL` and `MAIL_SMTPTLS` constants.
 - Usage of `name` and `users_id_validate` parameter in `ajax/dropdownValidator.php`.
 - Usage of `users_id_validate` parameter in `front/commonitilvalidation.form.php`.
@@ -325,7 +328,7 @@ The present file will list all changes made to the project; according to the
 - `Toolbox::stripslashes_deep()`
 
 #### Removed
-- `GLPI_USE_CSRF_CHECK`, `GLPI_USE_IDOR_CHECK`, `GLPI_CSRF_EXPIRES`, `GLPI_CSRF_MAX_TOKENS` and `GLPI_IDOR_EXPIRES` constants.
+- `GLPI_USE_CSRF_CHECK`, `GLPI_USE_IDOR_CHECK`, `GLPI_KEEP_CSRF_TOKEN`, `GLPI_CSRF_EXPIRES`, `GLPI_CSRF_MAX_TOKENS` and `GLPI_IDOR_EXPIRES` constants.
 - `GLPI_DEMO_MODE` constant.
 - `GLPI_DUMP_DIR` constant.
 - `GLPI_SQL_DEBUG` constant.
@@ -469,6 +472,7 @@ The present file will list all changes made to the project; according to the
 - `Html::displayAccessDeniedPage()`
 - `Html::displayAjaxMessageAfterRedirect()`. The JS function is already provided by `js/misc.js`.
 - `Html::displayItemNotFoundPage()`
+- `Html::getCoreVariablesForJavascript()`
 - `Html::jsConfirmCallback()`
 - `Html::jsHide()`
 - `Html::jsShow()`
@@ -630,6 +634,7 @@ The present file will list all changes made to the project; according to the
 
 ### Changed
 - Only unsolved/unclosed tickets will be shown in the dropdown when performing the "Merge as Followup" action.
+- Domain records must be attached to a domain. Existing unattached records will remain but will require a domain if edited.
 
 ### Deprecated
 

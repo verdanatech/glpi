@@ -40,10 +40,13 @@ use Glpi\Form\Answer;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Condition\Engine;
 use Glpi\Form\Condition\EngineInput;
+use Glpi\Form\Condition\ValidationStrategy;
 use Glpi\Form\DelegationData;
 use Glpi\Form\Destination\AnswersSet_FormDestinationItem;
 use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Form;
+use Glpi\Form\Section;
+use Glpi\Form\ValidationResult;
 
 /**
  * Helper class to handle raw answers data
@@ -73,6 +76,75 @@ final class AnswersHandler
         }
 
         return self::$instance;
+    }
+
+    /**
+     * Check if the given answers are valid for the given form
+     *
+     * @param Form|Section $questions_container The form or section to check
+     * @param array $answers The answers to check
+     * @return ValidationResult The validation result
+     */
+    public function validateAnswers(
+        Form|Section $questions_container,
+        array $answers
+    ): ValidationResult {
+        $form = ($questions_container instanceof Section) ? $questions_container->getItem() : $questions_container;
+        $result = new ValidationResult();
+        $engine = new Engine($form, new EngineInput($answers));
+        $visibility = $engine->computeVisibility();
+        $validation = $engine->computeValidation();
+
+        // Retrieve visible mandatory questions
+        $mandatory_questions = array_filter(
+            $questions_container->getQuestions(),
+            fn($question) => $question->fields['is_mandatory']
+                && $visibility->isQuestionVisible($question->getID())
+        );
+
+        foreach ($mandatory_questions as $question) {
+            // Check if the question is not answered (empty or not set)
+            if (
+                empty($answers[$question->getID()])
+                || (isset($answers[$question->getID()]['items_id']) && empty($answers[$question->getID()]['items_id']))
+            ) {
+                $result->addError($question, __('This field is mandatory'));
+            }
+        }
+
+        // Validate answers for each question if validation conditions are defined
+        foreach ($questions_container->getQuestions() as $question) {
+            if ($question->getConfiguredValidationStrategy() === ValidationStrategy::NO_VALIDATION) {
+                // Skip validation if the question is always validated
+                continue;
+            }
+
+            // Check if the question is visible
+            if (!$visibility->isQuestionVisible($question->getID())) {
+                continue;
+            }
+
+            // Check if the question is not answered (empty or not set)
+            if (empty($answers[$question->getID()])) {
+                continue;
+            }
+
+            // Validate the answer
+            if (!$validation->isQuestionValid($question->getID())) {
+                // Add error for each condition that is not met
+                foreach ($validation->getQuestionValidation($question->getID()) as $condition) {
+                    $result->addError(
+                        $question,
+                        $condition->getValueOperator()?->getErrorMessageForValidation(
+                            $question->getConfiguredValidationStrategy(),
+                            $condition
+                        )
+                    );
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

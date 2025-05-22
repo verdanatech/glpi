@@ -104,10 +104,16 @@ class NotificationTemplateTranslation extends CommonDBChild
         $template = new NotificationTemplate();
         $template->getFromDB($notificationtemplates_id);
 
+        $used_languages = self::getAllUsedLanguages($notificationtemplates_id);
+        // Remove current language
+        if (!$this->isNewItem()) {
+            $used_languages = array_diff($used_languages, [$this->getField('language')]);
+        }
+
         TemplateRenderer::getInstance()->display('pages/setup/notification/translation.html.twig', [
             'item' => $this,
             'template' => $template,
-            'used_languages' => self::getAllUsedLanguages($notificationtemplates_id),
+            'used_languages' => $used_languages,
         ]);
         return true;
     }
@@ -161,7 +167,6 @@ TWIG, $twig_params);
 
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'columns' => [

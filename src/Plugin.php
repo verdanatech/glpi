@@ -329,7 +329,7 @@ class Plugin extends CommonDBTM
     public static function load($plugin_key, $withhook = false)
     {
         $loaded = false;
-        foreach (PLUGINS_DIRECTORIES as $base_dir) {
+        foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (!is_dir($base_dir)) {
                 continue;
             }
@@ -445,7 +445,7 @@ class Plugin extends CommonDBTM
 
         // New localisation system
         $mofile = false;
-        foreach (PLUGINS_DIRECTORIES as $base_dir) {
+        foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (!is_dir($base_dir)) {
                 continue;
             }
@@ -564,7 +564,7 @@ class Plugin extends CommonDBTM
             $this->filesystem_plugin_keys = [];
 
             $plugins_directories = new AppendIterator();
-            foreach (PLUGINS_DIRECTORIES as $base_dir) {
+            foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
                 if (!is_dir($base_dir)) {
                     continue;
                 }
@@ -1218,6 +1218,10 @@ class Plugin extends CommonDBTM
         /** @var \DBmysql $DB */
         global $DB;
 
+        if (countElementsInTable(static::getTable(), ['state' => self::ACTIVATED]) === 0) {
+            return;
+        }
+
         $DB->update(
             $this->getTable(),
             [
@@ -1771,7 +1775,7 @@ class Plugin extends CommonDBTM
             return false;
         }
 
-        foreach (PLUGINS_DIRECTORIES as $base_dir) {
+        foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (!is_dir($base_dir)) {
                 continue;
             }
@@ -1844,7 +1848,7 @@ class Plugin extends CommonDBTM
      */
     public static function includeHook(string $plugin_key = "")
     {
-        foreach (PLUGINS_DIRECTORIES as $base_dir) {
+        foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (file_exists("$base_dir/$plugin_key/hook.php")) {
                 include_once("$base_dir/$plugin_key/hook.php");
                 break;
@@ -2432,7 +2436,7 @@ class Plugin extends CommonDBTM
             'id'                 => '8',
             'table'              => $this->getTable(),
             'field'              => 'id',
-            'name'               => __('Actions'),
+            'name'               => _n('Action', 'Actions', Session::getPluralNumber()),
             'massiveaction'      => false,
             'nosearch'           => true,
             'datatype'           => 'specific',
@@ -2727,7 +2731,7 @@ TWIG;
     public static function getPhpDir(string $plugin_key = "", $full = true)
     {
         $directory = false;
-        foreach (PLUGINS_DIRECTORIES as $plugins_directory) {
+        foreach (GLPI_PLUGINS_DIRECTORIES as $plugins_directory) {
             if (is_dir("$plugins_directory/$plugin_key")) {
                 $directory = "$plugins_directory/$plugin_key";
                 break;

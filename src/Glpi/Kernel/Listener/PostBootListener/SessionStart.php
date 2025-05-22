@@ -51,7 +51,7 @@ final class SessionStart implements EventSubscriberInterface
     public function __construct(
         #[Autowire('%kernel.project_dir%')]
         string $glpi_root,
-        array $plugin_directories = PLUGINS_DIRECTORIES,
+        array $plugin_directories = GLPI_PLUGINS_DIRECTORIES,
     ) {
         $this->glpi_root = $glpi_root;
         $this->plugin_directories = $plugin_directories;
@@ -66,6 +66,17 @@ final class SessionStart implements EventSubscriberInterface
 
     public function onPostBoot(): void
     {
+        // Always set the session files path, even when session is not started automatically here.
+        // It can indeed be started later manually and the path must be correctly set when it is done.
+        if (Session::canWriteSessionFiles()) {
+            Session::setPath();
+        } else {
+            \trigger_error(
+                sprintf('Unable to write session files on `%s`.', GLPI_SESSION_DIR),
+                E_USER_WARNING
+            );
+        }
+
         // The session must be started even in CLI context.
         // The GLPI code refers to the session in many places
         // and we cannot safely remove its initialization in the CLI context.
@@ -120,15 +131,6 @@ final class SessionStart implements EventSubscriberInterface
         }
 
         if ($start_session) {
-            if (Session::canWriteSessionFiles()) {
-                Session::setPath();
-            } else {
-                \trigger_error(
-                    sprintf('Unable to write session files on `%s`.', GLPI_SESSION_DIR),
-                    E_USER_WARNING
-                );
-            }
-
             Session::start();
         }
     }

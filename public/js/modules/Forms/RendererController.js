@@ -33,7 +33,7 @@
 
 /* global glpi_toast_info, tinymce, glpi_toast_error, _ */
 
-import { GlpiFormConditionEngine } from 'js/modules/Forms/Condition/Engine';
+import { GlpiFormConditionEngine } from '/js/modules/Forms/Condition/Engine.js';
 
 /**
  * Client code to handle users actions on the form_renderer template
@@ -134,46 +134,83 @@ export class GlpiFormRendererController
         $(this.#target).removeClass('pointer-events-none');
     }
 
-    #checkCurrentSectionValidity() {
-        // Find all required inputs that are hidden and not already disabled.
-        // They must be removed from the check as they are inputs from others
-        // sections or input hidden by condition (thus they should not be
-        // evaluated).
-        // The easiest way to not evaluate these inputs is to disable them.
-        const inputs = $(this.#target).find('[required]:hidden:not(:disabled)');
-        for (const input of inputs) {
-            input.disabled = true;
+    async #checkCurrentSectionValidity() {
+        // Get the UUID of the current section
+        const currentSectionElement = $(this.#target).find(`[data-glpi-form-renderer-section="${this.#section_index}"]`);
+        const currentSectionUuid = currentSectionElement.data('glpi-form-renderer-uuid');
+
+        const response = await $.ajax({
+            url: `${CFG_GLPI.root_doc}/Form/ValidateAnswers`,
+            type: 'POST',
+            data: `${$(this.#target).serialize()  }&section_uuid=${currentSectionUuid}`,
+            dataType: 'json',
+        });
+
+        // Remove previous error messages and aria attributes
+        $(this.#target)
+            .find(".invalid-tooltip")
+            .remove();
+        $(this.#target)
+            .find(".is-invalid")
+            .removeClass("is-invalid")
+            .removeAttr("aria-invalid")
+            .removeAttr("aria-errormessage");
+
+        if (response.success === false) {
+            Object.values(response.errors).forEach(error => {
+                // Highlight the field with error
+                const question = $(`[data-glpi-form-renderer-id="${error.question_id}"][data-glpi-form-renderer-question]`);
+                if (!question.length) {
+                    return;
+                }
+
+                // Find the input field within the question
+                const inputField = question.find('input:not([type=hidden]):not([data-uploader-name]):not(.select2-search__field), select, textarea');
+                if (!inputField.length) {
+                    return;
+                }
+
+                // Generate a unique ID for the error message
+                const errorId = `error-${error.question_id}`;
+
+                // Add validation classes and accessibility attributes
+                inputField
+                    .addClass('is-invalid')
+                    .attr('aria-invalid', 'true')
+                    .attr('aria-errormessage', errorId);
+
+                // Add a tooltip with the error message
+                inputField.parent().append(
+                    `<span id="${errorId}" class="invalid-tooltip">${error.message}</span>`
+                );
+            });
+
+            return false;
         }
 
-        // Check validity and display browser feedback if needed.
-        const is_valid = this.#target.checkValidity();
-        if (!is_valid) {
-            this.#target.reportValidity();
-        }
-
-        // Revert disabled inputs
-        for (const input of inputs) {
-            input.disabled = false;
-        }
-
-        return is_valid;
+        return true;
     }
 
     /**
      * Submit the target form using an AJAX request.
      */
     async #submitForm() {
-        if (!this.#checkCurrentSectionValidity()) {
-            return;
-        }
-
         // Form will be sumitted using an AJAX request instead
         try {
+            // Disable actions immediately to avoid someone clicking on the actions
+            // while the form is being submitted.
+            this.#disableActions();
+
             // Update tinymce values
             if (window.tinymce !== undefined) {
                 tinymce.get().forEach(editor => {
                     editor.save();
                 });
+            }
+
+            if (!await this.#checkCurrentSectionValidity()) {
+                this.#enableActions();
+                return;
             }
 
             // Submit form using AJAX
@@ -211,14 +248,16 @@ export class GlpiFormRendererController
             glpi_toast_error(
                 __("Failed to submit form, please contact your administrator.")
             );
+        } finally {
+            this.#enableActions();
         }
     }
 
     /**
      * Go to the next section of the form.
      */
-    #goToNextSection() {
-        if (!this.#checkCurrentSectionValidity()) {
+    async #goToNextSection() {
+        if (!await this.#checkCurrentSectionValidity()) {
             return;
         }
 

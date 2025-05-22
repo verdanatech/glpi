@@ -690,7 +690,7 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
             'id'                 => '16',
             'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -1088,7 +1088,7 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
             'id'                 => '125',
             'table'              => ProjectTask::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
             'massiveaction'      => false,
             'forcegroupby'       => true,
@@ -1346,7 +1346,6 @@ TWIG, ['projects_id' => $ID, 'label' => __('Create a sub project from this proje
         $entries = self::getDatatableEntries($entries_to_fetch);
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'columns' => $header['columns'],
@@ -1477,7 +1476,6 @@ TWIG, $twig_params);
 
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
-            'nopager' => true,
             'nofilter' => true,
             'nosort' => true,
             'columns' => [

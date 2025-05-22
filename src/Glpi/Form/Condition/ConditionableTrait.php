@@ -52,9 +52,13 @@ trait ConditionableTrait
     /** @return ConditionData[] */
     public function getConfiguredConditionsData(): array
     {
-        parent::post_getFromDB();
+        return $this->getConditionsData($this->getConditionsFieldName());
+    }
 
-        $field_name = $this->getConditionsFieldName();
+    /** @return ConditionData[] */
+    private function getConditionsData(string $field_name): array
+    {
+        parent::post_getFromDB();
 
         try {
             $raw_data = json_decode(

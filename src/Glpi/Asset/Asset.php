@@ -45,6 +45,7 @@ use Group_Item;
 use Location;
 use Log;
 use Manufacturer;
+use Session;
 use State;
 use User;
 
@@ -179,7 +180,7 @@ abstract class Asset extends CommonDBTM
             'id'                 => '16',
             'table'              => $this->getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -267,7 +268,6 @@ abstract class Asset extends CommonDBTM
             'id'                 => '49',
             'table'              => Group::getTable(),
             'field'              => 'completename',
-            'linkfield'          => 'groups_id_tech',
             'name'               => __('Group in charge of the hardware'),
             'condition'          => ['is_assign' => 1],
             'joinparams'         => [
@@ -275,7 +275,7 @@ abstract class Asset extends CommonDBTM
                     'table'              => 'glpi_groups_items',
                     'joinparams'         => [
                         'jointype'           => 'itemtype_item',
-                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_NORMAL],
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_TECH],
                     ],
                 ],
             ],

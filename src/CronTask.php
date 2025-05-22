@@ -945,7 +945,16 @@ class CronTask extends CommonDBTM
      * @param integer $frequency execution frequency
      * @param array   $options   optional options
      *       (state, mode, allowmode, hourmin, hourmax, logs_lifetime, param, comment)
-     * @phpstan-param array{state: CronTask::STATE_*, mode: CronTask::MODE_*, allowmode: int, hourmin: int, hourmax: int, logs_lifetime: int, param: int, comment: string} $options
+     * @phpstan-param array{
+     *   state?: CronTask::STATE_*,
+     *   mode?: CronTask::MODE_*,
+     *   allowmode?: int,
+     *   hourmin?: int,
+     *   hourmax?: int,
+     *   logs_lifetime?: int,
+     *   param?: int,
+     *   comment?: string
+     * } $options
      *
      * @return boolean
      **/
@@ -975,7 +984,7 @@ class CronTask extends CommonDBTM
             }
         }
         if (
-            defined('GLPI_SYSTEM_CRON')
+            GLPI_SYSTEM_CRON
             && ($input['allowmode'] & self::MODE_EXTERNAL)
             && !isset($input['mode'])
         ) {
@@ -1271,7 +1280,6 @@ TWIG, ['msg' => __('Last run list')]);
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
             'nofilter' => true,
-            'nopager' => true,
             'columns' => [
                 'date' => _n('Date', 'Dates', 1),
                 'state' => __('Status'),
@@ -1459,7 +1467,7 @@ TWIG, ['msg' => __('Last run list')]);
             'id'                 => '16',
             'table'              => self::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
