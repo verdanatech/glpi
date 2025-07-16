@@ -215,7 +215,7 @@ class UpdateCommand extends AbstractCommand implements ConfigurationCommandInter
         $update->setMigration($migration);
         $update->doUpdates($current_version, $force);
 
-        (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
+        // (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
 
         $output->writeln('<info>' . __('Migration done.') . '</info>');
 
