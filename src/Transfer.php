@@ -2493,7 +2493,8 @@ class Transfer extends CommonDBTM
                             'FROM'   => 'glpi_documents',
                             'WHERE'  => [
                                 'entities_id'  => $this->to,
-                                'name'         => addslashes($document->fields['name']),
+                                'name'         => addslashes($document->fields['filename']),
+                                'sha1sum'    => addslashes($document->fields['sha1sum'])
                             ],
                         ]);
 
