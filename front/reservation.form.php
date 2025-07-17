@@ -93,7 +93,6 @@ if (isset($_POST["update"])) {
     Reservation::handleAddForm($_POST);
     Html::back();
 } elseif (isset($_GET["id"])) {
-    $rr->check($_GET['id'], READ);
     if (!isset($_GET['begin'])) {
         $_GET['begin'] = date('Y-m-d H:00:00');
     }
