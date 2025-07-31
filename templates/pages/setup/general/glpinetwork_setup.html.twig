@@ -60,10 +60,15 @@
         </div>
     {% endif %}
 
-    {{ fields.textareaField('glpinetwork_registration_key', registration_key, __('Registration key'), {
-        full_width: true,
-        rows: 10
-    }) }}
+    {{ fields.passwordField(
+        'glpinetwork_registration_key',
+        registration_key,
+        __('Registration key'),
+        {
+            full_width: true,
+            'is_disclosable': true,
+        }
+    ) }}
 
     {% if registration_key is not empty %}
         {% if informations['validation_message'] is not empty %}
@@ -93,4 +98,26 @@
             }) }}
         {% endif %}
     {% endif %}
+
+    {{ fields.largeTitle(__('Marketplace')) }}
+
+    {{ fields.dropdownArrayField(
+        'marketplace_replace_plugins',
+        config('marketplace_replace_plugins')|default(1),
+        {
+            '1': __('Ask before replacing'),
+            '2': __('Replace plugins page with marketplace'),
+            '3': __('Never replace plugins page')
+        },
+        __('Plugin page replacement'),
+        {
+            'full_width': true,
+            'add_field_html': '<div class="form-text">' ~ __('Choose whether to replace the classic plugins page with the new marketplace interface.') ~ '</div>'
+        }
+    ) }}
+
+    {{ fields.htmlField('', '<a href="' ~ path('/front/marketplace.php') ~ '" class="btn btn-primary">' ~ __('Access GLPI Network Marketplace') ~ '</a>', null, {
+        full_width: true,
+    }) }}
+
 {% endblock %}

@@ -31,12 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 if (!$DB->fieldExists("glpi_entities", "inquest_max_rate", false)) {
     $migration->addField('glpi_entities', 'inquest_max_rate', "int NOT NULL DEFAULT '5'", ['after' => 'inquest_URL']);
 }
@@ -59,7 +57,7 @@ $fields = [
     'is_group_autoclean',
     'is_location_autoclean',
 ];
-$config = \Config::getConfigurationValues('core');
+$config = Config::getConfigurationValues('core');
 foreach ($fields as $field) {
     if (!$DB->fieldExists("glpi_entities", $field, false)) {
         $migration->addField(
@@ -76,12 +74,13 @@ foreach ($fields as $field) {
         );
     }
 }
+$migration->removeConfig($fields);
 
 $fields = [
     'state_autoupdate_mode',
     'state_autoclean_mode',
 ];
-$config = \Config::getConfigurationValues('core');
+$config = Config::getConfigurationValues('core');
 foreach ($fields as $field) {
     if (!$DB->fieldExists("glpi_entities", $field, false)) {
         $migration->addField(
@@ -98,6 +97,7 @@ foreach ($fields as $field) {
         );
     }
 }
+$migration->removeConfig($fields);
 
 /** Add base url for entities to be used in notification */
 if (!$DB->fieldExists("glpi_entities", "url_base", false)) {

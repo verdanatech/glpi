@@ -62,18 +62,20 @@ class Item_Enclosure extends CommonDBRelation
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        self::showItems($item);
-        return true;
+        if (!$item instanceof Enclosure) {
+            return false;
+        }
+        return self::showItems($item);
     }
 
     /**
      * Print enclosure items
      *
-     * @return void
+     * @return bool
      **/
-    public static function showItems(Enclosure $enclosure)
+    public static function showItems(Enclosure $enclosure): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $enclosure->getID();
@@ -111,7 +113,7 @@ class Item_Enclosure extends CommonDBRelation
 
         $entries = [];
         foreach ($items as $row) {
-            $item = new $row['itemtype']();
+            $item = getItemForItemtype($row['itemtype']);
             $item->getFromDB($row['items_id']);
             $entries[] = [
                 'itemtype' => static::class,
@@ -143,13 +145,15 @@ class Item_Enclosure extends CommonDBRelation
                 ],
             ],
         ]);
+
+        return true;
     }
 
     public function showForm($ID, array $options = [])
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -225,7 +229,7 @@ class Item_Enclosure extends CommonDBRelation
         echo "<td id='items_id'>";
         if (isset($this->fields['itemtype']) && !empty($this->fields['itemtype'])) {
             $itemtype = $this->fields['itemtype'];
-            $itemtype = new $itemtype();
+            $itemtype = getItemForItemtype($itemtype);
             $itemtype::dropdown([
                 'name'   => "items_id",
                 'value'  => $this->fields['items_id'],

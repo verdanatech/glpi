@@ -381,7 +381,7 @@ TWIG, $twig_params);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -709,7 +709,7 @@ TWIG, $twig_params);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -818,7 +818,7 @@ TWIG, $twig_params);
                 $alert             = new Alert();
                 $input["itemtype"] = 'Reservation';
                 $input["type"]     = Alert::END;
-                foreach ($items as $resaid => $item) {
+                foreach (array_keys($items) as $resaid) {
                     $input["items_id"] = $resaid;
                     $alert->add($input);
                     unset($alert->fields['id']);
@@ -852,7 +852,7 @@ TWIG, $twig_params);
     public function defineTabs($options = [])
     {
         $ong = [];
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $ong['no_all_tab'] = true;
         return $ong;
     }
@@ -941,7 +941,7 @@ TWIG, $twig_params);
      */
     public static function getAvailableItems(string $itemtype): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $reservation_table = self::getTable();
@@ -965,7 +965,7 @@ TWIG, $twig_params);
      */
     public static function countAvailableItems(string $itemtype): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $criteria = self::getAvailableItemsCriteria($itemtype);
@@ -985,7 +985,7 @@ TWIG, $twig_params);
     {
         $reservation_table = self::getTable();
         /** @var CommonDBTM $item */
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         $item_table = $itemtype::getTable();
 
         $criteria = [

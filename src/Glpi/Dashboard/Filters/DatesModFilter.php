@@ -35,6 +35,7 @@
 
 namespace Glpi\Dashboard\Filters;
 
+use DBmysql;
 use Html;
 
 class DatesModFilter extends AbstractFilter
@@ -51,7 +52,7 @@ class DatesModFilter extends AbstractFilter
 
     public static function canBeApplied(string $table): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         return $DB->fieldExists($table, 'date_mod');
@@ -116,6 +117,6 @@ class DatesModFilter extends AbstractFilter
 JAVASCRIPT;
         $field .= Html::scriptBlock($js);
 
-        return self::field('dates_mod', $field, $label, is_array($values) && count($values) > 0);
+        return self::field('dates_mod', $field, $label, count($values) > 0);
     }
 }

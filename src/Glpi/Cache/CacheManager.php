@@ -37,8 +37,13 @@ namespace Glpi\Cache;
 
 use DirectoryIterator;
 use Glpi\Kernel\Kernel;
+use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
+use RuntimeException;
+use Safe\Exceptions\FilesystemException;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
@@ -46,6 +51,13 @@ use Symfony\Component\Cache\CacheItem;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
 use Toolbox;
+
+use function Safe\glob;
+use function Safe\json_encode;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\rmdir;
+use function Safe\unlink;
 
 class CacheManager
 {
@@ -136,10 +148,10 @@ class CacheManager
     public function setConfiguration(string $context, $dsn, array $options = []): bool
     {
         if (!$this->isContextValid($context, true)) {
-            throw new \InvalidArgumentException(sprintf('Invalid or non configurable context: "%s".', $context));
+            throw new InvalidArgumentException(sprintf('Invalid or non configurable context: "%s".', $context));
         }
         if (!$this->isDsnValid($dsn)) {
-            throw new \InvalidArgumentException(sprintf('Invalid DSN: %s.', json_encode($dsn, JSON_UNESCAPED_SLASHES)));
+            throw new InvalidArgumentException(sprintf('Invalid DSN: %s.', json_encode($dsn, JSON_UNESCAPED_SLASHES)));
         }
 
         $config = $this->getRawConfig();
@@ -161,7 +173,7 @@ class CacheManager
     public function unsetConfiguration(string $context): bool
     {
         if (!$this->isContextValid($context, true)) {
-            throw new \InvalidArgumentException(sprintf('Invalid or non configurable context: "%s".', $context));
+            throw new InvalidArgumentException(sprintf('Invalid or non configurable context: "%s".', $context));
         }
 
         $config = $this->getRawConfig();
@@ -187,7 +199,7 @@ class CacheManager
                 $stats = $client->getStats();
                 if ($stats === false) {
                     // Memcached::getStats() will return false if server cannot be reached.
-                    throw new \RuntimeException('Unable to connect to Memcached server.');
+                    throw new RuntimeException('Unable to connect to Memcached server.');
                 }
                 break;
             case self::SCHEME_REDIS:
@@ -216,15 +228,15 @@ class CacheManager
     /**
      * Get cache storage adapter for given context.
      *
-     * @return \Psr\Cache\CacheItemPoolInterface
+     * @return CacheItemPoolInterface
      */
     public function getCacheStorageAdapter(string $context): CacheItemPoolInterface
     {
-        /** @var \Psr\Log\LoggerInterface $PHPLOGGER */
+        /** @var LoggerInterface $PHPLOGGER */
         global $PHPLOGGER;
 
         if (!$this->isContextValid($context)) {
-            throw new \InvalidArgumentException(sprintf('Invalid context: "%s".', $context));
+            throw new InvalidArgumentException(sprintf('Invalid context: "%s".', $context));
         }
 
         $raw_config = $this->getRawConfig();
@@ -267,7 +279,7 @@ class CacheManager
                     break;
 
                 default:
-                    throw new \RuntimeException(sprintf('Invalid cache DSN %s.', var_export($dsn, true)));
+                    throw new RuntimeException(sprintf('Invalid cache DSN %s.', var_export($dsn, true)));
             }
         }
 
@@ -321,12 +333,20 @@ class CacheManager
         if (file_exists($tpl_cache_dir)) {
             $tpl_files = glob($tpl_cache_dir . '/**/*.php');
             foreach ($tpl_files as $tpl_file) {
-                $success = unlink($tpl_file) && $success;
+                try {
+                    unlink($tpl_file);
+                } catch (FilesystemException $e) {
+                    $success = false;
+                }
             }
 
             $tpl_dirs = glob($tpl_cache_dir . '/*', GLOB_ONLYDIR);
             foreach ($tpl_dirs as $tpl_dir) {
-                $success = rmdir($tpl_dir) && $success;
+                try {
+                    rmdir($tpl_dir);
+                } catch (FilesystemException $e) {
+                    $success = false;
+                }
             }
         }
 
@@ -406,7 +426,7 @@ class CacheManager
         }
         $scheme = $matches['scheme'];
 
-        return in_array($scheme, array_keys($this->getAvailableAdapters())) ? $scheme : null;
+        return in_array($scheme, array_keys(static::getAvailableAdapters())) ? $scheme : null;
     }
 
     /**
@@ -429,8 +449,7 @@ class CacheManager
                     continue;
                 }
                 if (
-                    !$this->isContextValid($context, true)
-                    || !is_array($context_config)
+                    !is_array($context_config)
                     || !array_key_exists('dsn', $context_config)
                     || !$this->isDsnValid($context_config['dsn'])
                     || (array_key_exists('options', $context_config) && !is_array($context_config['options']))
@@ -516,7 +535,7 @@ PHP;
             return reset($schemes) === self::SCHEME_MEMCACHED;
         }
 
-        return in_array($this->extractScheme($dsn), array_keys($this->getAvailableAdapters()));
+        return in_array($this->extractScheme($dsn), array_keys(static::getAvailableAdapters()));
     }
 
     /**
@@ -568,7 +587,7 @@ PHP;
 
         // Execute the `cache:clear` command provided by Symfony itself, not our own `cache:clear` command.
         // This command will clear the Symfony cache gracefully.
-        $app = new \Symfony\Bundle\FrameworkBundle\Console\Application($localKernel);
+        $app = new Application($localKernel);
         $app->setAutoExit(false);
         $app->run(new ArrayInput(['command' => 'cache:clear']), new NullOutput());
     }

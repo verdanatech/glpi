@@ -104,6 +104,7 @@
   --tblr-primary-darken: color-mix(in srgb, var(--tblr-primary), black 10%);
   --tblr-secondary: #606f91;
   --tblr-secondary-fg: var(--tblr-body-bg);
+  --tblr-tertiary: #8a97ab;
   --tblr-muted: var(--tblr-secondary);
   --tblr-muted-darken: color-mix(in srgb, var(--tblr-muted), black 10%);
   --tblr-info: #80abe4;
@@ -149,7 +150,6 @@
   --glpi-form-header-danger-fg: var(--tblr-danger);
   --glpi-form-header-danger-bg: color-mix(in srgb, var(--glpi-form-header-danger-fg), var(--tblr-bg-surface) 90%);
   --glpi-form-header-danger-border-color: color-mix(in srgb, var(--glpi-form-header-danger-fg), var(--tblr-bg-surface) 75%);
-  --glpi-form-toolbar-bg: #f5f5f5;
   --glpi-topbar-height: 79px;
   --glpi-contextbar-height: 56px;
   --glpi-content-margin: 24px;
@@ -438,8 +438,15 @@ body input {
   visibility: hidden !important;
 }
 
-:-webkit-autofill {
+:-webkit-autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active {
+  color: var(--tblr-body-color);
+  /* stylelint-disable-next-line property-no-vendor-prefix */
   -webkit-text-fill-color: var(--tblr-body-color);
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-box-shadow: 0 0 0 30px var(--tblr-bg-forms) inset !important;
 }
 
 body .dropdown-menu {
@@ -482,6 +489,13 @@ body pre {
   width: calc(-11px + 79.1666%);
 }
 
+.modal-lg .col-12.glpi-full-width .col-form-label {
+  width: calc(-4px + 25.8333%);
+}
+.modal-lg .col-12.glpi-full-width .field-container {
+  width: calc(-11px + 74.1666%);
+}
+
 .horizontal-layout .text-muted-menu {
   color: var(--glpi-mainmenu-fg-muted) !important;
 }
@@ -517,6 +531,21 @@ body pre {
 
 .text-muted {
   color: var(--tblr-muted) !important;
+}
+
+.input-group {
+  box-shadow: none !important;
+}
+
+.input-group-text {
+  color: inherit !important;
+  background-color: inherit !important;
+}
+
+@media (min-width: 992px) {
+  html {
+    margin-left: 0 !important;
+  }
 }
 
 /*!

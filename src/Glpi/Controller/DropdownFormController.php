@@ -36,15 +36,18 @@ namespace Glpi\Controller;
 
 use CommonDevice;
 use CommonDropdown;
-use Html;
 use Glpi\Event;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\Http\RedirectResponse;
+use Html;
 use Session;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Toolbox;
+
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
 
 final class DropdownFormController extends AbstractController
 {
@@ -123,7 +126,7 @@ final class DropdownFormController extends AbstractController
 
                 return new Response($content);
             } else {
-                $dropdown->delete($input, 1);
+                $dropdown->delete($input, true);
 
                 Event::log(
                     $input["id"],
@@ -140,7 +143,7 @@ final class DropdownFormController extends AbstractController
 
         if (isset($input["replace"])) {
             $dropdown->check($input["id"], PURGE);
-            $dropdown->delete($input, 1);
+            $dropdown->delete($input, true);
 
             Event::log(
                 $input["id"],

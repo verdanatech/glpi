@@ -35,6 +35,12 @@
 
 namespace Glpi\Toolbox;
 
+use DBmysql;
+use Stringable;
+use Toolbox;
+
+use function Safe\preg_match;
+
 class Sanitizer
 {
     private const CHARS_MAPPING = [
@@ -62,18 +68,16 @@ class Sanitizer
      */
     public static function sanitize($value, bool $db_escape = false)
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         if (is_array($value)) {
             return array_map(
-                function ($val) use ($db_escape) {
-                    return self::sanitize($val, $db_escape);
-                },
+                fn($val) => self::sanitize($val, $db_escape),
                 $value
             );
         }
 
-        if ($value instanceof \Stringable || (\is_object($value) && \method_exists($value, '__toString'))) {
+        if ($value instanceof Stringable || (\is_object($value) && \method_exists($value, '__toString'))) {
             $value = (string) $value;
         }
 
@@ -106,13 +110,11 @@ class Sanitizer
      */
     public static function unsanitize($value, bool $db_unescape = true)
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         if (is_array($value)) {
             return array_map(
-                function ($val) {
-                    return self::unsanitize($val);
-                },
+                fn($val) => self::unsanitize($val),
                 $value
             );
         }
@@ -139,7 +141,7 @@ class Sanitizer
      */
     public static function isHtmlEncoded(string $value): bool
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         // A value is Html Encoded if it does not contains
         // - `<`;
@@ -169,7 +171,7 @@ class Sanitizer
      */
     public static function isDbEscaped(string $value): bool
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         $value_length = strlen($value);
 
@@ -249,7 +251,7 @@ class Sanitizer
      */
     public static function isNsClassOrCallableIdentifier(string $value): bool
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         $class_match = [];
 
@@ -272,7 +274,7 @@ class Sanitizer
      */
     public static function getVerbatimValue(string $value): string
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         return self::unsanitize($value);
     }
@@ -288,7 +290,7 @@ class Sanitizer
      */
     public static function encodeHtmlSpecialChars(string $value): string
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         if (self::isHtmlEncoded($value)) {
             return $value;
@@ -311,7 +313,7 @@ class Sanitizer
      */
     public static function encodeHtmlSpecialCharsRecursive(array $values): array
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         return array_map(
             function ($value) {
@@ -320,7 +322,7 @@ class Sanitizer
                 }
                 if (
                     is_string($value)
-                    || $value instanceof \Stringable
+                    || $value instanceof Stringable
                     || (\is_object($value) && \method_exists($value, '__toString'))
                 ) {
                     return self::encodeHtmlSpecialChars((string) $value);
@@ -342,7 +344,7 @@ class Sanitizer
      */
     public static function decodeHtmlSpecialChars(string $value): string
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         if (!self::isHtmlEncoded($value)) {
             return $value;
@@ -350,7 +352,7 @@ class Sanitizer
 
         $mapping = null;
         foreach (self::CHARS_MAPPING as $htmlentity) {
-            if (strpos($value, $htmlentity) !== false) {
+            if (str_contains($value, $htmlentity)) {
                 // Value was cleaned using new char mapping, so it must be uncleaned with same mapping
                 $mapping = self::CHARS_MAPPING;
                 break;
@@ -385,7 +387,7 @@ class Sanitizer
      */
     public static function decodeHtmlSpecialCharsRecursive(array $values): array
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         return array_map(
             function ($value) {
@@ -412,7 +414,7 @@ class Sanitizer
      */
     public static function dbEscape(string $value): string
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         if (str_contains($value, '\\') && self::isDbEscaped($value)) {
             // Value is already escaped, do not escape it again.
@@ -420,7 +422,7 @@ class Sanitizer
             return $value;
         }
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return $DB->escape($value);
     }
@@ -438,7 +440,7 @@ class Sanitizer
      */
     public static function dbEscapeRecursive(array $values): array
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         return array_map(
             function ($value) {
@@ -447,7 +449,7 @@ class Sanitizer
                 }
                 if (
                     is_string($value)
-                    || $value instanceof \Stringable
+                    || $value instanceof Stringable
                     || (\is_object($value) && \method_exists($value, '__toString'))
                 ) {
                     return self::dbEscape((string) $value);
@@ -470,7 +472,7 @@ class Sanitizer
      */
     public static function dbUnescape(string $value): string
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         // stripslashes cannot be used here as it would produce "r" and "n" instead of "\r" and \n".
 
@@ -497,7 +499,7 @@ class Sanitizer
                 $replace[] = $r;
             }
         }
-        if (empty($search)) {
+        if ($search === []) {
             // Value does not contains any potentially escaped chars.
             return $value;
         }
@@ -539,7 +541,7 @@ class Sanitizer
      */
     public static function dbUnescapeRecursive(array $values): array
     {
-        \Toolbox::deprecated();
+        Toolbox::deprecated();
 
         return array_map(
             function ($value) {

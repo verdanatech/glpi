@@ -37,7 +37,7 @@ class NotificationTargetSavedSearch_Alert extends NotificationTarget
 {
     public function getEvents()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $events = [];
@@ -51,7 +51,7 @@ class NotificationTargetSavedSearch_Alert extends NotificationTarget
 
         if ($iterator->numRows()) {
             foreach ($iterator as $row) {
-                if (strpos($row['event'], 'alert_') !== false) {
+                if (str_contains($row['event'], 'alert_')) {
                     $search = new SavedSearch();
                     $search->getFromDB(str_replace('alert_', '', $row['event']));
                     $events[$row['event']] = sprintf(

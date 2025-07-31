@@ -38,9 +38,11 @@ require_once(__DIR__ . '/_check_webserver_config.php');
 use Glpi\Event;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 
+use function Safe\json_decode;
+
 /**
  * @var array $CFG_GLPI
- * @var \DBmysql $DB
+ * @var DBmysql $DB
  */
 global $CFG_GLPI, $DB;
 
@@ -144,7 +146,7 @@ if (isset($_POST["add"])) {
     $track->redirectToList();
 } elseif (isset($_POST['purge'])) {
     $track->check($_POST['id'], PURGE);
-    if ($track->delete($_POST, 1)) {
+    if ($track->delete($_POST, true)) {
         Event::log(
             $_POST["id"],
             "ticket",
@@ -246,7 +248,7 @@ if ($id > 0) {
     }
 
     $url = KnowbaseItem::getFormURLWithParam($_GET) . '&_in_modal=1&item_itemtype=Ticket&item_items_id=' . $id;
-    if (strpos($url, '_to_kb=') !== false) {
+    if (str_contains($url, '_to_kb=')) {
         $options['after_display'] = Ajax::createIframeModalWindow(
             'savetokb',
             $url,

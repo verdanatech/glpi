@@ -32,9 +32,11 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Glpi\Inventory\Request;
+
+use function Safe\file_get_contents;
 
 /// Import rules collection class
 class RuleImportAssetCollection extends RuleCollection
@@ -48,7 +50,7 @@ class RuleImportAssetCollection extends RuleCollection
     {
         $ong = parent::defineTabs();
 
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
 
         return $ong;
     }
@@ -84,7 +86,7 @@ class RuleImportAssetCollection extends RuleCollection
     {
         // current tab
         $active_tab = $options['_glpi_tab'] ?? Session::getActiveTab($this->getType());
-        $current_tab = str_replace(__CLASS__ . '$', '', $active_tab);
+        $current_tab = str_replace(self::class . '$', '', $active_tab);
         $tabs = $this->getTabNameForItem($this);
 
         if (!isset($tabs[$current_tab])) {
@@ -141,7 +143,7 @@ class RuleImportAssetCollection extends RuleCollection
 
         $refused = new RefusedEquipment();
         if ($refused->getFromDB($refused_id) && ($inventory_file = $refused->getInventoryFileName()) !== null) {
-            $inventory_request = new \Glpi\Inventory\Request();
+            $inventory_request = new Request();
             $contents = file_get_contents($inventory_file);
             $inventory_request
                 ->testRules()

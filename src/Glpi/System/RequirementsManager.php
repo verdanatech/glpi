@@ -35,6 +35,7 @@
 
 namespace Glpi\System;
 
+use DBmysql;
 use Glpi\System\Requirement\DbEngine;
 use Glpi\System\Requirement\DbTimezones;
 use Glpi\System\Requirement\DirectoriesWriteAccess;
@@ -50,6 +51,7 @@ use Glpi\System\Requirement\PhpVersion;
 use Glpi\System\Requirement\SeLinux;
 use Glpi\System\Requirement\SessionsConfiguration;
 use Glpi\System\Requirement\SessionsSecurityConfiguration;
+use Psr\Log\LoggerInterface;
 
 /**
  * @since 9.5.0
@@ -59,11 +61,11 @@ class RequirementsManager
     /**
      * Returns core requirement list.
      *
-     * @param \DBmysql|null $db  DB instance (if null BD requirements will not be returned).
+     * @param DBmysql|null $db DB instance (if null BD requirements will not be returned).
      *
      * @return RequirementsList
      */
-    public function getCoreRequirementList(?\DBmysql $db = null): RequirementsList
+    public function getCoreRequirementList(?DBmysql $db = null): RequirementsList
     {
         $requirements = [];
 
@@ -82,8 +84,8 @@ class RequirementsManager
                 'fileinfo',
                 'filter',
                 'libxml',
-                'json',
                 'simplexml',
+                'tokenizer', // required by `\Symfony\Component\Routing\Loader\AttributeFileLoader`
                 'xmlreader', // required/used by simplepie/simplepie and sabre/xml
                 'xmlwriter', // required/used by sabre/xml
             ]
@@ -134,14 +136,14 @@ class RequirementsManager
         $requirements[] = new Extension(
             'openssl',
             false,
-            __('Required for handling of encrypted communication with inventory agents and OAuth 2.0 authentication.')
+            __('Required for email sending using SSL/TLS, handling of encrypted communication with inventory agents and OAuth 2.0 authentication.')
         );
 
-        if ($db instanceof \DBmysql) {
+        if ($db instanceof DBmysql) {
             $requirements[] = new DbEngine($db);
         }
 
-        /** @var \Psr\Log\LoggerInterface $PHPLOGGER */
+        /** @var LoggerInterface $PHPLOGGER */
         global $PHPLOGGER;
         $requirements[] = new LogsWriteAccess($PHPLOGGER);
 
@@ -172,11 +174,6 @@ class RequirementsManager
             true,
             __('Enable usage of authentication through remote LDAP server.')
         );
-        $requirements[] = new Extension(
-            'openssl',
-            true,
-            __('Enable email sending using SSL/TLS.')
-        );
         $requirements[] = new ExtensionGroup(
             __('PHP extensions for marketplace'),
             ['bz2', 'Phar', 'zip'],
@@ -201,7 +198,7 @@ class RequirementsManager
             __('Enable installation of plugins from marketplace.')
         );
 
-        if ($db instanceof \DBmysql) {
+        if ($db instanceof DBmysql) {
             $requirements[] = new DbTimezones($db);
         }
 

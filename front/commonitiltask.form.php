@@ -39,7 +39,7 @@ use Glpi\Event;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 
-/** @var \DBmysql $DB */
+/** @var DBmysql $DB */
 global $DB;
 
 /**
@@ -56,10 +56,11 @@ if (!$task->canView()) {
     throw new AccessDeniedHttpException();
 }
 
-$itemtype = $task::getItilObjectItemType();
-$fk       = getForeignKeyFieldForItemType($itemtype);
+$track = $task::getItilObjectItemInstance();
 
-$track = new $itemtype();
+$itemtype = $track::class;
+$fk       = $track::getForeignKeyField();
+
 $track->getFromDB($task->getField($fk));
 
 $redirect = null;
@@ -81,7 +82,7 @@ if (isset($_POST["add"])) {
     $handled = true;
 } elseif (isset($_POST["purge"])) {
     $task->check($_POST['id'], PURGE);
-    $task->delete($_POST, 1);
+    $task->delete($_POST, true);
 
     Event::log(
         $task->getField($fk),

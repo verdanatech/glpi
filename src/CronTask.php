@@ -41,6 +41,17 @@ use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Error\ErrorHandler;
 use Glpi\Event;
+use Safe\Exceptions\FilesystemException;
+
+use function Safe\filemtime;
+use function Safe\glob;
+use function Safe\ini_get;
+use function Safe\pcntl_signal;
+use function Safe\preg_match;
+use function Safe\rmdir;
+use function Safe\scandir;
+use function Safe\strtotime;
+use function Safe\unlink;
 
 /**
  * CronTask class
@@ -179,7 +190,7 @@ class CronTask extends CommonDBTM
      **/
     public static function getUsedItemtypes()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $types = [];
@@ -224,7 +235,7 @@ class CronTask extends CommonDBTM
      **/
     public function start()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($this->fields['id']) || ($DB->isSlave())) {
@@ -313,7 +324,7 @@ class CronTask extends CommonDBTM
      **/
     public function end($retcode, int $log_state = CronTaskLog::STATE_STOP)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($this->fields['id'])) {
@@ -398,7 +409,7 @@ class CronTask extends CommonDBTM
      **/
     public function getNeedToRun($mode = 0, $name = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $hour_criteria = new QueryExpression('hour(curtime())');
@@ -510,7 +521,7 @@ class CronTask extends CommonDBTM
      */
     private function sendNotificationOnError(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $alert_iterator = $DB->request(
@@ -564,11 +575,10 @@ class CronTask extends CommonDBTM
         if ($error_count >= $threshold) {
             // No alert has been sent within last day, so we can send one without bothering administrator
             NotificationEvent::raiseEvent('alert', $this, ['items' => [$this->fields['id'] => $this->fields]]);
-            QueuedNotification::forceSendFor(self::class, $this->fields['id']);
 
             // Delete existing outdated alerts
             $alert = new Alert();
-            $alert->deleteByCriteria(['itemtype' => 'CronTask', 'items_id' => $this->fields['id']], 1);
+            $alert->deleteByCriteria(['itemtype' => 'CronTask', 'items_id' => $this->fields['id']], true);
 
             // Create a new alert
             $alert->add(
@@ -785,7 +795,7 @@ class CronTask extends CommonDBTM
      **/
     private static function get_lock()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Change name every hour in case of MySQL blocking (it happens)
@@ -804,7 +814,7 @@ class CronTask extends CommonDBTM
      **/
     private static function release_lock()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (self::$lockname) {
@@ -880,7 +890,7 @@ class CronTask extends CommonDBTM
                             );
                             try {
                                 $retcode = $function($crontask);
-                            } catch (\Throwable $e) {
+                            } catch (Throwable $e) {
                                 ErrorHandler::logCaughtException($e);
                                 ErrorHandler::displayCaughtExceptionMessage($e);
                                 Toolbox::logInFile(
@@ -1003,7 +1013,7 @@ class CronTask extends CommonDBTM
      **/
     public static function unregister($plugin)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($plugin)) {
@@ -1038,7 +1048,7 @@ class CronTask extends CommonDBTM
      **/
     public function showStatistics()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $nbstart = countElementsInTable(
@@ -1131,7 +1141,7 @@ class CronTask extends CommonDBTM
      **/
     public function showHistory()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($_GET["crontasklogs_id"]) && $_GET["crontasklogs_id"]) {
@@ -1212,7 +1222,7 @@ class CronTask extends CommonDBTM
      **/
     public function showHistoryDetail($logid)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
@@ -1339,7 +1349,7 @@ TWIG, ['msg' => __('Last run list')]);
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'reset'] = __s('Reset last run');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'reset'] = __s('Reset last run');
         }
         return $actions;
     }
@@ -1377,7 +1387,7 @@ TWIG, ['msg' => __('Last run list')]);
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = [];
@@ -1545,8 +1555,11 @@ TWIG, ['msg' => __('Last run list')]);
         foreach (glob(GLPI_SESSION_DIR . "/sess_*") as $filename) {
             if ((filemtime($filename) + $maxlifetime) < time()) {
                 // Delete session file if not delete before
-                if (@unlink($filename)) {
-                    $nb++;
+                try {
+                    @unlink($filename);
+                    ++$nb;
+                } catch (FilesystemException $e) {
+                    //mepty catch
                 }
             }
         }
@@ -1598,10 +1611,11 @@ TWIG, ['msg' => __('Last run list')]);
             if (preg_match('/.+[.]log[.](\\d{8})[.]bak$/', $file, $match) > 0) {
                 if ($match[1] < $firstdate) {
                     $task->addVolume(1);
-                    if (unlink($file)) {
+                    try {
+                        unlink($file);
                         $task->log(sprintf(__('Deletion of archived log file: %s'), $shortfile));
                         $actionCode = 1;
-                    } else {
+                    } catch (FilesystemException $e) {
                         $task->log(sprintf(__('Unable to delete archived log file: %s'), $shortfile));
                         $error = true;
                     }
@@ -1619,7 +1633,7 @@ TWIG, ['msg' => __('Last run list')]);
             $shortnewfile = str_replace(GLPI_LOG_DIR . '/', '', $newfilename);
 
             $task->addVolume(1);
-            if (!file_exists($newfilename) && rename($file, $newfilename)) {
+            if (!file_exists($newfilename) && rename($file, $newfilename)) { // @phpstan-ignore theCodingMachineSafe.function
                 $task->log(sprintf(__('Archiving log file: %1$s to %2$s'), $shortfile, $shortnewfile));
                 $actionCode = 1;
             } else {
@@ -1656,8 +1670,11 @@ TWIG, ['msg' => __('Last run list')]);
                 continue;
             }
             if ((filemtime($filename) + $maxlifetime) < time()) {
-                if (@unlink($filename)) {
-                    $nb++;
+                try {
+                    @unlink($filename);
+                    ++$nb;
+                } catch (FilesystemException $e) {
+                    //empty catch
                 }
             }
         }
@@ -1709,8 +1726,11 @@ TWIG, ['msg' => __('Last run list')]);
                 is_file($filename) && is_writable($filename)
                 && (filemtime($filename) + $maxlifetime) < time()
             ) {
-                if (@unlink($filename)) {
-                    $nb++;
+                try {
+                    @unlink($filename);
+                    ++$nb;
+                } catch (FilesystemException $e) {
+                    //empty catch
                 }
             }
 
@@ -1719,8 +1739,11 @@ TWIG, ['msg' => __('Last run list')]);
                 // be sure that the directory is empty
                 && count(scandir($filename)) === 2
             ) {
-                if (@rmdir($filename)) {
-                    $nb++;
+                try {
+                    @rmdir($filename);
+                    ++$nb;
+                } catch (FilesystemException $e) {
+                    //empty catch
                 }
             }
         }
@@ -1752,7 +1775,7 @@ TWIG, ['msg' => __('Last run list')]);
      **/
     public static function cronLogs($task)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $vol = 0;
@@ -1795,7 +1818,7 @@ TWIG, ['msg' => __('Last run list')]);
      */
     public static function getZombieCronTasks(): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return $DB->request([
             'FROM'   => self::getTable(),
@@ -1834,7 +1857,6 @@ TWIG, ['msg' => __('Last run list')]);
             if (NotificationEvent::raiseEvent("alert", $task, ['items' => $crontasks])) {
                 $task->addVolume(1);
             }
-            QueuedNotification::forceSendFor(self::class, $task->fields['id']);
         }
 
         return 1;

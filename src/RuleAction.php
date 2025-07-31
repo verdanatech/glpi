@@ -37,6 +37,9 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QuerySubQuery;
 
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+
 class RuleAction extends CommonDBChild
 {
     // From CommonDBChild
@@ -51,7 +54,7 @@ class RuleAction extends CommonDBChild
         $forbidden   = parent::getForbiddenStandardMassiveAction();
         $forbidden[] = 'update';
 
-        if (isset($_POST['rule_class_name']) && is_subclass_of(\Rule::class, $_POST['rule_class_name'])) {
+        if (isset($_POST['rule_class_name']) && is_subclass_of(Rule::class, $_POST['rule_class_name'])) {
             $rule = getItemForItemtype($_POST['rule_class_name']);
             if ($rule->maxActionsCount() == 1) {
                 $forbidden[] = 'clone';
@@ -292,7 +295,7 @@ class RuleAction extends CommonDBChild
      **/
     public function getRuleActions($ID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -332,7 +335,7 @@ class RuleAction extends CommonDBChild
     /**
      * Display a dropdown with all the possible actions
      *
-     * @param array{subtype: string, name: string, field: string, value?: string, alreadyused?: bool, display?: bool} $options
+     * @param array{subtype: string, name: string, field?: string, value?: string, alreadyused: bool, display?: bool} $options
      * <ul>
      *     <li>subtype: the itemtype of the rule</li>
      *     <li>name: the name of the dropdown</li>
@@ -341,9 +344,9 @@ class RuleAction extends CommonDBChild
      *     <li>alreadyused: if an action of the same type was already used for the rule (default false)</li>
      *     <li>display: if the dropdown should be displayed< (default true)/li>
      * </ul>
-     * @return string|int Returns the dropdown HTML if display is false, otherwise the random number used to create the dropdown is returned.
+     * @return string|int|false Returns the dropdown HTML if display is false, otherwise the random number used to create the dropdown is returned.
      **/
-    public static function dropdownActions($options = [])
+    public static function dropdownActions($options)
     {
         $p = array_replace([
             'subtype'     => '',
@@ -446,7 +449,7 @@ class RuleAction extends CommonDBChild
      **/
     public function getAlreadyUsedForRuleID($rules_id, $sub_type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($rule = getItemForItemtype($sub_type)) {
@@ -672,15 +675,6 @@ class RuleAction extends CommonDBChild
         }
     }
 
-    /**
-     * Show the form to add or update an action
-     * @param integer $ID ID of the action
-     * @param array $options Extra options
-     * @phpstan-param array{parent: Rule} $options
-     *
-     * @return boolean
-     * @since 0.85
-     **/
     public function showForm($ID, array $options = [])
     {
         // Yllen: you always have parent for action

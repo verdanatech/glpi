@@ -35,12 +35,17 @@
 namespace Glpi\Error;
 
 use Glpi\Application\Environment;
-use Glpi\Error\ErrorDisplayHandler\ConsoleErrorDisplayHandler;
 use Glpi\Error\ErrorDisplayHandler\CliDisplayHandler;
+use Glpi\Error\ErrorDisplayHandler\ConsoleErrorDisplayHandler;
+use Glpi\Error\ErrorDisplayHandler\ErrorDisplayHandler;
 use Glpi\Error\ErrorDisplayHandler\HtmlErrorDisplayHandler;
+use Override;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\ErrorHandler\ErrorHandler as BaseErrorHandler;
+use Throwable;
+
+use function Safe\ini_set;
 
 /**
  * @phpstan-ignore class.extendsFinalByPhpDoc
@@ -83,6 +88,16 @@ final class ErrorHandler extends BaseErrorHandler
         LogLevel::DEBUG     => 7,
     ];
 
+    /**
+     * Indicates whether the error messages should be buffered instead of being displayed immediately.
+     */
+    private static bool $is_buffer_active = true;
+
+    /**
+     * @var list<array{error_label: string, message: string, log_level: string}>
+     */
+    private static array $buffered_messages = [];
+
     private static LoggerInterface $currentLogger;
 
     public function __construct(LoggerInterface $logger)
@@ -104,7 +119,20 @@ final class ErrorHandler extends BaseErrorHandler
     }
 
     /**
-     * @return array<\Glpi\Error\ErrorDisplayHandler\ErrorDisplayHandler>
+     * Disable the message buffer and flush the messages present in the buffer.
+     */
+    public static function disableBufferAndFlushMessages(): void
+    {
+        self::$is_buffer_active = false;
+
+        foreach (self::$buffered_messages as $key => $message_specs) {
+            self::displayErrorMessage($message_specs['error_label'], $message_specs['message'], $message_specs['log_level']);
+            unset(self::$buffered_messages[$key]);
+        }
+    }
+
+    /**
+     * @return array<ErrorDisplayHandler>
      */
     private static function getOutputHandlers(): array
     {
@@ -127,6 +155,15 @@ final class ErrorHandler extends BaseErrorHandler
      */
     public static function displayErrorMessage(string $error_label, string $message, string $log_level): void
     {
+        if (self::$is_buffer_active) {
+            self::$buffered_messages[] = [
+                'error_label' => $error_label,
+                'message'     => $message,
+                'log_level'   => $log_level,
+            ];
+            return;
+        }
+
         foreach (self::getOutputHandlers() as $handler) {
             if ($handler->canOutput()) {
                 $handler->displayErrorMessage($error_label, $message, $log_level);
@@ -135,7 +172,7 @@ final class ErrorHandler extends BaseErrorHandler
         }
     }
 
-    #[\Override()]
+    #[Override()]
     public function handleError(int $type, string $message, string $file, int $line): bool
     {
         if (0 === (error_reporting() & $type)) {
@@ -169,7 +206,7 @@ final class ErrorHandler extends BaseErrorHandler
 
         self::displayErrorMessage(
             \sprintf('PHP %s (%s)', $error_type, $type),
-            \sprintf('%s in %s at line %s', $this->cleanPaths($message), $this->cleanPaths($file), $line),
+            \sprintf('%s in %s at line %s', self::cleanPaths($message), self::cleanPaths($file), $line),
             self::ERROR_LEVEL_MAP[$type],
         );
 
@@ -179,8 +216,8 @@ final class ErrorHandler extends BaseErrorHandler
         return true;
     }
 
-    #[\Override()]
-    public function handleException(\Throwable $exception): void
+    #[Override()]
+    public function handleException(Throwable $exception): void
     {
         // /!\ Once the kernel is booted, the `\Symfony\Component\HttpKernel\EventListener\ErrorListener`
         // will handle the exceptions via the `kernel.exception` event.
@@ -195,7 +232,7 @@ final class ErrorHandler extends BaseErrorHandler
      *
      * @FIXME Can be done directly in the caller class if the `logger` service is set by the DI system.
      */
-    public static function logCaughtException(\Throwable $exception): void
+    public static function logCaughtException(Throwable $exception): void
     {
         $message = \sprintf(
             'Caught %s: %s',
@@ -216,7 +253,7 @@ final class ErrorHandler extends BaseErrorHandler
      *        a custom message should then be displayed, to indicate to the end user what happens or what he can
      *        do to fix this error.
      */
-    public static function displayCaughtExceptionMessage(\Throwable $exception): void
+    public static function displayCaughtExceptionMessage(Throwable $exception): void
     {
         self::displayErrorMessage(
             \sprintf('Caught %s', $exception::class),
@@ -257,7 +294,7 @@ final class ErrorHandler extends BaseErrorHandler
      */
     private function disableNativeErrorDisplaying(): void
     {
-        \ini_set('display_errors', 'Off');
+        ini_set('display_errors', 'Off');
     }
 
     private static function cleanPaths(string $message): string

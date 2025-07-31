@@ -34,6 +34,8 @@
 
 use Glpi\DBAL\QueryExpression;
 
+use function Safe\preg_replace;
+
 /**
  * Update from 9.4.1 to 9.4.2
  *
@@ -42,8 +44,8 @@ use Glpi\DBAL\QueryExpression;
 function update941to942()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
@@ -73,7 +75,7 @@ function update941to942()
     // on MariaDB but not on MySQL due to usage of "\d" in a REGEXP expression.
     // It has been fixed there for people who had not yet updated to 9.4.1 but have to
     // be put back here for people already having updated to 9.4.1.
-    $migration->displayMessage(sprintf(__('Fix URL of images in ITIL tasks, followups and solutions.')));
+    $migration->displayMessage(__('Fix URL of images in ITIL tasks, followups and solutions.'));
 
     // Search for contents that does not contains the itil object parameter after the docid parameter
     // (i.e. having a quote that ends the href just after the docid param value).
@@ -100,14 +102,13 @@ function update941to942()
         ],
     ];
 
-    $fix_content_fct = function ($content, $itil_id, $itil_fkey) use ($missing_param_pattern) {
+    $fix_content_fct = (fn($content, $itil_id, $itil_fkey) =>
         // Add itil object param between docid param ($1) and ending quote ($2)
-        return preg_replace(
+        preg_replace(
             '/' . $missing_param_pattern . '/',
             '$1&amp;' . http_build_query([$itil_fkey => $itil_id]) . '$2',
             $content
-        );
-    };
+        ));
 
     foreach ($itil_mappings as $itil_type => $itil_specs) {
         $itil_fkey  = $itil_specs['itil_fkey'];

@@ -33,12 +33,14 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 /**
  * @since 9.1
  */
 
 // here we are going to try to unlock the given object
-// url should be of the form: 'http://.../.../unlockobject.php?unlock=1[&force=1]&id=xxxxxx'
+// url should be of the form: 'http://.../.../unlockobject.php?unlock=1&id=xxxxxx'
 // or url should be of the form 'http://.../.../unlockobject.php?requestunlock=1&id=xxxxxx'
 // to send notification to locker of object
 
@@ -49,11 +51,14 @@ $ret = 0;
 if (isset($_POST['unlock']) && isset($_POST["id"])) {
     // then we may have something to unlock
     $ol = new ObjectLock();
-    if (
-        $ol->getFromDB($_POST["id"])
-        && $ol->deleteFromDB(1)
-    ) {
-        if (isset($_POST['force'])) {
+    if ($ol->getFromDB($_POST["id"])) {
+        $can_unlock = $ol->fields['users_id'] === Session::getLoginUserID()
+            || Session::haveRight($ol->fields['itemtype']::$rightname, UNLOCK);
+        if (!$can_unlock) {
+            throw new AccessDeniedHttpException();
+        }
+
+        if ($ol->deleteFromDB(true)) {
             Log::history(
                 $ol->fields['items_id'],
                 $ol->fields['itemtype'],
@@ -61,8 +66,8 @@ if (isset($_POST['unlock']) && isset($_POST["id"])) {
                 0,
                 Log::HISTORY_UNLOCK_ITEM
             );
+            $ret = 1;
         }
-        $ret = 1;
     }
 } elseif (
     isset($_POST['requestunlock'])

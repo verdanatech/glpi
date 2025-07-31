@@ -34,6 +34,11 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Safe\Exceptions\PcreException;
+
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
 
 /**
  * Criteria Rule class
@@ -305,7 +310,7 @@ class RuleCriteria extends CommonDBChild
      **/
     public function getRuleCriterias($rules_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $rules_list = [];
@@ -430,7 +435,7 @@ class RuleCriteria extends CommonDBChild
                     return false;
                 }
                 $value = mb_stripos($field, $pattern, 0, 'UTF-8');
-                if (($value !== false) && ($value >= 0)) {
+                if ($value !== false) {
                     $criterias_results[$criteria] = $pattern_raw;
                     return true;
                 }
@@ -449,38 +454,42 @@ class RuleCriteria extends CommonDBChild
 
             case Rule::REGEX_MATCH:
                 $results = [];
-                $match_result = @preg_match_all($pattern . "si", $field, $results);
-                if ($match_result === false) {
+                try {
+                    $match_result = @preg_match_all($pattern . "si", $field, $results);
+                    if ($match_result > 0) {
+                        // Drop $result[0] : complete match result
+                        array_shift($results);
+                        // And add to $regex_result array
+                        $res = [];
+                        foreach ($results as $data) {
+                            foreach ($data as $val) {
+                                $res[] = $val;
+                            }
+                        }
+                        $regex_result[] = $res;
+                        $criterias_results[$criteria] = $pattern_raw;
+                        return true;
+                    }
+                } catch (PcreException $e) {
                     trigger_error(
                         sprintf('Invalid regular expression `%s`.', $pattern),
                         E_USER_WARNING
                     );
-                } elseif ($match_result > 0) {
-                    // Drop $result[0] : complete match result
-                    array_shift($results);
-                    // And add to $regex_result array
-                    $res = [];
-                    foreach ($results as $data) {
-                        foreach ($data as $val) {
-                            $res[] = $val;
-                        }
-                    }
-                    $regex_result[]               = $res;
-                    $criterias_results[$criteria] = $pattern_raw;
-                    return true;
                 }
                 return false;
 
             case Rule::REGEX_NOT_MATCH:
-                $match_result = @preg_match($pattern . "si", $field);
-                if ($match_result === false) {
+                try {
+                    $match_result = @preg_match($pattern . "si", $field);
+                    if ($match_result === 0) {
+                        $criterias_results[$criteria] = $pattern_raw;
+                        return true;
+                    }
+                } catch (PcreException $e) {
                     trigger_error(
                         sprintf('Invalid regular expression `%s`.', $pattern),
                         E_USER_WARNING
                     );
-                } elseif ($match_result === 0) {
-                    $criterias_results[$criteria] = $pattern_raw;
-                    return true;
                 }
                 return false;
 
@@ -502,7 +511,7 @@ class RuleCriteria extends CommonDBChild
                         if ($ip != '') {
                             $ip = ip2long($ip);
                             if (($ip & $mask) == $subnet) {
-                                return ($condition == Rule::PATTERN_CIDR) ? true : false;
+                                return $condition == Rule::PATTERN_CIDR;
                             }
                         }
                     }
@@ -650,16 +659,6 @@ class RuleCriteria extends CommonDBChild
         return Dropdown::showFromArray($p['name'], $elements, ['value' => $p['value']]);
     }
 
-    /**
-     * Show the form to add or update a criterion
-     *
-     * @param integer $ID ID of the criteria
-     * @param array $options Extra options
-     * @phpstan-param array{parent: Rule} $options
-     *
-     * @return boolean
-     * @since 0.85
-     */
     public function showForm($ID, array $options = [])
     {
         // Yllen: you always have parent for criteria

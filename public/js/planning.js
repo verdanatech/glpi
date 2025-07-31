@@ -582,8 +582,7 @@ var GLPIPlanning  = {
                             begin: start.toISOString(),
                             end: end.toISOString(),
                             res_itemtype: itemtype,
-                            res_items_id: items_id,
-                            in_modal: 1
+                            res_items_id: items_id
                         },
                         dialogclass: 'modal-lg planning-modal',
                         title: __('Add an event'),
@@ -965,9 +964,6 @@ var GLPIPlanning  = {
     // set planning height
     getHeight: function() {
         var _newheight = $(window).height() - 272;
-        if ($('#debugajax').length > 0) {
-            _newheight -= $('#debugajax').height();
-        }
 
         //minimal size
         var _minheight = 300;

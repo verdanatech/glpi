@@ -36,6 +36,8 @@
 namespace Glpi\Api\HL\Controller;
 
 use Glpi\Api\HL\Doc as Doc;
+use Glpi\Api\HL\Doc\Parameter;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\Middleware\CookieAuthMiddleware;
 use Glpi\Api\HL\OpenAPIGenerator;
 use Glpi\Api\HL\Route;
@@ -49,8 +51,17 @@ use Glpi\Http\Response;
 use Glpi\OAuth\Server;
 use Glpi\System\Status\StatusChecker;
 use Glpi\Toolbox\MarkdownRenderer;
+use Html;
+use JsonException;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use Session;
+use Throwable;
+use Transfer;
+use User;
+
+use function Safe\file_get_contents;
+use function Safe\preg_replace;
+use function Safe\strtotime;
 
 final class CoreController extends AbstractController
 {
@@ -59,60 +70,60 @@ final class CoreController extends AbstractController
         return [
             'Session' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
-                    'current_time' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
-                    'user_id' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'use_mode' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'friendly_name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'real_name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'first_name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'default_entity' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'profiles' => ['type' => Doc\Schema::TYPE_ARRAY, 'items' => ['type' => Doc\Schema::TYPE_INTEGER]],
-                    'active_entities' => ['type' => Doc\Schema::TYPE_ARRAY, 'items' => ['type' => Doc\Schema::TYPE_INTEGER]],
+                    'current_time' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
+                    'user_id' => ['type' => Schema::TYPE_INTEGER],
+                    'use_mode' => ['type' => Schema::TYPE_INTEGER],
+                    'friendly_name' => ['type' => Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'real_name' => ['type' => Schema::TYPE_STRING],
+                    'first_name' => ['type' => Schema::TYPE_STRING],
+                    'default_entity' => ['type' => Schema::TYPE_INTEGER],
+                    'profiles' => ['type' => Schema::TYPE_ARRAY, 'items' => ['type' => Schema::TYPE_INTEGER]],
+                    'active_entities' => ['type' => Schema::TYPE_ARRAY, 'items' => ['type' => Schema::TYPE_INTEGER]],
                     'active_profile' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'properties' => [
-                            'id' => ['type' => Doc\Schema::TYPE_INTEGER],
-                            'name' => ['type' => Doc\Schema::TYPE_STRING],
-                            'interface' => ['type' => Doc\Schema::TYPE_STRING],
+                            'id' => ['type' => Schema::TYPE_INTEGER],
+                            'name' => ['type' => Schema::TYPE_STRING],
+                            'interface' => ['type' => Schema::TYPE_STRING],
                         ],
                     ],
                     'active_entity' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'properties' => [
-                            'id' => ['type' => Doc\Schema::TYPE_INTEGER],
-                            'short_name' => ['type' => Doc\Schema::TYPE_STRING],
-                            'complete_name' => ['type' => Doc\Schema::TYPE_STRING],
-                            'recursive' => ['type' => Doc\Schema::TYPE_INTEGER],
+                            'id' => ['type' => Schema::TYPE_INTEGER],
+                            'short_name' => ['type' => Schema::TYPE_STRING],
+                            'complete_name' => ['type' => Schema::TYPE_STRING],
+                            'recursive' => ['type' => Schema::TYPE_INTEGER],
                         ],
                     ],
                 ],
             ],
             'EntityTransferRecord' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
-                    'itemtype' => ['type' => Doc\Schema::TYPE_STRING],
-                    'items_id' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'entity' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'options' => ['type' => Doc\Schema::TYPE_OBJECT],
+                    'itemtype' => ['type' => Schema::TYPE_STRING],
+                    'items_id' => ['type' => Schema::TYPE_INTEGER],
+                    'entity' => ['type' => Schema::TYPE_INTEGER],
+                    'options' => ['type' => Schema::TYPE_OBJECT],
                 ],
             ],
             'APIInformation' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
-                    'message' => ['type' => Doc\Schema::TYPE_STRING],
+                    'message' => ['type' => Schema::TYPE_STRING],
                     'api_versions' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'items' => [
-                            'type' => Doc\Schema::TYPE_OBJECT,
+                            'type' => Schema::TYPE_OBJECT,
                             'properties' => [
-                                'api_version' => ['type' => Doc\Schema::TYPE_STRING],
-                                'version' => ['type' => Doc\Schema::TYPE_STRING],
-                                'endpoint' => ['type' => Doc\Schema::TYPE_STRING],
+                                'api_version' => ['type' => Schema::TYPE_STRING],
+                                'version' => ['type' => Schema::TYPE_STRING],
+                                'endpoint' => ['type' => Schema::TYPE_STRING],
                             ],
                         ],
                     ],
@@ -153,9 +164,9 @@ final class CoreController extends AbstractController
         global $CFG_GLPI;
 
         $swagger_content = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>GLPI API Documentation</title>';
-        $swagger_content .= \Html::script('/lib/swagger-ui.js');
-        $swagger_content .= \Html::css('/lib/swagger-ui.css');
-        $favicon = \Html::getPrefixedUrl('/pics/favicon.ico');
+        $swagger_content .= Html::script('/lib/swagger-ui.js');
+        $swagger_content .= Html::css('/lib/swagger-ui.css');
+        $favicon = Html::getPrefixedUrl('/pics/favicon.ico');
         $doc_json_path = $CFG_GLPI['root_doc'] . '/api.php/doc.json';
         $swagger_content .= <<<HTML
         <link rel="shortcut icon" type="images/x-icon" href="$favicon" />
@@ -225,7 +236,7 @@ HTML;
             $html_docs
         );
 
-        $content = \Html::includeHeader(
+        $content = Html::includeHeader(
             title: __('API Getting Started'),
             display: false,
         );
@@ -252,7 +263,7 @@ HTML;
                 // Filter out this route
                 $controller = $route->getController();
                 $controller_method = $route->getMethod();
-                if ($controller === __CLASS__ && $controller_method->getShortName() === 'defaultRoute') {
+                if ($controller === self::class && $controller_method->getShortName() === 'defaultRoute') {
                     continue;
                 }
                 $allowed_methods[] = $method;
@@ -322,7 +333,7 @@ HTML;
     )]
     public function getSession(Request $request): Response
     {
-        /** @var {name: string, default: mixed}[] $allowed_keys_mapping */
+        /** @var array{name: string, default: mixed}[] $allowed_keys_mapping */
         $allowed_keys_mapping = [
             'glpi_currenttime' => [
                 'name' => 'current_time',
@@ -419,7 +430,7 @@ HTML;
             $auth_request->setUser($user);
             if (!$request->hasParameter('accept') && !$request->hasParameter('deny')) {
                 // Display the authorization page
-                $glpi_user = new \User();
+                $glpi_user = new User();
                 $glpi_user->getFromDB($user_id);
                 $authorize_form = TemplateRenderer::getInstance()->render('pages/oauth/authorize.html.twig', [
                     'auth_request' => $auth_request,
@@ -435,8 +446,8 @@ HTML;
             $response = Server::getAuthorizationServer()->completeAuthorizationRequest($auth_request, new Response());
             return $response;
         } catch (OAuthServerException $exception) {
-            return $exception->generateHttpResponse(new Response());
-        } catch (\Throwable $exception) {
+            return $exception->generateHttpResponse(new Response()); // @phpstan-ignore return.type (Response vs ResponseInterface)
+        } catch (Throwable $exception) {
             ErrorHandler::logCaughtException($exception);
             return new JSONResponse(null, 500);
         }
@@ -454,8 +465,8 @@ HTML;
             $response = Server::getAuthorizationServer()->respondToAccessTokenRequest($request, new JSONResponse());
             return $response;
         } catch (OAuthServerException $exception) {
-            return $exception->generateHttpResponse(new JSONResponse());
-        } catch (\Throwable $exception) {
+            return $exception->generateHttpResponse(new JSONResponse()); // @phpstan-ignore return.type (Response vs ResponseInterface)
+        } catch (Throwable $exception) {
             ErrorHandler::logCaughtException($exception);
             return new JSONResponse(null, 500);
         }
@@ -497,12 +508,12 @@ HTML;
         responses: [
             [
                 'schema'        => [
-                    'type' => Doc\Schema::TYPE_ARRAY,
+                    'type' => Schema::TYPE_ARRAY,
                     'items' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'properties' => [
                             'status' => [
-                                'type' => Doc\Schema::TYPE_STRING,
+                                'type' => Schema::TYPE_STRING,
                                 'enum' => [StatusChecker::STATUS_OK, StatusChecker::STATUS_WARNING, StatusChecker::STATUS_PROBLEM, StatusChecker::STATUS_NO_DATA],
                             ],
                         ],
@@ -527,10 +538,10 @@ HTML;
         responses: [
             [
                 'schema'        => [
-                    'type' => Doc\Schema::TYPE_OBJECT,
+                    'type' => Schema::TYPE_OBJECT,
                     'properties' => [
                         'status' => [
-                            'type' => Doc\Schema::TYPE_STRING,
+                            'type' => Schema::TYPE_STRING,
                             'enum' => [StatusChecker::STATUS_OK, StatusChecker::STATUS_WARNING, StatusChecker::STATUS_PROBLEM, StatusChecker::STATUS_NO_DATA],
                         ],
                     ],
@@ -555,7 +566,7 @@ HTML;
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'EntityTransferRecord[]',
             ],
         ]
@@ -563,17 +574,14 @@ HTML;
     public function transferEntity(Request $request): Response
     {
         $params = $request->getParameters();
-        $transfer = new \Transfer();
+        $transfer = new Transfer();
 
-        $transfer_records = array_filter($params, static function ($param) {
+        $transfer_records = array_filter($params, static fn($param) =>
             // must have itemtype, items_id and entity keys
-            return is_array($param) && isset($param['itemtype'], $param['items_id'], $param['entity']);
-        });
+            is_array($param) && isset($param['itemtype'], $param['items_id'], $param['entity']));
         $original_record_count = count($transfer_records);
         // Filter out any records that would transfer to an entity the user doesn't have access to
-        $transfer_records = array_filter($transfer_records, static function ($record) {
-            return Session::haveAccessToEntity((int) $record['entity']);
-        });
+        $transfer_records = array_filter($transfer_records, static fn($record) => Session::haveAccessToEntity((int) $record['entity']));
         $is_partial_transfer = $original_record_count !== count($transfer_records);
 
         $controllers = Router::getInstance()->getControllers();
@@ -596,7 +604,7 @@ HTML;
 
             try {
                 $options_hash = md5(json_encode($options, JSON_THROW_ON_ERROR));
-            } catch (\JsonException) {
+            } catch (JsonException) {
                 $options_hash = mt_rand();
             }
 

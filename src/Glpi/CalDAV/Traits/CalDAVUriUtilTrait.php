@@ -35,10 +35,17 @@
 
 namespace Glpi\CalDAV\Traits;
 
+use CommonDBTM;
+use DBmysql;
 use Glpi\CalDAV\Backend\Principal;
 use Glpi\CalDAV\Contracts\CalDAVCompatibleItemInterface;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryUnion;
+use Group;
+use User;
+
+use function Sabre\Uri\split;
+use function Safe\preg_replace;
 
 /**
  * Trait used for CalDAV URI utilities, like generation and parsing.
@@ -50,20 +57,20 @@ trait CalDAVUriUtilTrait
     /**
      * Get principal URI, relative to CalDAV server root.
      *
-     * @param \CommonDBTM $item
+     * @param CommonDBTM $item
      *
      * @return string|null
      */
-    protected function getPrincipalUri(\CommonDBTM $item)
+    protected function getPrincipalUri(CommonDBTM $item)
     {
 
         $principal_uri = null;
 
         switch (get_class($item)) {
-            case \Group::class:
+            case Group::class:
                 $principal_uri = $this->getGroupPrincipalUri($item->fields['id']);
                 break;
-            case \User::class:
+            case User::class:
                 $principal_uri = $this->getUserPrincipalUri($item->fields['name']);
                 break;
         }
@@ -101,7 +108,7 @@ trait CalDAVUriUtilTrait
      *
      * @param string $uri
      *
-     * @return \CommonDBTM|null
+     * @return CommonDBTM|null
      */
     protected function getPrincipalItemFromUri($uri)
     {
@@ -109,7 +116,7 @@ trait CalDAVUriUtilTrait
 
         if (
             null === $principal_itemtype || !class_exists($principal_itemtype)
-            || !is_a($principal_itemtype, \CommonDBTM::class, true)
+            || !is_a($principal_itemtype, CommonDBTM::class, true)
         ) {
             return null;
         }
@@ -117,12 +124,12 @@ trait CalDAVUriUtilTrait
         $item  = new $principal_itemtype();
         $found = false;
         switch ($principal_itemtype) {
-            case \Group::class:
-                /** @var \Group $item */
+            case Group::class:
+                /** @var Group $item */
                 $found = $item->getFromDB($this->getGroupIdFromPrincipalUri($uri));
                 break;
-            case \User::class:
-                /** @var \User $item */
+            case User::class:
+                /** @var User $item */
                 $found = $item->getFromDBbyName($this->getUsernameFromPrincipalUri($uri));
                 break;
         }
@@ -139,17 +146,17 @@ trait CalDAVUriUtilTrait
      */
     protected function getPrincipalItemtypeFromUri($uri)
     {
-        $uri_parts = \Sabre\Uri\split($uri);
+        $uri_parts = split($uri);
         $prefix = $uri_parts[0];
 
         $itemtype = null;
 
         switch ($prefix) {
             case Principal::PREFIX_GROUPS:
-                $itemtype = \Group::class;
+                $itemtype = Group::class;
                 break;
             case Principal::PREFIX_USERS:
-                $itemtype = \User::class;
+                $itemtype = User::class;
                 break;
         }
 
@@ -161,12 +168,12 @@ trait CalDAVUriUtilTrait
      *
      * @param string $uri
      *
-     * @return string|null
+     * @return int|null
      */
     protected function getGroupIdFromPrincipalUri($uri)
     {
-        $uri_parts = \Sabre\Uri\split($uri);
-        return \Group::class === $this->getPrincipalItemtypeFromUri($uri) ? $uri_parts[1] : null;
+        $uri_parts = split($uri);
+        return Group::class === $this->getPrincipalItemtypeFromUri($uri) && is_numeric($uri_parts[1]) ? (int) $uri_parts[1] : null;
     }
 
     /**
@@ -178,8 +185,8 @@ trait CalDAVUriUtilTrait
      */
     protected function getUsernameFromPrincipalUri($uri)
     {
-        $uri_parts = \Sabre\Uri\split($uri);
-        return \User::class === $this->getPrincipalItemtypeFromUri($uri) ? $uri_parts[1] : null;
+        $uri_parts = split($uri);
+        return User::class === $this->getPrincipalItemtypeFromUri($uri) ? $uri_parts[1] : null;
     }
 
     /**
@@ -187,14 +194,14 @@ trait CalDAVUriUtilTrait
      *
      * @param string  $uid
      *
-     * @return CalDAVCompatibleItemInterface|null
+     * @return (CalDAVCompatibleItemInterface&CommonDBTM)|null
      */
     protected function getCalendarItemForUid($uid)
     {
 
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -247,11 +254,15 @@ trait CalDAVUriUtilTrait
         }
 
         $item_specs = $items_iterator->current();
-        if (!is_a($item_specs['itemtype'], CalDAVCompatibleItemInterface::class, true)) {
+
+        if (!$item = getItemForItemtype($item_specs['itemtype'])) {
             return null;
         }
 
-        if (!$item = getItemForItemtype($item_specs['itemtype'])) {
+        if (
+            !$item instanceof CalDAVCompatibleItemInterface
+            || !$item instanceof CommonDBTM
+        ) {
             return null;
         }
 
@@ -267,7 +278,7 @@ trait CalDAVUriUtilTrait
      *
      * @param string  $path
      *
-     * @return CalDAVCompatibleItemInterface|null
+     * @return (CalDAVCompatibleItemInterface&CommonDBTM)|null
      */
     protected function getCalendarItemForPath($path)
     {

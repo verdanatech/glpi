@@ -31,9 +31,15 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Dashboard\Dashboard;
+use Glpi\Dashboard\Item;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryParam;
+use Safe\Exceptions\UrlException;
+
+use function Safe\base64_decode;
+use function Safe\json_decode;
+use function Safe\preg_replace;
 
 /**
  * Update from 9.4.x to 9.5.0
@@ -44,8 +50,8 @@ function update94xto950()
 {
     /**
      * @var array $CFG_GLPI
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $CFG_GLPI, $DB, $migration;
 
@@ -393,10 +399,9 @@ function update94xto950()
     /** Make datacenter pictures path relative */
     $doc_send_url = '/front/document.send.php?file=_pictures/';
 
-    $fix_picture_fct = function ($path) use ($doc_send_url) {
+    $fix_picture_fct = (fn($path) =>
         // Keep only part of URL corresponding to relative path inside GLPI_PICTURE_DIR
-        return preg_replace('/^.*' . preg_quote($doc_send_url, '/') . '(.+)$/', '$1', $path);
-    };
+        preg_replace('/^.*' . preg_quote($doc_send_url, '/') . '(.+)$/', '$1', $path));
 
     $common_dc_model_tables = [
         'glpi_computermodels',
@@ -996,7 +1001,7 @@ function update94xto950()
     $dashboards = Config::getConfigurationValues('core', ['dashboards']);
     if (count($dashboards)) {
         $dashboards = $dashboards['dashboards'];
-        \Glpi\Dashboard\Dashboard::importFromJson($dashboards);
+        Dashboard::importFromJson($dashboards);
         $migration->removeConfig(['dashboards']);
     }
 
@@ -1031,7 +1036,7 @@ function update94xto950()
 
     // default dashboards
     if (countElementsInTable("glpi_dashboards_dashboards") === 0) {
-        $dashboard_obj   = new \Glpi\Dashboard\Dashboard();
+        $dashboard_obj   = new Dashboard();
         $dashboards_data = include_once __DIR__ . "/update_9.4.x_to_9.5.0/dashboards.php";
         foreach ($dashboards_data as $default_dashboard) {
             $items = $default_dashboard['_items'];
@@ -1042,7 +1047,7 @@ function update94xto950()
 
             // add items to this new dashboard
             $query = $DB->buildInsert(
-                \Glpi\Dashboard\Item::getTable(),
+                Item::getTable(),
                 [
                     'dashboards_dashboards_id' => new QueryParam(),
                     'gridstack_id'             => new QueryParam(),
@@ -1982,10 +1987,12 @@ HTML,
     if (isset($CFG_GLPI['glpinetwork_registration_key']) && !empty($CFG_GLPI['glpinetwork_registration_key'])) {
         // encrypt existing keys if not yet encrypted
         // if it can be base64 decoded then json decoded, we can consider that it was not encrypted
-        if (
-            ($b64_decoded = base64_decode($CFG_GLPI['glpinetwork_registration_key'], true)) !== false
-            && json_decode($b64_decoded, true) !== null
-        ) {
+        try {
+            $b64_decoded = base64_decode($CFG_GLPI['glpinetwork_registration_key'], true);
+        } catch (UrlException $e) {
+            $b64_decoded = false;
+        }
+        if ($b64_decoded !== false && json_decode($b64_decoded, true) !== null) {
             $migration->addConfig(
                 [
                     'glpinetwork_registration_key' => (new GLPIKey())->encrypt($CFG_GLPI['glpinetwork_registration_key']),

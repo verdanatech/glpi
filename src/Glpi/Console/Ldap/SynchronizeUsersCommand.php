@@ -37,6 +37,9 @@ namespace Glpi\Console\Ldap;
 
 use AuthLDAP;
 use Glpi\Console\AbstractCommand;
+use Safe\Exceptions\DatetimeException;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
@@ -44,6 +47,9 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Toolbox;
 use User;
+
+use function Safe\preg_match;
+use function Safe\strtotime;
 
 class SynchronizeUsersCommand extends AbstractCommand
 {
@@ -162,9 +168,7 @@ class SynchronizeUsersCommand extends AbstractCommand
         $description .= implode(
             "\n",
             array_map(
-                static function ($key, $value) {
-                    return '- ' . sprintf(__('%1$s: %2$s'), $key, $value);
-                },
+                static fn($key, $value) => '- ' . sprintf(__('%1$s: %2$s'), $key, $value),
                 array_keys($restored_strategies),
                 $restored_strategies
             )
@@ -189,9 +193,7 @@ class SynchronizeUsersCommand extends AbstractCommand
         return implode(
             "\n",
             array_map(
-                function ($key, $value) {
-                    return '- ' . sprintf(__('%1$s: %2$s'), $key, $value);
-                },
+                fn($key, $value) => '- ' . sprintf(__('%1$s: %2$s'), $key, $value),
                 array_keys($options),
                 $options
             )
@@ -292,7 +294,7 @@ class SynchronizeUsersCommand extends AbstractCommand
         foreach ($servers_id as $server_id) {
             $server = new AuthLDAP();
             if (!$server->getFromDB($server_id)) {
-                throw new \Symfony\Component\Console\Exception\RuntimeException(__('Unable to load LDAP server information.'));
+                throw new RuntimeException(__('Unable to load LDAP server information.'));
             }
             if (!$server->isActive()) {
                 // Can happen if id is specified in command call
@@ -323,10 +325,10 @@ class SynchronizeUsersCommand extends AbstractCommand
                     [
                         'authldaps_id' => $server_id,
                         'mode'         => $action,
-                        'ldap_filter'  => null !== $ldap_filter ? $ldap_filter : '',
+                        'ldap_filter'  => $ldap_filter ?? '',
                         'script'       => true,
-                        'begin_date'   => null !== $begin_date ? $begin_date : '',
-                        'end_date'     => null !== $end_date ? $end_date : '',
+                        'begin_date'   => $begin_date ?? '',
+                        'end_date'     => $end_date ?? '',
                     ],
                     $results,
                     $limitexceeded
@@ -478,7 +480,7 @@ class SynchronizeUsersCommand extends AbstractCommand
      *
      * @return void
      *
-     * @throws \Symfony\Component\Console\Exception\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function validateInput(InputInterface $input)
     {
@@ -486,7 +488,7 @@ class SynchronizeUsersCommand extends AbstractCommand
         $only_create = $input->getOption('only-create-new');
         $only_update = $input->getOption('only-update-existing');
         if (false !== $only_create && false !== $only_update) {
-            throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+            throw new InvalidArgumentException(
                 __('Option --only-create-new is not compatible with option --only-update-existing.')
             );
         }
@@ -495,7 +497,7 @@ class SynchronizeUsersCommand extends AbstractCommand
         $server = new AuthLDAP();
         foreach ($servers_id as $server_id) {
             if (!$server->getFromDB($server_id)) {
-                throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+                throw new InvalidArgumentException(
                     sprintf(__('--ldap-server-id value "%s" is not a valid LDAP server id.'), $server_id)
                 );
             }
@@ -506,10 +508,13 @@ class SynchronizeUsersCommand extends AbstractCommand
             $date = $input->getOption($option_name);
 
             if (null !== $date) {
-                $parsed_date = strtotime($date);
-                if (false === $parsed_date) {
-                    throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
-                        sprintf(__('Unable to parse --%1$s value "%2$s".'), $option_name, $date)
+                try {
+                    $parsed_date = strtotime($date);
+                } catch (DatetimeException $e) {
+                    throw new InvalidArgumentException(
+                        sprintf(__('Unable to parse --%1$s value "%2$s".'), $option_name, $date),
+                        $e->getCode(),
+                        $e
                     );
                 }
                 $input->setOption($option_name, date('Y-m-d H:i:s', $parsed_date));
@@ -519,12 +524,12 @@ class SynchronizeUsersCommand extends AbstractCommand
         $begin_date = $input->getOption('begin-date');
         $end_date   = $input->getOption('end-date');
         if ($only_create === false && $only_update === false && ($begin_date !== null || $end_date !== null)) {
-            throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+            throw new InvalidArgumentException(
                 __('Options --begin-date and --end-date can only be used with --only-create-new or --only-update-existing option.')
             );
         }
         if ($begin_date > $end_date) {
-            throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+            throw new InvalidArgumentException(
                 __('Option --begin-date value has to be lower than option --end-date value.')
             );
         }
@@ -551,7 +556,7 @@ class SynchronizeUsersCommand extends AbstractCommand
                     || !in_array($values[1], array_keys($strategies_groups))
                     || !in_array($values[2], array_keys($strategies_authorizations))
                 ) {
-                    throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+                    throw new InvalidArgumentException(
                         sprintf(
                             __('--deleted-user-strategy value "%s" is not valid.'),
                             $deleted_user_strategy
@@ -560,7 +565,7 @@ class SynchronizeUsersCommand extends AbstractCommand
                 }
             } else {
                 // Unknown format
-                throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+                throw new InvalidArgumentException(
                     sprintf(
                         __('--deleted-user-strategy value "%s" is not valid.'),
                         $deleted_user_strategy

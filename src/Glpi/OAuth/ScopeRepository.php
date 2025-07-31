@@ -35,9 +35,12 @@
 
 namespace Glpi\OAuth;
 
+use DBmysql;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
 use League\OAuth2\Server\Entities\ScopeEntityInterface;
 use League\OAuth2\Server\Repositories\ScopeRepositoryInterface;
+
+use function Safe\json_decode;
 
 class ScopeRepository implements ScopeRepositoryInterface
 {
@@ -50,7 +53,7 @@ class ScopeRepository implements ScopeRepositoryInterface
 
     public function finalizeScopes(array $scopes, $grantType, ClientEntityInterface $clientEntity, $userIdentifier = null, ?string $authCodeId = null): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $allowed_scopes = json_decode($DB->request([
@@ -63,8 +66,6 @@ class ScopeRepository implements ScopeRepositoryInterface
         if (!is_array($allowed_scopes)) {
             $allowed_scopes = [];
         }
-        return array_filter($scopes, static function ($scope) use ($allowed_scopes) {
-            return in_array($scope->getIdentifier(), $allowed_scopes, true);
-        });
+        return array_filter($scopes, static fn($scope) => in_array($scope->getIdentifier(), $allowed_scopes, true));
     }
 }

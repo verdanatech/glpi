@@ -32,12 +32,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\Environment;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\DBAL\QueryUnion;
+use Psr\SimpleCache\CacheInterface;
+use Safe\Exceptions\JsonException;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\preg_grep;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\realpath;
 
 /**
  * Database utilities
@@ -72,7 +80,7 @@ final class DbUtils
     public function isForeignKeyField($field)
     {
         //check empty, then strpos, then regexp; for performances
-        return !empty($field) && strpos($field, '_id', 1) !== false && preg_match("/._id(_.+)?$/", $field);
+        return !empty($field) && str_contains(substr($field, 1), '_id') && preg_match("/._id(_.+)?$/", $field);
     }
 
 
@@ -230,7 +238,7 @@ final class DbUtils
             $table   = strtolower($plug['class']);
         } else {
             $table = strtolower($singular);
-            if (substr($singular, 0, \strlen(NS_GLPI)) === NS_GLPI) {
+            if (str_starts_with($singular, NS_GLPI)) {
                 $table = substr($table, \strlen(NS_GLPI));
             }
         }
@@ -262,7 +270,8 @@ final class DbUtils
      *
      * @param string $table table name
      *
-     * @return string itemtype corresponding to a table name parameter
+     * @return class-string<CommonDBTM>|null itemtype corresponding to a table name parameter,
+     *      or null if no valid itemtype is attached to the table
      */
     public function getItemTypeForTable($table)
     {
@@ -354,8 +363,23 @@ final class DbUtils
                 return $itemtype;
             }
 
-            return "UNKNOWN";
+            return null;
         }
+    }
+
+    /**
+     * Return an item instance for the corresponding table.
+     */
+    public function getItemForTable(string $table): ?CommonDBTM
+    {
+        $itemtype = $this->getItemTypeForTable($table);
+
+        if ($itemtype === null) {
+            return null;
+        }
+
+        $item = $this->getItemForItemtype($itemtype);
+        return $item ?: null;
     }
 
     /**
@@ -369,7 +393,7 @@ final class DbUtils
      */
     public function fixItemtypeCase(string $itemtype, $root_dir = GLPI_ROOT, array $plugins_dirs = GLPI_PLUGINS_DIRECTORIES)
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         // If a class exists for this itemtype, just return the declared class name.
@@ -463,7 +487,7 @@ final class DbUtils
                 );
                 /** @var SplFileInfo $file */
                 foreach ($files_iterator as $file) {
-                    if (!$file->isReadable() || !$file->isFile() || '.php' === !$file->getExtension()) {
+                    if (!$file->isReadable() || !$file->isFile() || $file->getExtension() !== 'php') {
                         continue;
                     }
                     $relative_path = str_replace($srcdir . DIRECTORY_SEPARATOR, '', $file->getPathname());
@@ -495,7 +519,7 @@ final class DbUtils
      *
      * @param string $itemtype itemtype
      *
-     * @return string|null
+     * @return class-string<CommonGLPI>|null
      */
     public function getClassForItemtype(string $itemtype): ?string
     {
@@ -531,6 +555,10 @@ final class DbUtils
             return false;
         }
 
+        if (!is_a($classname, CommonGLPI::class, true)) {
+            return false;
+        }
+
         $item_class = new ReflectionClass($classname);
         if ($item_class->isAbstract()) {
             trigger_error(
@@ -553,7 +581,7 @@ final class DbUtils
      */
     public function countElementsInTable($table, $condition = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!is_array($table)) {
@@ -616,8 +644,7 @@ final class DbUtils
     {
 
         /// TODO clean it / maybe include when review of SQL requests
-        $itemtype = $this->getItemTypeForTable($table);
-        $item     = new $itemtype();
+        $item = $this->getItemForTable($table);
 
         $criteria = $this->getEntitiesRestrictCriteria($table, '', '', $item->maybeRecursive());
         $criteria = array_merge($condition, $criteria);
@@ -639,8 +666,7 @@ final class DbUtils
     {
 
         /// TODO clean it / maybe include when review of SQL requests
-        $itemtype = $this->getItemTypeForTable($table);
-        $item     = new $itemtype();
+        $item = $this->getItemForTable($table);
 
         if ($recursive) {
             $recursive = $item->maybeRecursive();
@@ -664,7 +690,7 @@ final class DbUtils
      */
     public function getAllDataFromTable($table, $criteria = [], $usecache = false, $order = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         static $cache = [];
@@ -709,7 +735,7 @@ final class DbUtils
      */
     public function isIndex($table, $field)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!$DB->tableExists($table)) {
@@ -739,7 +765,7 @@ final class DbUtils
      */
     public function isForeignKeyContraint($table, $keyname)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $query = [
@@ -781,7 +807,7 @@ final class DbUtils
         $is_recursive = false,
         $complete_request = false
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $query = $separator . " ( ";
@@ -972,8 +998,8 @@ final class DbUtils
     public function getSonsOf($table, $IDf)
     {
         /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var DBmysql $DB
+         * @var CacheInterface $GLPI_CACHE
          */
         global $DB, $GLPI_CACHE;
 
@@ -1086,8 +1112,8 @@ final class DbUtils
     public function getAncestorsOf($table, $items_id)
     {
         /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var DBmysql $DB
+         * @var CacheInterface $GLPI_CACHE
          */
         global $DB, $GLPI_CACHE;
 
@@ -1125,18 +1151,14 @@ final class DbUtils
         if (!is_array($items_id)) {
             $items_id = (array) $items_id;
         }
-        $ids_needed_to_fetch = array_map(static function ($id) {
-            return (int) $id;
-        }, $items_id);
+        $ids_needed_to_fetch = array_map(static fn($id) => (int) $id, $items_id);
 
         if ($ckey !== null && ($ancestors = $GLPI_CACHE->get($ckey)) !== null) {
             // If we only need to get ancestors for a single item, we can use the cached values if they exist
             return $ancestors;
         } elseif ($ckey === null) {
             // For multiple IDs, we need to check the cache for each ID
-            $from_cache = $GLPI_CACHE->getMultiple(array_map(static function ($id) use ($table) {
-                return "ancestors_cache_{$table}_{$id}";
-            }, $ids_needed_to_fetch));
+            $from_cache = $GLPI_CACHE->getMultiple(array_map(static fn($id) => "ancestors_cache_{$table}_{$id}", $ids_needed_to_fetch));
             foreach ($ids_needed_to_fetch as $id) {
                 if (($ancestors = $from_cache["ancestors_cache_{$table}_{$id}"]) !== null) {
                     $ancestors_by_id[$id] = $ancestors;
@@ -1269,7 +1291,7 @@ final class DbUtils
      * @since 0.84
      *
      * @param string $table table name
-     * @param string $IDf   The ID of the father
+     * @param int    $IDf   The ID of the father
      *
      * @return array of IDs of the sons and the ancestors
      */
@@ -1286,13 +1308,13 @@ final class DbUtils
      * @param boolean $withcomment 1 if you want to give the array with the comments (false by default)
      * @param boolean $translate   (true by default)
      *
-     * @return string name of the element
+     * @return ($withcomment is true ? array : string)
      *
      * @see DbUtils::getTreeValueCompleteName
      */
     public function getTreeLeafValueName($table, $ID, $withcomment = false, $translate = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $name    = "";
@@ -1389,7 +1411,7 @@ final class DbUtils
      * @param boolean $tooltip     (true by default) returns a tooltip, else returns only 'comment'
      * @param string  $default     default value returned when item not exists
      *
-     * @return string completename of the element
+     * @return ($withcomment is true ? array : string)
      *
      * @see DbUtils::getTreeLeafValueName
      *
@@ -1401,7 +1423,7 @@ final class DbUtils
             Toolbox::deprecated('Usage of the `$withcomment` parameter is deprecated. Use `Dropdown::getDropdownComments()` instead.');
         }
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $name    = "";
@@ -1500,11 +1522,11 @@ final class DbUtils
      * @param string  $wholename current name to complete (use for recursivity) (default '')
      * @param integer $level     current level of recursion (default 0)
      *
-     * @return string name
+     * @return array
      */
     public function getTreeValueName($table, $ID, $wholename = "", $level = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $parentIDfield = $this->getForeignKeyFieldForTable($table);
@@ -1543,7 +1565,7 @@ final class DbUtils
      */
     public function getTreeForItem($table, $IDf)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $parentIDfield = $this->getForeignKeyFieldForTable($table);
@@ -1758,7 +1780,7 @@ final class DbUtils
      */
     public function getUserName($ID, $link = 0, $disable_anon = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $username   = "";
@@ -1810,7 +1832,7 @@ final class DbUtils
     {
         $username = $this->getUserName($id);
 
-        if (!is_int($id) || $id <= 0 || !User::canView()) {
+        if ($id <= 0 || !User::canView()) {
             return htmlescape($username);
         }
 
@@ -1837,7 +1859,7 @@ final class DbUtils
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1854,7 +1876,7 @@ final class DbUtils
 
         $autoNum = Toolbox::substr($objectName, 1, Toolbox::strlen($objectName) - 2);
         $mask    = $matches[1];
-        $global  = ((strpos($autoNum, '\\g') !== false) && ($itemtype != 'Infocom')) ? 1 : 0;
+        $global  = ((str_contains($autoNum, '\\g')) && ($itemtype != 'Infocom')) ? 1 : 0;
 
         //do not add extra escapements for now
         //substring position would be wrong if name contains "_"
@@ -2000,7 +2022,7 @@ final class DbUtils
      */
     public function getDateCriteria($field, $begin, $end)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $date_pattern = '/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/'; // `YYYY-mm-dd` optionaly followed by ` HH:ii:ss`
@@ -2054,10 +2076,9 @@ final class DbUtils
             return [];
         }
 
-        $tab = json_decode($data, true);
-
-        // Use old scheme to decode
-        if (!is_array($tab)) {
+        try {
+            $tab = json_decode($data, true);
+        } catch (JsonException $e) {
             $tab = [];
 
             foreach (explode(" ", $data) as $item) {
@@ -2079,7 +2100,7 @@ final class DbUtils
      *
      * @param string $time datetime time
      *
-     * @return  array
+     * @return string
      */
     public function getHourFromSql($time)
     {
@@ -2286,11 +2307,27 @@ final class DbUtils
      *
      * @param string $fkname Foreign key
      *
-     * @return class-string<CommonDBTM> Itemtype class for the fkname parameter
+     * @return class-string<CommonDBTM>|null Itemtype class for the fkname parameter,
+     *      or null if no valid itemtype is attached to the foreign key field
      */
     public function getItemtypeForForeignKeyField($fkname)
     {
         $table = $this->getTableNameForForeignKeyField($fkname);
         return $this->getItemTypeForTable($table);
+    }
+
+    /**
+     * Return an item instance for the corresponding foreign key field.
+     */
+    public function getItemForForeignKeyField(string $fkname): ?CommonDBTM
+    {
+        $itemtype = $this->getItemtypeForForeignKeyField($fkname);
+
+        if ($itemtype === null) {
+            return null;
+        }
+
+        $item = $this->getItemForItemtype($itemtype);
+        return $item ?: null;
     }
 }

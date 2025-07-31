@@ -36,9 +36,14 @@
 namespace Glpi\Api\HL\Middleware;
 
 use Glpi\Http\JSONResponse;
-use Glpi\Http\Response;
 use GuzzleHttp\Psr7\Utils;
+use Safe\Exceptions\OutcontrolException;
+use Session;
 use Symfony\Component\DomCrawler\Crawler;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\ob_get_clean;
 
 class DebugResponseMiddleware extends AbstractMiddleware implements ResponseMiddlewareInterface
 {
@@ -50,22 +55,23 @@ class DebugResponseMiddleware extends AbstractMiddleware implements ResponseMidd
             $next($input);
             return;
         }
-        $use_mode = isset($_SESSION['glpi_use_mode']) ? (int) $_SESSION['glpi_use_mode'] : \Session::NORMAL_MODE;
-        if ($use_mode !== \Session::DEBUG_MODE) {
+        $use_mode = isset($_SESSION['glpi_use_mode']) ? (int) $_SESSION['glpi_use_mode'] : Session::NORMAL_MODE;
+        if ($use_mode !== Session::DEBUG_MODE) {
             $next($input);
             return;
         }
         $outputs = [];
         // Go through all output buffers
         while (ob_get_level() > 0) {
-            $outputs[] = ob_get_clean();
+            try {
+                $outputs[] = ob_get_clean();
+            } catch (OutcontrolException $e) {
+                //just contineu, seems not an error.
+            }
         }
         $debug_messages = [];
         // If the output matches an HTML debug alert, extract the inner text and add it to the array
         foreach ($outputs as $output) {
-            if (!is_string($output)) {
-                continue;
-            }
             $crawler = new Crawler($output);
             $node = $crawler->filter('div.glpi-debug-alert');
             if ($node->count() > 0) {

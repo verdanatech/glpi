@@ -54,7 +54,7 @@ class RuleDictionnaryPrinterCollection extends RuleCollection
     public function cleanTestOutputCriterias(array $output)
     {
         //If output array contains keys begining with _ : drop it
-        foreach ($output as $criteria => $value) {
+        foreach (array_keys($output) as $criteria) {
             if (($criteria[0] == '_') && ($criteria != '_ignore_import')) {
                 unset($output[$criteria]);
             }
@@ -64,7 +64,7 @@ class RuleDictionnaryPrinterCollection extends RuleCollection
 
     public function countTotalItemsForRulesReplay(array $params = []): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         return $DB->request($this->getIteratorCriteriaForRulesReplay())->count();
@@ -72,7 +72,7 @@ class RuleDictionnaryPrinterCollection extends RuleCollection
 
     public function replayRulesOnExistingDB($offset = 0, $maxtime = 0, $items = [], $params = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isCommandLine()) {
@@ -190,7 +190,7 @@ class RuleDictionnaryPrinterCollection extends RuleCollection
      **/
     public function replayDictionnaryOnPrintersByID(array $IDs, $res_rule = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $new_printers  = [];
@@ -265,7 +265,7 @@ class RuleDictionnaryPrinterCollection extends RuleCollection
         $input["name"]         = $p['name'];
         $input["manufacturer"] = $p['manufacturer'];
 
-        if (empty($res_rule)) {
+        if ($res_rule === []) {
             $res_rule = $this->processAllRules($input, [], []);
         }
 

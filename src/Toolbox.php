@@ -32,7 +32,7 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Api\Deprecated\DeprecatedInterface;
 use Glpi\Console\Application;
 use Glpi\DBAL\QueryParam;
 use Glpi\Error\ErrorUtils;
@@ -41,18 +41,77 @@ use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\NotFoundHttpException;
 use Glpi\Helpdesk\DefaultDataManager;
 use Glpi\Mail\Protocol\ProtocolInterface;
+use Glpi\Message\MessageType;
+use Glpi\OAuth\Server;
 use Glpi\Plugin\Hooks;
 use Glpi\Progress\AbstractProgressIndicator;
-use Glpi\Message\MessageType;
 use Glpi\Rules\RulesManager;
 use Glpi\Toolbox\URL;
 use Glpi\Toolbox\VersionParser;
 use GuzzleHttp\Client;
+use Laminas\Mail\Protocol\Imap;
+use Laminas\Mail\Protocol\Pop3;
 use Laminas\Mail\Storage\AbstractStorage;
 use Mexitek\PHPColors\Color;
+use Monolog\Logger;
 use Psr\Log\LogLevel;
+use Safe\Exceptions\ErrorfuncException;
+use Safe\Exceptions\FilesystemException;
+use Safe\Exceptions\ImageException;
+use Safe\Exceptions\JsonException;
+use Safe\Exceptions\PcreException;
+use Safe\Exceptions\UrlException;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
+use function Safe\base64_decode;
+use function Safe\chmod;
+use function Safe\class_uses;
+use function Safe\copy;
+use function Safe\curl_exec;
+use function Safe\curl_getinfo;
+use function Safe\curl_init;
+use function Safe\error_log;
+use function Safe\fclose;
+use function Safe\file_get_contents;
+use function Safe\filemtime;
+use function Safe\finfo_close;
+use function Safe\finfo_open;
+use function Safe\fopen;
+use function Safe\fwrite;
+use function Safe\getimagesize;
+use function Safe\gzcompress;
+use function Safe\gzuncompress;
+use function Safe\imagealphablending;
+use function Safe\imagecopyresampled;
+use function Safe\imagecreatefrombmp;
+use function Safe\imagecreatefromgif;
+use function Safe\imagecreatefromjpeg;
+use function Safe\imagecreatefrompng;
+use function Safe\imagecreatefromwebp;
+use function Safe\imagecreatetruecolor;
+use function Safe\imagejpeg;
+use function Safe\imagepng;
+use function Safe\imagesavealpha;
+use function Safe\imagewebp;
+use function Safe\ini_get;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\mb_convert_encoding;
+use function Safe\md5_file;
+use function Safe\mkdir;
+use function Safe\opendir;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\realpath;
+use function Safe\rename;
+use function Safe\rmdir;
+use function Safe\strtotime;
+use function Safe\unlink;
+use function Safe\unpack;
 
 /**
  * Toolbox Class
@@ -268,15 +327,13 @@ class Toolbox
      **/
     private static function log($level = LogLevel::WARNING, $args = null)
     {
-        /** @var \Monolog\Logger $PHPLOGGER */
+        /** @var Logger $PHPLOGGER */
         global $PHPLOGGER;
 
         static $tps = 0;
 
         $extra = [];
-        if (method_exists('Session', 'getLoginUserID')) {
-            $extra['user'] = Session::getLoginUserID() . '@' . php_uname('n');
-        }
+        $extra['user'] = Session::getLoginUserID() . '@' . php_uname('n');
         if ($tps && function_exists('memory_get_usage')) {
             $extra['mem_usage'] = number_format(microtime(true) - $tps, 3) . '", ' .
                       number_format(memory_get_usage() / 1024 / 1024, 2) . 'Mio)';
@@ -317,7 +374,7 @@ class Toolbox
         try {
             $msg = self::cleanPaths($msg);
             $PHPLOGGER->log($level, $msg, $extra);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             //something went wrong
             // make sure logging does not cause fatal
             // and error still logged (without glpi root path removed)
@@ -362,7 +419,7 @@ class Toolbox
             foreach ($traces as $trace) {
                 $script = ($trace["file"] ?? "") . ":" .
                         ($trace["line"] ?? "");
-                if (strpos($script, GLPI_ROOT) === 0) {
+                if (str_starts_with($script, GLPI_ROOT)) {
                     $script = substr($script, strlen(GLPI_ROOT) + 1);
                 }
                 if (strlen($script) > 50) {
@@ -436,23 +493,25 @@ class Toolbox
         $text = self::cleanPaths($text);
 
         $user = '';
-        if (method_exists('Session', 'getLoginUserID')) {
-            $user = " [" . Session::getLoginUserID() . '@' . php_uname('n') . "]";
-        }
+        $user = " [" . Session::getLoginUserID() . '@' . php_uname('n') . "]";
 
         $ok = true;
         if (
             (isset($CFG_GLPI["use_log_in_files"]) && $CFG_GLPI["use_log_in_files"])
             || $force
         ) {
-            $ok = error_log(date("Y-m-d H:i:s") . "$user\n" . $text, 3, GLPI_LOG_DIR . "/" . $name . ".log");
+            try {
+                error_log(date("Y-m-d H:i:s") . "$user\n" . $text, 3, GLPI_LOG_DIR . "/" . $name . ".log");
+            } catch (ErrorfuncException $e) {
+                $ok = false;
+            }
         }
 
         if ($output === false) {
             return $ok;
         }
 
-        /** @var \Glpi\Console\Application $application */
+        /** @var Application $application */
         global $application;
         if ($application instanceof Application) {
             $application->getOutput()->writeln('<comment>' . $text . '</comment>', OutputInterface::VERBOSITY_VERY_VERBOSE);
@@ -504,7 +563,7 @@ class Toolbox
      * @param string|null $mime             mime type
      * @param boolean     $expires_headers  whether to add expires headers to maximize cacheability
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\HttpException
+     * @throws HttpException
      */
     public static function getFileAsResponse(
         string $path,
@@ -586,9 +645,11 @@ class Toolbox
                 headers: $headers
             );
         }
-        $content = file_get_contents($path);
-        if ($content === false) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(500);
+
+        try {
+            $content = file_get_contents($path);
+        } catch (FilesystemException $e) {
+            throw new HttpException(500, $e->getMessage(), $e);
         }
 
         return new Response(
@@ -633,11 +694,11 @@ class Toolbox
     {
         Toolbox::deprecated();
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $value = ((array) $value === $value)
-                  ? array_map([__CLASS__, 'addslashes_deep'], $value)
+                  ? array_map([self::class, 'addslashes_deep'], $value)
                   : (
                       is_null($value)
                        ? null : (is_resource($value) || is_object($value)
@@ -668,7 +729,7 @@ class Toolbox
         Toolbox::deprecated();
 
         $value = ((array) $value === $value)
-                  ? array_map([__CLASS__, 'stripslashes_deep'], $value)
+                  ? array_map([self::class, 'stripslashes_deep'], $value)
                   : (is_null($value)
                         ? null : (is_resource($value) || is_object($value)
                                     ? $value : stripslashes($value)));
@@ -801,7 +862,7 @@ class Toolbox
         ];
         foreach ($bytes as $val) {
             if ($size > 1024) {
-                $size = $size / 1024;
+                $size /= 1024;
             } else {
                 break;
             }
@@ -954,23 +1015,26 @@ class Toolbox
         );
 
         //output img
-        $result = null;
-        switch ($img_type) {
-            case IMAGETYPE_GIF:
-            case IMAGETYPE_PNG:
-                $result = imagepng($source_dest, $dest_path);
-                break;
+        try {
+            switch ($img_type) {
+                case IMAGETYPE_GIF:
+                case IMAGETYPE_PNG:
+                    imagepng($source_dest, $dest_path);
+                    break;
 
-            case IMAGETYPE_WEBP:
-                $result = imagewebp($source_dest, $dest_path);
-                break;
+                case IMAGETYPE_WEBP:
+                    imagewebp($source_dest, $dest_path);
+                    break;
 
-            case IMAGETYPE_JPEG:
-            default:
-                $result = imagejpeg($source_dest, $dest_path, 90);
-                break;
+                case IMAGETYPE_JPEG:
+                default:
+                    imagejpeg($source_dest, $dest_path, 90);
+                    break;
+            }
+        } catch (ImageException $e) {
+            return false;
         }
-        return $result;
+        return true;
     }
 
 
@@ -1036,16 +1100,20 @@ class Toolbox
     public static function testWriteAccessToDirectory($dir)
     {
 
-        $rand = rand();
+        $rand = random_int(0, mt_getrandmax());
 
         // Check directory creation which can be denied by SElinux
         $sdir = sprintf("%s/test_glpi_%08x", $dir, $rand);
 
-        if (!mkdir($sdir)) {
+        try {
+            mkdir($sdir);
+        } catch (FileSystemException $e) {
             return 4;
         }
 
-        if (!rmdir($sdir)) {
+        try {
+            rmdir($sdir);
+        } catch (FileSystemException $e) {
             return 3;
         }
 
@@ -1059,13 +1127,13 @@ class Toolbox
 
         fwrite($fp, "This file was created for testing reasons. ");
         fclose($fp);
-        $delete = unlink($path);
 
-        if (!$delete) {
+        try {
+            unlink($path);
+            return 0;
+        } catch (FileSystemException $e) {
             return 1;
         }
-
-        return 0;
     }
 
 
@@ -1089,7 +1157,7 @@ class Toolbox
             $item = str_replace('\\', '/', strtolower($plug['class']));
         } else { // Standard case
             $item = strtolower($itemtype);
-            if (substr($itemtype, 0, \strlen(NS_GLPI)) === NS_GLPI) {
+            if (str_starts_with($itemtype, NS_GLPI)) {
                 $item = str_replace('\\', '/', substr($item, \strlen(NS_GLPI)));
             }
         }
@@ -1124,7 +1192,7 @@ class Toolbox
                 $itemtype = 'ConsumableItem';
             }
             $item = strtolower($itemtype);
-            if (substr($itemtype, 0, \strlen(NS_GLPI)) === NS_GLPI) {
+            if (str_starts_with($itemtype, NS_GLPI)) {
                 $item = str_replace('\\', '/', substr($item, \strlen(NS_GLPI)));
             }
         }
@@ -1176,7 +1244,7 @@ class Toolbox
     /**
      * Split timestamp in time units
      *
-     * @param integer $time  timestamp
+     * @param integer|float $time  timestamp
      *
      * @return array
      **/
@@ -1225,14 +1293,16 @@ class Toolbox
     public static function isUrlSafe(string $url, array $allowlist = GLPI_SERVERSIDE_URL_ALLOWLIST): bool
     {
         foreach ($allowlist as $allow_regex) {
-            $result = preg_match($allow_regex, $url);
-            if ($result === false) {
+            try {
+                $result = preg_match($allow_regex, $url);
+                if ($result === 1) {
+                    return true;
+                }
+            } catch (PcreException $e) {
                 trigger_error(
                     sprintf('Unable to validate URL safeness. Following regex is probably invalid: "%s".', $allow_regex),
                     E_USER_WARNING
                 );
-            } elseif ($result === 1) {
-                return true;
             }
         }
 
@@ -1271,7 +1341,7 @@ class Toolbox
         // add proxy string if configured in glpi
         if (!empty($CFG_GLPI["proxy_name"])) {
             $proxy_creds      = !empty($CFG_GLPI["proxy_user"])
-                ? $CFG_GLPI["proxy_user"] . ":" . (new \GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]) . "@"
+                ? $CFG_GLPI["proxy_user"] . ":" . (new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]) . "@"
                 : "";
             $proxy_string     = "http://{$proxy_creds}" . $CFG_GLPI['proxy_name'] . ":" . $CFG_GLPI['proxy_port'];
             $options['proxy'] = $proxy_string;
@@ -1490,9 +1560,8 @@ class Toolbox
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $parsed_url = parse_url($where);
-
-        if ($parsed_url !== false) {
+        try {
+            $parsed_url = parse_url($where);
             // Target URL contains a hostname, validates that it matches the base GLPI URL
             if (array_key_exists('host', $parsed_url)) {
                 if (!str_starts_with($where, $CFG_GLPI['url_base'] . '/')) {
@@ -1506,6 +1575,8 @@ class Toolbox
             if (array_key_exists('path', $parsed_url) && $parsed_url['path'][0] === '/') {
                 return URL::isGLPIRelativeUrl($where) ? $CFG_GLPI["root_doc"] . $where : null;
             }
+        } catch (UrlException $e) {
+            //empty catch
         }
 
         // explode with limit 3 to preserve the last part of the url
@@ -1538,13 +1609,13 @@ class Toolbox
                                 && $item->getFromDB($data[1])
                                 && !Session::haveAccessToEntity($item->getEntityID())
                             ) {
-                                Session::changeActiveEntities($item->getEntityID(), 1);
+                                Session::changeActiveEntities($item->getEntityID(), true);
                             }
                             // force redirect to timeline when timeline is enabled and viewing
                             // Tasks or Followups
                             $forcetab = str_replace(['TicketFollowup$1', 'TicketTask$1', 'ITILFollowup$1'], 'Ticket$1', $forcetab);
 
-                            return Ticket::getFormURLWithID($data[1]) . "&$forcetab";
+                            return Ticket::getFormURLWithID((int) $data[1]) . "&$forcetab";
                         }
 
                         if ($item = getItemForItemtype($data[0])) {
@@ -1560,7 +1631,7 @@ class Toolbox
                         return $CFG_GLPI["root_doc"] . "/front/preference.php?$forcetab";
 
                     case "reservation":
-                        return Reservation::getFormURLWithID($data[1]) . "&$forcetab";
+                        return Reservation::getFormURLWithID((int) $data[1]) . "&$forcetab";
                 }
 
                 break;
@@ -1591,7 +1662,7 @@ class Toolbox
                                     && $item->getFromDB($data[1])
                                     && !Session::haveAccessToEntity($item->getEntityID())
                                 ) {
-                                    Session::changeActiveEntities($item->getEntityID(), 1);
+                                    Session::changeActiveEntities($item->getEntityID(), true);
                                 }
                                 // force redirect to timeline when timeline is enabled
                                 $forcetab = str_replace(['TicketFollowup$1', 'TicketTask$1', 'ITILFollowup$1'], 'Ticket$1', $forcetab);
@@ -1713,7 +1784,7 @@ class Toolbox
                     $tab['port'] = 995;
                 }
             }
-            if ($tab['type'] = 'imap') {
+            if ($tab['type'] == 'imap') {
                 if ($tab['ssl']) {
                     $tab['port'] = 993;
                 } else {
@@ -1817,14 +1888,14 @@ class Toolbox
             'imap' => [
                 //TRANS: IMAP mail server protocol
                 'label'    => __('IMAP'),
-                'protocol' => 'Laminas\Mail\Protocol\Imap',
-                'storage'  => 'Laminas\Mail\Storage\Imap',
+                'protocol' => Imap::class,
+                'storage'  => \Laminas\Mail\Storage\Imap::class,
             ],
             'pop'  => [
                 //TRANS: POP3 mail server protocol
                 'label'    => __('POP'),
-                'protocol' => 'Laminas\Mail\Protocol\Pop3',
-                'storage'  => 'Laminas\Mail\Storage\Pop3',
+                'protocol' => Pop3::class,
+                'storage'  => \Laminas\Mail\Storage\Pop3::class,
             ],
         ];
 
@@ -1875,7 +1946,7 @@ class Toolbox
      * @param string    $protocol_type
      * @param bool      $allow_plugins_protocols    Whether plugins protocol must be allowed.
      *
-     * @return null|\Glpi\Mail\Protocol\ProtocolInterface|\Laminas\Mail\Protocol\Imap|\Laminas\Mail\Protocol\Pop3
+     * @return null|ProtocolInterface|Imap|Pop3
      */
     public static function getMailServerProtocolInstance(string $protocol_type, bool $allow_plugins_protocols = true)
     {
@@ -1887,8 +1958,8 @@ class Toolbox
             } elseif (
                 class_exists($protocol)
                 && (is_a($protocol, ProtocolInterface::class, true)
-                 || is_a($protocol, \Laminas\Mail\Protocol\Imap::class, true)
-                 || is_a($protocol, \Laminas\Mail\Protocol\Pop3::class, true))
+                 || is_a($protocol, Imap::class, true)
+                 || is_a($protocol, Pop3::class, true))
             ) {
                 return new $protocol();
             } else {
@@ -2086,9 +2157,9 @@ class Toolbox
         }
 
         // For post install steps
-        $init_form_weight = round($number_of_steps * 0.1); // 10 % of the install process
-        $init_rules_weight = round($number_of_steps * 0.1); // 10 % of the install process
-        $generate_keys_weight = round($number_of_steps * 0.02); // 2 % of the install process
+        $init_form_weight = (int) round($number_of_steps * 0.1); // 10 % of the install process
+        $init_rules_weight = (int) round($number_of_steps * 0.1); // 10 % of the install process
+        $generate_keys_weight = (int) round($number_of_steps * 0.02); // 2 % of the install process
         $default_lang_weight = 1;
         $cron_config_weight = 1;
         $number_of_steps += $init_form_weight + $init_rules_weight + $generate_keys_weight + $default_lang_weight;
@@ -2124,14 +2195,14 @@ class Toolbox
                 if (false === $res) {
                     $msg = "Error binding params in table $table\n";
                     $msg .= print_r($row, true);
-                    throw new \RuntimeException($msg);
+                    throw new RuntimeException($msg);
                 }
                 $res = $stmt->execute();
                 if (false === $res) {
                     $msg = $stmt->error;
                     $msg .= "\nError execution statement in table $table\n";
                     $msg .= print_r($row, true);
-                    throw new \RuntimeException($msg);
+                    throw new RuntimeException($msg);
                 }
 
                 $progress_indicator?->advance();
@@ -2152,7 +2223,7 @@ class Toolbox
 
         $progress_indicator?->setProgressBarMessage(__('Generating security keys…'));
         // Make sure keys are generated automatically so OAuth will work when/if they choose to use it
-        \Glpi\OAuth\Server::generateKeys();
+        Server::generateKeys();
         $progress_indicator?->advance($generate_keys_weight);
         $progress_indicator?->addMessage(MessageType::Success, __('Security keys generated.'));
 
@@ -2341,7 +2412,7 @@ class Toolbox
         $string = trim($string, '-');
 
         if ($force_special_dash) {
-            $string = preg_replace('~[^-\w]+~', '-', $string);
+            $string = preg_replace('~[^\-\w]+~', '-', $string);
         }
 
         if ($string == '') {
@@ -2410,7 +2481,7 @@ class Toolbox
                     // Add only image files : try to detect mime type
                     if (
                         $document->getFromDB($id)
-                        && strpos($document->fields['mime'], 'image/') !== false
+                        && str_contains($document->fields['mime'], 'image/')
                     ) {
                         // append object reference in image link
                         $linked_object = null;
@@ -2423,9 +2494,11 @@ class Toolbox
                         } elseif ($item instanceof CommonDBTM) {
                             $linked_object = $item;
                         }
-                        $object_url_param = null !== $linked_object
-                        ? sprintf('&itemtype=%s&items_id=%s', $linked_object->getType(), $linked_object->fields['id'])
-                        : "";
+                        $object_url_param = sprintf(
+                            '&itemtype=%s&items_id=%s',
+                            $linked_object->getType(),
+                            $linked_object->fields['id']
+                        );
                         $img = "<img alt='" . $image['tag'] . "' src='" . $base_path .
                           "/front/document.send.php?docid=" . $id . $object_url_param . "'/>";
 
@@ -2440,17 +2513,18 @@ class Toolbox
                         $regex = '/<img[^>]+' . preg_quote($image['tag'], '/') . '[^<]+>/im';
                         preg_match_all($regex, $content_text, $matches);
                         foreach ($matches[0] as $match_img) {
-                            //retrieve dimensions
                             $width = $height = null;
+
                             $attributes = [];
                             preg_match_all('/(width|height)="([^"]*)"/i', $match_img, $attributes);
                             if (isset($attributes[1][0])) {
-                                ${$attributes[1][0]} = $attributes[2][0];
+                                $width = $attributes[2][0];
                             }
                             if (isset($attributes[1][1])) {
-                                ${$attributes[1][1]} = $attributes[2][1];
+                                $height = $attributes[2][1];
                             }
 
+                            // retrieve dimensions
                             if ($width == null || $height == null) {
                                 $path = GLPI_DOC_DIR . "/" . $image['filepath'];
                                 $img_infos  = getimagesize($path);
@@ -2620,7 +2694,12 @@ class Toolbox
         }
 
         // See if the string contents are valid JSON.
-        return null !== json_decode($json);
+        try {
+            json_decode($json);
+            return true;
+        } catch (JsonException $e) {
+            return false;
+        }
     }
 
     /**
@@ -2663,7 +2742,7 @@ class Toolbox
                 ];
                 break;
             default:
-                throw new \RuntimeException("Unknown type $type to get date formats.");
+                throw new RuntimeException("Unknown type $type to get date formats.");
         }
         return $formats;
     }
@@ -2812,16 +2891,26 @@ class Toolbox
             $i++;
         } while (file_exists($dest));
 
-        if (!is_dir(GLPI_PICTURE_DIR . '/' . $subdirectory) && !mkdir(GLPI_PICTURE_DIR . '/' . $subdirectory)) {
-            return false;
+        if (!is_dir(GLPI_PICTURE_DIR . '/' . $subdirectory)) {
+            try {
+                mkdir(GLPI_PICTURE_DIR . '/' . $subdirectory);
+            } catch (FilesystemException $e) {
+                return false;
+            }
         }
 
         if (!$keep_src) {
-            if (!rename($src, $dest)) {
+            try {
+                rename($src, $dest);
+            } catch (FilesystemException $e) {
                 return false;
             }
-        } elseif (!copy($src, $dest)) {
-            return false;
+        } else {
+            try {
+                copy($src, $dest);
+            } catch (FilesystemException $e) {
+                return false;
+            }
         }
 
         return substr($dest, strlen(GLPI_PICTURE_DIR . '/')); // Return dest relative to GLPI_PICTURE_DIR
@@ -2848,11 +2937,16 @@ class Toolbox
 
         $fullpath = realpath($fullpath);
         if (!str_starts_with($fullpath, realpath(GLPI_PICTURE_DIR))) {
-            // Prevent deletion of a file ouside pictures directory
+            // Prevent deletion of a file outside pictures directory
             return false;
         }
 
-        return @unlink($fullpath);
+        try {
+            @unlink($fullpath);
+            return true;
+        } catch (FilesystemException $e) {
+            return false;
+        }
     }
 
 
@@ -2916,7 +3010,7 @@ class Toolbox
             $suffix = "T";
         }
 
-        if (strpos($formatted, '.') === false) {
+        if (!str_contains($formatted, '.')) {
             $precision = 0;
         }
 
@@ -3078,10 +3172,10 @@ HTML;
      */
     public static function isAPIDeprecated(string $class): bool
     {
-        $deprecated = "Glpi\Api\Deprecated\DeprecatedInterface";
+        $deprecated = DeprecatedInterface::class;
 
         // Insert namespace if missing
-        if (strpos($class, "Glpi\Api\Deprecated") === false) {
+        if (!str_contains($class, "Glpi\Api\Deprecated")) {
             $class = "Glpi\Api\Deprecated\\$class";
         }
 
@@ -3316,7 +3410,7 @@ HTML;
         if (count($matches) >= 3 && isset($supported_sizes[strtolower($matches[2])])) {
             // Known format
             $size = (int) $matches[1];
-            $size *= pow(1024, $supported_sizes[strtolower($matches[2])]);
+            $size *= 1024 ** $supported_sizes[strtolower($matches[2])];
         }
         return $size;
     }

@@ -39,6 +39,8 @@ use Glpi\DBAL\QueryExpression;
 use Glpi\Features\AssignableItem;
 use Glpi\Toolbox\URL;
 
+use function Safe\preg_match;
+
 /**
  * External link class
  */
@@ -146,7 +148,7 @@ class Link extends CommonDBTM
 
     public function getLinkedItemtypes(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return array_column(iterator_to_array($DB->request([
             'SELECT' => ['itemtype'],
@@ -159,12 +161,12 @@ class Link extends CommonDBTM
      * Return tags completion for the monaco editor.
      *
      * @return array
-     * @phpstan-return array<int, {name: string, type: string}>
+     * @phpstan-return array<int, array{name: string, type: string}>
      */
     private function getTagCompletions(): array
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $DB, $CFG_GLPI;
@@ -210,15 +212,6 @@ class Link extends CommonDBTM
         return $completions;
     }
 
-    /**
-     * Print the link form
-     *
-     * @param integer $ID ID of the item
-     * @param array $options
-     *     - target filename : where to go when done.
-     *
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         TemplateRenderer::getInstance()->display('pages/setup/externallink.html.twig', [
@@ -226,6 +219,7 @@ class Link extends CommonDBTM
             'tag_options' => $this->getTagCompletions(),
             'params' => $options,
         ]);
+        return true;
     }
 
     public function rawSearchOptions()
@@ -296,7 +290,7 @@ class Link extends CommonDBTM
     private static function getIPAndMACForItem(CommonDBTM $item, $get_ip = false, $get_mac = false): array
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $DB;
 
@@ -435,7 +429,7 @@ class Link extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -662,7 +656,7 @@ TWIG, $buttons_params);
      * @param CommonDBTM $item The item
      * @param array{id: int, name: string, link: string, data: string, open_window: ?bool} $params
      **/
-    public static function getAllLinksFor($item, $params = [])
+    public static function getAllLinksFor($item, $params)
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
@@ -780,7 +774,7 @@ TWIG, $buttons_params);
 
     public static function getLinksDataForItem(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $restrict = self::getEntityRestrictForItem($item);
@@ -871,7 +865,7 @@ TWIG, $buttons_params);
 
     public function post_updateItem($history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::post_updateItem($history);

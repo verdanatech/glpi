@@ -54,6 +54,10 @@ class Item_Process extends CommonDBChild
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
+        if (!$item instanceof CommonDBTM) {
+            throw new RuntimeException("Only CommonDBTM items are supported");
+        }
+
         if ($item::canView()) {
             $nb = countElementsInTable(
                 self::getTable(),
@@ -85,7 +89,7 @@ class Item_Process extends CommonDBChild
 
     public static function showForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item->getType();
@@ -132,7 +136,7 @@ class Item_Process extends CommonDBChild
 
         $processes = [];
         foreach ($filtered_data as $process) {
-            $process['virtualmemory'] = $process['virtualmemory'] * 1024;
+            $process['virtualmemory'] *= 1024;
             $processes[$process['id']] = $process;
         }
 

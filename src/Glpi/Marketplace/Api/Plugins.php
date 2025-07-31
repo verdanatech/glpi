@@ -40,8 +40,14 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Message;
 use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+use Psr\SimpleCache\CacheInterface;
 use Session;
 use Toolbox;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\session_write_close;
 
 class Plugins
 {
@@ -85,7 +91,7 @@ class Plugins
      * @param array $options array of options for guzzle lib
      * @param string $method GET/POST, etc
      *
-     * @return \Psr\Http\Message\ResponseInterface|false
+     * @return ResponseInterface|false
      */
     private function request(
         string $endpoint = '',
@@ -190,7 +196,7 @@ class Plugins
         string $string_filter = "",
         string $sort = 'sort-alpha-asc'
     ) {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         $cache_key = self::getCacheKey('marketplace_all_plugins');
@@ -211,9 +217,7 @@ class Plugins
                 foreach ($plugins_colct as &$plugin) {
                     usort(
                         $plugin['versions'],
-                        function ($a, $b) {
-                            return version_compare($a['num'], $b['num']);
-                        }
+                        fn($a, $b) => version_compare($a['num'], $b['num'])
                     );
                 }
 
@@ -228,9 +232,7 @@ class Plugins
             // without having to purge the cache manually.
             foreach ($plugins_colct as &$plugin) {
                 if (!GLPI_MARKETPLACE_PRERELEASES) {
-                    $plugin['versions'] = array_filter($plugin['versions'], function ($version) {
-                        return !isset($version['stability']) || $version['stability'] === "stable";
-                    });
+                    $plugin['versions'] = array_filter($plugin['versions'], fn($version) => !isset($version['stability']) || $version['stability'] === "stable");
                 }
 
                 if (count($plugin['versions']) === 0) {
@@ -257,9 +259,7 @@ class Plugins
         }
 
         if (strlen($string_filter) > 0) {
-            $plugins_colct = array_filter($plugins_colct, function ($plugin) use ($string_filter) {
-                return strpos(strtolower(json_encode($plugin)), strtolower($string_filter)) !== false;
-            });
+            $plugins_colct = array_filter($plugins_colct, fn($plugin) => str_contains(strtolower(json_encode($plugin)), strtolower($string_filter)));
         }
 
         // manage sorting of collection
@@ -402,7 +402,7 @@ class Plugins
      */
     public function getPluginsForTag(string $tag = "", bool $force_refresh = false): array
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         $cache_key = self::getCacheKey("marketplace_tag_$tag");

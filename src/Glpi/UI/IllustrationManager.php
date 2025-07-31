@@ -37,6 +37,12 @@ namespace Glpi\UI;
 use Glpi\Application\View\TemplateRenderer;
 use RuntimeException;
 
+use function Safe\file_get_contents;
+use function Safe\json_decode;
+use function Safe\mkdir;
+use function Safe\realpath;
+use function Safe\rename;
+
 final class IllustrationManager
 {
     private string $icons_definition_file;
@@ -157,7 +163,13 @@ final class IllustrationManager
             fn($icon) => str_contains(
                 strtolower(_x("Icon", $icon['title'])),
                 strtolower($filter),
-            )
+            ) || !empty(array_filter(
+                $icon['tags'] ?? [],
+                fn($tag) => str_contains(
+                    strtolower(_x("Icon", $tag)),
+                    strtolower($filter)
+                ),
+            )),
         );
 
         $icons = array_slice(
@@ -180,18 +192,27 @@ final class IllustrationManager
         return $titles;
     }
 
+    public function getAllIconsTags(): array
+    {
+        $icons = $this->getIconsDefinitions();
+        $tags = [];
+        foreach ($icons as $icon) {
+            if (isset($icon['tags']) && is_array($icon['tags'])) {
+                $tags = array_merge($tags, $icon['tags']);
+            }
+        }
+
+        return array_unique($tags);
+    }
+
     public function saveCustomIllustration(string $id, string $path): void
     {
-        if (!rename($path, self::CUSTOM_ILLUSTRATION_DIR . "/$id")) {
-            throw new RuntimeException();
-        }
+        rename($path, self::CUSTOM_ILLUSTRATION_DIR . "/$id");
     }
 
     public function saveCustomScene(string $id, string $path): void
     {
-        if (!rename($path, self::CUSTOM_SCENES_DIR . "/$id")) {
-            throw new RuntimeException();
-        }
+        rename($path, self::CUSTOM_SCENES_DIR . "/$id");
     }
 
     public function getCustomIllustrationFile(string $id): ?string
@@ -228,9 +249,8 @@ final class IllustrationManager
 
     private function validateOrInitCustomContentDir(string $dir): void
     {
-        if (!file_exists($dir) && !mkdir($dir)) {
-            $message = "$dir does not exist and can't be created";
-            throw new RuntimeException($message);
+        if (!file_exists($dir)) {
+            mkdir($dir);
         }
     }
 
@@ -253,8 +273,9 @@ final class IllustrationManager
     {
         $twig = TemplateRenderer::getInstance();
         $size = $this->computeSize($size);
+        $url = !empty($icon_id) ? "/UI/Illustration/CustomIllustration/$icon_id" : null;
         return $twig->render('components/illustration/custom_icon.html.twig', [
-            'url'    => "/UI/Illustration/CustomIllustration/$icon_id",
+            'url'    => $url,
             'height' => $size,
             'width'  => $size,
         ]);
@@ -280,8 +301,9 @@ final class IllustrationManager
         ?int $width = null,
     ): string {
         $twig = TemplateRenderer::getInstance();
+        $url = !empty($icon_id) ? "/UI/Illustration/CustomScene/$icon_id" : null;
         return $twig->render('components/illustration/custom_icon.html.twig', [
-            'url'    => "/UI/Illustration/CustomScene/$icon_id",
+            'url'    => $url,
             'height' => $this->computeSize($height),
             'width'  => $this->computeSize($width),
         ]);
@@ -291,9 +313,6 @@ final class IllustrationManager
     {
         if ($this->icons_definitions === null) {
             $json = file_get_contents($this->icons_definition_file);
-            if ($json === false) {
-                throw new RuntimeException();
-            }
             $this->icons_definitions = json_decode($json, associative: true, flags: JSON_THROW_ON_ERROR);
         }
 

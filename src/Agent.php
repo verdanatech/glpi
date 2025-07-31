@@ -33,14 +33,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Error\ErrorHandler;
 use Glpi\Inventory\Conf;
 use Glpi\Inventory\Inventory;
 use Glpi\Plugin\Hooks;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Psr7\Response;
+use Safe\DateTime;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  * @since 10.0.0
@@ -258,7 +264,7 @@ class Agent extends CommonDBTM
         switch ($field) {
             case 'items_id':
                 $itemtype = $values[str_replace('items_id', 'itemtype', $field)] ?? null;
-                if ($itemtype !== null && class_exists($itemtype)) {
+                if ($itemtype !== null && class_exists($itemtype) && is_a($itemtype, CommonDBTM::class, true)) {
                     if ($values[$field] > 0) {
                         $item = new $itemtype();
                         $item->getFromDB($values[$field]);
@@ -549,7 +555,7 @@ class Agent extends CommonDBTM
     public function getLinkedItem(): CommonDBTM
     {
         $itemtype = $this->fields['itemtype'];
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         $item->getFromDB($this->fields['items_id']);
         return $item;
     }
@@ -561,7 +567,7 @@ class Agent extends CommonDBTM
      */
     public function guessAddresses(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $addresses = [];
@@ -698,9 +704,6 @@ class Agent extends CommonDBTM
      */
     public function requestAgent($endpoint): Response
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
         if (self::$found_address !== false) {
             $addresses = [self::$found_address];
         } else {
@@ -721,7 +724,7 @@ class Agent extends CommonDBTM
                 $response = $httpClient->request('GET', $endpoint, []);
                 self::$found_address = $address;
                 break;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 // many addresses will be incorrect
             }
         }
@@ -731,7 +734,7 @@ class Agent extends CommonDBTM
             throw $exception;
         }
 
-        return $response;
+        return $response; // @phpstan-ignore return.type
     }
 
     /**
@@ -745,11 +748,11 @@ class Agent extends CommonDBTM
         try {
             $response = $this->requestAgent('status');
             return $this->handleAgentResponse($response, self::ACTION_STATUS);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             ErrorHandler::logCaughtException($e);
             // not authorized
             return ['answer' => __('Not allowed')];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // no response
             return ['answer' => __('Unknown')];
         }
@@ -766,11 +769,11 @@ class Agent extends CommonDBTM
         try {
             $this->requestAgent('now');
             return $this->handleAgentResponse(new Response(), self::ACTION_INVENTORY);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             ErrorHandler::logCaughtException($e);
             // not authorized
             return ['answer' => __('Not allowed')];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // no response
             return ['answer' => __('Unknown')];
         }
@@ -802,7 +805,7 @@ class Agent extends CommonDBTM
                 );
                 break;
             default:
-                throw new \RuntimeException(sprintf('Unknown request type %s', $request));
+                throw new RuntimeException(sprintf('Unknown request type %s', $request));
         }
 
         return $data;
@@ -826,12 +829,12 @@ class Agent extends CommonDBTM
     public static function cronCleanoldagents($task = null)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $PLUGIN_HOOKS
          */
         global $DB, $PLUGIN_HOOKS;
 
-        $config = \Config::getConfigurationValues('inventory');
+        $config = Config::getConfigurationValues('inventory');
 
         $retention_time = $config['stale_agents_delay'] ?? 0;
         if ($retention_time <= 0) {

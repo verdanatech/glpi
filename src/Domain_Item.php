@@ -131,8 +131,8 @@ class Domain_Item extends CommonDBRelation
     public function getFromDBbyDomainsAndItem($domains_id, $items_id, $itemtype)
     {
         $criteria = ['domains_id' => $domains_id];
-        $item = new $itemtype();
-        if ($item instanceof DomainRelation) {
+
+        if (is_a($itemtype, DomainRelation::class, true)) {
             $criteria += ['domainrelations_id' => $items_id];
         } else {
             $criteria += [
@@ -170,7 +170,7 @@ class Domain_Item extends CommonDBRelation
      **/
     public static function showForDomain(Domain $domain)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $instID = $domain->fields['id'];
@@ -351,7 +351,7 @@ TWIG, $twig_params);
      */
     public static function getForItem(CommonDBTM $item): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $criteria = [
@@ -438,7 +438,7 @@ TWIG, $twig_params);
      */
     public static function showForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $item->getField('id');
@@ -473,7 +473,6 @@ TWIG, $twig_params);
             !($item instanceof DomainRelation)
             && $canedit
             && $withtemplate < 2
-            && Session::haveRight('domain', READ)
         ) {
             // Restrict entity for knowbase
             $entities = "";
@@ -572,7 +571,7 @@ TWIG, $twig_params);
             $entry_groups = [];
             foreach ($groups as $group) {
                 if (!isset($group_names[$group])) {
-                    $group_names[$group] = Dropdown::getDropdownName(table: "glpi_groups", id: $group, default: '');
+                    $group_names[$group] = Dropdown::getDropdownName(table: "glpi_groups", id: (int) $group, default: '');
                 }
                 $entry_groups[] = $group_names[$group];
             }

@@ -42,7 +42,7 @@ use Glpi\FuzzyMatcher\FuzzyMatcher;
 use Glpi\FuzzyMatcher\PartialMatchStrategy;
 use Override;
 
-/** @implements LeafProviderInterface<\Glpi\Form\Form> */
+/** @implements LeafProviderInterface<Form> */
 final class FormProvider implements LeafProviderInterface
 {
     private FormAccessControlManager $access_manager;
@@ -69,7 +69,8 @@ final class FormProvider implements LeafProviderInterface
 
         $forms = [];
         $raw_forms = (new Form())->find([
-            'is_active' => 1,
+            'is_active'           => 1,
+            'is_deleted'          => 0,
             'forms_categories_id' => $category ? $category->getID() : 0,
         ] + $entity_restriction, ['name']);
 
@@ -82,7 +83,8 @@ final class FormProvider implements LeafProviderInterface
             $name = $form->fields['name'] ?? "";
             $description = $form->fields['description'] ?? "";
             if (
-                !$this->matcher->match($name, $filter)
+                !$form->fields['is_pinned'] // Pinned forms are not filtered
+                && !$this->matcher->match($name, $filter)
                 && !$this->matcher->match($description, $filter)
             ) {
                 continue;

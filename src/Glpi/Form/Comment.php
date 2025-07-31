@@ -40,13 +40,15 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\Condition\ConditionableVisibilityInterface;
 use Glpi\Form\Condition\ConditionableVisibilityTrait;
-use Glpi\ItemTranslation\Context\TranslationHandler;
 use Glpi\Form\Condition\ConditionHandler\VisibilityConditionHandler;
 use Glpi\Form\Condition\UsedAsCriteriaInterface;
+use Glpi\ItemTranslation\Context\TranslationHandler;
 use Log;
 use Override;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
+
+use function Safe\json_encode;
 
 /**
  * Comment of a given helpdesk form's section
@@ -162,6 +164,7 @@ final class Comment extends CommonDBChild implements
                 key: self::TRANSLATION_KEY_DESCRIPTION,
                 name: __('Comment description'),
                 value: $this->fields['description'],
+                is_rich_text: true,
             );
         }
 
@@ -204,12 +207,7 @@ final class Comment extends CommonDBChild implements
             throw new RuntimeException("Can't load parent section");
         }
 
-        $form = $section->getItem();
-        if (!($form instanceof Form)) {
-            throw new RuntimeException("Can't load parent form");
-        }
-
-        return $form;
+        return $section->getForm();
     }
 
     /**

@@ -59,7 +59,7 @@ class OlaLevel_Ticket extends CommonDBTM
      **/
     public function getFromDBForTicket($ID, $olaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -95,8 +95,8 @@ class OlaLevel_Ticket extends CommonDBTM
     /**
      * Delete entries for a ticket
      *
-     * @param integer $tickets_id Ticket ID
-     * @param SLM::TTR|SLM::TTO $type Type of OLA
+     * @param int               $tickets_id Ticket ID
+     * @param SLM::TTR|SLM::TTO $olaType    Type of OLA
      *
      * @since 9.1 2 parameters mandatory
      *
@@ -104,7 +104,7 @@ class OlaLevel_Ticket extends CommonDBTM
      **/
     public function deleteForTicket($tickets_id, $olaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -162,11 +162,11 @@ class OlaLevel_Ticket extends CommonDBTM
      **/
     public static function cronOlaTicket(CronTask $task)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tot = 0;
-        $now = \Session::getCurrentTime();
+        $now = Session::getCurrentTime();
 
         $iterator = $DB->request([
             'SELECT'    => [
@@ -268,7 +268,7 @@ class OlaLevel_Ticket extends CommonDBTM
                         ];
 
                         if (
-                            $olalevel->getRuleWithCriteriasAndActions($data['olalevels_id'], 1, 1)
+                            $olalevel->getRuleWithCriteriasAndActions($data['olalevels_id'], true, true)
                             && $ola->getFromDB($ticket->fields[$olaField])
                         ) {
                             $doit = true;
@@ -320,10 +320,10 @@ class OlaLevel_Ticket extends CommonDBTM
      */
     public static function replayForTicket($tickets_id, $olaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $now = \Session::getCurrentTime();
+        $now = Session::getCurrentTime();
         $criteria = [
             'SELECT'    => 'glpi_olalevels_tickets.*',
             'FROM'      => 'glpi_olalevels_tickets',

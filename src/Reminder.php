@@ -32,14 +32,17 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\CalDAV\Contracts\CalDAVCompatibleItemInterface;
 use Glpi\CalDAV\Traits\VobjectConverterTrait;
 use Glpi\Features\Clonable;
+use Glpi\Features\PlanningEvent;
 use Glpi\RichText\RichText;
+use Ramsey\Uuid\Uuid;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VTodo;
+
+use function Safe\preg_replace;
 
 /**
  * Reminder Class
@@ -48,7 +51,7 @@ class Reminder extends CommonDBVisible implements
     CalDAVCompatibleItemInterface,
     ExtraVisibilityCriteria
 {
-    use Glpi\Features\PlanningEvent {
+    use PlanningEvent {
         post_getEmpty as trait_post_getEmpty;
     }
     use VobjectConverterTrait;
@@ -152,7 +155,7 @@ class Reminder extends CommonDBVisible implements
     public function prepareInputForClone($input)
     {
         // regenerate uuid
-        $input['uuid'] = \Ramsey\Uuid\Uuid::uuid4();
+        $input['uuid'] = Uuid::uuid4();
         return $input;
     }
 
@@ -189,7 +192,7 @@ class Reminder extends CommonDBVisible implements
         unset($criteria['LEFT JOIN']);
         $criteria['FROM'] = self::getTable();
 
-        $it = new \DBmysqlIterator(null);
+        $it = new DBmysqlIterator(null);
         $it->buildQuery($criteria);
         $sql = $it->getSql();
         $sql = preg_replace('/.*WHERE /', '', $sql);
@@ -256,7 +259,7 @@ class Reminder extends CommonDBVisible implements
                 true
             );
             if (count($restrict)) {
-                $or = $or + $restrict;
+                $or += $restrict;
             }
             $where['OR'][] = [
                 'glpi_groups_reminders.groups_id' => count($_SESSION["glpigroups"])
@@ -287,7 +290,7 @@ class Reminder extends CommonDBVisible implements
                 true
             );
             if (count($restrict)) {
-                $or = $or + $restrict;
+                $or += $restrict;
             }
             $where['OR'][] = [
                 'glpi_profiles_reminders.profiles_id' => $_SESSION["glpiactiveprofile"]['id'],
@@ -310,7 +313,7 @@ class Reminder extends CommonDBVisible implements
         if (isset($_SESSION["glpiactiveentities"]) && count($_SESSION["glpiactiveentities"])) {
             $restrict = getEntitiesRestrictCriteria('glpi_entities_reminders', '', '', true, true);
             if (count($restrict)) {
-                $where['OR'] = $where['OR'] + $restrict;
+                $where['OR'] += $restrict;
             }
         }
 
@@ -498,10 +501,8 @@ class Reminder extends CommonDBVisible implements
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch (get_class($item)) {
-            case Reminder::class:
-                $item->showVisibility();
-                return true;
+        if ($item instanceof self) {
+            return $item->showVisibility();
         }
         return false;
     }
@@ -686,13 +687,13 @@ class Reminder extends CommonDBVisible implements
      * @param boolean $display if false return html
      *
      * @return string|void
-     * @phpstan-return $display ? void : string
+     * @phpstan-return ($display is true ? void : string)
      **/
     public static function showListForCentral(bool $personal = true, bool $display = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -869,11 +870,11 @@ class Reminder extends CommonDBVisible implements
      *
      * @param array $query
      *
-     * @return \Sabre\VObject\Component\VCalendar[]
+     * @return VCalendar[]
      */
     private static function getItemsAsVCalendars(array $query)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $reminder_iterator = $DB->request($query);
@@ -918,7 +919,7 @@ class Reminder extends CommonDBVisible implements
 
         if ($vcomp instanceof VTodo && !array_key_exists('state', $input)) {
             // Force default state to TODO or reminder will be considered as VEVENT
-            $input['state'] = \Planning::TODO;
+            $input['state'] = Planning::TODO;
         }
 
         return $input;

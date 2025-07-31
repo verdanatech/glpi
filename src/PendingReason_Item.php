@@ -35,6 +35,7 @@
 
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\DBAL\QueryUnion;
+use Safe\DateTime;
 
 class PendingReason_Item extends CommonDBRelation
 {
@@ -197,7 +198,7 @@ class PendingReason_Item extends CommonDBRelation
             PendingReason::getById($this->fields['pendingreasons_id'])->fields['calendars_id']
         );
 
-        if ($calendar) {
+        if ($calendar instanceof Calendar) {
             return $calendar->computeEndDate(
                 $this->fields['last_bump_date'],
                 $this->fields['followup_frequency'],
@@ -233,7 +234,7 @@ class PendingReason_Item extends CommonDBRelation
             PendingReason::getById($this->fields['pendingreasons_id'])->fields['calendars_id']
         );
 
-        if ($calendar) {
+        if ($calendar instanceof Calendar) {
             return $calendar->computeEndDate(
                 $this->fields['last_bump_date'],
                 $this->fields['followup_frequency'] * $remaining_bumps,
@@ -258,7 +259,7 @@ class PendingReason_Item extends CommonDBRelation
      */
     public static function getLastPendingTimelineItemDataForItem(CommonITILObject $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $task_class = $item::getTaskClass();
@@ -336,7 +337,7 @@ class PendingReason_Item extends CommonDBRelation
      */
     public static function isLastTimelineItem(CommonDBTM $timeline_item): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($timeline_item instanceof ITILFollowup) {
@@ -499,7 +500,8 @@ class PendingReason_Item extends CommonDBRelation
         if (self::getForItem($timeline_item)) {
             // Event was already marked as pending
 
-            if ($timeline_item->input['pending'] ?? 0) {
+            $is_pending = $timeline_item->input['pending'] ?? 0;
+            if ($is_pending) {
                 // Still pending, check for update
                 $pending_updates = [];
                 if (isset($timeline_item->input['pendingreasons_id'])) {
@@ -523,7 +525,7 @@ class PendingReason_Item extends CommonDBRelation
                         self::updateForItem($timeline_item->input['_job'], $pending_updates);
                     }
                 }
-            } elseif (!$timeline_item->input['pending'] ?? 1) {
+            } elseif (!$is_pending) {
                 // Change status of parent if needed
                 if ($timeline_item->input["_job"]->fields['status'] == CommonITILObject::WAITING) {
                     // get previous stored status for parent
@@ -539,7 +541,7 @@ class PendingReason_Item extends CommonDBRelation
         } else {
             // Not pending yet; did it change ?
             if (
-                $timeline_item->input['pending'] ?? 0
+                ($timeline_item->input['pending'] ?? 0)
                 && isset($timeline_item->input['pendingreasons_id'])
                 && $timeline_item->input['pendingreasons_id'] > 0
             ) {

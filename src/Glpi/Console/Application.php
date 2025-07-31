@@ -39,6 +39,7 @@ use DBmysql;
 use Glpi\Application\Environment;
 use Glpi\Console\Command\ConfigurationCommandInterface;
 use Glpi\Console\Command\GlpiCommandInterface;
+use Glpi\Console\Exception\EarlyExitException;
 use Glpi\Error\ErrorDisplayHandler\ConsoleErrorDisplayHandler;
 use Glpi\Kernel\Kernel;
 use Glpi\System\Requirement\RequirementInterface;
@@ -59,6 +60,8 @@ use Symfony\Component\HttpKernel\KernelInterface;
 use Toolbox;
 use Update;
 
+use function Safe\preg_replace;
+
 class Application extends BaseApplication
 {
     /**
@@ -76,11 +79,18 @@ class Application extends BaseApplication
     public const ERROR_CONFIG_WRITE_ACCESS_DENIED = 129;
 
     /**
+     * Error code returned when DB is not available.
+     *
+     * @var integer
+     */
+    public const ERROR_DB_UNAVAILABLE = 130;
+
+    /**
      * Error code returned when DB is not up-to-date.
      *
      * @var integer
      */
-    public const ERROR_DB_OUTDATED = 129;
+    public const ERROR_DB_OUTDATED = 131;
 
     /**
      * Pointer to $CFG_GLPI.
@@ -98,7 +108,7 @@ class Application extends BaseApplication
     public function __construct(private Kernel $kernel)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $DB, $CFG_GLPI;
@@ -219,7 +229,7 @@ class Application extends BaseApplication
         // Trigger error on invalid lang. This is not done before as error handler would not be set.
         $lang = $input->getParameterOption('--lang', null, true);
         if (null !== $lang && !array_key_exists($lang, $CFG_GLPI['languages'])) {
-            throw new \Symfony\Component\Console\Exception\RuntimeException(
+            throw new RuntimeException(
                 sprintf(__('Invalid "--lang" option value "%s".'), $lang)
             );
         }
@@ -313,7 +323,7 @@ class Application extends BaseApplication
 
         try {
             $result = parent::doRunCommand($command, $input, $output);
-        } catch (\Glpi\Console\Exception\EarlyExitException $e) {
+        } catch (EarlyExitException $e) {
             $result = $e->getCode();
             $output->writeln($e->getMessage(), OutputInterface::VERBOSITY_QUIET);
         }
@@ -453,9 +463,7 @@ class Application extends BaseApplication
         }
 
         $config_files_to_update = array_map(
-            function ($path) {
-                return GLPI_CONFIG_DIR . DIRECTORY_SEPARATOR . $path;
-            },
+            fn($path) => GLPI_CONFIG_DIR . DIRECTORY_SEPARATOR . $path,
             $command->getConfigurationFilesToUpdate($input)
         );
         if (!Filesystem::canWriteFiles($config_files_to_update)) {

@@ -88,21 +88,18 @@ abstract class ITILTemplateField extends CommonDBChild
 
     protected function computeFriendlyName()
     {
-        $tt_class = static::$itemtype;
-        $tt     = new $tt_class();
+        $tt     = getItemForItemtype(static::$itemtype);
         $fields = $tt->getAllowedFieldsNames(true);
-
-        if (isset($fields[$this->fields["num"]])) {
-            return $fields[$this->fields["num"]];
-        }
-        return '';
+        return $fields[$this->fields["num"]] ?? '';
     }
 
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        static::showForITILTemplate($item, $withtemplate);
-        return true;
+        if ($item instanceof ITILTemplate) {
+            return static::showForITILTemplate($item, $withtemplate);
+        }
+        return false;
     }
 
 
@@ -124,12 +121,12 @@ abstract class ITILTemplateField extends CommonDBChild
      * @param ITILTemplate $tt           ITIL Template
      * @param integer      $withtemplate Template or basic item (default 0)
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForITILTemplate(ITILTemplate $tt, $withtemplate = 0)
+    public static function showForITILTemplate(ITILTemplate $tt, $withtemplate = 0): bool
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $DB, $CFG_GLPI;
@@ -147,9 +144,8 @@ abstract class ITILTemplateField extends CommonDBChild
             'comments'       => true,
             'html'           => true,
         ];
-        $itil_class    = static::$itiltype;
-        $searchOption  = SearchOption::getOptionsForItemtype($itil_class);
-        $itil_object   = new $itil_class();
+        $itil_object   = getItemForItemtype(static::$itiltype);
+        $searchOption  = SearchOption::getOptionsForItemtype($itil_object::class);
         $rand = mt_rand();
 
         $crtiteria = [
@@ -246,11 +242,17 @@ abstract class ITILTemplateField extends CommonDBChild
                 'extra_form_html' => $extra_form_html,
                 'rand' => $rand,
                 'show_submit' => !is_subclass_of(static::class, ITILTemplatePredefinedField::class),
+                'task_order_label' => is_subclass_of(static::class, ITILTemplatePredefinedField::class)
+                    ? __('Predefined task templates will be added according to their creation order')
+                    : null,
             ];
             echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
                 {% import 'components/form/fields_macros.html.twig' as fields %}
                 {% import 'components/form/basic_inputs_macros.html.twig' as inputs %}
                 <div>
+                    {% if task_order_label is not null %}
+                        <div class="alert alert-info">{{ task_order_label }}</div>
+                    {% endif %}
                     <form name="itiltemplatehidden_form{{ rand }}" method="post" action="{{ form_url }}" data-submit-once>
                         {{ inputs.hidden('_glpi_csrf_token', csrf_token()) }}
                         {{ inputs.hidden(items_id_field, id) }}
@@ -293,6 +295,8 @@ TWIG, $twig_params);
                 'container'     => 'mass' . static::class . $rand,
             ],
         ]);
+
+        return true;
     }
 
 

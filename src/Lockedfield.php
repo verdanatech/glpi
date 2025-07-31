@@ -34,6 +34,7 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Features\AssignableItem;
 use Glpi\Inventory\Inventory;
 use Glpi\Search\SearchOption;
 
@@ -108,7 +109,7 @@ class Lockedfield extends CommonDBTM
         return false;
     }
 
-    public static function getPostFormAction(string $form_action): ?string
+    public static function getPostFormAction(string $form_action, bool $action_success): ?string
     {
         // Always return to the locked fields list page
         return 'list';
@@ -124,7 +125,9 @@ class Lockedfield extends CommonDBTM
      */
     private function canAccessItemEntity(string $itemtype, int $items_id): bool
     {
-        $item = new $itemtype();
+        if (!($item = getItemForItemtype($itemtype))) {
+            return false;
+        }
         if (
             $item->getFromDB($items_id) //not a global lock
             && $item->isEntityAssign()
@@ -241,7 +244,7 @@ class Lockedfield extends CommonDBTM
      */
     final public function getFullLockedFields($itemtype, $items_id): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -274,7 +277,7 @@ class Lockedfield extends CommonDBTM
      */
     public function getLocks($itemtype, $items_id, bool $fields_only = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -308,7 +311,7 @@ class Lockedfield extends CommonDBTM
      */
     public function itemDeleted()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return $DB->delete(
             $this->getTable(),
@@ -326,7 +329,7 @@ class Lockedfield extends CommonDBTM
      */
     public function setLastValue($itemtype, $items_id, $field, $value)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return $DB->update(
             $this->getTable(),
@@ -352,7 +355,7 @@ class Lockedfield extends CommonDBTM
                 if (isset($values['items_id']) && !$values['items_id']) {
                     return '-';
                 }
-                if (isset($values['itemtype'])) {
+                if (isset($values['itemtype']) && is_a($values['itemtype'], CommonDBTM::class, true)) {
                     $itemtype = $values['itemtype'];
                     $item = new $itemtype();
                     $item->getFromDB($values['items_id']);
@@ -402,6 +405,12 @@ class Lockedfield extends CommonDBTM
         return true;
     }
 
+    public function getFormFields(): array
+    {
+        $fields = parent::getFormFields();
+        return array_filter($fields, static fn($field) => $field !== 'is_global');
+    }
+
 
     /**
      * List of itemtypes/fields that can be locked globally
@@ -412,7 +421,7 @@ class Lockedfield extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -458,7 +467,9 @@ class Lockedfield extends CommonDBTM
             $fields[] = strtolower($itemtype) . 'types_id'; //type relation field
 
             foreach ($fields as $field) {
-                if ($DB->fieldExists($itemtype::getTable(), $field) && !isset($lockeds[$itemtype][$field])) {
+                $field_lockable = $DB->fieldExists($itemtype::getTable(), $field)
+                    || (in_array($field, ['groups_id', 'groups_id_tech'], true) && Toolbox::hasTrait($itemtype, AssignableItem::class));
+                if ($field_lockable && !isset($lockeds[$itemtype][$field])) {
                     $name = sprintf(
                         '%1$s - %2$s',
                         $itemtype,
@@ -479,7 +490,7 @@ class Lockedfield extends CommonDBTM
                     if ($field_name === $field) {
                         //name not found :(
                         $table = getTableNameForForeignKeyField($field);
-                        if ($table !== '' && $table !== 'UNKNOWN') {
+                        if ($table !== '') {
                             $type = getItemTypeForTable($table);
                             $field_name = $type::getTypeName(1);
                         }

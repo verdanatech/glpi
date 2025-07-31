@@ -36,9 +36,9 @@
 namespace Glpi\Form\QuestionType;
 
 use Glpi\DBAL\JsonFieldInterface;
+use Glpi\Form\Condition\UsedAsCriteriaInterface;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
-use Glpi\Form\Condition\UsedAsCriteriaInterface;
 use Glpi\Form\Question;
 
 /**
@@ -116,6 +116,16 @@ interface QuestionTypeInterface extends UsedAsCriteriaInterface
      * @return string
      */
     public function renderAdministrationOptionsTemplate(?Question $question): string;
+
+    /**
+     * Render the advanced configuration template for the given question.
+     * This template is used on the form editor page.
+     *
+     * @param Question|null $question Given question's data. May be null for a new question.
+     *
+     * @return null|string May return null if no advanced configuration is needed.
+     */
+    public function renderAdvancedConfigurationTemplate(?Question $question): ?string;
 
     /**
      * Render the end up user template for a given question.

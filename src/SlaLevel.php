@@ -47,7 +47,7 @@ class SlaLevel extends LevelAgreementLevel
 
     public static function getTable($classname = null)
     {
-        return CommonDBTM::getTable(__CLASS__);
+        return CommonDBTM::getTable(self::class);
     }
 
     public static function getSectorizedDetails(): array
@@ -64,9 +64,10 @@ class SlaLevel extends LevelAgreementLevel
         $slt->deleteByCriteria([$this->rules_id_field => $this->fields['id']]);
     }
 
-    public function showForParent(SLA $sla)
+    #[Override]
+    public function showForParent(LevelAgreement $la)
     {
-        $this->showForLA($sla);
+        $this->showForLA($la);
     }
 
     public function getForbiddenStandardMassiveAction()
@@ -99,7 +100,7 @@ class SlaLevel extends LevelAgreementLevel
      **/
     public static function getFirstSlaLevel($slas_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -129,7 +130,7 @@ class SlaLevel extends LevelAgreementLevel
      **/
     public static function getNextSlaLevel($slas_id, $slalevels_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

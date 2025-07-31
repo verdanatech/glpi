@@ -36,18 +36,22 @@ namespace Glpi\Kernel\Listener\RequestListener;
 
 use Glpi\Controller\LegacyFileLoadController;
 use Glpi\Exception\Http\NotFoundHttpException;
-use Glpi\Http\LegacyRouterTrait;
+use Glpi\Http\RequestRouterTrait;
 use Glpi\Kernel\KernelListenerTrait;
 use Glpi\Kernel\ListenersPriority;
 use Plugin;
+use Safe\Exceptions\DirException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
+use function Safe\chdir;
+use function Safe\preg_match;
+
 final class LegacyRouterListener implements EventSubscriberInterface
 {
-    use LegacyRouterTrait;
+    use RequestRouterTrait;
     use KernelListenerTrait;
 
     public function __construct(
@@ -75,7 +79,7 @@ final class LegacyRouterListener implements EventSubscriberInterface
             return;
         }
 
-        [$uri_prefix, $path] = $this->extractPathAndPrefix($request);
+        $path = $this->normalizePath($request);
 
         $target_file = $this->getTargetFile($path);
 
@@ -99,8 +103,12 @@ final class LegacyRouterListener implements EventSubscriberInterface
         }
 
         // Ensure `getcwd()` and inclusion path is based on requested file FS location.
-        // use `@` to silence errors on unit tests (`chdir` does not work on streamed mocked dir)
-        @chdir(dirname($target_file));
+        try {
+            // use `@` to silence errors on unit tests (`chdir` does not work on streamed mocked dir)
+            @chdir(dirname($target_file));
+        } catch (DirException $e) {
+            //no error
+        }
 
         // Setting the `_controller` attribute will force Symfony to consider that routing was resolved already.
         // @see `\Symfony\Component\HttpKernel\EventListener\RouterListener::onKernelRequest()`

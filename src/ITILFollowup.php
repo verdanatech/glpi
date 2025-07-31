@@ -32,17 +32,17 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QuerySubQuery;
+use Glpi\Features\ParentStatus;
 
 /**
  * @since 9.4.0
  */
 class ITILFollowup extends CommonDBChild
 {
-    use Glpi\Features\ParentStatus;
+    use ParentStatus;
     use ITILSubItemRights;
 
     // From CommonDBTM
@@ -98,7 +98,7 @@ class ITILFollowup extends CommonDBChild
             $item = $this->item;
         } else {
             $itemtype = $this->getItilObjectItemType();
-            $item     = new $itemtype();
+            $item     = getItemForItemtype($itemtype);
         }
         if (!$item->can($this->getField($item->getForeignKeyField()), READ)) {
             return false;
@@ -156,7 +156,7 @@ class ITILFollowup extends CommonDBChild
         if ($this->isParentAlreadyLoaded()) {
             $itilobject = $this->item;
         } else {
-            $itilobject = new $this->fields['itemtype']();
+            $itilobject = getItemForItemtype($this->fields['itemtype']);
         }
         if (!$itilobject->can($this->getField('items_id'), READ)) {
             return false;
@@ -193,7 +193,7 @@ class ITILFollowup extends CommonDBChild
         if ($this->isParentAlreadyLoaded()) {
             $itilobject = $this->item;
         } else {
-            $itilobject = new $this->fields['itemtype']();
+            $itilobject = getItemForItemtype($this->fields['itemtype']);
         }
 
         if (
@@ -213,7 +213,7 @@ class ITILFollowup extends CommonDBChild
         if ($this->isParentAlreadyLoaded()) {
             $itilobject = $this->item;
         } else {
-            $itilobject = new $this->fields['itemtype']();
+            $itilobject = getItemForItemtype($this->fields['itemtype']);
         }
         if (!$itilobject->can($this->getField('items_id'), READ)) {
             return false;
@@ -240,7 +240,7 @@ class ITILFollowup extends CommonDBChild
         if ($this->isParentAlreadyLoaded()) {
             $itilobject = $this->item;
         } else {
-            $itilobject = new $this->fields['itemtype']();
+            $itilobject = getItemForItemtype($this->fields['itemtype']);
         }
         if (!$itilobject->can($this->getField('items_id'), READ)) {
             return false;
@@ -351,7 +351,7 @@ class ITILFollowup extends CommonDBChild
             $donotif = false;
         }
 
-        $job = new $this->fields['itemtype']();
+        $job = getItemForItemtype($this->fields['itemtype']);
         $job->getFromDB($this->fields[self::$items_id]);
         $job->updateDateMod($this->fields[self::$items_id]);
 
@@ -381,14 +381,19 @@ class ITILFollowup extends CommonDBChild
 
     public function prepareInputForAdd($input)
     {
+        $parent_item = isset($input['itemtype']) ? getItemForItemtype($input['itemtype']) : null;
+        if (
+            $parent_item === null
+            || !array_key_exists('items_id', $input)
+            || $parent_item->getFromDB((int) $input['items_id']) === false
+        ) {
+            return false;
+        }
+
         //Handle template
         if (isset($input['_itilfollowuptemplates_id'])) {
             $template = new ITILFollowupTemplate();
-            $parent_item = new $input['itemtype']();
-            if (
-                !$template->getFromDB($input['_itilfollowuptemplates_id'])
-                || !$parent_item->getFromDB($input['items_id'])
-            ) {
+            if (!$template->getFromDB($input['_itilfollowuptemplates_id'])) {
                 return false;
             }
             $input = array_replace(
@@ -412,8 +417,6 @@ class ITILFollowup extends CommonDBChild
             }
         }
 
-        $input["_job"] = new $input['itemtype']();
-
         if (
             empty($input['content'])
             && !isset($input['add_close'])
@@ -426,9 +429,8 @@ class ITILFollowup extends CommonDBChild
             );
             return false;
         }
-        if (!$input["_job"]->getFromDB($input["items_id"])) {
-            return false;
-        }
+
+        $input["_job"] = $parent_item;
 
         $input['_close'] = 0;
 
@@ -497,7 +499,7 @@ class ITILFollowup extends CommonDBChild
 
     public function prepareInputForUpdate($input)
     {
-        if (!isset($this->fields['itemtype'])) {
+        if (!isset($this->fields['itemtype']) || !is_a($this->fields['itemtype'], CommonDBTM::class, true)) {
             return false;
         }
         $input["_job"] = new $this->fields['itemtype']();
@@ -522,7 +524,7 @@ class ITILFollowup extends CommonDBChild
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $job      = new $this->fields['itemtype']();
+        $job      = getItemForItemtype($this->fields['itemtype']);
 
         if (!$job->getFromDB($this->fields['items_id'])) {
             return;
@@ -628,10 +630,11 @@ class ITILFollowup extends CommonDBChild
     public function post_getFromDB()
     {
         // Bandaid to avoid loading parent item if not needed
-        // TODO: replace by proper lazy loading in GLPI 11.0
+        // TODO: replace by proper lazy loading
         if (!$this->isParentAlreadyLoaded()) {
-            $this->item = new $this->fields['itemtype']();
-            $this->item->getFromDB($this->fields['items_id']);
+            if ($this->item = getItemForItemtype($this->fields['itemtype'])) {
+                $this->item->getFromDB($this->fields['items_id']);
+            }
         }
     }
 
@@ -643,7 +646,7 @@ class ITILFollowup extends CommonDBChild
             if ($this->fields['requesttypes_id']) {
                 return Dropdown::getDropdownName('glpi_requesttypes', $this->fields['requesttypes_id']);
             }
-            return $this->getTypeName();
+            return static::getTypeName();
         }
         return '';
     }
@@ -727,7 +730,7 @@ class ITILFollowup extends CommonDBChild
 
     public static function rawSearchOptionsToAdd($itemtype = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = [];
@@ -1041,7 +1044,7 @@ class ITILFollowup extends CommonDBChild
 
         // An ITILFollowup parent can only by a CommonItilObject
         if (!is_a($itemtype, "CommonITILObject", true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "'$itemtype' is not a CommonITILObject"
             );
         }
@@ -1111,11 +1114,11 @@ class ITILFollowup extends CommonDBChild
      */
     public function isFromSupportAgent()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Get parent item
-        $commonITILObject = new $this->fields['itemtype']();
+        $commonITILObject = getItemForItemtype($this->fields['itemtype']);
         $commonITILObject->getFromDB($this->fields['items_id']);
 
         $actors = $commonITILObject->getITILActors();
@@ -1167,7 +1170,7 @@ class ITILFollowup extends CommonDBChild
      * before loading the item, thus avoiding one useless DB query (or many more queries
      * when looping on children items)
      *
-     * TODO 11.0 move method and `item` property into parent class
+     * TODO move method and `item` property into parent class
      *
      * @param CommonITILObject $parent Parent item
      *

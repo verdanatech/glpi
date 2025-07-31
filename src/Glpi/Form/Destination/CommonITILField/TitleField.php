@@ -38,13 +38,14 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Destination\AbstractConfigField;
+use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Form;
 use Glpi\Form\Migration\DestinationFieldConverterInterface;
 use Glpi\Form\Migration\FormMigration;
-use InvalidArgumentException;
+use Glpi\Form\Migration\TagConversionTrait;
 use Glpi\Form\Tag\FormTagProvider;
 use Glpi\Form\Tag\FormTagsManager;
-use Glpi\Form\Migration\TagConversionTrait;
+use InvalidArgumentException;
 use Override;
 
 final class TitleField extends AbstractConfigField implements DestinationFieldConverterInterface
@@ -66,6 +67,7 @@ final class TitleField extends AbstractConfigField implements DestinationFieldCo
     #[Override]
     public function renderConfigForm(
         Form $form,
+        FormDestination $destination,
         JsonFieldInterface $config,
         string $input_name,
         array $display_options

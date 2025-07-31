@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
@@ -49,8 +51,8 @@ if (
     && isset($_POST['items_id']) && ($_POST['items_id'] > 0)
 ) {
     // Security
-    if (!class_exists($_POST['itemtype'])) {
-        return;
+    if (!($item = getItemForItemtype($_POST['itemtype'])) || !$item->can($_POST['items_id'], READ)) {
+        throw new AccessDeniedHttpException();
     }
 
     $days   = 3;
@@ -64,7 +66,7 @@ if (
 
     $nb = count($data);
     $badge_helper = sprintf(
-        _n(
+        _sn(
             '%s ticket in progress or recently solved on this item.',
             '%s tickets in progress or recently solved on this item.',
             $nb
@@ -76,7 +78,7 @@ if (
     if ($nb) {
         $content = '';
         foreach ($data as $title) {
-            $content .= $title . '<br>';
+            $content .= htmlescape($title) . '<br>';
         }
         echo '&nbsp;';
         Html::showToolTip($content);

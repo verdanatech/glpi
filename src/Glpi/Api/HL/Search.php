@@ -36,19 +36,25 @@
 namespace Glpi\Api\HL;
 
 use CommonDBTM;
+use DBConnection;
+use DBmysql;
+use DBmysqlIterator;
 use Entity;
 use ExtraVisibilityCriteria;
-use Glpi\Api\HL\Controller\AbstractController;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\RSQL\Lexer;
 use Glpi\Api\HL\RSQL\Parser;
 use Glpi\Api\HL\RSQL\RSQLException;
-use Glpi\DBAL\QueryFunction;
-use Glpi\Http\JSONResponse;
-use Glpi\Http\Response;
+use Glpi\Api\HL\Search\SearchContext;
 use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QueryUnion;
 use Glpi\Toolbox\ArrayPathAccessor;
 use RuntimeException;
+use Session;
+
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  * Internal search engine for the High-Level API
@@ -76,78 +82,50 @@ use RuntimeException;
  */
 final class Search
 {
-    private array $schema;
-    private array $request_params;
-    private array $flattened_properties;
-    private array $joins;
-    private array $table_schemas;
-    private array $tables;
-    private bool $union_search_mode;
     private Parser $rsql_parser;
+    private SearchContext $context;
     /**
      * @var array Cache of table names for foreign keys.
      */
     private array $fkey_tables = [];
-    private \DBmysql $db_read;
+    private DBmysql $db_read;
 
     private function __construct(array $schema, array $request_params)
     {
-        $this->schema = $schema;
-        $this->request_params = $request_params;
-        $this->flattened_properties = Doc\Schema::flattenProperties($schema['properties']);
-        $this->joins = Doc\Schema::getJoins($schema['properties']);
-        $this->table_schemas = $this->getTables();
-        $this->tables = array_keys($this->table_schemas);
-        $this->union_search_mode = count($this->tables) > 1;
+        $this->context = new SearchContext($schema, $request_params);
         $this->rsql_parser = new Parser($this);
-        $this->db_read = \DBConnection::getReadConnection();
+        $this->db_read = DBConnection::getReadConnection();
+    }
+
+    public function getContext(): SearchContext
+    {
+        return $this->context;
     }
 
     /**
      * @throws APIException
      */
-    private function validateIterator(\DBmysqlIterator $iterator): void
+    private function validateIterator(DBmysqlIterator $iterator): void
     {
         if ($iterator->isFailed()) {
             $message = __('An internal error occurred while trying to fetch the data.');
-            if ($_SESSION['glpi_use_mode'] === \Session::DEBUG_MODE) {
+            if ($_SESSION['glpi_use_mode'] === Session::DEBUG_MODE) {
                 $message .= ' ' . __('For more information, check the GLPI logs.');
             }
             throw new APIException(
                 message: 'A SQL error occurred while trying to get data from the database',
-                user_message: $message
+                user_message: $message,
+                code: 500,
             );
         }
     }
 
-    public function getFlattenedProperties(): array
-    {
-        return $this->flattened_properties;
-    }
-
-    /**
-     * Check if a property is within a join or is itself a join in the case of scalar joined properties.
-     * @param string $prop_name The property name
-     * @return bool
-     */
-    private function isJoinedProperty(string $prop_name): bool
-    {
-        $prop_name = str_replace(chr(0x1F), '.', $prop_name);
-        if (isset($this->joins[$prop_name])) {
-            return true;
-        }
-        $prop_parent = substr($prop_name, 0, strrpos($prop_name, '.'));
-        return count(array_filter($this->joins, static function ($j_name) use ($prop_parent) {
-            return str_starts_with($prop_parent, $j_name);
-        }, ARRAY_FILTER_USE_KEY)) > 0;
-    }
-
     public function getSQLFieldForProperty(string $prop_name): string
     {
-        $prop = $this->flattened_properties[$prop_name];
+        $prop = $this->context->getFlattenedProperties()[$prop_name];
         $is_scalar_join = false;
-        $is_join = $this->isJoinedProperty($prop_name);
-        if (isset($this->joins[$prop_name])) {
+        $is_join = $this->context->isJoinedProperty($prop_name);
+        if (isset($this->context->getJoins()[$prop_name])) {
             // Scalar property whose value exists in another table
             $is_scalar_join = true;
             $sql_field = $prop['x-field'];
@@ -190,17 +168,17 @@ final class Search
      */
     private function getSelectCriteriaForProperty(string $prop_name, bool $distinct_groups = false): ?QueryExpression
     {
-        $prop = $this->flattened_properties[$prop_name];
+        $prop = $this->context->getFlattenedProperties()[$prop_name];
         if ($prop['x-writeonly'] ?? false) {
             // Do not expose write-only fields
             return null;
         }
 
         // if prop is an array, set the params to the items
-        if (array_key_exists('type', $prop) && $prop['type'] === Doc\Schema::TYPE_ARRAY) {
+        if (array_key_exists('type', $prop) && $prop['type'] === Schema::TYPE_ARRAY) {
             $prop = $prop['items'];
         }
-        if (array_key_exists('type', $prop) && $prop['type'] !== Doc\Schema::TYPE_OBJECT) {
+        if (array_key_exists('type', $prop) && $prop['type'] !== Schema::TYPE_OBJECT) {
             if (isset($prop['x-mapper']) || isset($prop['x-mapped-property'])) {
                 // Do not select fields mapped after the results are retrieved
                 return null;
@@ -213,18 +191,18 @@ final class Search
                 if (str_contains($sql_field, '.')) {
                     $join_name = $this->getJoinNameForProperty($prop_name);
                     // Check if the join property is in an array. If so, we need to concat each result.
-                    if (array_key_exists($join_name, $this->joins)) {
-                        $join_def = $this->joins[$join_name];
+                    if (array_key_exists($join_name, $this->context->getJoins())) {
+                        $join_def = $this->context->getJoins()[$join_name];
                         if (isset($join_def['join_parent'])) {
                             $parent_join = str_replace(chr(0x1F), '.', $join_def['join_parent']);
-                            if (array_key_exists($parent_join, $this->joins)) {
+                            if (array_key_exists($parent_join, $this->context->getJoins())) {
                                 // Need to concat all parent IDs/primary keys + the property desired
                                 $parent_keys = [];
-                                $current_join_def = $this->joins[$parent_join];
+                                $current_join_def = $this->context->getJoins()[$parent_join];
                                 $current_join_parent = $parent_join;
                                 while ($current_join_def !== null) {
                                     $parent_keys[] = new QueryExpression('0x1E');
-                                    $primary_key = $this->getPrimaryKeyPropertyForJoin($current_join_parent);
+                                    $primary_key = $this->context->getPrimaryKeyPropertyForJoin($current_join_parent);
                                     // Replace all except last '.' with chr(0x1F) to avoid conflicts with table aliases
                                     $primary_key = implode(chr(0x1F), explode('.', $primary_key, substr_count($primary_key, '.')));
 
@@ -234,7 +212,7 @@ final class Search
                                         value: new QueryExpression('0x0')
                                     );
                                     $current_join_parent = $current_join_def['join_parent'] ?? null;
-                                    $current_join_def = $current_join_parent !== null ? ($this->joins[$current_join_parent] ?? null) : null;
+                                    $current_join_def = $current_join_parent !== null ? ($this->context->getJoins()[$current_join_parent] ?? null) : null;
                                 }
                                 $parent_keys = array_reverse($parent_keys);
                                 $expression = QueryFunction::groupConcat(
@@ -268,7 +246,7 @@ final class Search
     {
         $select = [];
 
-        foreach ($this->flattened_properties as $prop_name => $prop) {
+        foreach (array_keys($this->context->getFlattenedProperties()) as $prop_name) {
             $s = $this->getSelectCriteriaForProperty($prop_name);
             if ($s !== null) {
                 $select[] = $s;
@@ -338,9 +316,9 @@ final class Search
      */
     private function getFrom(array $criteria)
     {
-        if ($this->union_search_mode) {
+        if ($this->context->isUnionSearchMode()) {
             $queries = [];
-            foreach ($this->tables as $table) {
+            foreach ($this->context->getUnionTableNames() as $table) {
                 $query = $criteria;
                 // Remove join props from the select for now (complex to handle)
                 $query['SELECT'] = array_filter($query['SELECT'], function ($select) {
@@ -348,7 +326,7 @@ final class Search
                     return str_starts_with($select_str, $this->db_read::quoteName('_.id'));
                 });
                 //Inject a field for the schema name as the first select
-                $schema_name = $this->table_schemas[$table];
+                $schema_name = $this->context->getSchemaNameForUnionTable($table);
                 $itemtype_field = new QueryExpression($this->db_read::quoteValue($schema_name), '_itemtype');
                 array_unshift($query['SELECT'], $itemtype_field);
 
@@ -359,7 +337,7 @@ final class Search
             return new QueryUnion($queries, false, '_');
         }
 
-        return $this->tables[0] . ' AS _';
+        return $this->context->getSchemaTable() . ' AS _';
     }
 
     /**
@@ -375,7 +353,7 @@ final class Search
         ];
 
         // Handle joins
-        foreach ($this->joins as $join_alias => $join_definition) {
+        foreach ($this->context->getJoins() as $join_alias => $join_definition) {
             $join_clauses = $this->getJoins($join_alias, $join_definition);
             foreach ($join_clauses as $join_type => $join_tables) {
                 if (!isset($criteria[$join_type])) {
@@ -386,8 +364,8 @@ final class Search
         }
 
         // Handle RSQL filter
-        if (isset($this->request_params['filter']) && !empty($this->request_params['filter'])) {
-            $filter_result = $this->rsql_parser->parse(Lexer::tokenize($this->request_params['filter']));
+        if (!empty($this->context->getRequestParameter('filter'))) {
+            $filter_result = $this->rsql_parser->parse(Lexer::tokenize($this->context->getRequestParameter('filter')));
             // Fail the request if any of the filters are invalid
             if (!empty($filter_result->getInvalidFilters())) {
                 throw new RSQLException(
@@ -401,10 +379,11 @@ final class Search
 
         // Handle entity and other visibility restrictions
         $entity_restrict = [];
-        if (!$this->union_search_mode) {
-            $itemtype = $this->schema['x-itemtype'];
+        if (!$this->context->isUnionSearchMode()) {
+            $itemtype = $this->context->getSchemaItemtype(); //should not that use self::getItemFromSchema()?
             /** @var CommonDBTM $item */
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
+            $entity_restrict = [];
             if ($item instanceof ExtraVisibilityCriteria) {
                 $main_table = $item::getTable();
                 $visibility_restrict = $item::getVisibilityCriteria();
@@ -432,8 +411,9 @@ final class Search
                     }
                     $criteria[$join_type] = array_merge($criteria[$join_type], $visibility_restrict[$join_type]);
                 }
-            } elseif ($item->isEntityAssign()) {
-                $entity_restrict = getEntitiesRestrictCriteria('_');
+            }
+            if ($item->isEntityAssign()) {
+                $entity_restrict[] = getEntitiesRestrictCriteria('_');
             }
             if ($item instanceof Entity) {
                 $entity_restrict = [
@@ -462,25 +442,26 @@ final class Search
             }
         } else {
             //TODO What if some subtypes are entity assign and some are not?
-            $entity_restrict = [
-                getEntitiesRestrictCriteria('_'),
-            ];
+            $entity_restrict = [getEntitiesRestrictCriteria('_'),];
         }
         if (!empty($entity_restrict) && $entity_restrict !== [0 => []]) {
             $criteria['WHERE'][] = ['AND' => $entity_restrict];
         }
 
         // Handle pagination
-        if (isset($this->request_params['start']) && is_numeric($this->request_params['start'])) {
-            $criteria['START'] = (int) $this->request_params['start'];
+        $start = $this->context->getRequestParameter('start');
+        $limit = $this->context->getRequestParameter('limit');
+        if (is_numeric($start)) {
+            $criteria['START'] = (int) $start;
         }
-        if (isset($this->request_params['limit']) && is_numeric($this->request_params['limit'])) {
-            $criteria['LIMIT'] = (int) $this->request_params['limit'];
+        if (is_numeric($limit)) {
+            $criteria['LIMIT'] = (int) $limit;
         }
 
         // Handle sorting
-        if (isset($this->request_params['sort'])) {
-            $sorts = array_map(static fn($s) => trim($s), explode(',', $this->request_params['sort']));
+        $sort = $this->context->getRequestParameter('sort');
+        if ($sort !== null) {
+            $sorts = array_map(static fn($s) => trim($s), explode(',', (string) $sort));
             $orderby = [];
             foreach ($sorts as $s) {
                 if ($s === '') {
@@ -491,8 +472,12 @@ final class Search
                 $property = $sort_parts[0];
                 $direction = strtoupper($sort_parts[1] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
                 // Verify the property is valid
-                if (!isset($this->flattened_properties[$property])) {
-                    throw new APIException('Invalid property for sorting: ' . $property, 'Invalid property for sorting: ' . $property);
+                if (!isset($this->context->getFlattenedProperties()[$property])) {
+                    throw new APIException(
+                        message: 'Invalid property for sorting: ' . $property,
+                        user_message: 'Invalid property for sorting: ' . $property,
+                        code: 400,
+                    );
                 }
                 $sql_field = $this->getSQLFieldForProperty($property);
                 $orderby[] = "{$sql_field} {$direction}";
@@ -504,47 +489,19 @@ final class Search
     }
 
     /**
-     * @return array Primary tables to search in. For searching a specific itemtype, there will be only one table.
-     * For searching a collection of itemtypes (like the Global Assets schema), there will be multiple tables.
-     * @phpstan-return array<string, array>
-     */
-    private function getTables(): array
-    {
-        $tables_schemas = [];
-        if (isset($this->schema['x-table'])) {
-            $tables_schemas[$this->schema['x-table']] = $this->schema;
-        } elseif (isset($this->schema['x-itemtype'])) {
-            if (is_subclass_of($this->schema['x-itemtype'], CommonDBTM::class)) {
-                $t = $this->schema['x-itemtype']::getTable();
-                $tables_schemas[$t] = $this->schema;
-            } else {
-                throw new RuntimeException('Invalid itemtype');
-            }
-        } elseif (isset($this->schema['x-subtypes'])) {
-            foreach ($this->schema['x-subtypes'] as $subtype_info) {
-                if (is_subclass_of($subtype_info['itemtype'], CommonDBTM::class)) {
-                    $t = $subtype_info['itemtype']::getTable();
-                    $tables_schemas[$t] = $subtype_info['schema_name'];
-                } else {
-                    throw new RuntimeException('Invalid itemtype');
-                }
-            }
-        } else {
-            throw new RuntimeException('Cannot search using a schema without an x-table or an x-itemtype');
-        }
-        return $tables_schemas;
-    }
-
-    /**
      * If the schema has a read right condition, add it to the criteria.
      * @param array $criteria The current criteria. Will be modified in-place.
      * @return void
+     * @throws RightConditionNotMetException If the read condition check returns false indicating we know the user cannot view any of the resources without needing to check the database.
      */
     private function addReadRestrictCriteria(array &$criteria): void
     {
-        $read_right_criteria = $this->schema['x-rights-conditions']['read'] ?? [];
+        $read_right_criteria = $this->context->getSchemaReadRestrictCriteria();
         if (is_callable($read_right_criteria)) {
             $read_right_criteria = $read_right_criteria();
+        }
+        if ($read_right_criteria === false) {
+            throw new RightConditionNotMetException();
         }
         if (!empty($read_right_criteria)) {
             $join_types = ['LEFT JOIN', 'INNER JOIN', 'RIGHT JOIN'];
@@ -573,7 +530,7 @@ final class Search
      */
     private function criteriaHasJoinFilter(array $where): bool
     {
-        if (empty($where)) {
+        if ($where === []) {
             return false;
         }
 
@@ -581,7 +538,7 @@ final class Search
             if (is_array($where_value) && $this->criteriaHasJoinFilter($where_value)) {
                 return true;
             }
-            foreach ($this->joins as $join_alias => $join_definition) {
+            foreach (array_keys($this->context->getJoins()) as $join_alias) {
                 if (str_starts_with((string) $where_field, $this->db_read::quoteName($join_alias) . '.')) {
                     return true;
                 }
@@ -590,39 +547,9 @@ final class Search
         return false;
     }
 
-    private function getPrimaryKeyPropertyForJoin(string $join): string
-    {
-        // If this is a scalar property join, simply return the property named the same as the join
-        if (isset($this->flattened_properties[$join])) {
-            return $join;
-        }
-        $pkey_field = 'field';
-        $join_params = $this->joins[$join]['ref-join'] ?? $this->joins[$join];
-        if (isset($this->joins[$join]['ref-join'])) {
-            $pkey_field = 'fkey';
-        }
-        if (isset($join_params['primary-property'])) {
-            $pkey_field = 'primary-property';
-        }
-        $primary_key = $join_params[$pkey_field];
-        $prop_matches = array_filter(
-            $this->flattened_properties,
-            static function ($prop_name) use ($primary_key, $join) {
-                // Filter matches for the primary key
-                return preg_match('/^' . preg_quote($join, '/') . '\.' . preg_quote($primary_key, '/') . '$/', $prop_name);
-            },
-            ARRAY_FILTER_USE_KEY
-        );
-
-        if (count($prop_matches)) {
-            return array_key_first($prop_matches);
-        }
-        throw new RuntimeException("Cannot find primary key property for join $join");
-    }
-
     private function getJoinNameForProperty(string $prop_name): string
     {
-        if (array_key_exists(str_replace(chr(0x1F), '.', $prop_name), $this->joins)) {
+        if (array_key_exists(str_replace(chr(0x1F), '.', $prop_name), $this->context->getJoins())) {
             $join_name = str_replace(chr(0x1F), '.', $prop_name);
         } else {
             $join_name = substr($prop_name, 0, strrpos($prop_name, chr(0x1F)));
@@ -652,32 +579,40 @@ final class Search
 
         $criteria['FROM'] = $this->getFrom($criteria);
 
-        if ($this->union_search_mode) {
-            unset($criteria['LEFT JOIN'], $criteria['INNER JOIN'], $criteria['RIGHT JOIN'], $criteria['WHERE']);
-        } else {
-            $this->addReadRestrictCriteria($criteria);
-        }
-
-        if ($this->union_search_mode) {
-            $criteria['SELECT'] = ['_.id'];
-            $criteria['SELECT'][] = '_itemtype';
-            $criteria['GROUPBY'] = ['_itemtype', '_.id'];
-        } else {
-            $criteria['SELECT'][] = '_.id';
-            foreach ($this->joins as $join_alias => $join) {
-                $s = $this->getSelectCriteriaForProperty($this->getPrimaryKeyPropertyForJoin($join_alias), true);
-                if ($s !== null) {
-                    $criteria['SELECT'][] = $s;
-                }
+        try {
+            if ($this->context->isUnionSearchMode()) {
+                unset($criteria['LEFT JOIN'], $criteria['INNER JOIN'], $criteria['RIGHT JOIN'], $criteria['WHERE']);
+            } else {
+                $this->addReadRestrictCriteria($criteria);
             }
-            $criteria['GROUPBY'] = ['_.id'];
+
+            if ($this->context->isUnionSearchMode()) {
+                $criteria['SELECT'] = ['_.id'];
+                $criteria['SELECT'][] = '_itemtype';
+                $criteria['GROUPBY'] = ['_itemtype', '_.id'];
+            } else {
+                $criteria['SELECT'][] = '_.id';
+                foreach (array_keys($this->context->getJoins()) as $join_alias) {
+                    $s = $this->getSelectCriteriaForProperty($this->context->getPrimaryKeyPropertyForJoin($join_alias), true);
+                    if ($s !== null) {
+                        $criteria['SELECT'][] = $s;
+                    }
+                }
+                $criteria['GROUPBY'] = ['_.id'];
+            }
+
+            // request just to get the ids/union itemtypes
+            $iterator = $this->db_read->request($criteria);
+            $this->validateIterator($iterator);
+        } catch (RightConditionNotMetException) {
+            // The read restrict check seems to have returned false indicating that we already know the user cannot view any of these resources
+            /** @var DBmysql $DB */
+            global $DB;
+            $iterator = new DBmysqlIterator($DB);
+            // No validation done because we know the inner result isn't a mysqli result
         }
 
-        // request just to get the ids/union itemtypes
-        $iterator = $this->db_read->request($criteria);
-        $this->validateIterator($iterator);
-
-        if ($this->union_search_mode) {
+        if ($this->context->isUnionSearchMode()) {
             // group by _itemtype
             foreach ($iterator as $row) {
                 if (!isset($records[$row['_itemtype']])) {
@@ -687,10 +622,10 @@ final class Search
             }
         } else {
             foreach ($iterator as $row) {
-                if (!isset($records[$this->schema['x-itemtype']])) {
-                    $records[$this->schema['x-itemtype']] = [];
+                if (!isset($records[$this->context->getSchemaItemtype()])) {
+                    $records[$this->context->getSchemaItemtype()] = [];
                 }
-                $records[$this->schema['x-itemtype']][$row['id']] = $row;
+                $records[$this->context->getSchemaItemtype()][$row['id']] = $row;
             }
         }
 
@@ -698,7 +633,7 @@ final class Search
             // There was a filter on joined data, so the IDs we got are only the ones that match the filter.
             // We want to get all related items in the result and not just the ones that match the filter.
             $criteria['WHERE'] = [];
-            if ($this->union_search_mode) {
+            if ($this->context->isUnionSearchMode()) {
                 foreach ($records as $schema_name => $type_records) {
                     if (!isset($criteria['WHERE']['OR'])) {
                         $criteria['WHERE']['OR'] = [];
@@ -709,7 +644,7 @@ final class Search
                     ];
                 }
             } else {
-                $type_records = $records[$this->schema['x-itemtype']];
+                $type_records = $records[$this->context->getSchemaItemtype()];
                 $criteria['WHERE'] = [
                     '_.id' => array_column($type_records, 'id'),
                 ];
@@ -717,7 +652,7 @@ final class Search
             $iterator = $this->db_read->request($criteria);
             $this->validateIterator($iterator);
             foreach ($iterator as $data) {
-                $itemtype = $this->union_search_mode ? $data['_itemtype'] : $this->schema['x-itemtype'];
+                $itemtype = $this->context->isUnionSearchMode() ? $data['_itemtype'] : $this->context->getSchemaItemtype();
                 if (!isset($records[$itemtype])) {
                     $records[$itemtype] = [];
                 }
@@ -737,28 +672,26 @@ final class Search
     private function getTableForFKey(string $fkey, string $schema_name): ?string
     {
         $normalized_fkey = str_replace(chr(0x1F), '.', $fkey);
-        if (isset($this->joins[$normalized_fkey])) {
+        if (isset($this->context->getJoins()[$normalized_fkey])) {
             // Scalar property whose value exists in another table
-            return $this->joins[$normalized_fkey]['table'];
+            return $this->context->getJoins()[$normalized_fkey]['table'];
         }
         if (!isset($this->fkey_tables[$fkey])) {
             if ($fkey === 'id') {
                 // This is a primary key on a main item
-                if ($this->union_search_mode) {
-                    $subtype = array_filter($this->schema['x-subtypes'], static function ($subtype) use ($schema_name) {
-                        return $subtype['schema_name'] === $schema_name;
-                    });
+                if ($this->context->isUnionSearchMode()) {
+                    $subtype = array_filter($this->context->getSchemaSubtypes(), static fn($subtype) => $subtype['schema_name'] === $schema_name);
                     if (count($subtype) !== 1) {
                         throw new RuntimeException('Cannot find subtype for schema ' . $schema_name);
                     }
                     $subtype = reset($subtype);
                     $this->fkey_tables[$fkey] = $subtype['itemtype']::getTable();
                 } else {
-                    $this->fkey_tables[$fkey] = self::getTableFromSchema($this->schema);
+                    $this->fkey_tables[$fkey] = $this->context->getSchemaTable();
                 }
             } else {
                 // This is a foreign key on a joined item
-                foreach ($this->joins as $join_alias => $join) {
+                foreach ($this->context->getJoins() as $join_alias => $join) {
                     if ($fkey === str_replace('.', chr(0x1F), $join_alias) . chr(0x1F) . 'id') {
                         // Found the related join definition. Use the table from that.
                         $this->fkey_tables[$fkey] = $join['table'];
@@ -796,12 +729,12 @@ final class Search
                 $next_id = array_shift($ids_path);
                 // if current path points to an object, we don't need to add the ID to the path
                 $path_without_ids = implode('.', array_filter(explode('.', $current_path), static fn($p) => !is_numeric($p)));
-                if (!isset($this->joins[$path_without_ids]['parent_type']) && $this->joins[$path_without_ids]['parent_type'] === Doc\Schema::TYPE_OBJECT) {
+                if (!isset($this->context->getJoins()[$path_without_ids]['parent_type']) && $this->context->getJoins()[$path_without_ids]['parent_type'] === Schema::TYPE_OBJECT) {
                     if (!empty($next_id) && preg_match('/\.\d+/', $current_path)) {
                         $items = ArrayPathAccessor::getElementByArrayPath($hydrated_record, $current_path);
                         // Remove numeric id parts from the path to get the join name
                         $current_join = implode('.', array_filter(explode('.', $current_path), static fn($p) => !is_numeric($p)));
-                        $primary_prop = $this->getPrimaryKeyPropertyForJoin($current_join);
+                        $primary_prop = $this->context->getPrimaryKeyPropertyForJoin($current_join);
                         // We just need the last part of the property name (not the full path)
                         $primary_prop = substr($primary_prop, strrpos($primary_prop, '.') + 1);
                         if ($items !== null) {
@@ -841,9 +774,7 @@ final class Search
                 continue;
             }
             $needed_ids = explode(chr(0x1D), $dehydrated_row[$dehydrated_ref] ?? '');
-            $needed_ids = array_filter($needed_ids, static function ($id) {
-                return $id !== chr(0x0);
-            });
+            $needed_ids = array_filter($needed_ids, static fn($id) => $id !== chr(0x0));
             if ($dehydrated_ref === 'id') {
                 // Add the main item fields
                 $main_record = $fetched_records[$table][$needed_ids[0]];
@@ -855,7 +786,7 @@ final class Search
             } else {
                 // Add the joined item fields
                 $join_name = $this->getJoinNameForProperty($dehydrated_ref);
-                if (isset($this->flattened_properties[$join_name])) {
+                if (isset($this->context->getFlattenedProperties()[$join_name])) {
                     continue;
                 }
                 if (!ArrayPathAccessor::hasElementByArrayPath($hydrated_record, $join_name)) {
@@ -868,7 +799,7 @@ final class Search
                     }
                     $matched_record = $fetched_records[$table][(int) $id] ?? null;
 
-                    if (isset($this->joins[$join_name]['parent_type']) && $this->joins[$join_name]['parent_type'] === Doc\Schema::TYPE_OBJECT) {
+                    if (isset($this->context->getJoins()[$join_name]['parent_type']) && $this->context->getJoins()[$join_name]['parent_type'] === Schema::TYPE_OBJECT) {
                         ArrayPathAccessor::setElementByArrayPath($hydrated_record, $join_prop_path, $matched_record);
                     } else {
                         if ($matched_record !== null) {
@@ -884,7 +815,7 @@ final class Search
         // Do this last as some scalar joined properties may be nested and have other data added after the main record was built
         foreach ($dehydrated_row as $k => $v) {
             $normalized_k = str_replace(chr(0x1F), '.', $k);
-            if (isset($this->joins[$normalized_k]) && !ArrayPathAccessor::hasElementByArrayPath($hydrated_record, $normalized_k)) {
+            if (isset($this->context->getJoins()[$normalized_k]) && !ArrayPathAccessor::hasElementByArrayPath($hydrated_record, $normalized_k)) {
                 $v = explode(chr(0x1E), $v);
                 $v = end($v);
                 ArrayPathAccessor::setElementByArrayPath($hydrated_record, $normalized_k, $v);
@@ -907,10 +838,8 @@ final class Search
     private function fixupAssembledRecord(array &$record): void
     {
         // Fix keys for array properties. Currently, the keys are probably the IDs of the joined records. They should be the index of the record in the array.
-        $array_joins = array_filter($this->joins, static function ($v) {
-            return isset($v['parent_type']) && $v['parent_type'] === Doc\Schema::TYPE_ARRAY;
-        }, ARRAY_FILTER_USE_BOTH);
-        foreach ($array_joins as $name => $join_def) {
+        $array_joins = array_filter($this->context->getJoins(), static fn($v) => isset($v['parent_type']) && $v['parent_type'] === Schema::TYPE_ARRAY, ARRAY_FILTER_USE_BOTH);
+        foreach (array_keys($array_joins) as $name) {
             // Get all paths in the array that match the join name. Paths may or may not have number parts between the parts of the join name (separated by '.')
             $pattern = str_replace('.', '\.(?:\d+\.)?', $name);
             $paths = ArrayPathAccessor::getArrayPaths($record, "/^{$pattern}$/");
@@ -927,10 +856,8 @@ final class Search
         }
 
         // Fix empty array values for objects by replacing them with null
-        $obj_joins = array_filter($this->joins, function ($v, $k) {
-            return isset($v['parent_type']) && $v['parent_type'] === Doc\Schema::TYPE_OBJECT && !isset($this->flattened_properties[$k]);
-        }, ARRAY_FILTER_USE_BOTH);
-        foreach ($obj_joins as $name => $join_def) {
+        $obj_joins = array_filter($this->context->getJoins(), fn($v, $k) => isset($v['parent_type']) && $v['parent_type'] === Schema::TYPE_OBJECT && !isset($this->context->getFlattenedProperties()[$k]), ARRAY_FILTER_USE_BOTH);
+        foreach (array_keys($obj_joins) as $name) {
             // Get all paths in the array that match the join name. Paths may or may not have number parts between the parts of the join name (separated by '.')
             $pattern = str_replace('.', '\.(?:\d+\.)?', $name);
             $paths = ArrayPathAccessor::getArrayPaths($record, "/^{$pattern}$/");
@@ -940,7 +867,7 @@ final class Search
                     continue;
                 }
                 $join_prop = array_filter($join_prop, static fn($v) => !empty($v));
-                if (empty($join_prop)) {
+                if ($join_prop === []) {
                     ArrayPathAccessor::setElementByArrayPath($record, $path, null);
                 }
             }
@@ -981,7 +908,7 @@ final class Search
                     }, explode(chr(0x1D), $record_ids));
                     $ids_to_fetch = array_diff($ids_to_fetch, array_keys($fetched_records[$table] ?? []));
 
-                    if (empty($ids_to_fetch)) {
+                    if ($ids_to_fetch === []) {
                         // Every record needed for this row has already been fetched.
                         continue;
                     }
@@ -993,8 +920,8 @@ final class Search
                     $join_name = '_';
 
                     if ($fkey === 'id') {
-                        $props_to_use = array_filter($this->flattened_properties, function ($prop_params, $prop_name) {
-                            if (isset($this->joins[$prop_name])) {
+                        $props_to_use = array_filter($this->context->getFlattenedProperties(), function ($prop_params, $prop_name) {
+                            if (isset($this->context->getJoins()[$prop_name])) {
                                 /** Scalar joined properties are fetched directly during {@link self::getMatchingRecords()} */
                                 return false;
                             }
@@ -1003,19 +930,17 @@ final class Search
                             // We aren't handling joins or mapped fields here
                             $prop_name = str_replace(chr(0x1F), '.', $prop_name);
                             $prop_parent = substr($prop_name, 0, strrpos($prop_name, '.'));
-                            $is_join = count(array_filter($this->joins, static function ($j_name) use ($prop_parent) {
-                                return str_starts_with($prop_parent, $j_name);
-                            }, ARRAY_FILTER_USE_KEY)) > 0;
+                            $is_join = count(array_filter($this->context->getJoins(), static fn($j_name) => str_starts_with($prop_parent, $j_name), ARRAY_FILTER_USE_KEY)) > 0;
                             return !$is_join && !$mapped_from_other;
                         }, ARRAY_FILTER_USE_BOTH);
                         $criteria['FROM'] = "$table AS " . $this->db_read::quoteName('_');
-                        if ($this->union_search_mode) {
+                        if ($this->context->isUnionSearchMode()) {
                             $criteria['SELECT'][] = new QueryExpression($this->db_read::quoteValue($schema_name), '_itemtype');
                         }
                     } else {
                         $join_name = $this->getJoinNameForProperty($fkey);
-                        $props_to_use = array_filter($this->flattened_properties, function ($prop_name) use ($join_name) {
-                            if (isset($this->joins[$prop_name])) {
+                        $props_to_use = array_filter($this->context->getFlattenedProperties(), function ($prop_name) use ($join_name) {
+                            if (isset($this->context->getJoins()[$prop_name])) {
                                 /** Scalar joined properties are fetched directly during {@link self::getMatchingRecords()} */
                                 return false;
                             }
@@ -1040,7 +965,7 @@ final class Search
                             $field_parts = explode('.', $sql_field);
                             $field_only = end($field_parts);
                             // Handle translatable fields
-                            if (\Session::haveTranslations($itemtype, $field_only)) {
+                            if (Session::haveTranslations($itemtype, $field_only)) {
                                 $trans_alias = "{$join_name}__{$field_only}__trans";
                                 $trans_alias = hash('xxh3', $trans_alias);
                                 if (!isset($criteria['LEFT JOIN'])) {
@@ -1051,7 +976,7 @@ final class Search
                                         $join_name => 'id',
                                         $trans_alias => 'items_id', [
                                             'AND' => [
-                                                "$trans_alias.language" => \Session::getLanguage(),
+                                                "$trans_alias.language" => Session::getLanguage(),
                                                 "$trans_alias.itemtype" => $itemtype,
                                                 "$trans_alias.field" => $field_only,
                                             ],
@@ -1098,27 +1023,26 @@ final class Search
     }
 
     /**
-     * Fetch results for the given schema and request parameters
+     * Fetch results for the given schema and request parameters.
+     * Use {@link ResourceAccessor::getOneBySchema()} or {@link ResourceAccessor::searchBySchema()} instead of suing this directly.
      * @param array $schema
      * @param array $request_params
      * @return array The search results
      * @phpstan-return array{results: array, start: int, limit: int, total: int}
      * @throws RSQLException|APIException
      */
-    private static function getSearchResultsBySchema(array $schema, array $request_params): array
+    public static function getSearchResultsBySchema(array $schema, array $request_params): array
     {
         // Schema must be an object type
-        if ($schema['type'] !== Doc\Schema::TYPE_OBJECT) {
-            throw new \RuntimeException('Schema must be an object type');
+        if ($schema['type'] !== Schema::TYPE_OBJECT) {
+            throw new RuntimeException('Schema must be an object type');
         }
         // Initialize a new search
         $search = new self($schema, $request_params);
         $ids = $search->getMatchingRecords();
         $results = $search->hydrateRecords($ids);
 
-        $mapped_props = array_filter($search->getFlattenedProperties(), static function ($prop) {
-            return isset($prop['x-mapper']);
-        });
+        $mapped_props = array_filter($search->context->getFlattenedProperties(), static fn($prop) => isset($prop['x-mapper']));
 
         foreach ($results as &$result) {
             // Handle mapped fields
@@ -1133,7 +1057,7 @@ final class Search
             }
             // Handle mapped objects
             $mapped_objs = [];
-            foreach ($search->getFlattenedProperties() as $prop_name => $prop) {
+            foreach ($search->context->getFlattenedProperties() as $prop_name => $prop) {
                 if (isset($prop['x-mapped-property'])) {
                     $parent_obj_path = substr($prop_name, 0, strrpos($prop_name, '.'));
                     if (isset($mapped_objs[$parent_obj_path])) {
@@ -1151,10 +1075,11 @@ final class Search
             }
             foreach ($mapped_objs as $path => $data) {
                 $existing_data = ArrayPathAccessor::getElementByArrayPath($result, $path) ?? [];
+                /** @noinspection SlowArrayOperationsInLoopInspection */
                 $data = array_merge($existing_data, $data);
                 ArrayPathAccessor::setElementByArrayPath($result, $path, $data);
             }
-            $result = Doc\Schema::fromArray($schema)->castProperties($result);
+            $result = Schema::fromArray($schema)->castProperties($result);
         }
         unset($result);
 
@@ -1173,307 +1098,5 @@ final class Search
             'limit' => $criteria['LIMIT'] ?? count($results),
             'total' => $total_count,
         ];
-    }
-
-    /**
-     * Search items using the given schema and request parameters.
-     * Public entry point for the internal {@link self::getSearchResultsBySchema()} method.
-     * @param array $schema
-     * @param array $request_params
-     * @return Response
-     */
-    public static function searchBySchema(array $schema, array $request_params): Response
-    {
-        $itemtype = $schema['x-itemtype'] ?? null;
-        // No item-level checks done here. They are handled when generating the SQL using the x-rights-condtions schema property
-        if (($itemtype !== null) && !$itemtype::canView()) {
-            return AbstractController::getCRUDErrorResponse(AbstractController::CRUD_ACTION_LIST);
-        }
-        if (isset($schema['x-subtypes'])) {
-            // For this case, we need to filter out the schemas that the user doesn't have read rights on
-            $schemas = $schema['x-subtypes'];
-            $schemas = array_filter($schemas, static function ($v) {
-                $itemtype = $v['itemtype'];
-                if (class_exists($itemtype) && is_subclass_of($itemtype, CommonDBTM::class)) {
-                    return $itemtype::canView();
-                }
-                return false;
-            });
-            $schema['x-subtypes'] = $schemas;
-            if (empty($schema['x-subtypes'])) {
-                // No right on any subtypes. Could be useful to return an access denied error here instead of an empty list
-                return AbstractController::getAccessDeniedErrorResponse();
-            }
-        }
-        try {
-            $results = self::getSearchResultsBySchema($schema, $request_params);
-        } catch (RSQLException $e) {
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_INVALID_PARAMETER, $e->getMessage(), $e->getDetails()), 400);
-        } catch (APIException $e) {
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_GENERIC, $e->getUserMessage(), $e->getDetails()));
-        } catch (\Throwable $e) {
-            $message = (new APIException())->getUserMessage();
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_GENERIC, $e->getMessage()));
-        }
-        $has_more = $results['start'] + $results['limit'] < $results['total'];
-        $end = max(0, ($results['start'] + $results['limit'] - 1));
-        if ($end > $results['total']) {
-            $end = $results['total'] - 1;
-        }
-        return new JSONResponse($results['results'], $has_more ? 206 : 200, [
-            'Content-Range' => $results['start'] . '-' . $end . '/' . $results['total'],
-        ]);
-    }
-
-    /**
-     * Map the request parameters to the format required for the GLPI add/update methods.
-     * Only top-level properties are mapped.
-     * Nested properties which would represent relations are not supported.
-     * Creating/updating relations should be done using the appropriate endpoints.
-     * @param array $schema
-     * @param array $request_params
-     * @return array
-     */
-    public static function getInputParamsBySchema(array $schema, array $request_params): array
-    {
-        $params = [];
-        $flattened_properties = Doc\Schema::flattenProperties($schema['properties']);
-        $joins = Doc\Schema::getJoins($schema['properties']);
-        $writable_props = array_filter($flattened_properties, static function ($v, $k) use ($joins) {
-            $base_k = strstr($k, '.', true) ?: $k;
-            $is_join = isset($joins[$base_k]);
-            $is_dropdown_identifier = preg_match('/^(\w+)\.id$/', $k);
-            return $is_dropdown_identifier || !$is_join;
-        }, ARRAY_FILTER_USE_BOTH);
-        foreach ($writable_props as $prop_name => $prop) {
-            $base_prop_name = strstr($prop_name, '.', true) ?: $prop_name;
-            $is_join = isset($joins[$base_prop_name]);
-            $is_dropdown_identifier = $is_join && preg_match('/^(\w+)\.id$/', $prop_name);
-            if ($is_dropdown_identifier) {
-                // This is a dropdown identifier, we need to get the id from the request
-                $prop_name = strstr($prop_name, '.', true);
-                $prop = $schema['properties'][$prop_name];
-            } else {
-                if ($prop['x-readonly'] ?? false) {
-                    // Ignore properties marked as read-only
-                    continue;
-                }
-            }
-
-            // Field resolution priority: x-field -> x-join.fkey -> property name
-            if (isset($prop['x-field'])) {
-                $internal_name = $prop['x-field'];
-            } elseif (isset($prop['x-join']['fkey'])) {
-                $internal_name = $prop['x-join']['fkey'] ?? $prop_name;
-            } else {
-                $internal_name = $prop_name;
-            }
-            if (ArrayPathAccessor::hasElementByArrayPath($request_params, $prop_name)) {
-                $params[$internal_name] = ArrayPathAccessor::getElementByArrayPath($request_params, $prop_name);
-            }
-        }
-        return $params;
-    }
-
-    /**
-     * Get the related itemtype for the given schema.
-     * @param array $schema
-     * @return class-string<CommonDBTM>
-     */
-    private static function getItemtypeFromSchema(array $schema): string
-    {
-        $itemtype = $schema['x-itemtype'] ?? ($schema['x-table'] ? getItemTypeForTable($schema['x-table']) : null);
-        if ($itemtype === null) {
-            throw new \RuntimeException('Schema has no x-table or x-itemtype');
-        }
-        if (!is_subclass_of($itemtype, CommonDBTM::class)) {
-            throw new \RuntimeException('Invalid itemtype');
-        }
-        return $itemtype;
-    }
-
-    /**
-     * Get the DB table for the given schema.
-     * @param array $schema
-     * @return string
-     */
-    private static function getTableFromSchema(array $schema): string
-    {
-        $table = $schema['x-table'] ?? ($schema['x-itemtype'] ? getTableForItemType($schema['x-itemtype']) : null);
-        if ($table === null) {
-            throw new \RuntimeException('Schema has no x-table or x-itemtype');
-        }
-        return $table;
-    }
-
-    /**
-     * Get the primary ID field given some other unique field.
-     * @param array $schema The schema
-     * @param string $field The unique field name
-     * @param mixed $value The unique field value
-     * @return int|null The ID or null if not found
-     */
-    public static function getIDForOtherUniqueFieldBySchema(array $schema, string $field, mixed $value): ?int
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if (!isset($schema['properties'][$field])) {
-            throw new \RuntimeException('Invalid primary key');
-        }
-        $prop = $schema['properties'][$field];
-        $pk_sql_name = $prop['x-field'] ?? $field;
-        $iterator = $DB->request([
-            'SELECT' => ['id'],
-            'FROM' => self::getTableFromSchema($schema),
-            'WHERE' => [
-                $pk_sql_name => $value,
-            ],
-        ]);
-        if (count($iterator) === 0) {
-            return null;
-        }
-        return $iterator->current()['id'];
-    }
-
-    /**
-     * Get a single item of the given schema, request data and unique field.
-     * @param array $schema The schema
-     * @param array $request_attrs The request attributes
-     * @param array $request_params The request parameters
-     * @param string $field The unique field to match on. Defaults to ID. If different, the ID is resolved from the given other unique field.
-     * The field must be present in the route path (request attributes).
-     * @return Response
-     * @see self::getIDForOtherUniqueFieldBySchema()
-     * @see self::searchBySchema()
-     */
-    public static function getOneBySchema(array $schema, array $request_attrs, array $request_params, string $field = 'id'): Response
-    {
-        // Shortcut implementation using the search functionality with an injected RSQL filter and returning the first result.
-        // This shouldn't have much if any unneeded overhead as the filter would be mapped to a SQL condition.
-        $request_params['filter'] = $field . '==' . $request_attrs[$field];
-        $request_params['limit'] = 1;
-        unset($request_params['start']);
-        try {
-            $results = self::getSearchResultsBySchema($schema, $request_params);
-        } catch (RSQLException $e) {
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_INVALID_PARAMETER, $e->getUserMessage()), 400);
-        } catch (APIException $e) {
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_GENERIC, $e->getUserMessage()));
-        } catch (\Throwable $e) {
-            $message = (new APIException())->getUserMessage();
-            return new JSONResponse(AbstractController::getErrorResponseBody(AbstractController::ERROR_GENERIC, $message));
-        }
-        if (count($results['results']) === 0) {
-            return AbstractController::getNotFoundErrorResponse();
-        }
-        return new JSONResponse($results['results'][0]);
-    }
-
-    /**
-     * Create an item of the given schema using the given request parameters.
-     * @param array $schema The schema
-     * @param array $request_params The request parameters
-     * @param array $get_route The GET route to use to get the created item. This should be an array containing the controller class and method.
-     * @phpstan-param array<class-string<AbstractController>, string> $get_route
-     * @param array $extra_get_route_params Additional parameters needed to generate the GET route. This should only be needed for complex routes.
-     *      This is used to re-map the parameters to the GET route.
-     *      The array can contain an 'id' property which is the name of the parameter that the resulting ID is set to ('id' by default).
-     *      The array may also contain a 'mapped' property which is an array of parameter names and static values.
-     *      For example ['mapped' => ['subitem_type' => 'Followup']] would set the 'subitem_type' parameter to 'Followup'.
-     * @return Response
-     */
-    public static function createBySchema(array $schema, array $request_params, array $get_route, array $extra_get_route_params = []): Response
-    {
-        $itemtype = self::getItemtypeFromSchema($schema);
-        if (!isset($request_params['entity']) && isset($_SESSION['glpiactive_entity'])) {
-            $request_params['entity'] = $_SESSION['glpiactive_entity'];
-        }
-        $input = self::getInputParamsBySchema($schema, $request_params);
-
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
-        if (!$item->can($item->getID(), CREATE, $input)) {
-            return AbstractController::getAccessDeniedErrorResponse();
-        }
-        $items_id = $item->add($input);
-        [$controller, $method] = $get_route;
-
-        $id_field = $extra_get_route_params['id'] ?? 'id';
-        if ($items_id !== false) {
-            $request_params[$id_field] = $items_id;
-        }
-        if (array_key_exists('mapped', $extra_get_route_params)) {
-            foreach ($extra_get_route_params['mapped'] as $key => $value) {
-                $request_params[$key] = $value;
-            }
-        }
-
-        return AbstractController::getCRUDCreateResponse($items_id, $controller::getAPIPathForRouteFunction($controller, $method, $request_params));
-    }
-
-    /**
-     * Update an item of the given schema using the given request parameters.
-     * @param array $schema The schema
-     * @param array $request_attrs The request attributes
-     * @param array $request_params The request parameters
-     * @param string $field The unique field to match on. Defaults to ID. If different, the ID is resolved from the given other unique field.
-     * The field must be present in the route path (request attributes).
-     * @return Response
-     * @see self::getIDForOtherUniqueFieldBySchema()
-     */
-    public static function updateBySchema(array $schema, array $request_attrs, array $request_params, string $field = 'id'): Response
-    {
-        $items_id = $field === 'id' ? $request_attrs['id'] : self::getIDForOtherUniqueFieldBySchema($schema, $field, $request_attrs[$field]);
-        $itemtype = self::getItemtypeFromSchema($schema);
-        // Ignore entity updates. This needs to be done through the Transfer process
-        // TODO This should probably be handled in a more generic way (support other fields that can be used during creation but not updates)
-        if (array_key_exists('entity', $request_attrs)) {
-            unset($request_attrs['entity']);
-        }
-        $input = self::getInputParamsBySchema($schema, $request_params);
-        $input['id'] = $items_id;
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
-        if (!$item->can($items_id, UPDATE, $input)) {
-            return AbstractController::getAccessDeniedErrorResponse();
-        }
-        $result = $item->update($input);
-
-        if ($result === false) {
-            return AbstractController::getCRUDErrorResponse(AbstractController::CRUD_ACTION_UPDATE);
-        }
-        // We should return the updated item but we NEVER return the GLPI item fields directly. Need to use special API methods.
-        return self::getOneBySchema($schema, $request_attrs + ['id' => $items_id], $request_params);
-    }
-
-    /**
-     * Delete an item of the given schema using the given request parameters.
-     * @param array $schema The schema
-     * @param array $request_attrs The request attributes
-     * @param array $request_params The request parameters
-     * @param string $field The unique field to match on. Defaults to ID. If different, the ID is resolved from the given other unique field.
-     * The field must be present in the route path (request attributes).
-     * @return Response
-     * @see self::getIDForOtherUniqueFieldBySchema()
-     */
-    public static function deleteBySchema(array $schema, array $request_attrs, array $request_params, string $field = 'id'): Response
-    {
-        $items_id = $field === 'id' ? $request_attrs['id'] : self::getIDForOtherUniqueFieldBySchema($schema, $field, $request_attrs[$field]);
-        $itemtype = self::getItemtypeFromSchema($schema);
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
-        $force = $request_params['force'] ?? false;
-        $input = ['id' => (int) $items_id];
-        $purge = !$item->maybeDeleted() || $force;
-        if (!$item->can($items_id, $purge ? PURGE : DELETE, $input)) {
-            return AbstractController::getAccessDeniedErrorResponse();
-        }
-        $result = $item->delete($input, $purge ? 1 : 0);
-
-        if ($result === false) {
-            return AbstractController::getCRUDErrorResponse(AbstractController::CRUD_ACTION_DELETE);
-        }
-        return new JSONResponse(null, 204);
     }
 }

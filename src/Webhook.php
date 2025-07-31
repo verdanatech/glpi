@@ -32,22 +32,34 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Api\HL\Controller\AbstractController;
 use Glpi\Api\HL\Controller\AssetController;
+use Glpi\Api\HL\Controller\CustomAssetController;
 use Glpi\Api\HL\Controller\ITILController;
 use Glpi\Api\HL\Controller\ManagementController;
 use Glpi\Api\HL\Doc\Schema;
+use Glpi\Api\HL\Middleware\InternalAuthMiddleware;
+use Glpi\Api\HL\ResourceAccessor;
 use Glpi\Api\HL\Router;
-use Glpi\ContentTemplates\TemplateManager;
-use Glpi\Http\Request;
+use Glpi\Application\Environment;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Asset\AssetDefinition;
+use Glpi\ContentTemplates\TemplateManager;
+use Glpi\Features\Clonable;
+use Glpi\Http\Request;
 use Glpi\Search\FilterableInterface;
 use Glpi\Search\FilterableTrait;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
+use Twig\Extra\Markdown\MarkdownExtension;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 class Webhook extends CommonDBTM implements FilterableInterface
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
     use FilterableTrait;
 
     public static $rightname         = 'config';
@@ -112,7 +124,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             array_keys($parent_tabs)[0] => array_shift($parent_tabs),
         ];
 
-        $this->addStandardTab(__CLASS__, $tabs, $options);
+        $this->addStandardTab(self::class, $tabs, $options);
         // Add common tabs
         $tabs = array_merge($tabs, $parent_tabs);
         $this->addStandardTab(Log::class, $tabs, $options);
@@ -222,11 +234,10 @@ class Webhook extends CommonDBTM implements FilterableInterface
                     ]
                 );
             case 'event':
-                /**
-                 * @var array $list_itemtype
-                 * @phpstan-var array<class-string<CommonDBTM>, string> $list_itemtype
-                 */
                 $recursive_search = static function ($list_itemtype) use (&$recursive_search) {
+                    /**
+                     * @var array<class-string<CommonDBTM>, string> $list_itemtype
+                     */
                     $events = [];
                     foreach ($list_itemtype as $itemtype => $itemtype_label) {
                         if (is_array($itemtype_label)) {
@@ -302,11 +313,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             'update' => __('Update'),
             'delete' => __("Delete"),
         ];
-
-        if (isset($events[$event_name])) {
-            return $events[$event_name];
-        }
-        return NOT_AVAILABLE;
+        return $events[$event_name] ?? NOT_AVAILABLE;
     }
 
     /**
@@ -339,17 +346,26 @@ class Webhook extends CommonDBTM implements FilterableInterface
         }
     }
 
+    /**
+     * @return array<class-string<AbstractController>, array{
+     *     main: array<class-string<CommonDBTM>, array{name: string}>,
+     *     subtypes?: array<class-string<CommonDBTM>, array{name: string, parent: class-string<CommonDBTM>}|array{}>
+     * }>
+     */
     public static function getAPIItemtypeData(): array
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
         static $supported = null;
 
-        if ($supported === null) {
+        if ($supported === null || Environment::get()->shouldExpectResourcesToChange()) {
             $supported = [
                 AssetController::class => [
-                    'main' => $CFG_GLPI['asset_types'],
+                    'main' => AssetController::getAssetTypes(),
+                ],
+                CustomAssetController::class => [
+                    'main' => array_map(
+                        static fn($c) => AssetDefinition::getCustomObjectNamespace() . '\\' . $c . AssetDefinition::getCustomObjectClassSuffix(),
+                        CustomAssetController::getCustomAssetTypes()
+                    ),
                 ],
                 ITILController::class => [
                     'main' => [Ticket::class, Change::class, Problem::class],
@@ -393,9 +409,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             };
 
             /**
-             * @var AbstractController $controller
              * @phpstan-var class-string<AbstractController> $controller
-             * @var array $categories
              */
             foreach ($supported as $controller => $categories) {
                 // TODO Allow pinning webhooks to specific API versions
@@ -411,9 +425,8 @@ class Webhook extends CommonDBTM implements FilterableInterface
                             }
                             unset($supported[$controller][$category][$i]);
                         }
-                    } elseif ($category === 'subtypes' && $controller === ITILController::class) {
-                        /** @phpstan-var class-string<ITILController> $controller */
-                        foreach ($itemtypes as $supported_itemtype => $type_data) {
+                    } elseif ($controller === ITILController::class) {
+                        foreach (array_keys($itemtypes) as $supported_itemtype) {
                             $supported[$controller][$category][$supported_itemtype]['name'] = $controller::getFriendlyNameForSubtype($supported_itemtype);
                         }
                     }
@@ -434,7 +447,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
         $values = [];
         $supported = self::getAPIItemtypeData();
 
-        $values[__('Assets')] = array_keys($supported[AssetController::class]['main']);
+        $values[__('Assets')] = array_keys([...$supported[AssetController::class]['main'], ...$supported[CustomAssetController::class]['main']]);
         $values[__('Assistance')] = array_merge(
             array_keys($supported[ITILController::class]['main']),
             array_keys($supported[ITILController::class]['subtypes'])
@@ -476,7 +489,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
     private function getAPIResponse(string $path): ?array
     {
         $router = Router::getInstance();
-        $router->registerAuthMiddleware(new \Glpi\Api\HL\Middleware\InternalAuthMiddleware());
+        $router->registerAuthMiddleware(new InternalAuthMiddleware());
         $path = rtrim($path, '/');
         $request = new Request('GET', $path);
         $response = Session::callAsSystem(static fn() => $router->handleRequest($request));
@@ -504,9 +517,10 @@ class Webhook extends CommonDBTM implements FilterableInterface
      */
     private function getWebhookBody(string $event, array $api_data, string $itemtype, int $items_id, bool $raw_output = false): ?string
     {
-        $data = $api_data;
-        $data['item'] = $api_data;
-        $data['event'] = $event;
+        $data = [
+            'item' => $api_data,
+            'event' => $event,
+        ];
         $this->addParentItemData($data, $itemtype, $items_id);
         if ($raw_output) {
             return json_encode($data, JSON_PRETTY_PRINT);
@@ -529,7 +543,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
                 };
                 $data = $fn_desanitize($data);
                 try {
-                    return TemplateManager::render($payload_template, $data, false, [new \Twig\Extra\Markdown\MarkdownExtension()]);
+                    return TemplateManager::render($payload_template, $data, false, [new MarkdownExtension()]);
                 } catch (Throwable $e) {
                     return null;
                 }
@@ -569,7 +583,10 @@ class Webhook extends CommonDBTM implements FilterableInterface
         ];
         foreach ($parent_itemtypes as $parent_itemtype => $parent_itemtype_data) {
             $parent_schema = self::getAPISchemaBySupportedItemtype($parent_itemtype);
-            $schema['x-subtypes'][] = $parent_itemtype_data['name'];
+            $schema['x-subtypes'][] = [
+                'itemtype' => $parent_itemtype,
+                'schema_name' => $parent_itemtype_data['name'],
+            ];
             foreach ($parent_schema['properties'] as $property_name => $property_data) {
                 // Save current parents
                 $existing_parents = $schema['properties'][$property_name]['x-parent-itemtype'] ?? [];
@@ -610,7 +627,8 @@ class Webhook extends CommonDBTM implements FilterableInterface
             }
         }
         $parent_schema['x-itemtype'] = $parent_itemtype;
-        $parent_result = \Glpi\Api\HL\Search::getOneBySchema($parent_schema, [
+        unset($parent_schema['x-subtypes']);
+        $parent_result = ResourceAccessor::getOneBySchema($parent_schema, [
             'itemtype' => $parent_itemtype,
             'id' => $parent_id,
         ], []);
@@ -648,8 +666,12 @@ class Webhook extends CommonDBTM implements FilterableInterface
         $parent_name = null;
         foreach ($itemtypes as $controller_class => $categories) {
             if (array_key_exists($itemtype, $categories['main'])) {
-                $api_name = $categories['main'][$itemtype]['name'];
                 $controller = $controller_class;
+                if ($controller === CustomAssetController::class) {
+                    $api_name = str_replace('CustomAsset_', '', $categories['main'][$itemtype]['name']);
+                } else {
+                    $api_name = $categories['main'][$itemtype]['name'];
+                }
                 break;
             }
 
@@ -668,6 +690,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
 
         $path = match ($controller) {
             AssetController::class => '/Assets/',
+            CustomAssetController::class => '/Assets/Custom/',
             ITILController::class => '/Assistance/',
             ManagementController::class => '/Management/',
             default => '/_404/' // Nonsense path to trigger a 404
@@ -717,7 +740,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             $this->getFromDB($id);
 
             //validate CRA if needed
-            if (isset($this->fields['use_cra_challenge']) && $this->fields['use_cra_challenge']) {
+            if (GLPI_WEBHOOK_CRA_MANDATORY || (isset($this->fields['use_cra_challenge']) && $this->fields['use_cra_challenge'])) {
                 $response = self::validateCRAChallenge($this->fields['url'], 'validate_cra_challenge', $this->fields['secret']);
                 if (!$response['status']) {
                     $this->fields['is_cra_challenge_valid'] = false;
@@ -739,6 +762,10 @@ class Webhook extends CommonDBTM implements FilterableInterface
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
+        if (!$item instanceof self) {
+            throw new RuntimeException("This tab is only available for Webhooks items");
+        }
+
         $headers_count = count($item->fields['custom_headers']);
         if ($headers_count > 0) {
             // If there are custom headers, we will include the static ones in the count.
@@ -765,6 +792,10 @@ class Webhook extends CommonDBTM implements FilterableInterface
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
+        if (!$item instanceof self) {
+            return false;
+        }
+
         if ((int) $tabnum === 1) {
             $item->showSecurityForm();
             return true;
@@ -876,7 +907,6 @@ class Webhook extends CommonDBTM implements FilterableInterface
      */
     public static function getAPISchemaBySupportedItemtype(string $itemtype): ?array
     {
-        /** @var class-string<AbstractController> $controller_class */
         $controller_class = null;
         $schema_name = null;
         $supported = self::getAPIItemtypeData();
@@ -889,9 +919,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             }
             if (isset($categories['subtypes']) && array_key_exists($itemtype, $categories['subtypes'])) {
                 $schema_name = $categories['subtypes'][$itemtype]['name'];
-                if (isset($categories['subtypes'][$itemtype]['parent'])) {
-                    $schema_name = $categories['main'][$categories['subtypes'][$itemtype]['parent']]['name'] . $schema_name;
-                }
+                $schema_name = $categories['main'][$categories['subtypes'][$itemtype]['parent']]['name'] . $schema_name;
                 $controller_class = $controller;
                 break;
             }
@@ -913,7 +941,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
         $schema = self::getAPISchemaBySupportedItemtype($itemtype);
         $props = Schema::flattenProperties($schema['properties'], 'item.');
         $parent_schema = self::getParentItemSchema($itemtype);
-        $parent_props = !empty($parent_schema) ? Schema::flattenProperties($parent_schema['properties'], 'parent_item.') : [];
+        $parent_props = $parent_schema !== [] ? Schema::flattenProperties($parent_schema['properties'], 'parent_item.') : [];
 
         $response_schema = [
             [
@@ -925,7 +953,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
         $subtype_labels = [];
         if (isset($parent_schema['x-subtypes'])) {
             foreach ($parent_schema['x-subtypes'] as $subtype) {
-                $subtype_labels[$subtype] = $subtype::getTypeName(1);
+                $subtype_labels[$subtype] = $subtype['itemtype']::getTypeName(1);
             }
         }
         foreach ($props as $prop_name => $prop_data) {
@@ -944,9 +972,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             $applicable_types = array_intersect($prop_data['x-parent-itemtype'] ?? [], array_keys($subtype_labels));
             if ($applicable_types !== array_keys($subtype_labels) && count($applicable_types)) {
                 //Note: In cases of child properties, there may not be any applicable types listed. They are handled at the top level only.
-                $suggestion['detail'] = '[' . implode(', ', array_map(static function ($type) use ($subtype_labels) {
-                    return $subtype_labels[$type];
-                }, $applicable_types)) . ']';
+                $suggestion['detail'] = '[' . implode(', ', array_map(static fn($type) => $subtype_labels[$type], $applicable_types)) . ']';
             }
 
             $response_schema[] = $suggestion;
@@ -1009,14 +1035,8 @@ class Webhook extends CommonDBTM implements FilterableInterface
 
     /**
      * Validate Challenge Response Answer
-     *
-     * @param string $url
-     * @param string $body
-     * @param string $secret
-     *
-     * @return boolean
      */
-    public static function validateCRAChallenge($url, $body, $secret): array
+    public static function validateCRAChallenge(string $url, string $body, string $secret): array
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
@@ -1035,7 +1055,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
                 'query' => ['crc_token' => self::getSignature($body, $secret)],
             ]);
 
-            if ($response->getStatusCode() == 200 && $response->getBody()) {
+            if ($response->getStatusCode() == 200) {
                 $response_challenge = $response->getBody()->getContents();
                 //check response
                 if ($response_challenge == hash_hmac('sha256', self::getSignature($body, $secret), $secret)) {
@@ -1055,7 +1075,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
                     'message' => $response->getReasonPhrase(),
                 ];
             }
-        } catch (\GuzzleHttp\Exception\ClientException | \GuzzleHttp\Exception\RequestException $e) {
+        } catch (ClientException | RequestException $e) {
             $challenge_response['status'] = false;
             if ($e->hasResponse()) {
                 $response = $e->getResponse();
@@ -1065,7 +1085,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
                 $challenge_response['message'] = $e->getMessage();
                 $challenge_response['status_code'] = 503;
             }
-        } catch (\GuzzleHttp\Exception\GuzzleException $e) {
+        } catch (GuzzleException $e) {
             $challenge_response['status'] = false;
             $challenge_response['message'] = $e->getMessage();
         }
@@ -1081,7 +1101,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
      */
     public static function raise(string $event, CommonDBTM $item): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Ignore raising if the table doesn't exist (happens during install/update)
@@ -1127,7 +1147,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             $match_entity = false;
             if ($item->isEntityAssign()) {
                 if ($webhook_data['is_recursive']) {
-                    $parent_entities = getAncestorsOf(\Entity::getTable(), $item->getEntityID());
+                    $parent_entities = getAncestorsOf(Entity::getTable(), $item->getEntityID());
                     if (in_array($webhook_data['entities_id'], $parent_entities, true)) {
                         $match_entity = true;
                     }
@@ -1165,7 +1185,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
             foreach ($custom_headers as $key => $value) {
                 try {
                     $custom_headers[$key] = TemplateManager::render($value, $api_data, false);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     // Header will not be sent
                 }
             }
@@ -1280,7 +1300,7 @@ class Webhook extends CommonDBTM implements FilterableInterface
 
     public function post_getEmpty()
     {
-        $this->fields['is_cra_challenge_valid']                        = 0;
+        $this->fields['is_cra_challenge_valid'] = 0;
     }
 
     public static function getMenuContent()

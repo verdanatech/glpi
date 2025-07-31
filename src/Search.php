@@ -331,7 +331,7 @@ class Search
      * @param array $data   Array of search datas prepared to get datas
      * @param array $params Array of parameters
      *
-     * @return void
+     * @return bool
      **/
     public static function displayData(array $data, array $params = [])
     {
@@ -475,21 +475,21 @@ class Search
      * @since 9.4: $num param has been dropped
      *
      * @param string  $LINK           link to use
-     * @param string  $NOT            is is a negative search ?
+     * @param bool    $NOT            is is a negative search ?
      * @param string  $itemtype       item type
-     * @param integer $ID             ID of the item to search
+     * @param int     $ID             ID of the item to search
      * @param string  $searchtype     search type ('contains' or 'equals')
      * @param string  $val            value search
      *
-     * @return string|false HAVING clause sub-string (Does not include the "HAVING" keyword).
-     *                      May return false if the related search option is not valid for SQL searching.
+     * @return string HAVING clause sub-string (Does not include the "HAVING" keyword).
      **/
     public static function addHaving($LINK, $NOT, $itemtype, $ID, $searchtype, $val)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $criteria = SQLProvider::getHavingCriteria($LINK, $NOT, $itemtype, $ID, $searchtype, $val);
         if (count($criteria) === 0) {
+            // Related search option is not valid for SQL searching.
             return '';
         }
         $iterator = new DBmysqlIterator($DB);
@@ -528,7 +528,7 @@ class Search
     public static function addOrderBy($itemtype, $sort_fields)
     {
         $order = SQLProvider::getOrderByCriteria($itemtype, $sort_fields);
-        if (empty($order)) {
+        if ($order === []) {
             return '';
         }
         return (new DBmysqlIterator(null))->handleOrderClause($order);
@@ -610,7 +610,7 @@ class Search
      **/
     public static function addDefaultWhere($itemtype)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $criteria = SQLProvider::getDefaultWhereCriteria($itemtype);
         if (count($criteria) === 0) {
@@ -635,13 +635,13 @@ class Search
      * @param integer $ID           ID of the item to search
      * @param string  $searchtype   Searchtype used (equals or contains)
      * @param string  $val          Item num in the request
-     * @param integer $meta         Is a meta search (meta=2 in search.class.php) (default 0)
+     * @param bool    $meta         Is a meta search (meta=2 in search.class.php) (default 0)
      *
      * @return string|false Where string or false if an error occurred or if there was no valid WHERE string that could be created.
      **/
-    public static function addWhere($link, $nott, $itemtype, $ID, $searchtype, $val, $meta = 0)
+    public static function addWhere($link, $nott, $itemtype, $ID, $searchtype, $val, $meta = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $criteria = SQLProvider::getWhereCriteria($nott, $itemtype, $ID, $searchtype, $val, $meta);
         if (count($criteria) === 0) {
@@ -674,7 +674,7 @@ class Search
      **/
     public static function addDefaultJoin($itemtype, $ref_table, array &$already_link_tables)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $criteria = SQLProvider::getDefaultJoinCriteria($itemtype, $ref_table, $already_link_tables);
         $iterator = new DBmysqlIterator($DB);
@@ -715,7 +715,7 @@ class Search
         $joinparams = [],
         $field = ''
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $criteria = SQLProvider::getLeftJoinCriteria(
             $itemtype,
@@ -755,7 +755,7 @@ class Search
         array &$already_link_tables2,
         $joinparams = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $joins = SQLProvider::getMetaLeftJoinCriteria($from_type, $to_type, $already_link_tables2, $joinparams);
         $iterator = new DBmysqlIterator($DB);
@@ -1151,7 +1151,7 @@ class Search
      */
     public static function joinDropdownTranslations($alias, $table, $itemtype, $field)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         Toolbox::deprecated();
@@ -1182,6 +1182,6 @@ class Search
      */
     public static function isVirtualField(string $field): bool
     {
-        return strpos($field, '_virtual') === 0;
+        return str_starts_with($field, '_virtual');
     }
 }

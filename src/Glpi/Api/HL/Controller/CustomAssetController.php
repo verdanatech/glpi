@@ -34,12 +34,15 @@
 
 namespace Glpi\Api\HL\Controller;
 
+use DBmysql;
 use Entity;
 use Glpi\Api\HL\Doc as Doc;
+use Glpi\Api\HL\Doc\Parameter;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\Middleware\ResultFormatterMiddleware;
+use Glpi\Api\HL\ResourceAccessor;
 use Glpi\Api\HL\Route;
 use Glpi\Api\HL\RouteVersion;
-use Glpi\Api\HL\Search;
 use Glpi\Asset\Asset;
 use Glpi\Asset\AssetDefinitionManager;
 use Glpi\DBAL\QueryExpression;
@@ -51,6 +54,7 @@ use Group_Item;
 use Location;
 use Manufacturer;
 use State;
+use Toolbox;
 use User;
 
 #[Route(path: '/Assets/Custom', priority: 1, tags: ['Custom Assets'])]
@@ -59,14 +63,14 @@ use User;
         [
             'name' => 'itemtype',
             'description' => 'Asset type',
-            'location' => Doc\Parameter::LOCATION_PATH,
-            'schema' => ['type' => Doc\Schema::TYPE_STRING],
+            'location' => Parameter::LOCATION_PATH,
+            'schema' => ['type' => Schema::TYPE_STRING],
         ],
         [
             'name' => 'id',
             'description' => 'The ID of the Asset',
-            'location' => Doc\Parameter::LOCATION_PATH,
-            'schema' => ['type' => Doc\Schema::TYPE_INTEGER],
+            'location' => Parameter::LOCATION_PATH,
+            'schema' => ['type' => Schema::TYPE_INTEGER],
         ],
     ]
 )]
@@ -74,7 +78,7 @@ final class CustomAssetController extends AbstractController
 {
     protected static function getRawKnownSchemas(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $custom_assets = [];
@@ -87,33 +91,31 @@ final class CustomAssetController extends AbstractController
             $custom_assets[$schema_name] = [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => $asset_class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-rights-conditions' => [
-                    'read' => static function () use ($definition) {
-                        return [
-                            'WHERE' => [
-                                '_.assets_assetdefinitions_id' => $definition->getID(),
-                            ],
-                        ];
-                    },
+                    'read' => static fn() => [
+                        'WHERE' => [
+                            '_.assets_assetdefinitions_id' => $definition->getID(),
+                        ],
+                    ],
                 ],
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                    'serial' => ['type' => Doc\Schema::TYPE_STRING],
-                    'otherserial' => ['type' => Doc\Schema::TYPE_STRING],
-                    'contact' => ['type' => Doc\Schema::TYPE_STRING],
-                    'contact_num' => ['type' => Doc\Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'comment' => ['type' => Schema::TYPE_STRING],
+                    'serial' => ['type' => Schema::TYPE_STRING],
+                    'otherserial' => ['type' => Schema::TYPE_STRING],
+                    'contact' => ['type' => Schema::TYPE_STRING],
+                    'contact_num' => ['type' => Schema::TYPE_STRING],
                     'user' => self::getDropdownTypeSchema(class: User::class, field: 'users_id', full_schema: 'User'),
                     'group' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'items' => [
-                            'type' => Doc\Schema::TYPE_OBJECT,
+                            'type' => Schema::TYPE_OBJECT,
                             'x-full-schema' => 'Group',
                             'x-join' => [
                                 'table' => 'glpi_groups', // The table with the desired data
@@ -131,19 +133,19 @@ final class CustomAssetController extends AbstractController
                             ],
                             'properties' => [
                                 'id' => [
-                                    'type' => Doc\Schema::TYPE_INTEGER,
-                                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                    'type' => Schema::TYPE_INTEGER,
+                                    'format' => Schema::FORMAT_INTEGER_INT64,
                                     'description' => 'ID',
                                 ],
-                                'name' => ['type' => Doc\Schema::TYPE_STRING],
+                                'name' => ['type' => Schema::TYPE_STRING],
                             ],
                         ],
                     ],
                     'user_tech' => self::getDropdownTypeSchema(class: User::class, field: 'users_id_tech', full_schema: 'User'),
                     'group_tech' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'items' => [
-                            'type' => Doc\Schema::TYPE_OBJECT,
+                            'type' => Schema::TYPE_OBJECT,
                             'x-full-schema' => 'Group',
                             'x-join' => [
                                 'table' => 'glpi_groups', // The table with the desired data
@@ -161,11 +163,11 @@ final class CustomAssetController extends AbstractController
                             ],
                             'properties' => [
                                 'id' => [
-                                    'type' => Doc\Schema::TYPE_INTEGER,
-                                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                    'type' => Schema::TYPE_INTEGER,
+                                    'format' => Schema::FORMAT_INTEGER_INT64,
                                     'description' => 'ID',
                                 ],
-                                'name' => ['type' => Doc\Schema::TYPE_STRING],
+                                'name' => ['type' => Schema::TYPE_STRING],
                             ],
                         ],
                     ],
@@ -173,12 +175,12 @@ final class CustomAssetController extends AbstractController
                     'manufacturer' => self::getDropdownTypeSchema(class: Manufacturer::class, full_schema: 'Manufacturer'),
                     'state' => self::getDropdownTypeSchema(class: State::class, full_schema: 'State'),
                     'entity' => self::getDropdownTypeSchema(class: Entity::class, full_schema: 'Entity'),
-                    'is_recursive' => ['type' => Doc\Schema::TYPE_BOOLEAN],
-                    'is_deleted' => ['type' => Doc\Schema::TYPE_BOOLEAN],
-                    'date_creation' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
-                    'date_mod' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
+                    'is_recursive' => ['type' => Schema::TYPE_BOOLEAN],
+                    'is_deleted' => ['type' => Schema::TYPE_BOOLEAN],
+                    'date_creation' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
+                    'date_mod' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
                     'custom_fields' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'x-readonly' => true,
                         'properties' => [],
                     ],
@@ -190,7 +192,7 @@ final class CustomAssetController extends AbstractController
                 $field_name = $field->fields['system_name'];
                 $default_value = is_array($field->fields['default_value']) ? exportArrayToDB($field->fields['default_value']) : $field->fields['default_value'];
                 $custom_assets[$schema_name]['properties']['custom_fields']['properties'][$field_name] = [
-                    'type' => Doc\Schema::TYPE_STRING,
+                    'type' => Schema::TYPE_STRING,
                     'x-field' => "custom_$field_name",
                     'computation' =>  QueryFunction::coalesce([
                         QueryFunction::jsonUnquote(
@@ -209,17 +211,17 @@ final class CustomAssetController extends AbstractController
             $custom_assets[$type_schema_name] = [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => $asset_type_class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                    'date_creation' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
-                    'date_mod' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'comment' => ['type' => Schema::TYPE_STRING],
+                    'date_creation' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
+                    'date_mod' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
                 ],
             ];
 
@@ -228,51 +230,45 @@ final class CustomAssetController extends AbstractController
             $custom_assets[$model_schema_name] = [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => $asset_model_class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                    'product_number' => ['type' => Doc\Schema::TYPE_STRING],
-                    'weight' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'required_units' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'depth' => ['type' => Doc\Schema::TYPE_NUMBER, 'format' => Doc\Schema::FORMAT_NUMBER_FLOAT],
-                    'power_connections' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'power_consumption' => ['type' => Doc\Schema::TYPE_INTEGER],
-                    'is_half_rack' => ['type' => Doc\Schema::TYPE_BOOLEAN],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'comment' => ['type' => Schema::TYPE_STRING],
+                    'product_number' => ['type' => Schema::TYPE_STRING],
+                    'weight' => ['type' => Schema::TYPE_INTEGER],
+                    'required_units' => ['type' => Schema::TYPE_INTEGER],
+                    'depth' => ['type' => Schema::TYPE_NUMBER, 'format' => Schema::FORMAT_NUMBER_FLOAT],
+                    'power_connections' => ['type' => Schema::TYPE_INTEGER],
+                    'power_consumption' => ['type' => Schema::TYPE_INTEGER],
+                    'is_half_rack' => ['type' => Schema::TYPE_BOOLEAN],
                     'picture_front' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'x-mapped-from' => 'picture_front',
-                        'x-mapper' => static function ($v) {
-                            return \Toolbox::getPictureUrl($v, true) ?? '';
-                        },
+                        'x-mapper' => static fn($v) => Toolbox::getPictureUrl($v, true) ?? '',
                     ],
                     'picture_rear' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'x-mapped-from' => 'picture_back',
-                        'x-mapper' => static function ($v) {
-                            return \Toolbox::getPictureUrl($v, true) ?? '';
-                        },
+                        'x-mapper' => static fn($v) => Toolbox::getPictureUrl($v, true) ?? '',
                     ],
                     'pictures' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'items' => [
-                            'type' => Doc\Schema::TYPE_STRING,
+                            'type' => Schema::TYPE_STRING,
                             'x-mapped-from' => 'pictures',
                             'x-mapper' => static function ($v) {
                                 $pictures = importArrayFromDB($v);
-                                return array_map(static function ($picture) {
-                                    return \Toolbox::getPictureUrl($picture, true) ?? '';
-                                }, $pictures);
+                                return array_map(static fn($picture) => Toolbox::getPictureUrl($picture, true) ?? '', $pictures);
                             },
                         ],
                     ],
-                    'date_creation' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
-                    'date_mod' => ['type' => Doc\Schema::TYPE_STRING, 'format' => Doc\Schema::FORMAT_STRING_DATE_TIME],
+                    'date_creation' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
+                    'date_mod' => ['type' => Schema::TYPE_STRING, 'format' => Schema::FORMAT_STRING_DATE_TIME],
                 ],
             ];
         }
@@ -281,21 +277,17 @@ final class CustomAssetController extends AbstractController
     }
 
     /**
-     * @param bool $classes_only If true, only the class names are returned. If false, the class name => localized name pairs are returned..
+     * @param bool $types_only If true, only the type names are returned. If false, the type name => localized name pairs are returned.
      * @return array<class-string<Asset>, string>
      */
-    public static function getAssetTypes(bool $classes_only = true): array
+    public static function getCustomAssetTypes(bool $types_only = true): array
     {
-        static $assets = null;
-
-        if ($assets === null) {
-            $assets = [];
-            $definitions = AssetDefinitionManager::getInstance()->getDefinitions();
-            foreach ($definitions as $definition) {
-                $assets[$definition->fields['system_name']] = $definition->getAssetClassName()::getTypeName(1);
-            }
+        $assets = [];
+        $definitions = AssetDefinitionManager::getInstance()->getDefinitions(true);
+        foreach ($definitions as $definition) {
+            $assets[$definition->fields['system_name']] = $definition->getAssetClassName()::getTypeName(1);
         }
-        return $classes_only ? array_keys($assets) : $assets;
+        return $types_only ? array_keys($assets) : $assets;
     }
 
     #[Route(path: '/', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -307,13 +299,13 @@ final class CustomAssetController extends AbstractController
             '200' => [
                 'description' => 'List of custom asset types',
                 'schema' => [
-                    'type' => Doc\Schema::TYPE_ARRAY,
+                    'type' => Schema::TYPE_ARRAY,
                     'items' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'properties' => [
-                            'itemtype' => ['type' => Doc\Schema::TYPE_STRING],
-                            'name' => ['type' => Doc\Schema::TYPE_STRING],
-                            'href' => ['type' => Doc\Schema::TYPE_STRING],
+                            'itemtype' => ['type' => Schema::TYPE_STRING],
+                            'name' => ['type' => Schema::TYPE_STRING],
+                            'href' => ['type' => Schema::TYPE_STRING],
                         ],
                     ],
                 ],
@@ -322,7 +314,7 @@ final class CustomAssetController extends AbstractController
     )]
     public function index(Request $request): Response
     {
-        $asset_types = self::getAssetTypes(false);
+        $asset_types = self::getCustomAssetTypes(false);
         $asset_paths = [];
         foreach ($asset_types as $asset_type => $asset_name) {
             $asset_paths[] = [
@@ -336,7 +328,7 @@ final class CustomAssetController extends AbstractController
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
         description: 'List or search custom assets of a specific type',
@@ -348,12 +340,12 @@ final class CustomAssetController extends AbstractController
     public function search(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}/{id}', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
@@ -365,19 +357,19 @@ final class CustomAssetController extends AbstractController
     public function getItem(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}', methods: ['POST'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'])]
     #[Doc\Route(
         description: 'Create a custom asset of a specific type',
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}',
             ],
         ]
@@ -385,12 +377,12 @@ final class CustomAssetController extends AbstractController
     public function createItem(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}/{id}', methods: ['PATCH'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -398,7 +390,7 @@ final class CustomAssetController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}',
             ],
         ]
@@ -406,12 +398,12 @@ final class CustomAssetController extends AbstractController
     public function updateItem(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}/{id}', methods: ['DELETE'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -420,12 +412,12 @@ final class CustomAssetController extends AbstractController
     public function deleteItem(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Model', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
         description: 'List or search custom asset models of a specific type',
@@ -437,12 +429,12 @@ final class CustomAssetController extends AbstractController
     public function searchModels(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Model/{id}', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
@@ -454,19 +446,19 @@ final class CustomAssetController extends AbstractController
     public function getItemModel(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Model', methods: ['POST'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'])]
     #[Doc\Route(
         description: 'Create a custom asset model of a specific type',
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}Model',
             ],
         ]
@@ -474,12 +466,12 @@ final class CustomAssetController extends AbstractController
     public function createItemModel(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Model/{id}', methods: ['PATCH'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -487,7 +479,7 @@ final class CustomAssetController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}Model',
             ],
         ]
@@ -495,12 +487,12 @@ final class CustomAssetController extends AbstractController
     public function updateItemModel(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Model/{id}', methods: ['DELETE'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -509,12 +501,12 @@ final class CustomAssetController extends AbstractController
     public function deleteItemModel(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Type', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
         description: 'List or search custom asset models of a specific type',
@@ -526,12 +518,12 @@ final class CustomAssetController extends AbstractController
     public function searchTypes(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Type/{id}', methods: ['GET'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'], middlewares: [ResultFormatterMiddleware::class])]
     #[Doc\Route(
@@ -543,19 +535,19 @@ final class CustomAssetController extends AbstractController
     public function getItemType(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Type', methods: ['POST'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
     ], tags: ['Assets'])]
     #[Doc\Route(
         description: 'Create a custom asset type of a specific type',
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}Type',
             ],
         ]
@@ -563,12 +555,12 @@ final class CustomAssetController extends AbstractController
     public function createItemType(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getParameters() + ['itemtype' => $itemtype], [self::class, 'getItem']);
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Type/{id}', methods: ['PATCH'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -576,7 +568,7 @@ final class CustomAssetController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'CustomAsset_{itemtype}Type',
             ],
         ]
@@ -584,12 +576,12 @@ final class CustomAssetController extends AbstractController
     public function updateItemType(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[RouteVersion(introduced: '2.0')]
     #[Route(path: '/{itemtype}Type/{id}', methods: ['DELETE'], requirements: [
-        'itemtype' => [self::class, 'getAssetTypes'],
+        'itemtype' => [self::class, 'getCustomAssetTypes'],
         'id' => '\d+',
     ], tags: ['Assets'])]
     #[Doc\Route(
@@ -598,6 +590,6 @@ final class CustomAssetController extends AbstractController
     public function deleteItemType(Request $request): Response
     {
         $itemtype = $request->getAttribute('itemtype');
-        return Search::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('CustomAsset_' . $itemtype, $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 }

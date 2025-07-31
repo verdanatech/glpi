@@ -33,9 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 require_once(__DIR__ . '/_check_webserver_config.php');
 
-/** @var \DBmysql $DB */
+/** @var DBmysql $DB */
 global $DB;
 
 Session::checkRight("link", READ);
@@ -55,6 +57,9 @@ if (isset($_GET["lID"])) {
         $link = $current['link'];
 
         if ($item = getItemForItemtype($_GET["itemtype"])) {
+            if (!$item->can($_GET['id'], READ)) {
+                throw new AccessDeniedHttpException();
+            }
             if ($item->getFromDB($_GET["id"])) {
                 $content_filename = Link::generateLinkContents($link, $item, false);
                 $content_data     = Link::generateLinkContents($file, $item, false);

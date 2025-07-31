@@ -34,6 +34,8 @@
 
 namespace Glpi\Form\Destination;
 
+use CommonDBTM;
+use Exception;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
@@ -48,15 +50,34 @@ interface FormDestinationInterface
      * @param AnswersSet $answers_set
      * @param array      $config
      *
-     * @return \CommonDBTM[]
+     * @return CommonDBTM[]
      *
-     * @throws \Exception Must be thrown if the item can't be created
+     * @throws Exception Must be thrown if the item can't be created
      */
     public function createDestinationItems(
         Form $form,
         AnswersSet $answers_set,
         array $config,
     ): array;
+
+    /**
+     * Post creation processing for destination items.
+     *
+     * This method is called after all destination items have been created.
+     *
+     * @param Form                     $form
+     * @param AnswersSet               $answers_set
+     * @param FormDestination          $destination
+     * @param array<int, CommonDBTM[]> $created_items Array of created items, indexed by destination ID.
+     *
+     * @return void
+     */
+    public function postCreateDestinationItems(
+        Form $form,
+        AnswersSet $answers_set,
+        FormDestination $destination,
+        array $created_items,
+    ): void;
 
 
     /**

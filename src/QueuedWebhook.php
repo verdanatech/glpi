@@ -40,11 +40,14 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\RequestOptions;
 
+use function Safe\json_decode;
+use function Safe\strtotime;
+
 class QueuedWebhook extends CommonDBChild
 {
     public static $rightname = 'config';
 
-    public static $itemtype = \Webhook::class;
+    public static $itemtype = Webhook::class;
     public static $items_id = 'webhooks_id';
 
     public static function getTypeName($nb = 0)
@@ -92,7 +95,7 @@ class QueuedWebhook extends CommonDBChild
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin && !$is_deleted) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'send'] = _sx('button', 'Send');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'send'] = _sx('button', 'Send');
         }
 
         return $actions;
@@ -124,7 +127,7 @@ class QueuedWebhook extends CommonDBChild
 
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($input['create_time']) || empty($input['create_time'])) {
@@ -176,10 +179,10 @@ class QueuedWebhook extends CommonDBChild
             return false;
         }
 
-        if ($webhook->fields['use_cra_challenge']) {
+        if (GLPI_WEBHOOK_CRA_MANDATORY || $webhook->fields['use_cra_challenge']) {
             // Send CRA challenge
             $result = $webhook::validateCRAChallenge($queued_webhook->fields['url'], 'validate_cra_challenge', $webhook->fields['secret']);
-            if ($result === false || $result['status'] !== true) {
+            if ($result['status'] !== true) {
                 Toolbox::logInFile('webhook', "CRA challenge failed for webhook {$webhook->fields['name']} ({$webhook->getID()})");
                 return false;
             }
@@ -213,9 +216,7 @@ class QueuedWebhook extends CommonDBChild
         $client = Toolbox::getGuzzleClient($guzzle_options);
         $headers = json_decode($queued_webhook->fields['headers'], true);
         // Remove headers with empty values
-        $headers = array_filter($headers, static function ($value) {
-            return !empty($value);
-        });
+        $headers = array_filter($headers, static fn($value) => !empty($value));
         if ($bearer_token !== null) {
             $headers['Authorization'] = 'Bearer ' . $bearer_token;
         }
@@ -253,7 +254,7 @@ class QueuedWebhook extends CommonDBChild
             if ($webhook->fields['log_in_item_history']) {
                 /** @var class-string<CommonDBTM> $itemtype */
                 $itemtype = $queued_webhook->fields['itemtype'];
-                $item = new $itemtype();
+                $item = getItemForItemtype($itemtype);
                 $item->getFromDB($queued_webhook->fields['items_id']);
 
                 if ($item->dohistory) {
@@ -505,7 +506,7 @@ JS);
      */
     public static function getPendings($send_time = null, $limit = 20, $extra_where = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($send_time === null) {
@@ -592,7 +593,7 @@ JS);
      **/
     public static function cronQueuedWebhookClean(?CronTask $task = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $vol = 0;

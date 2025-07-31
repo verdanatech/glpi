@@ -35,20 +35,23 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\RichText\UserMention;
+
+use function Safe\json_encode;
 
 if (($_POST['action'] ?? null) === 'change_task_state') {
     header("Content-Type: application/json; charset=UTF-8");
 
     if (
-        !isset($_POST['tasks_id'], $_POST['parenttype']) || ($parent = getItemForItemtype($_POST['parenttype'])) === false
+        !isset($_POST['tasks_id'], $_POST['parenttype'])
+        || ($parent = getItemForItemtype($_POST['parenttype'])) === false
+        || !is_a($parent, CommonITILObject::class, true)
     ) {
         return;
     }
 
-    $taskClass = $parent::getType() . "Task";
-    /** @var CommonITILTask $task */
-    $task = new $taskClass();
+    $task = $parent::getTaskClassInstance();
     if (!$task->getFromDB((int) $_POST['tasks_id']) || !$task->canUpdateItem()) {
         throw new AccessDeniedHttpException();
     }
@@ -72,22 +75,31 @@ if (($_POST['action'] ?? null) === 'change_task_state') {
 } elseif (($_REQUEST['action'] ?? null) === 'viewsubitem') {
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
-    if (!isset($_REQUEST['type'])) {
-        return;
-    }
-    if (!isset($_REQUEST['parenttype'])) {
-        return;
+    if (!isset($_REQUEST['type'], $_REQUEST['parenttype'])) {
+        throw new BadRequestHttpException();
     }
 
     $item = getItemForItemtype($_REQUEST['type']);
+
+    if (!$item->canView()) {
+        throw new AccessDeniedHttpException();
+    }
     $parent = getItemForItemtype($_REQUEST['parenttype']);
 
     if (!$parent instanceof CommonITILObject) {
-        trigger_error(
-            sprintf('%s is not a valid item type.', $_REQUEST['parenttype']),
-            E_USER_WARNING
-        );
-        return;
+        throw new BadRequestHttpException();
+    }
+
+    if (
+        isset($_REQUEST[$parent::getForeignKeyField()])
+        && !$parent->can($_REQUEST[$parent::getForeignKeyField()], READ)
+    ) {
+        throw new AccessDeniedHttpException();
+    }
+
+    $id = isset($_REQUEST['id']) && (int) $_REQUEST['id'] > 0 ? $_REQUEST['id'] : null;
+    if (!$item->can($id, READ)) {
+        throw new AccessDeniedHttpException();
     }
 
     $twig = TemplateRenderer::getInstance();
@@ -128,8 +140,7 @@ if (($_POST['action'] ?? null) === 'change_task_state') {
         return;
     }
     if ($template === null) {
-        echo __s('Access denied');
-        return;
+        throw new AccessDeniedHttpException();
     }
     $twig->display("components/itilobject/timeline/{$template}.html.twig", $params);
 }

@@ -60,8 +60,11 @@ use Glpi\Helpdesk\Tile\GlpiPageTile;
 use Glpi\Helpdesk\Tile\TilesManager;
 use ITILCategory;
 use Location;
+use RuntimeException;
 use Session;
 use Ticket;
+
+use function Safe\json_encode;
 
 final class DefaultDataManager
 {
@@ -86,7 +89,7 @@ final class DefaultDataManager
     public function initializeData(): void
     {
         $incident_form = $this->createIncidentForm();
-        $this->createRequestForm();
+        $request_form = $this->createRequestForm();
 
         $root_entity = Entity::getById(0);
 
@@ -101,11 +104,22 @@ final class DefaultDataManager
             'forms_forms_id' => $incident_form->getID(),
         ]);
 
+        $this->tiles_manager->addTile($root_entity, FormTile::class, [
+            'forms_forms_id' => $request_form->getID(),
+        ]);
+
         $this->tiles_manager->addTile($root_entity, GlpiPageTile::class, [
-            'title'        => __("Request a service"),
-            'description'  => __("Ask for a service to be provided by our team."),
-            'illustration' => "request-service",
+            'title'        => __("Create a ticket"),
+            'description'  => __("Go to our service catalog and pick a form to create a new ticket."),
+            'illustration' => "request-support",
             'page'         => GlpiPageTile::PAGE_SERVICE_CATALOG,
+        ]);
+
+        $this->tiles_manager->addTile($root_entity, GlpiPageTile::class, [
+            'title'        => __("See your tickets"),
+            'description'  => __("View all the tickets that you have created."),
+            'illustration' => "helpdesk",
+            'page'         => GlpiPageTile::PAGE_ALL_TICKETS,
         ]);
 
         $this->tiles_manager->addTile($root_entity, GlpiPageTile::class, [
@@ -113,13 +127,6 @@ final class DefaultDataManager
             'description'  => __("Pick an available asset and reserve it for a given date."),
             'illustration' => "reservation",
             'page'         => GlpiPageTile::PAGE_RESERVATION,
-        ]);
-
-        $this->tiles_manager->addTile($root_entity, GlpiPageTile::class, [
-            'title'        => __("View approval requests"),
-            'description'  => __("View all tickets waiting for your validation."),
-            'illustration' => "approve-requests",
-            'page'         => GlpiPageTile::PAGE_APPROVAL,
         ]);
     }
 
@@ -189,7 +196,7 @@ final class DefaultDataManager
         return $form;
     }
 
-    private function createRequestForm(): void
+    private function createRequestForm(): Form
     {
         $form = $this->createForm(
             name: __('Request a service'),
@@ -245,6 +252,8 @@ final class DefaultDataManager
 
         // Add ticket destination
         $this->setDefaultDestinationConfig($form, $config);
+
+        return $form;
     }
 
     private function createForm(
@@ -264,11 +273,11 @@ final class DefaultDataManager
             'entities_id'  => 0,
         ]);
 
-        if (!$form_id) {
-            throw new \RuntimeException("Failed to create form");
+        $form = Form::getById($form_id);
+        if (!$form_id || !$form instanceof Form) {
+            throw new RuntimeException("Failed to create form");
         }
 
-        $form = Form::getById($form_id);
         return $form;
     }
 
@@ -286,7 +295,7 @@ final class DefaultDataManager
         // Create question
         $question = new Question();
         if (!$question->add($question_data)) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "Failed to create question: " . json_encode($question_data)
             );
         }
@@ -317,7 +326,12 @@ final class DefaultDataManager
             'type' => QuestionTypeItemDropdown::class,
             'name' => _n('Category', 'Categories', 1),
             'default_value' => null,
-            'extra_data' => json_encode(['itemtype' => ITILCategory::class]),
+            'extra_data' => json_encode([
+                'itemtype'          => ITILCategory::class,
+                'categories_filter' => ['request', 'incident', 'change', 'problem'],
+                'root_items_id'     => 0,
+                'subtree_depth'     => 0,
+            ]),
         ];
     }
 
@@ -337,7 +351,12 @@ final class DefaultDataManager
             'type' => QuestionTypeItemDropdown::class,
             'name' => _n('Location', 'Locations', 1),
             'default_value' => null,
-            'extra_data' => json_encode(['itemtype' => Location::class]),
+            'extra_data' => json_encode([
+                'itemtype'          => Location::class,
+                'categories_filter' => [],
+                'root_items_id'     => 0,
+                'subtree_depth'     => 0,
+            ]),
         ];
     }
 
@@ -367,7 +386,7 @@ final class DefaultDataManager
         ]);
 
         if (!$success) {
-            throw new \RuntimeException("Failed configure destination");
+            throw new RuntimeException("Failed configure destination");
         }
     }
 }

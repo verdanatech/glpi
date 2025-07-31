@@ -39,6 +39,7 @@ use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Destination\AbstractCommonITILFormDestination;
 use Glpi\Form\Destination\AbstractConfigField;
+use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Export\Specification\DataRequirementSpecification;
@@ -77,6 +78,7 @@ final class TemplateField extends AbstractConfigField implements DestinationFiel
     #[Override]
     public function renderConfigForm(
         Form $form,
+        FormDestination $destination,
         JsonFieldInterface $config,
         string $input_name,
         array $display_options
@@ -149,7 +151,7 @@ final class TemplateField extends AbstractConfigField implements DestinationFiel
     private function getTemplateValuesForDropdown(Form $form): array
     {
         $values = [];
-        $templates = (new $this->itil_template_class())->find();
+        $templates = getItemForItemtype($this->itil_template_class)->find();
 
         foreach ($templates as $template) {
             $values[$template['id']] = $template['name'];
@@ -197,7 +199,7 @@ final class TemplateField extends AbstractConfigField implements DestinationFiel
         }
 
         // Try to load template
-        $itil_itemtype = $destination->getTargetItemtype();
+        $itil_itemtype = $destination->getTarget();
         $template_type = $itil_itemtype::getTemplateClass();
         $template = $template_type::getById($template_id);
         if (!$template) {
@@ -228,7 +230,7 @@ final class TemplateField extends AbstractConfigField implements DestinationFiel
         }
 
         // Insert id
-        $itil_itemtype = $destination->getTargetItemtype();
+        $itil_itemtype = $destination->getTarget();
         $template_type = $itil_itemtype::getTemplateClass();
         $config[TemplateFieldConfig::TEMPLATE_ID] = $mapper->getItemId(
             $template_type,

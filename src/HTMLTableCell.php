@@ -51,7 +51,7 @@ class HTMLTableCell extends HTMLTableEntity
     private $attributForTheRow = false;
 
     /**
-     * @param HTMLTableHeader $row
+     * @param HTMLTableRow    $row
      * @param HTMLTableHeader $header
      * @param string          $content  see HTMLTableEntity#__construct()
      * @param ?HTMLTableCell  $father   HTMLTableCell object (default NULL)
@@ -119,44 +119,6 @@ class HTMLTableCell extends HTMLTableEntity
             }
         } else {
             $this->header->addCell();
-        }
-    }
-
-    public function __get(string $property)
-    {
-        // TODO Deprecate access to variables in GLPI 11.0.
-        $value = null;
-        switch ($property) {
-            case 'numberOfLines':
-            case 'start':
-                $value = $this->$property;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-        return $value;
-    }
-
-    public function __set(string $property, $value)
-    {
-        // TODO Deprecate access to variables in GLPI 11.0.
-        switch ($property) {
-            case 'numberOfLines':
-            case 'start':
-                $this->$property = $value;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
         }
     }
 

@@ -40,6 +40,8 @@ use Glpi\System\Requirement\DbTimezones;
 use Glpi\System\RequirementsManager;
 use Glpi\Toolbox\Filesystem;
 
+use function Safe\file_get_contents;
+
 /**
  * @var array $CFG_GLPI
  */
@@ -167,7 +169,7 @@ function step3($host, $user, $password, $update)
     if (count($hostport) < 2) {
         $link = new mysqli($hostport[0], $user, $password);
     } else {
-        $link = new mysqli($hostport[0], $user, $password, '', $hostport[1]);
+        $link = new mysqli($hostport[0], $user, $password, '', (int) $hostport[1]);
     }
 
     $engine_requirement = null;
@@ -278,7 +280,7 @@ function step4($databasename, $newdatabasename)
     if (count($hostport) < 2) {
         $link = new mysqli($hostport[0], $user, $password);
     } else {
-        $link = new mysqli($hostport[0], $user, $password, '', $hostport[1]);
+        $link = new mysqli($hostport[0], $user, $password, '', (int) $hostport[1]);
     }
 
     $db = new class ($link) extends DBmysql {
@@ -360,7 +362,7 @@ function step4($databasename, $newdatabasename)
 //send telemetry information
 function step6()
 {
-    /** @var \DBmysql $DB */
+    /** @var DBmysql $DB */
     global $DB;
 
     include_once(GLPI_CONFIG_DIR . "/config_db.php");
@@ -386,7 +388,7 @@ function step7()
 function step8()
 {
     include_once(GLPI_CONFIG_DIR . "/config_db.php");
-    /** @var DBmysql $DB */
+    /** @var DB&DBmysql $DB */
     $DB = new DB();
 
     if (isset($_POST['send_stats'])) {
@@ -428,7 +430,7 @@ function update1($dbname)
     if (empty($dbname)) {
         $error = __('Please select a database.');
     } else {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB = DBConnection::getDbInstanceUsingParameters($host, $user, $password, $dbname);
         $update = new Update($DB);

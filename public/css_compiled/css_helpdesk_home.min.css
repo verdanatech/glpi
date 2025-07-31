@@ -76,6 +76,9 @@ header .dropdown .animate__animated {
   padding: 3rem 0;
   z-index: 1025;
 }
+.helpdesk-home-container .search-bar-container-placeholder {
+  height: 130px;
+}
 
 .search-banner {
   background-color: var(--glpi-helpdesk-header);

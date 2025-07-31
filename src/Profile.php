@@ -32,23 +32,26 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\AssetDefinitionManager;
+use Glpi\Dashboard\Grid;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\Event;
+use Glpi\Features\Clonable;
 use Glpi\Form\Form;
 use Glpi\Helpdesk\Tile\LinkableToTilesInterface;
 use Glpi\Helpdesk\Tile\TilesManager;
+use Glpi\Inventory\Conf;
 use Glpi\Toolbox\ArrayNormalizer;
 
 /**
  * Profile class
+ * @phpstan-type RightDefinition array{rights: array{}, label: string, field: string, scope: string}
  **/
 class Profile extends CommonDBTM implements LinkableToTilesInterface
 {
-    use \Glpi\Features\Clonable;
+    use Clonable;
 
     // Specific ones
 
@@ -86,7 +89,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
 
     /**
      * Profile rights to update after profile update.
-     * @var array
+     * @var ?array
      */
     private $profileRight;
 
@@ -95,13 +98,13 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         $value = null;
         switch ($property) {
             case 'profileRight':
-                Toolbox::deprecated(sprintf('Reading private property %s::%s is deprecated', __CLASS__, $property));
+                Toolbox::deprecated(sprintf('Reading private property %s::%s is deprecated', self::class, $property));
                 $value = $this->$property;
                 break;
             default:
                 $trace = debug_backtrace();
                 trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
+                    sprintf('Undefined property: %s::%s in %s on line %d', self::class, $property, $trace[0]['file'], $trace[0]['line']),
                     E_USER_WARNING
                 );
                 break;
@@ -113,13 +116,13 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
     {
         switch ($property) {
             case 'profileRight':
-                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', __CLASS__, $property));
+                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', self::class, $property));
                 $this->$property = $value;
                 break;
             default:
                 $trace = debug_backtrace();
                 trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
+                    sprintf('Undefined property: %s::%s in %s on line %d', self::class, $property, $trace[0]['file'], $trace[0]['line']),
                     E_USER_WARNING
                 );
                 break;
@@ -148,7 +151,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Profile_User::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
 
@@ -220,7 +223,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
 
     public function post_updateItem($history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (count($this->profileRight) > 0) {
@@ -269,11 +272,24 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
 
     public function post_addItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         ProfileRight::fillProfileRights($this->fields['id']);
-        $this->profileRight = null;
+        if (count($this->profileRight) > 0) {
+            // Delegate custom assets specific rights handling to `AssetDefinitionManager`.
+            $definitions = AssetDefinitionManager::getInstance()->getDefinitions();
+            foreach ($definitions as $definition) {
+                $asset_rightname = $definition->getCustomObjectRightname();
+                if (array_key_exists($asset_rightname, $this->profileRight)) {
+                    $definition->setProfileRights($this->getID(), $this->profileRight[$asset_rightname]);
+                    unset($this->profileRight[$asset_rightname]);
+                }
+            }
+
+            ProfileRight::updateProfileRights($this->getID(), $this->profileRight);
+            $this->profileRight = [];
+        }
 
         if (isset($this->fields['is_default']) && ((int) $this->fields["is_default"] === 1)) {
             $DB->update(
@@ -702,7 +718,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public static function currentUserHaveMoreRightThan($IDs = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (Session::isCron()) {
@@ -780,8 +796,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      * @param string $interface The interface name
      * @phpstan-param 'all'|'central'|'helpdesk' $interface
      * @return array
-     * @phpstan-type RightDefinition = array{rights: array{}, label: string, field: string, scope: string}
-     * @phpstan-return $interface == 'all' ? array<string, array<string, array<string, RightDefinition[]>>> : ($form == 'all' ? array<string, array<string, RightDefinition[]>> : ($group == 'all' ? array<string, RightDefinition[]> : RightDefinition[]))
+     * @phpstan-return ($interface is 'all' ? array<string, array<string, array<string, RightDefinition[]>>> : ($form is 'all' ? array<string, array<string, RightDefinition[]>> : ($group is 'all' ? array<string, RightDefinition[]> : RightDefinition[])))
      * @internal BC not guaranteed. Only public so it can be used in tests to ensure search options are made for all rights.
      */
     public static function getRightsForForm(string $interface = 'all', string $form = 'all', string $group = 'all'): array
@@ -889,6 +904,10 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                             $fn_get_rights(DeviceSimcard::class, 'central', [
                                 'label' => __('Simcard PIN/PUK'),
                                 'field' => 'devicesimcard_pinpuk',
+                                'rights'    => [
+                                    READ    => __('Read'),
+                                    UPDATE  => __('Update'),
+                                ],
                             ]),
                         ],
                     ],
@@ -918,7 +937,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                             $fn_get_rights(User::class, 'central'),
                             $fn_get_rights(Entity::class, 'central', ['scope' => 'global']),
                             $fn_get_rights(Group::class, 'central', ['scope' => 'global']),
-                            $fn_get_rights(__CLASS__, 'central', ['scope' => 'global']),
+                            $fn_get_rights(self::class, 'central', ['scope' => 'global']),
                             $fn_get_rights(QueuedNotification::class, 'central', ['scope' => 'global']),
                             $fn_get_rights(Log::class, 'central', ['scope' => 'global']),
                             $fn_get_rights(Event::class, 'central', [
@@ -928,7 +947,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                             $fn_get_rights(Form::class, 'central'),
                         ],
                         'inventory' => [
-                            $fn_get_rights(\Glpi\Inventory\Conf::class, 'central', [
+                            $fn_get_rights(Conf::class, 'central', [
                                 'label' => __('Inventory'),
                                 'field' => 'inventory',
                                 'scope' => 'global',
@@ -1044,7 +1063,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                                 'field'  => 'personalization',
                                 'scope'     => 'entity',
                             ]),
-                            $fn_get_rights(\Glpi\Dashboard\Grid::class, 'central', [
+                            $fn_get_rights(Grid::class, 'central', [
                                 'label'     => __('All dashboards'),
                                 'field'     => 'dashboard',
                                 'scope'     => 'entity',
@@ -1321,7 +1340,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                 'columns'    => [],
             ];
 
-            foreach ($statuses as $index_2 => $status_2) {
+            foreach (array_keys($statuses) as $index_2) {
                 $content = ['checked' => true];
                 if (isset($this->fields[$db_field][$index_1][$index_2])) {
                     $content['checked'] = $this->fields[$db_field][$index_1][$index_2];
@@ -1419,7 +1438,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         TemplateRenderer::getInstance()->display('pages/2fa/2fa_config.html.twig', [
             'canedit' => $canedit,
             'item'   => $this,
-            'action' => Toolbox::getItemTypeFormURL(__CLASS__),
+            'action' => Toolbox::getItemTypeFormURL(self::class),
         ]);
     }
 
@@ -2098,7 +2117,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
             'field'              => 'rights',
             'name'               => __('All dashboards'),
             'datatype'           => 'right',
-            'rightclass'         => Glpi\Dashboard\Grid::class,
+            'rightclass'         => Grid::class,
             'rightname'          => 'dashboard',
             'joinparams'         => [
                 'jointype'           => 'child',
@@ -2584,11 +2603,11 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
             'field'              => 'rights',
             'name'               => __('Inventory'),
             'datatype'           => 'right',
-            'rightclass'         => \Glpi\Inventory\Conf::class,
-            'rightname'          => \Glpi\Inventory\Conf::$rightname,
+            'rightclass'         => Conf::class,
+            'rightname'          => Conf::$rightname,
             'joinparams'         => [
                 'jointype'           => 'child',
-                'condition'          => ['NEWTABLE.name' => \Glpi\Inventory\Conf::$rightname],
+                'condition'          => ['NEWTABLE.name' => Conf::$rightname],
             ],
         ];
 
@@ -3138,7 +3157,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
         $param['display'] = true;
         $param['size']    = count($values);
         $tabselect = [];
-        foreach ($values as $k => $v) {
+        foreach (array_keys($values) as $k) {
             if ((int) $current & $k) {
                 $tabselect[] = $k;
             }
@@ -3223,7 +3242,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public static function dropdownUnder($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $p['name']  = 'profiles_id';
@@ -3266,7 +3285,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public static function getDefault()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $profiles = $DB->request([
@@ -3358,7 +3377,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      */
     public function getDomainRecordTypes()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -3415,7 +3434,7 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      */
     public static function haveUserRight($user_id, $rightname, $rightvalue, $entity_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request(
@@ -3465,8 +3484,8 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public static function getRightsFor($itemtype, $interface = 'central')
     {
-        if (class_exists($itemtype)) {
-            return (new $itemtype())->getRights($interface);
+        if (class_exists($itemtype) && $item = getItemForItemtype($itemtype)) {
+            return $item->getRights($interface);
         }
 
         return [];
@@ -3492,16 +3511,17 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
      **/
     public function displayRightsChoiceMatrix(array $rights, array $options = [])
     {
-        $param                  = [];
-        $param['title']         = '';
-        $param['canedit']       = true;
-        $param['default_class'] = '';
+        $param = [
+            'title' => '',
+            'canedit' => true,
+            'default_class' => '',
+        ];
 
-        if (empty($rights)) {
+        if ($rights === []) {
             return mt_rand();
         }
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 $param[$key] = $val;
             }
@@ -3640,18 +3660,19 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
     public static function getLinearRightChoice(array $elements, array $options = [])
     {
 
-        $param                  = [];
-        $param['canedit']       = true;
-        $param['field']         = '';
-        $param['value']         = '';
-        $param['max_per_line']  = 10;
-        $param['check_all']     = false;
-        $param['rand']          = mt_rand();
-        $param['zero_on_empty'] = true;
-        $param['display']       = true;
-        $param['check_method']  = static fn($element, $field) => (($field & $element) === $element);
+        $param = [
+            'canedit' => true,
+            'field' => '',
+            'value' => '',
+            'max_per_line' => 10,
+            'check_all' => false,
+            'rand' => mt_rand(),
+            'zero_on_empty' => true,
+            'display' => true,
+            'check_method' => static fn($element, $field) => (($field & $element) === $element),
+        ];
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 $param[$key] = $val;
             }

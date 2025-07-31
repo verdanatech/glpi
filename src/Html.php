@@ -32,25 +32,44 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use donatj\UserAgent\UserAgentParser;
 use Glpi\Application\Environment;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\AssetDefinition;
 use Glpi\Asset\AssetDefinitionManager;
 use Glpi\Console\Application;
+use Glpi\Dashboard\Grid;
+use Glpi\Debug\Profile;
+use Glpi\Debug\Profiler;
 use Glpi\Error\ErrorHandler;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\Exception\Http\NotFoundHttpException;
 use Glpi\Exception\RedirectException;
+use Glpi\Form\Form;
 use Glpi\Form\ServiceCatalog\ServiceCatalog;
+use Glpi\Inventory\Inventory;
 use Glpi\Plugin\Hooks;
+use Glpi\System\Log\LogViewer;
 use Glpi\Toolbox\FrontEnd;
 use Glpi\Toolbox\URL;
 use Glpi\UI\ThemeManager;
+use Psr\SimpleCache\CacheInterface;
+use Safe\DateTime;
 use ScssPhp\ScssPhp\Compiler;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\file_get_contents;
+use function Safe\filemtime;
+use function Safe\filesize;
+use function Safe\json_encode;
+use function Safe\mktime;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\realpath;
+use function Safe\strtotime;
 
 /**
  * Html Class
@@ -58,6 +77,12 @@ use Symfony\Component\HttpFoundation\Request;
  **/
 class Html
 {
+    /**
+     * Memory required to compile the main GLPI scss file (`css/glpi.scss`).
+     * It currently requires 120 MB, but may increase a bit when the dependencies are updated.
+     */
+    public const MAIN_SCSS_COMPILATION_REQUIRED_MEMORY = 192 * 1024 * 1024;
+
     /**
      * Recursivly execute html_entity_decode on an array
      *
@@ -72,7 +97,7 @@ class Html
         Toolbox::deprecated();
 
         if (is_array($value)) {
-            return array_map([__CLASS__, 'entity_decode_deep'], $value);
+            return array_map([self::class, 'entity_decode_deep'], $value);
         }
         if (!is_string($value)) {
             return $value;
@@ -95,7 +120,7 @@ class Html
         Toolbox::deprecated();
 
         if (is_array($value)) {
-            return array_map([__CLASS__, 'entities_deep'], $value);
+            return array_map([self::class, 'entities_deep'], $value);
         }
         if (!is_string($value)) {
             return $value;
@@ -129,8 +154,8 @@ class Html
         }
 
         try {
-            $date = new \DateTime($time);
-        } catch (\Throwable $e) {
+            $date = new DateTime($time);
+        } catch (Throwable $e) {
             ErrorHandler::logCaughtException($e);
             ErrorHandler::displayCaughtExceptionMessage($e);
             Session::addMessageAfterRedirect(
@@ -426,7 +451,7 @@ class Html
      * Redirection hack
      *
      * @param string $dest Redirection destination
-     * @param string $http_response_code Forces the HTTP response code to the specified value
+     * @param int    $http_response_code Forces the HTTP response code to the specified value
      *
      * @return never
      **/
@@ -690,7 +715,7 @@ class Html
             $out          .= ")){ ";
             $close_string .= "return true;} else { return false;}";
         }
-        $out .= $additionalactions . (substr($additionalactions, -1) != ';' ? ';' : '') . $close_string;
+        $out .= $additionalactions . (!str_ends_with($additionalactions, ';') ? ';' : '') . $close_string;
         return $out;
     }
 
@@ -727,7 +752,7 @@ class Html
             'colors'    => null,
         ];
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 if ($key === 'colors' && $val !== null) {
                     $params['colors'] = array_merge([
@@ -995,7 +1020,7 @@ TWIG,
      * @param bool   $display display the header (default true)
      *
      * @return string|void Generated HTML if `display` param is false, void otherwise.
-     * @phpstan-return $display ? void : string
+     * @phpstan-return ($display is true ? void : string)
      */
     public static function includeHeader(
         $title = '',
@@ -1041,6 +1066,8 @@ TWIG,
         ];
 
         $tpl_vars['css_files'][] = ['path' => 'lib/base.css'];
+
+        Html::requireJs('tinymce');
 
         if (isset($CFG_GLPI['notifications_ajax']) && $CFG_GLPI['notifications_ajax']) {
             Html::requireJs('notifications_ajax');
@@ -1135,10 +1162,6 @@ TWIG,
                 Html::requireJs('masonry');
             }
 
-            if (in_array('tinymce', $jslibs)) {
-                Html::requireJs('tinymce');
-            }
-
             if (in_array('clipboard', $jslibs)) {
                 Html::requireJs('clipboard');
             }
@@ -1206,7 +1229,7 @@ TWIG,
         $tpl_vars['js_modules'][] = ['path' => 'js/modules/Search/Table.js'];
 
         if ($_SESSION['glpi_use_mode'] === Session::DEBUG_MODE) {
-            $tpl_vars['glpi_request_id'] = \Glpi\Debug\Profile::getCurrent()->getID();
+            $tpl_vars['glpi_request_id'] = Profile::getCurrent()->getID();
         }
 
         if ($display) {
@@ -1230,8 +1253,8 @@ TWIG,
         global $CFG_GLPI;
 
         $can_read_dashboard      = Session::haveRight('dashboard', READ);
-        $default_asset_dashboard = defined('TU_USER') ? "" : Glpi\Dashboard\Grid::getDefaultDashboardForMenu('assets');
-        $default_asset_helpdesk  = defined('TU_USER') ? "" : Glpi\Dashboard\Grid::getDefaultDashboardForMenu('helpdesk');
+        $default_asset_dashboard = defined('TU_USER') ? "" : Grid::getDefaultDashboardForMenu('assets');
+        $default_asset_helpdesk  = defined('TU_USER') ? "" : Grid::getDefaultDashboardForMenu('helpdesk');
 
         $menu = [
             'assets' => [
@@ -1297,8 +1320,8 @@ TWIG,
                 'title' => __('Administration'),
                 'types' => [
                     'User', 'Group', 'Entity', 'Rule',
-                    'Profile', 'QueuedNotification', 'Glpi\System\Log\LogViewer',
-                    'Glpi\Inventory\Inventory', 'Glpi\Form\Form',
+                    'Profile', 'QueuedNotification', LogViewer::class,
+                    Inventory::class, Form::class,
                 ],
                 'icon'  => 'ti ti-shield-check',
             ],
@@ -1460,7 +1483,22 @@ TWIG,
             ],
         ];
 
-        if (Session::haveRight("ticket", CREATE)) {
+        $session_info = Session::getCurrentSessionInfo();
+        if ($session_info === null) {
+            // Unlogged users should not have any other menu entries.
+            return $menu;
+        }
+
+        $entity = Entity::getById($session_info->getCurrentEntityId());
+        if (!$entity) {
+            // Safety check, will never happen but help with static analysis.
+            throw new RuntimeException("Cant load current entity");
+        }
+
+        if (
+            Session::haveRight("ticket", CREATE)
+            && $entity->isServiceCatalogEnabled()
+        ) {
             $menu['create_ticket'] = [
                 'default' => ServiceCatalog::getSearchURL(false),
                 'title'   => __('Create a ticket'),
@@ -1589,7 +1627,7 @@ TWIG,
         /**
          * @var array $CFG_GLPI
          * @var bool $HEADER_LOADED
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $HEADER_LOADED, $DB;
 
@@ -1606,9 +1644,9 @@ TWIG,
         $sector = strtolower($sector);
         $item   = strtolower($item);
 
-        \Glpi\Debug\Profiler::getInstance()->start('Html::includeHeader');
+        Profiler::getInstance()->start('Html::includeHeader');
         self::includeHeader($title, $sector, $item, $option, $add_id);
-        \Glpi\Debug\Profiler::getInstance()->stop('Html::includeHeader');
+        Profiler::getInstance()->stop('Html::includeHeader');
 
         $menu = self::generateMenuSession();
         $menu = Plugin::doHookFunction(Hooks::REDEFINE_MENUS, $menu);
@@ -1713,12 +1751,12 @@ TWIG,
         $tpl_vars['debug_info'] = null;
 
         self::displayMessageAfterRedirect();
-        \Glpi\Debug\Profiler::getInstance()->stopAll();
+        Profiler::getInstance()->stopAll();
         if (
             $_SESSION['glpi_use_mode'] === Session::DEBUG_MODE
             && !str_starts_with(Request::createFromGlobals()->getPathInfo(), '/install/')
         ) {
-            $tpl_vars['debug_info'] = \Glpi\Debug\Profile::getCurrent()->getDebugInfo();
+            $tpl_vars['debug_info'] = Profile::getCurrent()->getDebugInfo();
         }
 
         TemplateRenderer::getInstance()->display('layout/parts/page_footer.html.twig', $tpl_vars);
@@ -2046,16 +2084,15 @@ TWIG,
      * @since 0.84
      *
      * @param string $container_id  html of the container of checkboxes link to this check all checkbox
-     * @param ?int   $rand          rand value to use (default is auto generated)
+     * @param null|int|'__RAND__'   $rand          rand value to use (default is auto generated)
      *
      * @return string
      **/
     public static function getCheckAllAsCheckbox($container_id, $rand = null)
     {
-
         if ($rand === null) {
             $rand = mt_rand();
-        } else {
+        } elseif ($rand !== "__RAND__") {
             $rand = (int) $rand;
         }
 
@@ -2092,7 +2129,7 @@ TWIG,
         $params['tag_for_massive'] = '';
         $params['container_id']    = '';
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 $params[$key] = $val;
             }
@@ -3123,9 +3160,9 @@ JS;
             $hour   = 0;
             $minute = 0;
             $second = 0;
-            $month  = date("n", $specifictime);
+            $month  = (int) date("n", $specifictime);
             $day    = 1;
-            $year   = date("Y", $specifictime);
+            $year   = (int) date("Y", $specifictime);
 
             switch ($val) {
                 case "BEGINYEAR":
@@ -3154,9 +3191,9 @@ JS;
             $hour   = 0;
             $minute = 0;
             $second = 0;
-            $month  = date("n", strtotime($lastday));
-            $day    = date("j", strtotime($lastday));
-            $year   = date("Y", strtotime($lastday));
+            $month  = (int) date("n", strtotime($lastday));
+            $day    = (int) date("j", strtotime($lastday));
+            $year   = (int) date("Y", strtotime($lastday));
 
             return date($format_use, mktime($hour, $minute, $second, $month, $day, $year));
         }
@@ -3254,7 +3291,9 @@ JS;
 
         // format dates
         foreach ($options['dates'] as &$data) {
-            $data['date'] = date("Y-m-d H:i:s", $data['timestamp']);
+            $data['date'] = $data['timestamp'] !== null
+                ? date("Y-m-d H:i:s", $data['timestamp'])
+                : null;
         }
 
         // get Html
@@ -3466,12 +3505,9 @@ JS;
     ) {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
-
-        // load tinymce lib
-        Html::requireJs('tinymce');
 
         $language = $_SESSION['glpilanguage'];
         if (!file_exists(GLPI_ROOT . "/public/lib/tinymce-i18n/langs6/$language.js")) {
@@ -3493,14 +3529,10 @@ JS;
         }
         $content_css = preg_replace('/^.*href="([^"]+)".*$/', '$1', self::css('lib/base.css', ['force_no_version' => true]));
         $content_css .= ',' . preg_replace('/^.*href="([^"]+)".*$/', '$1', self::css('lib/tabler.css', ['force_no_version' => true]));
-        $content_css .= ',' . implode(',', array_map(static function ($path) {
-            return preg_replace('/^.*href="([^"]+)".*$/', '$1', self::scss($path, ['force_no_version' => true]));
-        }, $content_css_paths));
-        $skin_url = preg_replace('/^.*href="([^"]+)".*$/', '$1', self::css('css/standalone/tinymce_empty_skin', ['force_no_version' => true]));
-
-        // TODO: the recent changes to $skin_url above break tinyMCE's placeholders
-        // Reverted to the previous version here, but this should be fixed properly
-        $skin_url = $CFG_GLPI['root_doc'] . "/lib/tinymce/skins/ui/oxide";
+        $content_css .= ',' . implode(',', array_map(static fn($path) => preg_replace('/^.*href="([^"]+)".*$/', '$1', self::scss($path, ['force_no_version' => true])), $content_css_paths));
+        // Fix & encoding so it can be loaded as expected in debug mode
+        $content_css = str_replace('&amp;', '&', $content_css);
+        $skin_url = preg_replace('/^.*href="([^"]+)".*$/', '$1', self::css('css/tinymce_empty_skin', ['force_no_version' => true], false));
 
         $cache_suffix = '?v=' . FrontEnd::getVersionCacheKey(GLPI_VERSION);
         $readonlyjs   = $readonly ? 'true' : 'false';
@@ -3861,7 +3893,7 @@ JAVASCRIPT
             $back = $start - $list_limit;
         }
 
-        if (!empty($additional_params) && strpos($additional_params, '&') !== 0) {
+        if (!empty($additional_params) && !str_starts_with($additional_params, '&')) {
             $additional_params = '&' . $additional_params;
         }
 
@@ -3989,7 +4021,7 @@ JAVASCRIPT
      * @param string         $target                  page would be open when click on the option (last,previous etc)
      * @param string         $parameters              parameters would be passed on the URL.
      * @param integer|string $item_type_output        item type display - if >0 display export
-     * @param integer|string $item_type_output_param  item type parameter for export
+     * @param integer|array  $item_type_output_param  item type parameter for export
      * @param string         $additional_info         Additional information to display (default '')
      *
      * @return void
@@ -4040,7 +4072,7 @@ JAVASCRIPT
         echo "<div><table class='table align-middle'>";
         echo "<tr>";
 
-        if (strpos($target, '?') == false) {
+        if (!str_contains($target, '?')) {
             $fulltarget = $target . "?" . $parameters;
         } else {
             $fulltarget = $target . "&" . $parameters;
@@ -4079,7 +4111,7 @@ JAVASCRIPT
             echo "<form method='GET' action='" . $CFG_GLPI["root_doc"] . "/front/report.dynamic.php'>";
             echo Html::hidden('item_type', ['value' => $item_type_output]);
 
-            if ($item_type_output_param != 0) {
+            if (is_array($item_type_output_param)) {
                 echo Html::hidden(
                     'item_type_param',
                     ['value' => Toolbox::prepareArrayForInput($item_type_output_param)]
@@ -4087,7 +4119,7 @@ JAVASCRIPT
             }
 
             $parameters = trim($parameters, '&amp;');
-            if (strstr($parameters, 'start') === false) {
+            if (!str_contains($parameters, 'start')) {
                 $parameters .= "&amp;start=$start";
             }
 
@@ -4142,7 +4174,7 @@ JAVASCRIPT
     public static function printPagerForm($action = "", $display = true, $additional_params = '')
     {
 
-        if (!empty($additional_params) && strpos($additional_params, '&') !== 0) {
+        if (!empty($additional_params) && !str_starts_with($additional_params, '&')) {
             $additional_params = '&' . $additional_params;
         }
 
@@ -4253,9 +4285,9 @@ JAVASCRIPT
         if (empty($btimage)) {
             $link .= $btlabel;
         } else {
-            if (strpos($btimage, 'fa-') === 0) {
+            if (str_starts_with($btimage, 'fa-')) {
                 $link .= "<span class='fas $btimage' title='$btlabel'><span class='sr-only'>$btlabel</span>";
-            } elseif (strpos($btimage, 'ti-') === 0) {
+            } elseif (str_starts_with($btimage, 'ti-')) {
                 $link .= "<span class='ti $btimage' title='$btlabel'><span class='sr-only'>$btlabel</span>";
             } else {
                 $link .= "<img src='$btimage' title='$btlabel' alt='$btlabel' class='pointer'>";
@@ -4302,7 +4334,7 @@ JAVASCRIPT
      * @since 0.83.
      *
      * @return string|true
-     * @phpstan-return $display is true ? true : string
+     * @phpstan-return ($display is true ? true : string)
      **/
     public static function closeForm($display = true)
     {
@@ -5094,7 +5126,7 @@ HTML;
                 unset($options['version']);
             }
 
-            $url .= ((strpos($url, '?') !== false) ? '&' : '?') . 'v=' . FrontEnd::getVersionCacheKey($version);
+            $url .= ((str_contains($url, '?')) ? '&' : '?') . 'v=' . FrontEnd::getVersionCacheKey($version);
         }
 
         // Convert filesystem path to URL path (fix issues with Windows directory separator)
@@ -5515,7 +5547,7 @@ HTML;
         $param['col_check_all']        = false;
         $param['rand']                 = mt_rand();
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 $param[$key] = $val;
             }
@@ -5528,7 +5560,7 @@ HTML;
 
         // count checked
         $nb_cb_per_col = [];
-        foreach ($columns as $col_name => $column) {
+        foreach (array_keys($columns) as $col_name) {
             $nb_cb_per_col[$col_name] = [
                 'total'   => 0,
                 'checked' => 0,
@@ -5547,7 +5579,7 @@ HTML;
                     'checked' => 0,
                 ];
 
-                foreach ($columns as $col_name => $column) {
+                foreach (array_keys($columns) as $col_name) {
                     if (array_key_exists($col_name, $row['columns'])) {
                         $content = $row['columns'][$col_name];
                         if (
@@ -5582,12 +5614,12 @@ HTML;
 
 
     /**
-     * This function provides a mecanism to send html form by ajax
+     * This function provides a mechanism to send HTML form by ajax
      *
      * @param string $selector selector of a HTML form
-     * @param string $success  jacascript code of the success callback
-     * @param string $error    jacascript code of the error callback
-     * @param string $complete jacascript code of the complete callback
+     * @param string $success  JavaScript code of the success callback
+     * @param string $error    JavaScript code of the error callback
+     * @param string $complete JavaScript code of the complete callback
      *
      * @see https://api.jquery.com/jQuery.ajax/
      *
@@ -5595,7 +5627,7 @@ HTML;
      **/
     public static function ajaxForm($selector, $success = "console.log(html);", $error = "console.error(html)", $complete = '')
     {
-        echo Html::scriptBlock("
+        echo Html::scriptBlock(<<<JS
       $(function() {
          var lastClicked = null;
          $('input[type=submit], button[type=submit]').click(function(e) {
@@ -5629,7 +5661,7 @@ HTML;
             });
          });
       });
-      ");
+JS);
     }
 
     /**
@@ -5992,8 +6024,8 @@ HTML;
 
         if (isset($CFG_GLPI['notifications_ajax']) && $CFG_GLPI['notifications_ajax'] && !Session::isImpersonateActive()) {
             $options = [
-                'interval'  => ($CFG_GLPI['notifications_ajax_check_interval'] ? $CFG_GLPI['notifications_ajax_check_interval'] : 5) * 1000,
-                'sound'     => $CFG_GLPI['notifications_ajax_sound'] ? $CFG_GLPI['notifications_ajax_sound'] : false,
+                'interval'  => ($CFG_GLPI['notifications_ajax_check_interval'] ?: 5) * 1000,
+                'sound'     => $CFG_GLPI['notifications_ajax_sound'] ?: false,
                 'icon'      => ($CFG_GLPI["notifications_ajax_icon_url"] ? $CFG_GLPI['root_doc'] . $CFG_GLPI['notifications_ajax_icon_url'] : false),
                 'user_id'   => Session::getLoginUserID(),
             ];
@@ -6097,7 +6129,7 @@ HTML;
     private static function getMiniFile($file_path)
     {
         $debug = (isset($_SESSION['glpi_use_mode'])
-         && $_SESSION['glpi_use_mode'] == Session::DEBUG_MODE ? true : false);
+         && $_SESSION['glpi_use_mode'] == Session::DEBUG_MODE);
 
         $file_minpath = str_replace(['.css', '.js'], ['.min.css', '.min.js'], $file_path);
         if (file_exists(GLPI_ROOT . '/' . $file_minpath)) {
@@ -6244,7 +6276,7 @@ HTML;
                    . $hexcolor[2] . $hexcolor[2];
         }
         if (strlen($hexcolor) != 6) {
-            throw new \Exception('Invalid HEX color.');
+            throw new Exception('Invalid HEX color.');
         }
 
         $r = hexdec(substr($hexcolor, 0, 2));
@@ -6288,12 +6320,12 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var CacheInterface $GLPI_CACHE
          */
         global $CFG_GLPI, $GLPI_CACHE;
 
         if (empty($args['file'])) {
-            throw new \InvalidArgumentException('"file" argument is required.');
+            throw new InvalidArgumentException('"file" argument is required.');
         }
 
         $ckey = 'css_';
@@ -6373,11 +6405,13 @@ HTML;
                     return null;
                 }
 
-                $extension = $file_chunks['extension'] ?? 'scss';
-                $possible_filenames = [
-                    sprintf('%s/css/lib/%s/%s.%s', GLPI_ROOT, $file_chunks['directory'], $file_chunks['file'], $extension),
-                    sprintf('%s/css/lib/%s/_%s.%s', GLPI_ROOT, $file_chunks['directory'], $file_chunks['file'], $extension),
-                ];
+                $possible_extensions = array_key_exists('extension', $file_chunks) ? $file_chunks['extension'] : ['scss', 'css'];
+
+                $possible_filenames  = [];
+                foreach ($possible_extensions as $extension) {
+                    $possible_filenames[] = sprintf('%s/css/lib/%s/%s.%s', GLPI_ROOT, $file_chunks['directory'], $file_chunks['file'], $extension);
+                    $possible_filenames[] = sprintf('%s/css/lib/%s/_%s.%s', GLPI_ROOT, $file_chunks['directory'], $file_chunks['file'], $extension);
+                }
                 foreach ($possible_filenames as $filename) {
                     if (file_exists($filename)) {
                         return $filename;
@@ -6405,7 +6439,7 @@ HTML;
                 $GLPI_CACHE->set($fckey, $file_hash);
             }
             Toolbox::logDebug(sprintf('Compiling the file `%s` took %s seconds.', $file, round(microtime(true) - $start, 2)));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             ErrorHandler::logCaughtException($e);
             if (isset($args['debug'])) {
                 $msg = 'An error occurred during SCSS compilation: ' . $e->getMessage();
@@ -6424,7 +6458,7 @@ HTML;
 CSS;
             }
 
-            /** @var \Glpi\Console\Application $application */
+            /** @var Application $application */
             global $application;
             if ($application instanceof Application) {
                 throw $e;
@@ -6494,7 +6528,7 @@ CSS;
      *
      * @return string
      *
-     * @TODO GLPI 11.0 Handle SCSS compiled directory in plugins.
+     * @TODO Handle SCSS compiled directory in plugins.
      */
     public static function getScssCompilePath($file, string $root_dir = GLPI_ROOT)
     {
@@ -6534,12 +6568,12 @@ CSS;
         $ts_date = new DateTime();
         $ts_date->setTimestamp($ts);
 
-        $diff = time() - $ts;
+        $diff = strtotime($_SESSION['glpi_currenttime']) - $ts;
+        $date = new DateTime(date('Y-m-d', $ts));
+        $today = new DateTime(date('Y-m-d', strtotime($_SESSION['glpi_currenttime'])));
         if ($diff == 0) {
             return __('Now');
         } elseif ($diff > 0) {
-            $date = new DateTime(date('Y-m-d', $ts));
-            $today = new DateTime('today');
             $day_diff = $date->diff($today)->days;
             if ($day_diff == 0) {
                 if ($diff < 60) {
@@ -6564,12 +6598,8 @@ CSS;
             if ($day_diff < 60) {
                 return __('Last month');
             }
-
-            return IntlDateFormatter::formatObject($ts_date, 'MMMM Y', $_SESSION['glpilanguage'] ?? 'en_GB');
         } else {
             $diff     = abs($diff);
-            $today = new DateTime('today');
-            $date = new DateTime(date('Y-m-d', $ts));
             $day_diff = $today->diff($date)->days;
             if ($day_diff == 0) {
                 if ($diff < 120) {
@@ -6597,9 +6627,9 @@ CSS;
             if ($day_diff < 60) {
                 return __('Next month');
             }
-
-            return IntlDateFormatter::formatObject($ts_date, 'MMMM Y', $_SESSION['glpilanguage'] ?? 'en_GB');
         }
+
+        return IntlDateFormatter::formatObject($ts_date, 'MMMM y', $_SESSION['glpilanguage'] ?? 'en_GB');
     }
 
     /**

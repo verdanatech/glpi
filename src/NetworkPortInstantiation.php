@@ -133,6 +133,15 @@ class NetworkPortInstantiation extends CommonDBChild
                     "networkports_id" => $this->fields['networkports_id'],
                 ]);
             }
+        } else {
+            // Retrieve the associated socket to disconnect it from the NetworkPortEthernet
+            $socket = new Socket();
+            if ($socket->getFromDBByCrit(["networkports_id" => $this->fields['networkports_id']])) {
+                $socket->update([
+                    "id" => $socket->getID(),
+                    "networkports_id" => 0,
+                ]);
+            }
         }
     }
 
@@ -147,7 +156,7 @@ class NetworkPortInstantiation extends CommonDBChild
      **/
     public static function getItemsByMac($mac, $wildcard_search = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $mac = strtolower($mac);
@@ -174,14 +183,10 @@ class NetworkPortInstantiation extends CommonDBChild
 
         foreach ($iterator as $element) {
             if ($netport->getFromDB($element['id'])) {
-                if ($netport instanceof CommonDBChild) {
-                    $macItemWithItems[] = array_merge(
-                        array_reverse($netport->recursivelyGetItems()),
-                        [clone $netport]
-                    );
-                } else {
-                    $macItemWithItems[] = [clone $netport];
-                }
+                $macItemWithItems[] = array_merge(
+                    array_reverse($netport->recursivelyGetItems()),
+                    [clone $netport]
+                );
             }
         }
 
@@ -257,7 +262,7 @@ class NetworkPortInstantiation extends CommonDBChild
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -305,6 +310,7 @@ class NetworkPortInstantiation extends CommonDBChild
                 foreach ($iterator as $available_device) {
                     $linkid               = $available_device['link_id'];
                     $device_names[$linkid] = $available_device['name'];
+                    $device_attributes[$linkid] = [];
                     if (isset($available_device['mac'])) {
                         $device_names[$linkid] = sprintf(
                             __('%1$s - %2$s'),
@@ -329,6 +335,7 @@ class NetworkPortInstantiation extends CommonDBChild
             'device_attributes' => $device_attributes,
             'device_names'      => $device_names,
             'alert'             => $alert,
+            'item'              => $this,
         ];
         // language=Twig
         echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
@@ -430,7 +437,7 @@ TWIG, $twig_params);
      **/
     public function showNetworkPortSelector($recursiveItems, $origin)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (count($recursiveItems) === 0) {
@@ -462,7 +469,7 @@ TWIG, $twig_params);
                 break;
 
             default:
-                throw new \RuntimeException(sprintf('Unexpected origin `%s`.', $origin));
+                throw new RuntimeException(sprintf('Unexpected origin `%s`.', $origin));
         }
 
         if (isset($this->fields[$field_name])) {
@@ -686,7 +693,7 @@ TWIG, $twig_params);
         }
 
         // Manage entity_sons
-        if (!($p['entity'] < 0) && $p['entity_sons']) {
+        if ($p['entity'] >= 0 && $p['entity_sons']) {
             if (is_array($p['entity'])) {
                 echo "entity_sons options is not available with entity option as array";
             } else {
@@ -702,7 +709,7 @@ TWIG, $twig_params);
             'networkports_id'    => $ID,
             'comments'           => $p['comments'],
             'myname'             => $p['name'],
-            'instantiation_type' => get_called_class(),
+            'instantiation_type' => static::class,
         ];
 
         Ajax::updateItemOnSelectEvent(

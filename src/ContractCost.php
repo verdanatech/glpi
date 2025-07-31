@@ -190,18 +190,14 @@ class ContractCost extends CommonDBChild
         return $tab;
     }
 
-    /**
-     * Init cost for creation based on previous cost
-     * @return void|boolean
-     **/
-    public function initBasedOnPrevious()
+    public function initBasedOnPrevious(): void
     {
         $contract = new Contract();
         if (
             !isset($this->fields['contracts_id'])
             || !$contract->getFromDB($this->fields['contracts_id'])
         ) {
-            return false;
+            return;
         }
 
         $lastdata = $this->getLastCostForContract($this->fields['contracts_id']);
@@ -228,7 +224,7 @@ class ContractCost extends CommonDBChild
      **/
     public function getLastCostForContract($contracts_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -243,13 +239,6 @@ class ContractCost extends CommonDBChild
         return [];
     }
 
-    /**
-     * Print the contract cost form
-     *
-     * @param integer $ID ID of the item
-     * @param array $options options used
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         if ($ID > 0) {
@@ -270,6 +259,8 @@ class ContractCost extends CommonDBChild
                 'canedit' => $this->canUpdateItem(),
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -283,7 +274,7 @@ class ContractCost extends CommonDBChild
     public static function showForContract(Contract $contract, $withtemplate = 0)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $DB;
 

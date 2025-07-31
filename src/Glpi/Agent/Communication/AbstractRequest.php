@@ -35,15 +35,37 @@
 
 namespace Glpi\Agent\Communication;
 
+use Config;
 use DOMDocument;
 use DOMElement;
 use Glpi\Agent\Communication\Headers\Common;
-use Glpi\Inventory\Conf;
+use Glpi\Error\ErrorHandler;
+use Glpi\Exception\Http\HttpException;
+use Glpi\Exception\OAuth2KeyException;
 use Glpi\Http\Request;
+use Glpi\Inventory\Conf;
 use Glpi\OAuth\Server;
-use League\OAuth2\Server\Exception\OAuthServerException;
-use Toolbox;
 use GLPIKey;
+use League\OAuth2\Server\Exception\OAuthServerException;
+use RuntimeException;
+use Safe\Exceptions\SimplexmlException;
+use Toolbox;
+use UnexpectedValueException;
+
+use function Safe\base64_decode;
+use function Safe\gzcompress;
+use function Safe\gzdecode;
+use function Safe\gzdeflate;
+use function Safe\gzencode;
+use function Safe\gzinflate;
+use function Safe\gzuncompress;
+use function Safe\iconv;
+use function Safe\ini_get;
+use function Safe\ini_set;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\preg_match;
+use function Safe\simplexml_load_string;
 
 /**
  * Handle agent requests
@@ -111,6 +133,7 @@ abstract class AbstractRequest
     private int $http_response_code = 200;
     /** @var string */
     protected string $query;
+    protected bool $local = false;
 
     public function __construct()
     {
@@ -143,7 +166,7 @@ abstract class AbstractRequest
                 $this->response = [];
                 break;
             default:
-                throw new \RuntimeException("Unknown mode $mode");
+                throw new RuntimeException("Unknown mode $mode");
         }
         $this->prepareHeaders();
     }
@@ -210,18 +233,27 @@ abstract class AbstractRequest
      */
     public function handleRequest(mixed $data): bool
     {
-        $auth_required = \Config::getConfigurationValue('inventory', 'auth_required');
+        $base_mode = $this->mode;
+        $guess_mode = ($base_mode === null);
+        $this->setMode(self::JSON_MODE);
+
+        $auth_required = false;
+        if (!$this->isLocal()) {
+            $auth_required = Config::getConfigurationValue('inventory', 'auth_required');
+        }
         if ($auth_required === Conf::CLIENT_CREDENTIALS) {
             $request = new Request('POST', $_SERVER['REQUEST_URI'], $this->headers->getHeaders());
             try {
                 $client = Server::validateAccessToken($request);
-                // Agent must authenticate both using client credentials (and therefore no valid user ID associated) and have the "inventory" OAuth scope
-                if (!\User::isNewID($client['user_id']) || !in_array('inventory', $client['scopes'], true)) {
+                if (!in_array('inventory', $client['scopes'], true)) {
                     $this->addError('Access denied. Agent must authenticate using client credentials and have the "inventory" OAuth scope', 401);
                     return false;
                 }
+            } catch (OAuth2KeyException $e) {
+                ErrorHandler::logCaughtException($e);
+                $this->addError($e->getMessage());
+                return false;
             } catch (OAuthServerException) {
-                $this->setMode(self::JSON_MODE);
                 $this->addError('Authorization header required to send an inventory', 401);
                 return false;
             }
@@ -230,7 +262,6 @@ abstract class AbstractRequest
         if ($auth_required === Conf::BASIC_AUTH) {
             $authorization_header = $this->headers->getHeader('Authorization');
             if (is_null($authorization_header)) {
-                $this->setMode(self::JSON_MODE);
                 $this->headers->setHeader("www-authenticate", 'Basic realm="basic"');
                 $this->addError('Authorization header required to send an inventory', 401);
                 return false;
@@ -238,9 +269,9 @@ abstract class AbstractRequest
                 $allowed = false;
                 // if Authorization start with 'Basic'
                 if (preg_match('/^Basic\s+(.*)$/i', $authorization_header, $matches)) {
-                    $inventory_login = \Config::getConfigurationValue('inventory', 'basic_auth_login');
+                    $inventory_login = Config::getConfigurationValue('inventory', 'basic_auth_login');
                     $inventory_password = (new GLPIKey())
-                        ->decrypt(\Config::getConfigurationValue('inventory', 'basic_auth_password'));
+                        ->decrypt(Config::getConfigurationValue('inventory', 'basic_auth_password'));
                     $agent_credential = base64_decode($matches[1]);
                     [$agent_login, $agent_password] = explode(':', $agent_credential, 2);
                     if (
@@ -251,7 +282,6 @@ abstract class AbstractRequest
                     }
                 }
                 if (!$allowed) {
-                    $this->setMode(self::JSON_MODE);
                     $this->addError('Access denied. Wrong login or password for basic authentication.', 401);
                     return false;
                 }
@@ -295,12 +325,14 @@ abstract class AbstractRequest
                     $data = gzinflate($data);
                     break;
                 default:
-                    throw new \UnexpectedValueException("Unknown compression mode" . $this->compression);
+                    throw new UnexpectedValueException("Unknown compression mode" . $this->compression);
             }
         }
 
-        if ($this->mode === null) {
+        if ($guess_mode) {
             $this->guessMode($data);
+        } else {
+            $this->setMode($base_mode);
         }
 
         //load and check data
@@ -344,8 +376,9 @@ abstract class AbstractRequest
         if (mb_detect_encoding($data, 'UTF-8', true) === false) {
             $data = iconv('ISO-8859-1', 'UTF-8', $data);
         }
-        $xml = simplexml_load_string($data, 'SimpleXMLElement', LIBXML_NOCDATA);
-        if (!$xml) {
+        try {
+            $xml = simplexml_load_string($data, 'SimpleXMLElement', LIBXML_NOCDATA);
+        } catch (SimplexmlException $e) {
             $xml_errors = libxml_get_errors();
             /* @var \LibXMLError $xml_error */
             foreach ($xml_errors as $xml_error) {
@@ -360,7 +393,10 @@ abstract class AbstractRequest
             }
             $this->addError('XML not well formed!', 400);
             return false;
+        } finally {
+            libxml_clear_errors();
         }
+
         $this->deviceid = (string) $xml->DEVICEID;
         //query is not mandatory. Defaults to inventory
         $action = self::INVENT_QUERY;
@@ -380,7 +416,7 @@ abstract class AbstractRequest
      */
     public function handleJSONRequest(string $data): bool
     {
-        if (!\Toolbox::isJSON($data)) {
+        if (!Toolbox::isJSON($data)) {
             $this->addError('JSON not well formed!', 400);
             return false;
         }
@@ -529,11 +565,11 @@ abstract class AbstractRequest
     public function getContentType(): string
     {
         if ($this->mode === null) {
-            throw new \RuntimeException("Mode has not been set");
+            throw new RuntimeException("Mode has not been set");
         }
 
         if ($this->compression !== null) {
-            switch (strtolower($this->compression)) {
+            switch (strtolower((string) $this->compression)) {
                 case self::COMPRESS_ZLIB:
                     return 'application/x-compress-zlib';
                 case self::COMPRESS_GZIP:
@@ -548,7 +584,7 @@ abstract class AbstractRequest
         return match ($this->mode) {
             self::XML_MODE => 'application/xml',
             self::JSON_MODE => 'application/json',
-            default => throw new \RuntimeException("Unknown mode " . $this->mode),
+            default => throw new RuntimeException("Unknown mode " . $this->mode),
         };
     }
 
@@ -563,17 +599,17 @@ abstract class AbstractRequest
         $data = "";
         if ($this->response !== null) {
             if ($this->mode === null) {
-                throw new \RuntimeException("Mode has not been set");
+                throw new RuntimeException("Mode has not been set");
             }
 
             $data = match ($this->mode) {
                 self::XML_MODE => trim($this->response->saveXML()),
                 self::JSON_MODE => json_encode($this->response),
-                default => throw new \UnexpectedValueException("Unknown mode " . $this->mode),
+                default => throw new UnexpectedValueException("Unknown mode " . $this->mode),
             };
 
             if ($this->compression === null) {
-                throw new \RuntimeException("Compression has not been set");
+                throw new RuntimeException("Compression has not been set");
             }
 
             if ($this->compression !== self::COMPRESS_NONE) {
@@ -598,7 +634,7 @@ abstract class AbstractRequest
                         $data = gzdeflate($data);
                         break;
                     default:
-                        throw new \UnexpectedValueException("Unknown compression mode" . $this->compression);
+                        throw new UnexpectedValueException("Unknown compression mode" . $this->compression);
                 }
             }
         }
@@ -627,7 +663,7 @@ abstract class AbstractRequest
             case 'application/x-br':
             case 'application/x-compress-br':
                 if (!function_exists('brotli_compress')) {
-                    $exception = new \Glpi\Exception\Http\HttpException(415, 'Brotli PHP extension is missing!');
+                    $exception = new HttpException(415, 'Brotli PHP extension is missing!');
                     $exception->setMessageToDisplay('Unsupported compression');
                     throw $exception;
                 } else {
@@ -746,5 +782,25 @@ abstract class AbstractRequest
                 }
             }
         }
+    }
+
+    /**
+     * Mark inventory as local
+     * @return $this
+     */
+    public function setLocal(): self
+    {
+        $this->local = true;
+        return $this;
+    }
+
+    /**
+     * Is inventory local?
+     *
+     * @return boolean
+     */
+    public function isLocal(): bool
+    {
+        return $this->local;
     }
 }

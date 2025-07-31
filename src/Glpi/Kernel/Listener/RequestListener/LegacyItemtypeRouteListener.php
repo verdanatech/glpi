@@ -39,22 +39,27 @@ use CommonDeviceModel;
 use CommonDeviceType;
 use CommonDropdown;
 use CommonGLPI;
+use Exception;
 use Glpi\Asset\Asset;
 use Glpi\Asset\AssetDefinition;
 use Glpi\Asset\AssetModel;
 use Glpi\Asset\AssetType;
+use Glpi\Controller\DropdownFormController;
 use Glpi\Controller\GenericFormController;
 use Glpi\Controller\GenericListController;
-use Glpi\Controller\DropdownFormController;
 use Glpi\Dropdown\Dropdown;
 use Glpi\Dropdown\DropdownDefinition;
 use Glpi\Kernel\KernelListenerTrait;
 use Glpi\Kernel\ListenersPriority;
+use Plugin;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
+
+use function Safe\preg_match;
+use function Safe\preg_replace_callback;
 
 final readonly class LegacyItemtypeRouteListener implements EventSubscriberInterface
 {
@@ -82,7 +87,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
             $this->url_matcher->match($request->getPathInfo());
             // The URL matches an existing route, let the symfony routing forward to the expected controller.
             return;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // The URL does not match any route, try to forward it to a generic controller.
         }
 
@@ -147,7 +152,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
     private function findCustomAssetClass(Request $request): ?string
     {
         $matches = [];
-        if (!\preg_match('~^/front/asset/asset(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
+        if (!preg_match('~^/front/asset/asset(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
             return null;
         }
 
@@ -177,7 +182,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
     private function findCustomDropdownClass(Request $request): ?string
     {
         $matches = [];
-        if (!\preg_match('~^/front/dropdown/dropdown(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
+        if (!preg_match('~^/front/dropdown/dropdown(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
             return null;
         }
 
@@ -209,7 +214,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
         $path_regex = '~^/front/(?<itemtype>.+)(?<form>\.form)?\.php~isUu';
 
         $matches = [];
-        if (!\preg_match($path_regex, $path_info, $matches)) {
+        if (!preg_match($path_regex, $path_info, $matches)) {
             return null;
         }
 
@@ -221,7 +226,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
             return $item::class;
         }
 
-        $namespaced_itemtype = \preg_replace_callback(
+        $namespaced_itemtype = preg_replace_callback(
             '~\\\([a-z])~Uu',
             static fn($i) => '\\' . \ucfirst($i[1]),
             'Glpi\\' . \str_replace('/', '\\', $itemtype)
@@ -274,7 +279,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
     private function findAssetModelclass(Request $request): ?string
     {
         $matches = [];
-        if (!\preg_match('~^/front/asset/assetmodel(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
+        if (!preg_match('~^/front/asset/assetmodel(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
             return null;
         }
 
@@ -305,7 +310,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
     private function findAssetTypeclass(Request $request): ?string
     {
         $matches = [];
-        if (!\preg_match('~^/front/asset/assettype(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
+        if (!preg_match('~^/front/asset/assettype(?<is_form>\.form)?\.php$~i', $request->getPathInfo(), $matches)) {
             return null;
         }
 
@@ -338,7 +343,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
         $path_regex = '~^/(plugins|marketplace)/(?<plugin>[^/]+)/front/(?<itemtype>.+)(?<form>\.form)?.php~isUu';
 
         $matches = [];
-        if (\preg_match($path_regex, $path_info, $matches) !== 1) {
+        if (preg_match($path_regex, $path_info, $matches) !== 1) {
             return null;
         }
 
@@ -346,12 +351,6 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
         $plugin = $matches['plugin'];
         if (!$this->isPluginActive($plugin)) {
             return null;
-        }
-
-        $item = \getItemForItemtype($itemtype);
-
-        if ($item instanceof CommonGLPI) {
-            return $item::class;
         }
 
         // PluginMyPluginItem -> /plugins/myplugin/front/item.php
@@ -371,7 +370,7 @@ final readonly class LegacyItemtypeRouteListener implements EventSubscriberInter
 
     private function isPluginActive(string $plugin_name): bool
     {
-        $plugin = new \Plugin();
+        $plugin = new Plugin();
 
         return $plugin->isInstalled($plugin_name) && $plugin->isActivated($plugin_name);
     }

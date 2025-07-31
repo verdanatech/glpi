@@ -57,7 +57,7 @@ class SlaLevel_Ticket extends CommonDBTM
      **/
     public function getFromDBForTicket($ID, $slaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -102,7 +102,7 @@ class SlaLevel_Ticket extends CommonDBTM
      **/
     public function deleteForTicket($tickets_id, $slaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -160,11 +160,11 @@ class SlaLevel_Ticket extends CommonDBTM
      **/
     public static function cronSlaTicket(CronTask $task)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tot = 0;
-        $now = \Session::getCurrentTime();
+        $now = Session::getCurrentTime();
 
         $iterator = $DB->request([
             'SELECT'    => [
@@ -272,7 +272,7 @@ class SlaLevel_Ticket extends CommonDBTM
                         $input['_auto_update'] = true;
 
                         if (
-                            $slalevel->getRuleWithCriteriasAndActions($data['slalevels_id'], 1, 1)
+                            $slalevel->getRuleWithCriteriasAndActions($data['slalevels_id'], true, true)
                             && $sla->getFromDB($ticket->fields[$slaField])
                         ) {
                             $doit = true;
@@ -325,10 +325,10 @@ class SlaLevel_Ticket extends CommonDBTM
      */
     public static function replayForTicket($tickets_id, $slaType)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $now = \Session::getCurrentTime();
+        $now = Session::getCurrentTime();
 
         $criteria = [
             'SELECT'    => 'glpi_slalevels_tickets.*',

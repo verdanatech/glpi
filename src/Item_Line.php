@@ -158,7 +158,7 @@ class Item_Line extends CommonDBRelation
      **/
     public static function showItemsForLine(Line $line)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $line->fields['id'];
@@ -247,7 +247,7 @@ class Item_Line extends CommonDBRelation
             if (!is_a($row['itemtype'], CommonDBTM::class, true)) {
                 continue;
             }
-            $item = new $row['itemtype']();
+            $item = getItemForItemtype($row['itemtype']);
             $item->getFromDB($row['items_id']);
             $item_entries[] = [
                 'itemtype' => static::class,
@@ -291,7 +291,7 @@ class Item_Line extends CommonDBRelation
      **/
     public static function showLinesForItem(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item::getType();
@@ -436,9 +436,9 @@ class Item_Line extends CommonDBRelation
     /**
      * Prepares input (for update and add)
      *
-     * @param array $input Input data
+     * @param array<string, mixed> $input data used to update the item
      *
-     * @return array
+     * @return false|array<string, mixed> the modified $input array
      */
     private function prepareInput($input)
     {

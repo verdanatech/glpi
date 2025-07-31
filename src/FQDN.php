@@ -33,8 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-/// Class FQDN : Fully Qualified Domain Name
-/// since version 0.84
+/**
+ * Fully Qualified Domain Name
+ * @since 0.84
+ */
 class FQDN extends CommonDropdown
 {
     public $dohistory = true;
@@ -148,7 +150,7 @@ class FQDN extends CommonDropdown
      **/
     public static function getFQDNIDByFQDN($fqdn, $wildcard_search = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($fqdn)) {

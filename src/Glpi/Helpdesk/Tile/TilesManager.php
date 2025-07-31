@@ -35,11 +35,13 @@
 namespace Glpi\Helpdesk\Tile;
 
 use CommonDBTM;
+use DBmysql;
 use Entity;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Session\SessionInfo;
 use InvalidArgumentException;
 use Profile;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 final class TilesManager
@@ -65,7 +67,7 @@ final class TilesManager
 
         // If no tiles are found in the profile, look for tiles in the current
         // entity and its parents (until we reach the root entity).
-        if (empty($tiles)) {
+        if ($tiles === []) {
             $entity = Entity::getById($session_info->getCurrentEntityId());
             $tiles = $this->getTilesForEntityRecursive($entity);
         }
@@ -85,7 +87,7 @@ final class TilesManager
         $tiles = $this->getTilesForItem($entity);
 
         // Stop recursion when a tile is found or if we reached the root entity.
-        if (!empty($tiles) || $entity->getID() === 0) {
+        if ($tiles !== [] || $entity->getID() === 0) {
             return $tiles;
         }
 
@@ -107,14 +109,23 @@ final class TilesManager
         foreach ($item_tiles as $row) {
             // Validate tile itemtype
             $itemtype = $row['itemtype_tile'];
+            /** @var CommonDBTM $tile */
             $tile = getItemForItemtype($itemtype);
             if (!($tile instanceof TileInterface)) {
                 continue;
             }
 
             // Try to load tile from database
-            $tile = new $itemtype();
-            if (!$tile->getFromDb($row['items_id_tile'])) {
+            try {
+                if (!$tile->getFromDb($row['items_id_tile'])) {
+                    continue;
+                }
+            } catch (InvalidTileException $e) {
+                // Should not happen unless the database is manually edited
+                // Log the error but do not block the exectuion.
+                /** @var LoggerInterface $PHPLOGGER */
+                global $PHPLOGGER;
+                $PHPLOGGER->error("Unable to load linked form", ['exception' => $e]);
                 continue;
             }
 
@@ -130,7 +141,11 @@ final class TilesManager
         string $tile_class,
         array $params
     ): int {
-        if (!$item->acceptTiles()) {
+        if (
+            !$item->acceptTiles()
+            || !\is_a($tile_class, CommonDBTM::class, true)
+            || !\is_a($tile_class, TileInterface::class, true)
+        ) {
             throw new InvalidArgumentException();
         }
 
@@ -255,7 +270,7 @@ final class TilesManager
     private function getMaxUsedRankForItem(
         CommonDBTM&LinkableToTilesInterface $item
     ): int {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $rank = $DB->request([

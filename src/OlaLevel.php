@@ -53,7 +53,7 @@ class OlaLevel extends LevelAgreementLevel
 
     public static function getTable($classname = null)
     {
-        return CommonDBTM::getTable(__CLASS__);
+        return CommonDBTM::getTable(self::class);
     }
 
     public static function getSectorizedDetails(): array
@@ -70,9 +70,10 @@ class OlaLevel extends LevelAgreementLevel
         $olt->deleteByCriteria([$this->rules_id_field => $this->fields['id']]);
     }
 
-    public function showForParent(OLA $ola)
+    #[Override]
+    public function showForParent(LevelAgreement $la)
     {
-        $this->showForLA($ola);
+        $this->showForLA($la);
     }
 
     public function getActions()
@@ -98,7 +99,7 @@ class OlaLevel extends LevelAgreementLevel
      **/
     public static function getFirstOlaLevel($olas_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -129,7 +130,7 @@ class OlaLevel extends LevelAgreementLevel
      **/
     public static function getNextOlaLevel($olas_id, $olalevels_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

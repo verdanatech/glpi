@@ -32,15 +32,27 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Api\HL\Router;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Cache\CacheManager;
 use Glpi\Dashboard\Grid;
+use Glpi\Event;
 use Glpi\Plugin\Hooks;
 use Glpi\System\RequirementsManager;
 use Glpi\Toolbox\ArrayNormalizer;
 use Glpi\UI\ThemeManager;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\chdir;
+use function Safe\exec;
+use function Safe\getcwd;
+use function Safe\glob;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\opcache_get_status;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  *  Config class
@@ -139,7 +151,7 @@ class Config extends CommonDBTM
     {
 
         $ong = [];
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(DisplayPreference::class, $ong, $options);
         $this->addStandardTab(GLPINetwork::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
@@ -176,7 +188,7 @@ class Config extends CommonDBTM
                 unset($input['config_class']);
                 $input = call_user_func($config_method, $input);
             }
-            $this->setConfigurationValues($config_context, $input);
+            static::setConfigurationValues($config_context, $input);
             return false;
         }
 
@@ -352,11 +364,9 @@ class Config extends CommonDBTM
             '_dbreplicate_dbdefault',
         ];
 
-        $input = array_filter($input, function ($key) use ($values_to_filter) {
-            return !in_array($key, $values_to_filter);
-        }, ARRAY_FILTER_USE_KEY);
+        $input = array_filter($input, fn($key) => !in_array($key, $values_to_filter), ARRAY_FILTER_USE_KEY);
 
-        $this->setConfigurationValues('core', $input);
+        static::setConfigurationValues('core', $input);
 
         return false;
     }
@@ -527,8 +537,8 @@ class Config extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         * @var \DBmysql $DBslave
+         * @var DBmysql $DB
+         * @var DBmysql $DBslave
          */
         global $CFG_GLPI, $DB, $DBslave;
 
@@ -555,7 +565,7 @@ class Config extends CommonDBTM
         TemplateRenderer::getInstance()->display('pages/setup/general/dbreplica_setup.html.twig', [
             'config'             => $CFG_GLPI,
             'canedit'            => static::canUpdate(),
-            'primary_dbhost'     => $DB->dbhost,
+            'source_dbhost'      => $DB->dbhost,
             'replica_config'     => $replica_config,
             'replication_status' => $replication_status,
             'replication_delay'  => $replication_delay,
@@ -578,10 +588,10 @@ class Config extends CommonDBTM
         }
 
         // Options just for new API
-        $api_versions = \Glpi\Api\HL\Router::getAPIVersions();
+        $api_versions = Router::getAPIVersions();
         $legacy_version = array_filter($api_versions, static fn($version) => $version['api_version'] === '1');
         $legacy_version = reset($legacy_version);
-        $current_version = array_filter($api_versions, static fn($version) => $version['version'] === \Glpi\Api\HL\Router::API_VERSION);
+        $current_version = array_filter($api_versions, static fn($version) => $version['version'] === Router::API_VERSION);
         $current_version = reset($current_version);
         $getting_started_doc = $current_version['endpoint'] . '/getting-started';
         $endpoint_doc = $current_version['endpoint'] . '/doc';
@@ -653,12 +663,12 @@ class Config extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         $userpref  = false;
-        $url       = Toolbox::getItemTypeFormURL(__CLASS__);
+        $url       = Toolbox::getItemTypeFormURL(self::class);
 
         $canedit = static::canUpdate();
         $canedituser = Session::haveRight('personalization', UPDATE);
@@ -766,7 +776,7 @@ class Config extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -813,7 +823,7 @@ class Config extends CommonDBTM
 
         $system_info_objs = [];
         foreach ($CFG_GLPI["systeminformations_types"] as $type) {
-            $system_info_objs[] = new $type();
+            $system_info_objs[] = getItemForItemtype($type);
         }
 
         Session::loadLanguage($oldlang);
@@ -938,7 +948,7 @@ class Config extends CommonDBTM
 
         switch (get_class($item)) {
             case Preference::class:
-                return __('Personalization');
+                return self::createTabEntry(text: __('Personalization'), icon: 'ti ti-adjustments');
 
             case User::class:
                 if (
@@ -958,7 +968,7 @@ class Config extends CommonDBTM
                     12 => self::createTabEntry(__('Management'), 0, $item::getType(), 'ti ti-wallet'),
                 ];
                 if (Config::canUpdate()) {
-                    $tabs[9]  = self::createTabEntry(__('Logs purge'), 0, $item::getType(), Glpi\Event::getIcon());
+                    $tabs[9]  = self::createTabEntry(__('Logs purge'), 0, $item::getType(), Event::getIcon());
                     $tabs[5]  = self::createTabEntry(__('System'));
                     $tabs[10] = self::createTabEntry(__('Security'), 0, $item::getType(), 'ti ti-shield-lock');
                     $tabs[7]  = self::createTabEntry(__('Performance'), 0, $item::getType(), 'ti ti-dashboard');
@@ -1117,7 +1127,7 @@ class Config extends CommonDBTM
     public static function checkDbEngine($raw = null)
     {
         if ($raw === null) {
-            /** @var \DBmysql $DB */
+            /** @var DBmysql $DB */
             global $DB;
             $raw = $DB->getVersion();
         }
@@ -1125,9 +1135,9 @@ class Config extends CommonDBTM
         $server  = preg_match('/-MariaDB/', $raw) ? 'MariaDB' : 'MySQL';
         $version = preg_replace('/^((\d+\.?)+).*$/', '$1', $raw);
 
-        // MySQL >= 8.0 || MariaDB >= 10.5
+        // MySQL >= 8.0 || MariaDB >= 10.6
         $is_supported = $server === 'MariaDB'
-            ? version_compare($version, '10.5', '>=')
+            ? version_compare($version, '10.6', '>=')
             : version_compare($version, '8.0', '>=');
 
         return [$version => $is_supported];
@@ -1268,7 +1278,7 @@ class Config extends CommonDBTM
      **/
     public static function getConfigurationValues($context, array $names = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $query = [
@@ -1317,7 +1327,7 @@ class Config extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql|null $DB
+         * @var DBmysql|null $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1388,7 +1398,7 @@ class Config extends CommonDBTM
         }
 
         if (!isset($_SERVER['REQUEST_URI'])) {
-            // $_SERVER['REQUEST_URI'] is not set, meaning that GLPI is probably acces from CLI.
+            // $_SERVER['REQUEST_URI'] is not set, meaning that GLPI is probably access from CLI.
             // In this case, `$CFG_GLPI['root_doc']` has to be extracted from `$CFG_GLPI['url_base']`,
             // and it can only be done once configuration is loaded.
 
@@ -1463,9 +1473,9 @@ class Config extends CommonDBTM
             }
         }
 
-        //reload config for loggedin user
+        //reload config for logged user
         if ($_SESSION['glpiID'] ?? false) {
-            $user = new \User();
+            $user = new User();
             if ($user->getFromDB($_SESSION['glpiID'])) {
                 $user->loadPreferencesInSession();
             }
@@ -1531,7 +1541,7 @@ class Config extends CommonDBTM
      *
      * @param bool $expanded_info Get expanded info for each palette
      * @return array
-     * @phpstan-return $expanded_info ? array<string, {name: string, dark: boolean}> : array<string, string>
+     * @phpstan-return ($expanded_info is true ? array<string, array{name: string, dark: boolean}> : array<string, string>)
      */
     public function getPalettes(bool $expanded_info = false)
     {
@@ -1689,7 +1699,7 @@ class Config extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
         // Check if password expiration mechanism has been activated
@@ -2050,7 +2060,7 @@ class Config extends CommonDBTM
      */
     public static function getConfigIDForContext(string $context)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $iterator = $DB->request([
             'SELECT' => ['MIN' => 'id AS id'],

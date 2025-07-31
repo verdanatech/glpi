@@ -36,6 +36,8 @@
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Event;
 
+use function Safe\strtotime;
+
 /**
  * Reservation Class
  **/
@@ -217,7 +219,7 @@ class Reservation extends CommonDBChild
 
                     $rri = new ReservationItem();
                     $rri->getFromDB($reservationitems_id);
-                    $item = new $rri->fields["itemtype"]();
+                    $item = getItemForItemtype($rri->fields["itemtype"]);
                     $item->getFromDB($rri->fields["items_id"]);
 
                     Session::addMessageAfterRedirect(
@@ -281,7 +283,7 @@ class Reservation extends CommonDBChild
      */
     public function getUniqueGroupFor($reservationitems_id): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         do {
@@ -308,7 +310,7 @@ class Reservation extends CommonDBChild
      **/
     public function is_reserved()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (
@@ -399,7 +401,7 @@ class Reservation extends CommonDBChild
 
     public function post_purgeItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($this->input['_delete_group']) && $this->input['_delete_group']) {
@@ -497,8 +499,11 @@ JAVASCRIPT;
 
     public static function getEvents(array $params): array
     {
-        /** @var \DBmysql $DB */
-        global $DB;
+        /**
+         * @var DBmysql $DB
+         * @var array $CFG_GLPI
+         */
+        global $DB, $CFG_GLPI;
 
         $defaults = [
             'start'               => '',
@@ -556,7 +561,7 @@ JAVASCRIPT;
             return [];
         }
         foreach ($iterator as $data) {
-            $item = new $data['itemtype']();
+            $item = getItemForItemtype($data['itemtype']);
             if (!$item->getFromDB($data['items_id'])) {
                 continue;
             }
@@ -589,7 +594,7 @@ JAVASCRIPT;
                 'itemtype'    => $data['itemtype'],
                 'items_id'    => $data['items_id'],
                 'color'       => Toolbox::getColorForString($name),
-                'ajaxurl'     => self::getFormURLWithID($data['id']),
+                'ajaxurl'     => $CFG_GLPI['root_doc'] . '/ajax/reservations.php?action=add_edit_reservation_fromselect&id=' . $data['id'],
                 'editable'    => $editable, // "editable" is used by fullcalendar, but is not accessible
                 '_editable'   => $editable, // "_editable" will be used by custom event handlers
             ];
@@ -600,7 +605,7 @@ JAVASCRIPT;
 
     public static function getResources()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $res_i_table = ReservationItem::getTable();
@@ -621,7 +626,7 @@ JAVASCRIPT;
             return [];
         }
         foreach ($iterator as $data) {
-            $item = new $data['itemtype']();
+            $item = getItemForItemtype($data['itemtype']);
             if (!$item->getFromDB($data['items_id'])) {
                 continue;
             }
@@ -647,7 +652,7 @@ JAVASCRIPT;
      * </ul>
      * @return bool
      */
-    public static function updateEvent(array $event = []): bool
+    public static function updateEvent(array $event): bool
     {
         $reservation = new static();
         if (!$reservation->getFromDB((int) $event['id'])) {
@@ -667,7 +672,7 @@ JAVASCRIPT;
      * Display for reservation
      *
      * @param integer $ID ID of the reservation (empty for create new)
-     * @param array{item: array<int, int>, begin: string, end: string} $options
+     * @param array $options possible optional options:
      * <ul>
      *      <li>item: Reservation items ID(s) for creation process. The array keys and values are expected to be symmetrical (ex: [2 => 2, 5 => 5])</li>
      *      <li>begin: planning start (should be an ISO_8601 date, but could be anything that can be parsed by strtotime)</li>
@@ -703,7 +708,7 @@ JAVASCRIPT;
         } else {
             $resa->getEmpty();
             $options = Planning::cleanDates($options);
-            $resa->fields["begin"] = date("Y-m-d H:i:s", strtotime($options['begin']));
+            $resa->fields["begin"] = !empty($options['begin']) ? date("Y-m-d H:i:s", strtotime($options['begin'])) : date('Y-m-d H:00:00', strtotime(Session::getCurrentTime()));
             if (!isset($options['end'])) {
                 $resa->fields["end"] = date("Y-m-d H:00:00", strtotime($resa->fields["begin"]) + HOUR_TIMESTAMP);
             } else {
@@ -748,7 +753,7 @@ JAVASCRIPT;
                              / $CFG_GLPI['time_step'] / MINUTE_TIMESTAMP)
                        * $CFG_GLPI['time_step'] * MINUTE_TIMESTAMP;
 
-        if ($default_delay === 0) {
+        if ((int) $default_delay === 0) {
             $options['duration'] = 0;
         }
 
@@ -778,7 +783,7 @@ JAVASCRIPT;
      * @param string $end    Planning end (should be an ISO_8601 date, but could be anything that can be parsed by strtotime)
      * @param array{type: 'day'|'week'|'month', end: string, subtype?: string, days?: integer} $options Periodicity parameters
      **/
-    public static function computePeriodicities($begin, $end, $options = [])
+    public static function computePeriodicities($begin, $end, $options)
     {
         $toadd = [];
         if (!isset($options['type'], $options['end'])) {
@@ -946,7 +951,7 @@ JAVASCRIPT;
      */
     public static function getForUser(int $users_id): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $now = $_SESSION["glpi_currenttime"];
@@ -1152,17 +1157,38 @@ JAVASCRIPT;
         return "ti ti-calendar-event";
     }
 
-    public static function getMassiveActionsForItemtype(array &$actions, $itemtype, $is_deleted = 0, ?CommonDBTM $checkitem = null)
+    public static function getMassiveActionsForItemtype(array &$actions, $itemtype, $is_deleted = false, ?CommonDBTM $checkitem = null)
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $action_prefix = 'Reservation' . MassiveAction::CLASS_ACTION_SEPARATOR;
         if (in_array($itemtype, $CFG_GLPI["reservation_types"], true)) {
-            $actions[$action_prefix . 'enable'] = __s('Authorize reservations');
-            $actions[$action_prefix . 'disable'] = __s('Prohibit reservations');
-            $actions[$action_prefix . 'available'] = __s('Make available for reservations');
-            $actions[$action_prefix . 'unavailable'] = __s('Make unavailable for reservations');
+            $show_all = $checkitem === null || $checkitem->isNewItem();
+            $reservable = false;
+            $available = false;
+            if (!$show_all) {
+                if ($checkitem->isTemplate()) {
+                    return;
+                }
+                $ri = new ReservationItem();
+                $reservable = $ri->getFromDBbyItem($checkitem::class, $checkitem->getID());
+                if ($reservable) {
+                    $available = (bool) $ri->fields['is_active'];
+                }
+            }
+            if ($show_all || !$reservable) {
+                $actions[$action_prefix . 'enable'] = "<i class='" . self::getIcon() . "'></i>" . __s('Authorize reservations');
+            }
+            if ($show_all || $reservable) {
+                $actions[$action_prefix . 'disable'] = "<i class='ti ti-calendar-off'></i>" . __s('Prohibit reservations');
+            }
+            if ($show_all || ($reservable && !$available)) {
+                $actions[$action_prefix . 'available'] = "<i class='" . self::getIcon() . "'></i>" . __s('Make available for reservations');
+            }
+            if ($show_all || $available) {
+                $actions[$action_prefix . 'unavailable'] = "<i class='ti ti-calendar-off'></i>" . __s('Make unavailable for reservations');
+            }
         }
     }
 
@@ -1197,7 +1223,7 @@ JAVASCRIPT;
     public static function processMassiveActionsForOneItemtype(MassiveAction $ma, CommonDBTM $item, array $ids)
     {
         if (!ReservationItem::canUpdate()) {
-            return false;
+            return;
         }
         $reservation_item = new ReservationItem();
 

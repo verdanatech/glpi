@@ -34,10 +34,12 @@
 
 namespace Glpi\Form\Destination\CommonITILField;
 
+use DBmysql;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Destination\AbstractConfigField;
+use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Form;
 use InvalidArgumentException;
 use Override;
@@ -60,6 +62,7 @@ final class RequestSourceField extends AbstractConfigField
     #[Override]
     public function renderConfigForm(
         Form $form,
+        FormDestination $destination,
         JsonFieldInterface $config,
         string $input_name,
         array $display_options
@@ -92,7 +95,7 @@ final class RequestSourceField extends AbstractConfigField
         array $input,
         AnswersSet $answers_set
     ): array {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!$config instanceof RequestSourceFieldConfig) {

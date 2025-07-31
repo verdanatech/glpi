@@ -24,7 +24,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1067);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1063);
 /*!
- * GridStack 12.2.1
+ * GridStack 12.2.2
  * https://gridstackjs.com/
  *
  * Copyright (c) 2021-2024  Alain Dumesny
@@ -1204,10 +1204,13 @@ class GridStack {
             this.float(o.float);
         if (o.row !== undefined) {
             opts.minRow = opts.maxRow = opts.row = o.row;
+            this._updateContainerHeight();
         }
         else {
-            if (o.minRow !== undefined)
+            if (o.minRow !== undefined) {
                 opts.minRow = o.minRow;
+                this._updateContainerHeight();
+            }
             if (o.maxRow !== undefined)
                 opts.maxRow = o.maxRow;
         }
@@ -1514,7 +1517,9 @@ class GridStack {
         if (!cellHeight)
             return this;
         // check for css min height (non nested grid). TODO: support mismatch, say: min % while unit is px.
-        if (!parent) {
+        // If `minRow` was applied, don't override it with this check, and avoid performance issues
+        // (reflows) using `getComputedStyle`
+        if (!parent && !this.opts.minRow) {
             const cssMinHeight = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils.parseHeight(getComputedStyle(this.el)['minHeight']);
             if (cssMinHeight.h > 0 && cssMinHeight.unit === unit) {
                 const minRow = Math.floor(cssMinHeight.h / cellHeight);
@@ -1637,7 +1642,7 @@ class GridStack {
         for (const key in n) {
             if (!n.hasOwnProperty(key))
                 return;
-            if (!n[key] && n[key] !== 0 && key !== 'gs-size-to-content') { // 0 can be valid value (x,y only really)
+            if (!n[key] && n[key] !== 0 && key !== 'sizeToContent') { // 0 can be valid value (x,y only really)
                 delete n[key];
             }
         }
@@ -2550,7 +2555,7 @@ GridStack.resizeToContentParent = '.grid-stack-item-content';
 GridStack.Utils = _utils__WEBPACK_IMPORTED_MODULE_1__.Utils;
 /** scoping so users can call new GridStack.Engine(12) for example */
 GridStack.Engine = _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__.GridStackEngine;
-GridStack.GDRev = '12.2.1';
+GridStack.GDRev = '12.2.2';
 
 //# sourceMappingURL=gridstack.js.map
 
@@ -2565,7 +2570,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1060);
 /**
- * gridstack-engine.ts 12.2.1
+ * gridstack-engine.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -2979,7 +2984,7 @@ class GridStackEngine {
         // remember it's position & width so we can restore back (1 -> 12 column) #1655 #1985
         // IFF we're not in the middle of column resizing!
         const saveOrig = (node.x || 0) + (node.w || 1) > this.column;
-        if (saveOrig && this.column < this.defaultColumn && !this._inColumnResize && !this.skipCacheUpdate && node._id && this.findCacheLayout(node, this.defaultColumn) === -1) {
+        if (saveOrig && this.column < this.defaultColumn && !this._inColumnResize && !this.skipCacheUpdate && node._id != null && this.findCacheLayout(node, this.defaultColumn) === -1) {
             const copy = { ...node }; // need _id + positions
             if (copy.autoPosition || copy.x === undefined) {
                 delete copy.x;
@@ -3590,7 +3595,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   obsoleteOptsDel: () => (/* binding */ obsoleteOptsDel)
 /* harmony export */ });
 /**
- * utils.ts 12.2.1
+ * utils.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 /** checks for obsolete method names */
@@ -4173,7 +4178,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   gridDefaults: () => (/* binding */ gridDefaults)
 /* harmony export */ });
 /**
- * types.ts 12.2.1
+ * types.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 // default values for grid options - used during init and when saving out
@@ -4221,7 +4226,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1063);
 /* harmony import */ var _dd_element__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1064);
 /**
- * dd-gridstack.ts 12.2.1
+ * dd-gridstack.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -4366,7 +4371,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   DDManager: () => (/* binding */ DDManager)
 /* harmony export */ });
 /**
- * dd-manager.ts 12.2.1
+ * dd-manager.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 /**
@@ -4389,7 +4394,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_draggable__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1069);
 /* harmony import */ var _dd_droppable__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1070);
 /**
- * dd-elements.ts 12.2.1
+ * dd-elements.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -4494,7 +4499,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1063);
 /**
- * dd-resizable.ts 12.2.1
+ * dd-resizable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -4809,7 +4814,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1067);
 /**
- * dd-resizable-handle.ts 12.2.1
+ * dd-resizable-handle.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -4940,7 +4945,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1063);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1060);
 /**
- * touch.ts 12.2.1
+ * touch.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
  */
 
@@ -5095,7 +5100,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   DDBaseImplement: () => (/* binding */ DDBaseImplement)
 /* harmony export */ });
 /**
- * dd-base-impl.ts 12.2.1
+ * dd-base-impl.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 class DDBaseImplement {
@@ -5141,7 +5146,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1068);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
 /**
- * dd-draggable.ts 12.2.1
+ * dd-draggable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 
@@ -5517,7 +5522,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
 /* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
 /**
- * dd-droppable.ts 12.2.1
+ * dd-droppable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
  */
 

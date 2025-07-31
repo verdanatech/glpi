@@ -32,19 +32,35 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\Event;
+use Glpi\Features\ParentStatus;
+use Glpi\Features\TreeBrowse;
+use Glpi\Features\TreeBrowseInterface;
+use Safe\Exceptions\FilesystemException;
 use Symfony\Component\HttpFoundation\Response;
+
+use function Safe\copy;
+use function Safe\filesize;
+use function Safe\finfo_open;
+use function Safe\getimagesize;
+use function Safe\mkdir;
+use function Safe\opendir;
+use function Safe\preg_match;
+use function Safe\rename;
+use function Safe\session_destroy;
+use function Safe\session_id;
+use function Safe\sha1_file;
+use function Safe\unlink;
 
 /**
  * Document class
  **/
-class Document extends CommonDBTM
+class Document extends CommonDBTM implements TreeBrowseInterface
 {
-    use Glpi\Features\TreeBrowse;
-    use Glpi\Features\ParentStatus;
+    use TreeBrowse;
+    use ParentStatus;
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -159,12 +175,13 @@ class Document extends CommonDBTM
                     ['sha1sum' => $this->fields["sha1sum"] ]
                 ) <= 1)
             ) {
-                if (unlink(GLPI_DOC_DIR . "/" . $this->fields["filepath"])) {
+                try {
+                    unlink(GLPI_DOC_DIR . "/" . $this->fields["filepath"]);
                     Session::addMessageAfterRedirect(htmlescape(sprintf(
                         __('Successful deletion of the file %s'),
                         $this->fields["filepath"]
                     )));
-                } else {
+                } catch (FilesystemException $e) {
                     trigger_error(
                         sprintf(
                             'Failed to delete the file %s',
@@ -341,16 +358,6 @@ class Document extends CommonDBTM
         return $input;
     }
 
-    /**
-     * Print the document form
-     *
-     * @param integer $ID ID of the item
-     * @param array $options
-     *     - target filename : where to go when done.
-     *     - withtemplate boolean : template or basic item
-     *
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         if ($ID > 0) {
@@ -365,6 +372,8 @@ class Document extends CommonDBTM
                 'canedit' => $this->canUpdateItem(),
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -413,7 +422,7 @@ class Document extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -424,7 +433,7 @@ class Document extends CommonDBTM
             $linked_item = null;
             $link_params = $linked_item;
         } elseif ($linked_item !== null && !($linked_item instanceof CommonDBTM)) {
-            throw new \InvalidArgumentException();
+            throw new InvalidArgumentException();
         } elseif ($linked_item !== null) {
             $link_params = sprintf('&itemtype=%s&items_id=%s', $linked_item::class, $linked_item->getID());
         }
@@ -500,7 +509,7 @@ class Document extends CommonDBTM
     public function getFromDBbyContent($entity, $path)
     {
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($path)) {
@@ -608,7 +617,7 @@ class Document extends CommonDBTM
      */
     private static function loadAPISessionIfExist(): void
     {
-        $session_token = \Toolbox::getHeader('Session-Token');
+        $session_token = Toolbox::getHeader('Session-Token');
 
         // No api token found
         if ($session_token === null) {
@@ -634,7 +643,7 @@ class Document extends CommonDBTM
      */
     private function canViewFileFromReminder()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!Session::getLoginUserID()) {
@@ -680,7 +689,7 @@ class Document extends CommonDBTM
 
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -739,16 +748,18 @@ class Document extends CommonDBTM
     private function canViewFileFromItilObject($itemtype, $items_id)
     {
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!Session::getLoginUserID()) {
             return false;
         }
 
-        /* @var CommonITILObject $itil */
-        $itil = new $itemtype();
+        if (!is_a($itemtype, CommonITILObject::class, true)) {
+            return false;
+        }
 
+        $itil = new $itemtype();
         if (!$itil->can($items_id, READ)) {
             return false;
         }
@@ -780,8 +791,12 @@ class Document extends CommonDBTM
      */
     private function canViewFileFromItem($itemtype, $items_id): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
+
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return false;
+        }
 
         $item = new $itemtype();
 
@@ -999,7 +1014,12 @@ class Document extends CommonDBTM
             return true;
         }
         // Move
-        return rename($srce, $dest);
+        try {
+            rename($srce, $dest);
+            return true;
+        } catch (FilesystemException $e) {
+            return false;
+        }
     }
 
     /**
@@ -1063,12 +1083,13 @@ class Document extends CommonDBTM
                 ]
             ) <= 1)
         ) {
-            if (unlink(GLPI_DOC_DIR . "/" . $input['current_filepath'])) {
+            try {
+                unlink(GLPI_DOC_DIR . "/" . $input['current_filepath']);
                 Session::addMessageAfterRedirect(htmlescape(sprintf(
                     __('Successful deletion of the file %s'),
                     $input['current_filename']
                 )));
-            } else {
+            } catch (FilesystemException $e) {
                 // TRANS: %1$s is the curent filename, %2$s is its directory
                 trigger_error(
                     sprintf(
@@ -1089,7 +1110,7 @@ class Document extends CommonDBTM
             }
         }
 
-        // Local file : try to detect mime type
+        // Local file: try to detect mime type
         $input['mime'] = Toolbox::getMime($fullpath);
 
         if (
@@ -1103,9 +1124,10 @@ class Document extends CommonDBTM
                 return false;
             }
         } else { // Copy (will overwrite dest file is present)
-            if (copy($fullpath, GLPI_DOC_DIR . "/" . $new_path)) {
+            try {
+                copy($fullpath, GLPI_DOC_DIR . "/" . $new_path);
                 Session::addMessageAfterRedirect(__s('Document copy succeeded.'));
-            } else {
+            } catch (FilesystemException $e) {
                 Session::addMessageAfterRedirect(__s('File move failed'), false, ERROR);
                 return false;
             }
@@ -1180,12 +1202,13 @@ class Document extends CommonDBTM
                 ]
             ) <= 1)
         ) {
-            if (unlink(GLPI_DOC_DIR . "/" . $input['current_filepath'])) {
+            try {
+                unlink(GLPI_DOC_DIR . "/" . $input['current_filepath']);
                 Session::addMessageAfterRedirect(sprintf(
                     __s('Successful deletion of the file %s'),
                     $input['current_filename']
                 ));
-            } else {
+            } catch (FilesystemException $e) {
                 // TRANS: %1$s is the curent filename, %2$s is its directory
                 trigger_error(
                     sprintf(
@@ -1206,13 +1229,14 @@ class Document extends CommonDBTM
             }
         }
 
-        // Local file : try to detect mime type
+        // Local file: try to detect mime type
         $input['mime'] = Toolbox::getMime($fullpath);
 
         // Copy (will overwrite dest file if present)
-        if (copy($fullpath, GLPI_DOC_DIR . "/" . $new_path)) {
+        try {
+            copy($fullpath, GLPI_DOC_DIR . "/" . $new_path);
             Session::addMessageAfterRedirect(__s('Document copy succeeded.'));
-        } else {
+        } catch (FilesystemException $e) {
             Session::addMessageAfterRedirect(__s('File move failed'), false, ERROR);
             @unlink($fullpath);
             return false;
@@ -1265,14 +1289,16 @@ class Document extends CommonDBTM
         }
         $subdir = $dir . '/' . substr($sha1sum, 0, 2);
 
-        if (
-            !is_dir(GLPI_DOC_DIR . "/" . $subdir)
-            && @mkdir(GLPI_DOC_DIR . "/" . $subdir, 0o777, true)
-        ) {
-            Session::addMessageAfterRedirect(sprintf(
-                __s('Create the directory %s'),
-                $subdir
-            ));
+        if (!is_dir(GLPI_DOC_DIR . "/" . $subdir)) {
+            try {
+                mkdir(GLPI_DOC_DIR . "/" . $subdir, 0o777, true);
+                Session::addMessageAfterRedirect(sprintf(
+                    __s('Create the directory %s'),
+                    $subdir
+                ));
+            } catch (FilesystemException $e) {
+                //emtpy catch
+            }
         }
 
         if (!is_dir(GLPI_DOC_DIR . "/" . $subdir)) {
@@ -1323,7 +1349,7 @@ class Document extends CommonDBTM
      **/
     public static function isValidDoc($filename)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $splitter = explode(".", $filename);
@@ -1383,7 +1409,7 @@ class Document extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1527,9 +1553,9 @@ class Document extends CommonDBTM
             }
         }
 
-        if ((is_a($itemtype, __CLASS__, true)) && (static::canUpdate())) {
-            $actions[$action_prefix . 'add_item']    = _sx('button', 'Add an item');
-            $actions[$action_prefix . 'remove_item'] = _sx('button', 'Remove an item');
+        if ((is_a($itemtype, self::class, true)) && (static::canUpdate())) {
+            $actions[$action_prefix . 'add_item']    = "<i class='ti ti-package'></i>" . _sx('button', 'Add an item');
+            $actions[$action_prefix . 'remove_item'] = "<i class='ti ti-package-off'></i>" . _sx('button', 'Remove an item');
         }
     }
 
@@ -1593,7 +1619,7 @@ class Document extends CommonDBTM
     {
         // let's see if original image needs resize
         $img_infos  = getimagesize($path);
-        if (!($img_infos[0] > $width) && !($img_infos[1] > $height)) {
+        if ($img_infos[0] <= $width && $img_infos[1] <= $height) {
             // no resize needed, source image is smaller than requested width/height
             return $path;
         }
@@ -1654,7 +1680,7 @@ class Document extends CommonDBTM
      **/
     public static function cronCleanOrphans(CronTask $task): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $dtable = static::getTable();

@@ -32,22 +32,27 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Glpi\Debug\Profiler;
 use Glpi\Event;
+use Glpi\Features\Clonable;
 use Glpi\Helpdesk\Tile\LinkableToTilesInterface;
 use Glpi\Helpdesk\Tile\TilesManager;
 use Glpi\UI\IllustrationManager;
+use Psr\SimpleCache\CacheInterface;
 use Ramsey\Uuid\Uuid;
+
+use function Safe\preg_match;
+use function Safe\realpath;
 
 /**
  * Entity class
  */
 class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
     use MapGeolocation;
 
     public $must_be_replace             = true;
@@ -84,6 +89,8 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
     public const ANONYMIZE_USE_NICKNAME_USER   = 4;
     /** @var int Replace the group's name with a generic name */
     public const ANONYMIZE_USE_GENERIC_GROUP   = 5;
+    /** @var int Maximum number of days that can be configured for survey validity */
+    public const MAX_INQUEST_DURATION_DAYS = 180;
 
     // Const values used for the scene configuration dropdown
     public const SCENE_INHERIT = "inherit";
@@ -93,6 +100,11 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
     // Default scenes
     public const DEFAULT_LEFT_SCENE = "shelves";
     public const DEFAULT_RIGHT_SCENE = "desk";
+
+    // Const values used for the titles configuration dropdown
+    public const HELPDESK_TITLE_INHERIT = "inherit";
+    public const HELPDESK_TITLE_DEFAULT = "default";
+    public const HELPDESK_TITLE_CUSTOM = "custom";
 
     // Array of "right required to update" => array of fields allowed
     // Missing field here couldn't be update (no right)
@@ -162,6 +174,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
             'suppliers_as_private', 'autopurge_delay', 'anonymize_support_agents', 'display_users_initials',
             'contracts_strategy_default', 'contracts_id_default', 'show_tickets_properties_on_helpdesk',
             'custom_helpdesk_home_scene_left', 'custom_helpdesk_home_scene_right',
+            'custom_helpdesk_home_title', 'enable_helpdesk_home_search_bar', 'enable_helpdesk_service_catalog',
         ],
         // Configuration
         'config' => ['enable_custom_css', 'custom_css_code'],
@@ -186,7 +199,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
     public function pre_updateInDB()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (($key = array_search('name', $this->updates, true)) !== false) {
@@ -215,7 +228,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
     public function pre_deleteItem()
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         // Security do not delete root entity
@@ -342,7 +355,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      **/
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $input['name'] = isset($input['name']) ? trim($input['name']) : '';
         if (empty($input["name"])) {
@@ -426,6 +439,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         }
 
         $input = $this->handleCustomScenesInputValues($input);
+        $input = $this->handleCustomTitleInputValues($input);
 
         return $input;
     }
@@ -453,7 +467,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
             } elseif ($value == self::SCENE_CUSTOM) {
                 // A custom file was submitted
                 $files = $input["_$field"] ?? [];
-                if (!is_array($files) || empty($files)) {
+                if (!is_array($files) || $files === []) {
                     // Unexpected format or no files were submitted, do not
                     // modify the saved value.
                     $input[$field] = null;
@@ -465,6 +479,33 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
             if ($input[$field] === null) {
                 unset($input[$field]);
+            }
+        }
+
+        return $input;
+    }
+
+    private function handleCustomTitleInputValues(array $input): array
+    {
+        $value = $input['custom_helpdesk_home_title'] ?? null;
+        if ($value === null) {
+            return $input;
+        }
+
+        if ($value === self::HELPDESK_TITLE_INHERIT) {
+            // Inherit parent value
+            $input['custom_helpdesk_home_title'] = self::CONFIG_PARENT;
+        } elseif ($value == self::HELPDESK_TITLE_DEFAULT) {
+            // Reset default value (empty string)
+            $input['custom_helpdesk_home_title'] = "";
+        } elseif ($value == self::HELPDESK_TITLE_CUSTOM) {
+            // A custom value was submitted
+            $value = $input['_custom_helpdesk_home_title'] ?? null;
+            if ($value === null) {
+                // Invalid data submtited, do not modify the saved value.
+                return $input;
+            } else {
+                $input['custom_helpdesk_home_title'] = $value;
             }
         }
 
@@ -508,7 +549,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      */
     private function handleConfigStrategyFields(array $input): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         foreach ($input as $field => $value) {
@@ -573,7 +614,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Profile_User::class, $ong, $options);
         $this->addStandardTab(Rule::class, $ong, $options);
         $this->addStandardTab(Document_Item::class, $ong, $options);
@@ -625,44 +666,41 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      **/
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if ($item::class === self::class) {
-            switch ($tabnum) {
-                case 1:
-                    $item->showChildren();
-                    break;
-
-                case 2:
-                    self::showStandardOptions($item);
-                    break;
-
-                case 3:
-                    self::showAdvancedOptions($item);
-                    break;
-
-                case 4:
-                    self::showNotificationOptions($item);
-                    break;
-
-                case 5:
-                    self::showHelpdeskOptions($item);
-                    break;
-
-                case 6:
-                    self::showInventoryOptions($item);
-                    break;
-
-                case 7:
-                    self::showUiCustomizationOptions($item);
-                    break;
-                case 8:
-                    self::showSecurityOptions($item);
-                    break;
-                case 9:
-                    $item->showHelpdeskHomeConfig();
-                    break;
-            }
+        if (!$item instanceof self) {
+            return false;
         }
-        return true;
+
+        switch ($tabnum) {
+            case 1:
+                return $item->showChildren();
+
+            case 2:
+                return self::showStandardOptions($item);
+
+            case 3:
+                return self::showAdvancedOptions($item);
+
+            case 4:
+                return self::showNotificationOptions($item);
+
+            case 5:
+                return self::showHelpdeskOptions($item);
+
+            case 6:
+                return self::showInventoryOptions($item);
+
+            case 7:
+                return self::showUiCustomizationOptions($item);
+
+            case 8:
+                return self::showSecurityOptions($item);
+
+            case 9:
+                return $item->showHelpdeskHomeConfig();
+
+            default:
+                return false;
+        }
     }
 
     public function showForm($ID, array $options = [])
@@ -727,7 +765,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
     public function post_updateItem($history = true)
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         parent::post_updateItem($history);
@@ -1612,7 +1650,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      **/
     public static function getEntitiesToNotify($field)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $entities = [];
@@ -1654,12 +1692,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return $entities;
     }
 
-    /**
-     * @since 0.84
-     *
-     * @param Entity $entity object
-     **/
-    public static function showStandardOptions(Entity $entity)
+    public static function showStandardOptions(Entity $entity): bool
     {
         $ID = $entity->getField('id');
         if (!$entity->can($ID, READ)) {
@@ -1674,12 +1707,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return true;
     }
 
-    /**
-     * @since 0.84 (before in entitydata.class)
-     *
-     * @param Entity $entity object
-     **/
-    public static function showAdvancedOptions(Entity $entity)
+    public static function showAdvancedOptions(Entity $entity): bool
     {
         $ID          = $entity->getField('id');
         if (!$entity->can($ID, READ)) {
@@ -1695,12 +1723,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return true;
     }
 
-    /**
-     * @since 0.84 (before in entitydata.class)
-     *
-     * @param Entity $entity object
-     **/
-    public static function showInventoryOptions(Entity $entity)
+    public static function showInventoryOptions(Entity $entity): bool
     {
         $ID = $entity->getField('id');
         if (!$entity->can($ID, READ)) {
@@ -1738,6 +1761,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         }
 
         foreach ($states as $state) {
+            $warranty_options[Infocom::ON_STATUS_CHANGE . '_' . $state['id']] = sprintf(__('Fill when shifting to state %s'), $state['name']);
             $decom_options[Infocom::ON_STATUS_CHANGE . '_' . $state['id']] = sprintf(__('Fill when shifting to state %s'), $state['name']);
         }
 
@@ -1787,12 +1811,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return true;
     }
 
-    /**
-     * @since 0.84 (before in entitydata.class)
-     *
-     * @param Entity $entity object
-     **/
-    public static function showNotificationOptions(Entity $entity)
+    public static function showNotificationOptions(Entity $entity): bool
     {
 
         $ID = $entity->getField('id');
@@ -1883,16 +1902,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return true;
     }
 
-    /**
-     * UI customization configuration form.
-     *
-     * @param Entity $entity object
-     *
-     * @return void
-     *
-     * @since 9.5.0
-     */
-    public static function showUiCustomizationOptions(Entity $entity)
+    public static function showUiCustomizationOptions(Entity $entity): bool
     {
         $ID = $entity->getField('id');
         if (!$entity->can($ID, READ) || !Session::haveRight(Config::$rightname, UPDATE)) {
@@ -1900,8 +1910,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         }
 
         // Notification right applied
-        $canedit = Session::haveRight(Config::$rightname, UPDATE)
-         && Session::haveAccessToEntity($ID);
+        $canedit = Session::haveAccessToEntity($ID);
         $enable_css_options = [];
         if (($ID > 0) ? 1 : 0) {
             $enable_css_options[self::CONFIG_PARENT] = __('Inherits configuration from the parent entity');
@@ -1936,16 +1945,11 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
                 'candel' => false, // No deleting from the non-main tab
             ],
         ]);
+
+        return true;
     }
 
-    /**
-     * Security configuration form.
-     *
-     * @param Entity $entity The entity
-     * @return void|false
-     * @since 11.0.0
-     */
-    public static function showSecurityOptions(Entity $entity)
+    public static function showSecurityOptions(Entity $entity): bool
     {
         $ID = $entity->getField('id');
         if (!$entity->can($ID, READ)) {
@@ -1957,9 +1961,11 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         TemplateRenderer::getInstance()->display('pages/2fa/2fa_config.html.twig', [
             'canedit' => $canedit,
             'item'   => $entity,
-            'action' => Toolbox::getItemTypeFormURL(__CLASS__),
+            'action' => Toolbox::getItemTypeFormURL(self::class),
             'inherited_value' => $entity->getInheritedValueBadge('2fa_enforcement_strategy', '2fa_enforcement_strategy'),
         ]);
+
+        return true;
     }
 
     /**
@@ -1998,7 +2004,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      **/
     private static function getEntityIDByField($field, $value)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -2081,12 +2087,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         return false;
     }
 
-    /**
-     * @param Entity $entity
-     * @return false|void
-     * @since 0.84 (before in entitydata.class)
-     **/
-    public static function showHelpdeskOptions(Entity $entity)
+    public static function showHelpdeskOptions(Entity $entity): bool
     {
         $ID = $entity->getField('id');
         if (
@@ -2138,6 +2139,8 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
                 'formfooter' => false,
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -2153,8 +2156,8 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
     public static function getUsedConfig($fieldref, $entities_id, $fieldval = '', $default_value = -2)
     {
         /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var DBmysql $DB
+         * @var CacheInterface $GLPI_CACHE
          */
         global $DB, $GLPI_CACHE;
 
@@ -2417,7 +2420,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
      * @param integer|null $val if not set, ask for all values, else for 1 value (default NULL)
      *
      * @return string|array
-     * @phpstan-return $val === null ? array<int|string, string> : string
+     * @phpstan-return ($val is null ? array<int|string, string> : string)
      **/
     public static function getAutoAssignMode(?int $val = null): string|array
     {
@@ -2479,7 +2482,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
             self::CONFIG_PARENT => __('Inheritance of the parent entity'),
             self::ANONYMIZE_DISABLED => __('Disabled'),
             self::ANONYMIZE_USE_GENERIC => __("Replace the agent and group name with a generic name"),
-            self::ANONYMIZE_USE_NICKNAME => __("Replace the agent and group name with a customisable nickname"),
+            self::ANONYMIZE_USE_NICKNAME => __("Replace the agent name with a customisable nickname and the group name with a generic name"),
             self::ANONYMIZE_USE_GENERIC_USER => __("Replace the agent's name with a generic name"),
             self::ANONYMIZE_USE_NICKNAME_USER => __("Replace the agent's name with a customisable nickname"),
             self::ANONYMIZE_USE_GENERIC_GROUP => __("Replace the group's name with a generic name"),
@@ -2613,7 +2616,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
                                 // TRANS %s is the name of the state
                                 return sprintf(
                                     __('Fill when shifting to state %s'),
-                                    Dropdown::getDropdownName(table: 'glpi_states', id: $sid, default: __('None'))
+                                    Dropdown::getDropdownName(table: 'glpi_states', id: (int) $sid, default: __('None'))
                                 );
                             }
                         }
@@ -2831,6 +2834,12 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
                     Infocom::COPY_DELIVERY_DATE => __('Copy the delivery date'),
                     self::CONFIG_PARENT         => __('Inheritance of the parent entity'),
                 ];
+                $states = getAllDataFromTable('glpi_states');
+                foreach ($states as $state) {
+                    $tab[Infocom::ON_STATUS_CHANGE . '_' . $state['id']]
+                        //TRANS: %s is the name of the state
+                        = sprintf(__('Fill when shifting to state %s'), $state['name']);
+                }
                 $options['value'] = $values[$field];
                 return Dropdown::showFromArray($name, $tab, $options);
 
@@ -2882,7 +2891,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
                 $this->showMap();
                 break;
             default:
-                throw new \RuntimeException("Unknown {$field['type']}");
+                throw new RuntimeException("Unknown {$field['type']}");
         }
     }
 
@@ -2955,7 +2964,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         if ($this->getID() <= 0) {
             return null;
         }
-        $item  = new $itemtype();
+        $item  = getItemForItemtype($itemtype);
         $field ??= $item::getForeignKeyField();
         if ($this->fields[$field] == self::CONFIG_PARENT) {
             $tid = self::getUsedConfig(str_replace('_id', '_strategy', $field), $this->getID(), $field, $default_value);
@@ -3092,7 +3101,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
     private static function getEntityTree(int $entities_id_root): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $sons = getSonsOf('glpi_entities', $entities_id_root);
@@ -3118,7 +3127,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
             ];
         }
 
-        \Glpi\Debug\Profiler::getInstance()->start('constructTreeFromList');
+        Profiler::getInstance()->start('constructTreeFromList');
         $fn_construct_tree_from_list = static function (array $list, int $root) use (&$fn_construct_tree_from_list): array {
             $tree = [];
             if (array_key_exists($root, $list)) {
@@ -3133,7 +3142,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         };
 
         $constructed = $fn_construct_tree_from_list($grouped, $entities_id_root);
-        \Glpi\Debug\Profiler::getInstance()->stop('constructTreeFromList');
+        Profiler::getInstance()->stop('constructTreeFromList');
         return [
             $entities_id_root => [
                 'name' => Dropdown::getDropdownName('glpi_entities', $entities_id_root),
@@ -3149,7 +3158,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
         $ancestors = getAncestorsOf('glpi_entities', $_SESSION['glpiactive_entity']);
 
-        \Glpi\Debug\Profiler::getInstance()->start('Generate entity tree');
+        Profiler::getInstance()->start('Generate entity tree');
         $entitiestree = [];
         foreach ($_SESSION['glpiactiveprofile']['entities'] as $default_entity) {
             $default_entity_id = $default_entity['id'];
@@ -3188,7 +3197,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
             $entitiestree = array_merge($entitiestree, $entitytree);
         }
-        \Glpi\Debug\Profiler::getInstance()->stop('Generate entity tree');
+        Profiler::getInstance()->stop('Generate entity tree');
 
         /* scans the tree to select the active entity */
         $select_tree = static function (&$entities) use (&$select_tree, $ancestors) {
@@ -3241,7 +3250,7 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
         }
 
         $twig->display(
-            'pages/admin/helpdesk_home_custom_scene_config.html.twig',
+            'pages/admin/helpdesk_home_config_for_entity.html.twig',
             ['entity' => $this],
         );
 
@@ -3280,6 +3289,75 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface
 
         // Custom icons
         return IllustrationManager::CUSTOM_SCENE_PREFIX . $value;
+    }
+
+    public function getHelpdeskHomeTitleConfigForDropdown(): string
+    {
+        $config_value = $this->fields['custom_helpdesk_home_title'] ?? "";
+
+        if ($config_value == "") {
+            return self::HELPDESK_TITLE_DEFAULT;
+        } elseif ($config_value == self::CONFIG_PARENT) {
+            return self::HELPDESK_TITLE_INHERIT;
+        } else {
+            return self::HELPDESK_TITLE_CUSTOM;
+        }
+    }
+
+    public function getHelpdeskHomeTitle(): string
+    {
+        $value = $this->fields['custom_helpdesk_home_title'] ?? '';
+
+        // Load from parent if needed
+        if ($value == self::CONFIG_PARENT) {
+            $value = self::getUsedConfig(
+                'custom_helpdesk_home_title',
+                $this->fields['entities_id']
+            );
+        }
+
+        if ($value === "") {
+            // Default value
+            return $this->getDefaultHelpdeskHomeTitle();
+        } else {
+            // Custom value
+            return $value;
+        }
+    }
+
+    public function isHelpdeskSearchBarEnabled(): bool
+    {
+        $value = $this->fields['enable_helpdesk_home_search_bar'] ?? '';
+
+        // Load from parent if needed
+        if ($value == self::CONFIG_PARENT) {
+            $value = self::getUsedConfig(
+                'enable_helpdesk_home_search_bar',
+                $this->fields['entities_id']
+            );
+        }
+
+        return $value === 1;
+    }
+
+    public function isServiceCatalogEnabled(): bool
+    {
+        $value = $this->fields['enable_helpdesk_service_catalog'] ?? '';
+
+        // Load from parent if needed
+        if ($value == self::CONFIG_PARENT) {
+            $value = self::getUsedConfig(
+                'enable_helpdesk_service_catalog',
+                $this->fields['entities_id']
+            );
+        }
+
+        return $value === 1;
+    }
+
+    public function getDefaultHelpdeskHomeTitle(): string
+    {
+        return __("How can we help you?");
     }
 
     #[Override]

@@ -36,6 +36,9 @@
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 
+use function Safe\json_decode;
+use function Safe\json_encode;
+
 const DELTA_ACTION_ADD    = 1;
 const DELTA_ACTION_UPDATE = 2;
 const DELTA_ACTION_DELETE = 3;
@@ -54,9 +57,19 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
         $action = $_GET["action"]  ?? "";
 
+        $itemtype = $_GET["itemtype"] ?? "";
+        // Check required params
+        if (empty($itemtype)) {
+            throw new BadRequestHttpException("Missing itemtype");
+        }
+
+        $item = getItemForItemtype($itemtype);
+        if (!$item->canView()) {
+            throw new AccessDeniedHttpException();
+        }
+
         switch ($action) {
             case "search":
-                $itemtype = $_GET["itemtype"] ?? "";
                 $used     = $_GET["used"]     ?? "[]";
                 $filter   = $_GET["filter"]   ?? "";
                 $page     = $_GET["page"]     ?? 0;
@@ -78,22 +91,24 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'load':
-                $itemtype = $_GET["itemtype"]  ?? "";
                 $items_id = $_GET["items_id"]  ?? "";
                 $view     = $_GET["view"]      ?? "graph";
 
                 // Check required params
-                if (empty($itemtype) || empty($items_id)) {
+                if (empty($items_id)) {
                     throw new BadRequestHttpException("Missing itemtype or items_id");
                 }
 
-                // Check that the target asset exist
+                if (!$item->can($items_id, READ)) {
+                    throw new AccessDeniedHttpException();
+                }
+
+                // Check that the target asset exists
                 if (!Impact::assetExist($itemtype, $items_id)) {
                     throw new BadRequestHttpException("Object[class=$itemtype, id=$items_id] doesn't exist");
                 }
 
                 // Prepare graph
-                $item = new $itemtype();
                 $item->getFromDB($items_id);
                 $graph = Impact::buildGraph($item);
                 $params = Impact::prepareParams($item);
@@ -135,16 +150,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $readonly = true;
 
         // Handle context for the starting node
-        $context_em = new \ImpactContext();
+        $context_em = new ImpactContext();
         $context_data = $data['context'];
 
         // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4])
         $start_node_details = explode(Impact::NODE_ID_DELIMITER, $context_data['node_id']);
 
         // Get impact_item for this node
-        $item = new $start_node_details[0]();
+        $item = getItemForItemtype($start_node_details[0]);
         $item->getFromDB($start_node_details[1]);
-        $impact_item = \ImpactItem::findForItem($item);
+        $impact_item = ImpactItem::findForItem($item);
         $start_node_impact_item_id = $impact_item->fields['id'];
         $readonly = !$item->can($item->fields['id'], UPDATE);
 

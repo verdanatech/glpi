@@ -36,15 +36,16 @@ namespace Glpi\Form\Destination\CommonITILField;
 
 use Glpi\Form\Form;
 use Glpi\Form\QuestionType\QuestionTypeAssignee;
+use Glpi\Form\QuestionType\QuestionTypeEmail;
 use Override;
 use Session;
 
 final class AssigneeField extends ITILActorField
 {
     #[Override]
-    public function getAllowedQuestionType(): string
+    public function getAllowedQuestionType(): array
     {
-        return QuestionTypeAssignee::class;
+        return [new QuestionTypeAssignee(), new QuestionTypeEmail()];
     }
 
     #[Override]

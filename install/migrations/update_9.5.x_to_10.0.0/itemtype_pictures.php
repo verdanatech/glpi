@@ -31,12 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $dc_models = [ComputerModel::class, EnclosureModel::class, MonitorModel::class, NetworkEquipmentModel::class,
     PassiveDCEquipmentModel::class, PDUModel::class, PeripheralModel::class,
 ];
@@ -48,7 +46,6 @@ $misc_pictures_itemtypes = array_merge([PhoneModel::class, PrinterModel::class, 
     RackModel::class, SoftwareLicense::class, Datacenter::class, Contact::class, Supplier::class, Appliance::class,
 ], $dc_models);
 
-/** @var CommonDBTM $itemtype */
 foreach ($front_rear_picture_itemtypes as $itemtype) {
     $table = $itemtype::getTable();
     if (!$DB->fieldExists($table, 'picture_front')) {

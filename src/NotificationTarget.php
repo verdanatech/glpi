@@ -134,7 +134,7 @@ class NotificationTarget extends CommonDBChild
 
     public static function getTable($classname = null)
     {
-        return parent::getTable(__CLASS__);
+        return parent::getTable(self::class);
     }
 
     public static function getIcon()
@@ -158,9 +158,9 @@ class NotificationTarget extends CommonDBChild
 
         if (
             $this->getFromDBByCrit([
-                $this->getTable() . '.notifications_id'   => $notifications_id,
-                $this->getTable() . '.items_id'           => $ID,
-                $this->getTable() . '.type'               => $type,
+                static::getTable() . '.notifications_id'   => $notifications_id,
+                static::getTable() . '.items_id'           => $ID,
+                static::getTable() . '.type'               => $type,
             ])
         ) {
             return true;
@@ -322,7 +322,7 @@ class NotificationTarget extends CommonDBChild
         if ($reference_event === null || $event !== $reference_event) {
             // Add random, unless event is the reference event for the related item.
             // eg. no random will be added for `new` event of a ticket, but a random will be added for `add_followup` events.
-            $message_id .= sprintf('.%d.%d', time(), rand());
+            $message_id .= sprintf('.%d.%d', time(), random_int(0, mt_getrandmax()));
         }
 
         $message_id .= sprintf('@%s', php_uname('n'));
@@ -339,14 +339,8 @@ class NotificationTarget extends CommonDBChild
     protected function computeFriendlyName()
     {
 
-        if (
-            isset($this->notification_targets_labels[$this->getField("type")]
-                                                  [$this->getField("items_id")])
-        ) {
-            return $this->notification_targets_labels[$this->getField("type")]
-                                                  [$this->getField("items_id")];
-        }
-        return '';
+        return $this->notification_targets_labels[$this->getField("type")]
+                                              [$this->getField("items_id")] ?? '';
     }
 
     /**
@@ -363,7 +357,7 @@ class NotificationTarget extends CommonDBChild
         $name = self::getInstanceClass($item->getType());
 
         $entity = 0;
-        if (class_exists($name)) {
+        if (is_a($name, NotificationTarget::class, true)) {
             //Entity ID exists in the options array
             if (isset($options['entities_id'])) {
                 $entity = $options['entities_id'];
@@ -386,7 +380,7 @@ class NotificationTarget extends CommonDBChild
      */
     public static function getInstanceClass(string $itemtype): string
     {
-        if (strpos($itemtype, "\\") != false) {
+        if (str_contains($itemtype, "\\")) {
             // namespace case
             $ns_parts = explode("\\", $itemtype);
             $classname = array_pop($ns_parts);
@@ -427,7 +421,7 @@ class NotificationTarget extends CommonDBChild
     /**
      * @param $notification Notification object
      **/
-    public function showForNotification(Notification $notification)
+    public function showForNotification(Notification $notification): bool
     {
         if (!Notification::canView()) {
             return false;
@@ -482,6 +476,8 @@ class NotificationTarget extends CommonDBChild
                 ],
             ]);
         }
+
+        return true;
     }
 
 
@@ -553,7 +549,7 @@ class NotificationTarget extends CommonDBChild
         if (count($actives)) {
             foreach ($actives as $val) {
                 [$type, $items_id] = explode("_", $val);
-                if ($target->getFromDBForTarget($input['notifications_id'], $type, $items_id)) {
+                if ($target->getFromDBForTarget($input['notifications_id'], $type, (int) $items_id)) {
                     $target->delete(['id' => $target->getID()]);
                 }
             }
@@ -567,7 +563,7 @@ class NotificationTarget extends CommonDBChild
     /**
      * @param $data
      *
-     * @return empty array
+     * @return array
      **/
     public function addAdditionnalUserInfo(array $data)
     {
@@ -882,7 +878,7 @@ class NotificationTarget extends CommonDBChild
      **/
     final public function addForGroup($manager, $group_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // members/managers of the group allowed on object entity
@@ -968,6 +964,34 @@ class NotificationTarget extends CommonDBChild
     }
 
     /**
+     * Return list of notification events for which the notifications should be sent immediately.
+     *
+     * @return array
+     */
+    public function getEventsToSendImmediately(): array
+    {
+        return [];
+    }
+
+    /**
+     * Indicates whether the notification should be sent immediately.
+     *
+     * @param class-string<CommonDBTM> $itemtype
+     */
+    public static function shouldNotificationBeSentImmediately(string $itemtype, string $event): bool
+    {
+        $target_class = NotificationTarget::getInstanceClass($itemtype);
+
+        if (!is_a($target_class, NotificationTarget::class, true)) {
+            return false;
+        }
+
+        $target = new $target_class();
+
+        return in_array($event, $target->getEventsToSendImmediately(), true);
+    }
+
+    /**
      * Return whether the notification content corresponding to the given event can be disclosed.
      *
      * @return bool
@@ -1012,7 +1036,7 @@ class NotificationTarget extends CommonDBChild
 
     public function addProfilesToTargets()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $profiles = $DB->request(['FROM' => Profile::getTable()]);
@@ -1031,7 +1055,7 @@ class NotificationTarget extends CommonDBChild
      **/
     final public function addGroupsToTargets($entity)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Filter groups which can be notified and have members (as notifications are sent to members)
@@ -1146,7 +1170,7 @@ class NotificationTarget extends CommonDBChild
      **/
     final public function addUserByField($field, $search_in_object = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $id = [];
@@ -1158,7 +1182,7 @@ class NotificationTarget extends CommonDBChild
             }
         }
 
-        if (!empty($id)) {
+        if ($id !== []) {
             //Look for the user by his id
             $criteria = $this->getDistinctUserCriteria() + $this->getProfileJoinCriteria();
             $criteria['FROM'] = User::getTable();
@@ -1221,7 +1245,7 @@ class NotificationTarget extends CommonDBChild
      */
     final public function addForProfile($profiles_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $criteria = $this->getDistinctUserCriteria() + $this->getProfileJoinCriteria();
@@ -1392,7 +1416,7 @@ class NotificationTarget extends CommonDBChild
 
     private function removeExcludedTargets(array $target_list)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $exclusions = iterator_to_array($DB->request([
             'SELECT' => ['type', 'items_id'],
@@ -1402,7 +1426,7 @@ class NotificationTarget extends CommonDBChild
                 'notifications_id' => $this->data['notifications_id'],
             ],
         ]));
-        if (empty($exclusions)) {
+        if ($exclusions === []) {
             // No exclusion, no need to filter
             return $target_list;
         }
@@ -1412,7 +1436,7 @@ class NotificationTarget extends CommonDBChild
                 $user_ids[] = $target['users_id'];
             }
         }
-        if (empty($user_ids)) {
+        if ($user_ids === []) {
             // Cannot filter targets without a user id
             return $target_list;
         }
@@ -1639,7 +1663,7 @@ class NotificationTarget extends CommonDBChild
                 case Notification::class:
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nb = countElementsInTable(
-                            $this->getTable(),
+                            static::getTable(),
                             ['notifications_id' => $item->getID()]
                         );
                     }
@@ -1661,7 +1685,7 @@ class NotificationTarget extends CommonDBChild
      **/
     public static function countForGroup(Group $group)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $count = $DB->request([
@@ -1695,11 +1719,11 @@ class NotificationTarget extends CommonDBChild
      *
      * @param $group Group object
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForGroup(Group $group)
+    public static function showForGroup(Group $group): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!Notification::canView()) {
@@ -1750,25 +1774,27 @@ class NotificationTarget extends CommonDBChild
         TemplateRenderer::getInstance()->display('pages/setup/notification/group_notifications.html.twig', [
             'notifications' => $notifications,
         ]);
+
+        return true;
     }
 
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
 
-        if (get_class($item) == Group::class) {
-            self::showForGroup($item);
-        } elseif (get_class($item) == Notification::class) {
+        if ($item instanceof Group) {
+            return self::showForGroup($item);
+        } elseif ($item instanceof Notification) {
             $target = self::getInstanceByType(
                 $item->getField('itemtype'),
                 $item->getField('event'),
                 ['entities_id' => $item->getField('entities_id')]
             );
             if ($target) {
-                $target->showForNotification($item);
+                return $target->showForNotification($item);
             }
         }
-        return true;
+        return false;
     }
 
     /**

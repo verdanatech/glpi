@@ -32,13 +32,17 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\Environment;
+use Glpi\Event;
+use Glpi\Form\AnswersSet;
 use Glpi\Form\Form;
 use Glpi\Inventory\Conf;
+use Glpi\Inventory\Inventory;
+use Glpi\Marketplace\Controller;
 use Glpi\RichText\UserMention;
 use Glpi\Socket;
 
+use function Safe\ini_get;
 use function Safe\json_encode;
 
 // Use anonymous class so we can have constants that define special values without polluting the global table
@@ -138,6 +142,10 @@ $empty_data_builder = new class {
             'notifications_mailing' => '0',
             'admin_email' => 'admsys@localhost',
             'admin_email_name' => '',
+            'admin_email_noreply' => '',
+            'admin_email_noreply_name' => '',
+            'admin_reply' => '',
+            'admin_reply_name' => '',
             'from_email' => '',
             'from_email_name' => '',
             'noreply_email' => '',
@@ -366,6 +374,12 @@ $empty_data_builder = new class {
             'projecttask_inprogress_states_id' => 0,
             'projecttask_completed_states_id' => 0,
             'non_reusable_passwords_count' => 1,
+            'plugins_execution_mode' => Plugin::EXECUTION_MODE_ON,
+            'glpinetwork_registration_key' => null,
+            'impact_assets_list' => '[]',
+            'timezone' => null,
+            'glpi_11_form_migration' => 0,
+            'glpi_11_assets_migration' => 0,
         ];
 
         $tables['glpi_configs'] = [];
@@ -377,7 +391,7 @@ $empty_data_builder = new class {
             ];
         }
 
-        foreach (\Glpi\Inventory\Conf::getDefaults() as $name => $value) {
+        foreach (Conf::getDefaults() as $name => $value) {
             $tables['glpi_configs'][] = [
                 'context' => 'inventory',
                 'name' => $name,
@@ -796,7 +810,7 @@ $empty_data_builder = new class {
                 'hourmax' => 24,
             ], [
                 'id' => 37,
-                'itemtype' => 'Glpi\Marketplace\Controller',
+                'itemtype' => Controller::class,
                 'name' => 'checkAllUpdates',
                 'frequency' => DAY_TIMESTAMP,
                 'param' => null,
@@ -832,7 +846,7 @@ $empty_data_builder = new class {
                 'hourmax' => 24,
             ], [
                 'id' => 40,
-                'itemtype' => 'Glpi\Inventory\Inventory',
+                'itemtype' => Inventory::class,
                 'name' => 'cleantemp',
                 'frequency' => DAY_TIMESTAMP,
                 'param' => null,
@@ -844,7 +858,7 @@ $empty_data_builder = new class {
                 'hourmax' => 6,
             ], [
                 'id' => 41,
-                'itemtype' => 'Glpi\Inventory\Inventory',
+                'itemtype' => Inventory::class,
                 'name' => 'cleanorphans',
                 'frequency' => DAY_TIMESTAMP,
                 'param' => null,
@@ -928,7 +942,7 @@ $empty_data_builder = new class {
                 'hourmax' => 6,
             ], [
                 'id' => 48,
-                'itemtype' => 'Glpi\Form\Form',
+                'itemtype' => Form::class,
                 'name' => 'purgedraftforms',
                 'frequency' => DAY_TIMESTAMP,
                 'param' => 7,
@@ -1989,27 +2003,27 @@ $empty_data_builder = new class {
                 'num' => '8',
                 'rank' => '7',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '155',
                 'rank' => '1',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '156',
                 'rank' => '2',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '157',
                 'rank' => '3',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '158',
                 'rank' => '4',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '159',
                 'rank' => '5',
             ], [
-                'itemtype' => 'Glpi\Event',
+                'itemtype' => Event::class,
                 'num' => '160',
                 'rank' => '6',
             ],
@@ -2021,8 +2035,8 @@ $empty_data_builder = new class {
             $tables['glpi_displaypreferences'][$index]['interface'] = 'central';
         }
 
-        $ADDTODISPLAYPREF['Glpi\Form\Form'] = [1, 80, 86, 3, 4];
-        $ADDTODISPLAYPREF['Glpi\Form\AnswersSet'] = [1, 3, 4];
+        $ADDTODISPLAYPREF[Form::class] = [1, 80, 86, 3, 4];
+        $ADDTODISPLAYPREF[AnswersSet::class] = [1, 3, 4];
         $ADDTODISPLAYPREF['Cluster'] = [31, 19];
         $ADDTODISPLAYPREF['Domain'] = [3, 4, 2, 6, 7];
         $ADDTODISPLAYPREF['DomainRecord'] = [2, 3];
@@ -2041,7 +2055,7 @@ $empty_data_builder = new class {
         $ADDTODISPLAYPREF[Webhook::class] = [3, 4, 5];
         $ADDTODISPLAYPREF[QueuedWebhook::class] = [80, 2, 22, 20, 21, 7, 30, 16];
         $ADDTODISPLAYPREF[Consumable::class] = [2, 8, 3, 4, 5, 6, 7];
-        $ADDTODISPLAYPREF_HELPDESK[\Ticket::class] = [
+        $ADDTODISPLAYPREF_HELPDESK[Ticket::class] = [
             12, // Status
             19, // Last update
             15, // Opening date
@@ -2516,6 +2530,9 @@ $empty_data_builder = new class {
                 'show_tickets_properties_on_helpdesk' => 0,
                 'custom_helpdesk_home_scene_left' => '',
                 'custom_helpdesk_home_scene_right' => '',
+                'custom_helpdesk_home_title' => '',
+                'enable_helpdesk_home_search_bar' => 1,
+                'enable_helpdesk_service_catalog' => 1,
             ],
         ];
 
@@ -2721,7 +2738,7 @@ $empty_data_builder = new class {
                 'is_active' => 1,
             ], [
                 'id' => 12,
-                'name' => 'Ticket Validation',
+                'name' => 'Ticket Approval',
                 'itemtype' => 'Ticket',
                 'event' => 'validation',
                 'is_recursive' => 1,
@@ -2896,7 +2913,7 @@ $empty_data_builder = new class {
                 'is_active' => 1,
             ], [
                 'id' => 37,
-                'name' => 'Ticket Validation Answer',
+                'name' => 'Ticket Approval Answer',
                 'itemtype' => 'Ticket',
                 'event' => 'validation_answer',
                 'is_recursive' => 1,
@@ -3135,7 +3152,7 @@ $empty_data_builder = new class {
             ], [
                 'id' => 71,
                 'name' => 'Check plugin updates',
-                'itemtype' => 'Glpi\Marketplace\Controller',
+                'itemtype' => Controller::class,
                 'event' => 'checkpluginsupdate',
                 'is_recursive' => 1,
                 'is_active' => 1,
@@ -4614,7 +4631,7 @@ $empty_data_builder = new class {
                 'itemtype' => 'Ticket',
             ], [
                 'id' => '7',
-                'name' => 'Tickets Validation',
+                'name' => 'Tickets Approval',
                 'itemtype' => 'Ticket',
             ], [
                 'id' => '8',
@@ -4699,7 +4716,7 @@ $empty_data_builder = new class {
             ], [
                 'id' => '28',
                 'name' => 'Plugin updates',
-                'itemtype' => 'Glpi\Marketplace\Controller',
+                'itemtype' => Controller::class,
             ], [
                 'id' => '29',
                 'name' => 'Password Initialization',
@@ -5905,6 +5922,10 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'name' => 'itilfollowuptemplate',
                 'rights' => READ | UPDATE | CREATE | PURGE,
             ], [
+                'profiles_id' => self::PROFILE_SUPERVISOR,
+                'name' => 'itilvalidationtemplate',
+                'rights' => READ | UPDATE | CREATE | PURGE,
+            ], [
                 'profiles_id' => self::PROFILE_SELF_SERVICE,
                 'name' => 'calendar',
                 'rights' => self::RIGHT_NONE,
@@ -6193,12 +6214,20 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'name' => 'itilfollowuptemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
+                'profiles_id' => self::PROFILE_HOTLINER,
+                'name' => 'itilvalidationtemplate',
+                'rights' => self::RIGHT_NONE,
+            ], [
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'solutiontemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'itilfollowuptemplate',
+                'rights' => self::RIGHT_NONE,
+            ], [
+                'profiles_id' => self::PROFILE_TECHNICIAN,
+                'name' => 'itilvalidationtemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
                 'profiles_id' => self::PROFILE_OBSERVER,
@@ -6215,7 +6244,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_OBSERVER,
                 'name' => 'problem',
-                'rights' => Change::READMY | READNOTE | Change::READALL | CommonITILObject::SURVEY,
+                'rights' => Problem::READMY | READNOTE | Problem::READALL,
             ], [
                 'profiles_id' => self::PROFILE_SELF_SERVICE,
                 'name' => 'cable_management',
@@ -6500,6 +6529,10 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'name' => 'itilfollowuptemplate',
                 'rights' => READ | UPDATE | CREATE | PURGE,
             ], [
+                'profiles_id' => self::PROFILE_ADMIN,
+                'name' => 'itilvalidationtemplate',
+                'rights' => READ | UPDATE | CREATE | PURGE,
+            ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'solutiontemplate',
                 'rights' => READ | UPDATE | CREATE | PURGE,
@@ -6508,13 +6541,17 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'name' => 'itilfollowuptemplate',
                 'rights' => READ | UPDATE | CREATE | PURGE,
             ], [
+                'profiles_id' => self::PROFILE_SUPER_ADMIN,
+                'name' => 'itilvalidationtemplate',
+                'rights' => READ | UPDATE | CREATE | PURGE,
+            ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'calendar',
                 'rights' => READ | UPDATE | CREATE | PURGE,
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'slm',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | PURGE | SLM::RIGHT_ASSIGN,
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'rule_dictionnary_printer',
@@ -6587,11 +6624,11 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'cartridge',
-                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | UNLOCK | READ_ASSIGNED | UPDATE_ASSIGNED,
+                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | READ_ASSIGNED | UPDATE_ASSIGNED | READ_OWNED | UPDATE_OWNED,
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'consumable',
-                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | UNLOCK | READ_ASSIGNED | UPDATE_ASSIGNED,
+                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | READ_ASSIGNED | UPDATE_ASSIGNED | READ_OWNED | UPDATE_OWNED,
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'phone',
@@ -6801,12 +6838,20 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'name' => 'itilfollowuptemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
+                'profiles_id' => self::PROFILE_SELF_SERVICE,
+                'name' => 'itilvalidationtemplate',
+                'rights' => self::RIGHT_NONE,
+            ], [
                 'profiles_id' => self::PROFILE_OBSERVER,
                 'name' => 'solutiontemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
                 'profiles_id' => self::PROFILE_OBSERVER,
                 'name' => 'itilfollowuptemplate',
+                'rights' => self::RIGHT_NONE,
+            ], [
+                'profiles_id' => self::PROFILE_OBSERVER,
+                'name' => 'itilvalidationtemplate',
                 'rights' => self::RIGHT_NONE,
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
@@ -6847,7 +6892,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'change',
-                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL,
+                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL | CommonITILObject::SURVEY,
             ], [
                 'profiles_id' => self::PROFILE_SELF_SERVICE,
                 'name' => 'changevalidation',
@@ -7141,11 +7186,11 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_HOTLINER,
                 'name' => 'change',
-                'rights' => UPDATE | CREATE | DELETE | PURGE | Change::READALL,
+                'rights' => UPDATE | CREATE | DELETE | PURGE | Change::READALL | CommonITILObject::SURVEY,
             ], [
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'change',
-                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL,
+                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL | CommonITILObject::SURVEY,
             ], [
                 'profiles_id' => self::PROFILE_HOTLINER,
                 'name' => 'ticketvalidation',
@@ -7314,7 +7359,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'ticket',
                 'rights' => Ticket::READMY | UPDATE | CREATE | Ticket::READALL | Ticket::READGROUP
-                    | Ticket::OWN | CommonITILObject::SURVEY,
+                    | Ticket::OWN | CommonITILObject::SURVEY | Ticket::READNEWTICKET,
             ], [
                 'profiles_id' => self::PROFILE_TECHNICIAN,
                 'name' => 'followup',
@@ -7436,7 +7481,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'change',
-                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL,
+                'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE | Change::READALL | CommonITILObject::SURVEY,
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'change',
@@ -7492,7 +7537,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'contact_enterprise',
-                'rights' => READNOTE | UPDATENOTE,
+                'rights' => READ | READNOTE | UPDATENOTE,
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'document',
@@ -7500,7 +7545,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'contract',
-                'rights' => READNOTE | UPDATENOTE,
+                'rights' => READ | READNOTE | UPDATENOTE,
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'infocom',
@@ -7560,7 +7605,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'search_config',
-                'rights' => self::RIGHT_NONE,
+                'rights' => DisplayPreference::PERSONAL,
             ], [
                 'profiles_id' => self::PROFILE_SELF_SERVICE,
                 'name' => 'domain',
@@ -7663,7 +7708,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'budget',
-                'rights' => READNOTE | UPDATENOTE,
+                'rights' => READ | READNOTE | UPDATENOTE,
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'notification',
@@ -7687,7 +7732,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'slm',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | PURGE | SLM::RIGHT_ASSIGN,
             ], [
                 'profiles_id' => self::PROFILE_SUPERVISOR,
                 'name' => 'rule_dictionnary_printer',
@@ -8103,11 +8148,11 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
             ], [
                 'profiles_id' => self::PROFILE_ADMIN,
                 'name' => 'lineoperator',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | PURGE | READNOTE | UPDATENOTE,
             ], [
                 'profiles_id' => self::PROFILE_SUPER_ADMIN,
                 'name' => 'lineoperator',
-                'rights' => READ | UPDATE | CREATE | PURGE,
+                'rights' => READ | UPDATE | CREATE | PURGE | READNOTE | UPDATENOTE,
             ], [
                 'profiles_id' => self::PROFILE_HOTLINER,
                 'name' => 'lineoperator',
@@ -9540,7 +9585,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
         // initial validation steps
         $tables[ValidationStep::getTable()][] = [
             'id' => 1,
-            'name' => _n('Approval', 'Approvals', 1),
+            'name' => CommonITILValidation::getTypeName(1),
             'minimal_required_validation_percent' => 100,
             'is_default' => 1,
             'date_creation' => date('Y-m-d H:i:s'),

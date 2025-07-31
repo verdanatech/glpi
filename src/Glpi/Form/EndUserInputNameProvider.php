@@ -35,6 +35,9 @@
 
 namespace Glpi\Form;
 
+use function Safe\preg_match;
+use function Safe\preg_replace;
+
 /**
  * Utility class to provide the end user input name
  */
@@ -114,9 +117,7 @@ final class EndUserInputNameProvider
 
         return array_filter(
             $answers,
-            function ($key) {
-                return preg_match(self::END_USER_INPUT_NAME_REGEX, $key);
-            },
+            fn($key) => preg_match(self::END_USER_INPUT_NAME_REGEX, $key),
             ARRAY_FILTER_USE_KEY
         );
     }

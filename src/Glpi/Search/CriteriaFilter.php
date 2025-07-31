@@ -40,7 +40,8 @@ use CommonDBTM;
 use CommonGLPI;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Search\Input\QueryBuilder;
-use Session;
+
+use function Safe\json_decode;
 
 /**
  * Define filters for a given itemtype, using the search engine UI
@@ -55,7 +56,7 @@ final class CriteriaFilter extends CommonDBChild
         return __('Filter');
     }
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
         // Only on filterable items
         if (!$item instanceof CommonDBTM || !$item instanceof FilterableInterface) {

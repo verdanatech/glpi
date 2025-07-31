@@ -197,7 +197,7 @@ class ObjectLock extends CommonDBTM
      * @param string $itemtype
      * @param integer $items_id
      *
-     * @return bool|ObjectLock: returns ObjectLock if locked, else false
+     * @return false|ObjectLock returns ObjectLock if locked, else false
      **/
     public static function isLocked($itemtype, $items_id)
     {
@@ -219,7 +219,7 @@ class ObjectLock extends CommonDBTM
         if (!isset($_SESSION['glpilocksavedprofile']) && isset($CFG_GLPI['lock_lockprofile'])) {
             if (!self::$shutdownregistered) {
                 // this is a security in case of a fatal error that can prevent correct revert of profile
-                register_shutdown_function([__CLASS__,  'revertProfile']);
+                register_shutdown_function([self::class,  'revertProfile']);
                 self::$shutdownregistered = true;
             }
             $_SESSION['glpilocksavedprofile'] = $_SESSION['glpiactiveprofile'];
@@ -393,7 +393,7 @@ TWIG;
      * @param  string $itemtype
      * @param  string $interface
      *
-     * @return array: empty array if itemtype is not lockable; else returns UNLOCK right
+     * @return array empty array if itemtype is not lockable; else returns UNLOCK right
      **/
     public static function getRightsToAdd($itemtype, $interface = 'central')
     {
@@ -446,7 +446,7 @@ TWIG;
         $task->setVolume(0); // start with zero
 
         $lockedItems = getAllDataFromTable(
-            getTableForItemType(__CLASS__),
+            getTableForItemType(self::class),
             [
                 'date' => ['<', date("Y-m-d H:i:s", time() - ($task->fields['param'] * HOUR_TIMESTAMP))],
             ]
@@ -456,7 +456,7 @@ TWIG;
             $ol = new self();
             if ($ol->delete($row)) {
                 $actionCode++;
-                $item = new $row['itemtype']();
+                $item = getItemForItemtype($row['itemtype']);
                 $item->getFromDB($row['items_id']);
                 $task->log($row['itemtype'] . " #" . $row['items_id'] . ": " . $item->getLink());
                 $task->addVolume(1);

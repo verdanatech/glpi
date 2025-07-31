@@ -349,9 +349,9 @@ class ASTDefinitionBuilder
     /**
      * @param array<ObjectTypeDefinitionNode|ObjectTypeExtensionNode|InterfaceTypeDefinitionNode|InterfaceTypeExtensionNode> $nodes
      *
-     * @phpstan-return array<string, UnnamedFieldDefinitionConfig>
-     *
      * @throws \Exception
+     *
+     * @phpstan-return array<string, UnnamedFieldDefinitionConfig>
      */
     private function makeFieldDefMap(array $nodes): array
     {
@@ -536,16 +536,36 @@ class ASTDefinitionBuilder
         ]);
     }
 
-    /** @throws InvariantViolation */
+    /**
+     * @throws \Exception
+     * @throws \ReflectionException
+     * @throws InvariantViolation
+     */
     private function makeInputObjectDef(InputObjectTypeDefinitionNode $def): InputObjectType
     {
         $name = $def->name->value;
         /** @var array<InputObjectTypeExtensionNode> $extensionASTNodes (proven by schema validation) */
         $extensionASTNodes = $this->typeExtensionsMap[$name] ?? [];
 
+        $oneOfDirective = Directive::oneOfDirective();
+
+        // Check for @oneOf directive in the definition node
+        $isOneOf = Values::getDirectiveValues($oneOfDirective, $def) !== null;
+
+        // Check for @oneOf directive in extension nodes
+        if (! $isOneOf) {
+            foreach ($extensionASTNodes as $extensionNode) {
+                if (Values::getDirectiveValues($oneOfDirective, $extensionNode) !== null) {
+                    $isOneOf = true;
+                    break;
+                }
+            }
+        }
+
         return new InputObjectType([
             'name' => $name,
             'description' => $def->description->value ?? null,
+            'isOneOf' => $isOneOf,
             'fields' => fn (): array => $this->makeInputFields([$def, ...$extensionASTNodes]),
             'astNode' => $def,
             'extensionASTNodes' => $extensionASTNodes,

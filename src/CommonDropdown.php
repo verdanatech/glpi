@@ -37,6 +37,8 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\Dropdown\DropdownDefinition;
 use Glpi\Features\AssetImage;
 
+use function Safe\preg_grep;
+
 /// CommonDropdown class - generic dropdown
 abstract class CommonDropdown extends CommonDBTM
 {
@@ -156,7 +158,7 @@ abstract class CommonDropdown extends CommonDBTM
      **/
     public function getAdditionalFields()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $fields = [];
@@ -238,7 +240,7 @@ abstract class CommonDropdown extends CommonDBTM
      **/
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // if item based on location, create item in the same entity as location
@@ -388,17 +390,22 @@ abstract class CommonDropdown extends CommonDBTM
 
     public function pre_deleteItem()
     {
-
         if (isset($this->fields['is_protected']) && $this->fields['is_protected']) {
+            Session::addMessageAfterRedirect(
+                msg: __s('Protected item cannot be deleted.'),
+                message_type: ERROR
+            );
+
             return false;
         }
+
         return true;
     }
 
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $tab = [];
 
@@ -525,7 +532,7 @@ abstract class CommonDropdown extends CommonDBTM
      */
     public function isUsed()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $RELATION = getDbRelations();
@@ -543,8 +550,11 @@ abstract class CommonDropdown extends CommonDBTM
 
             foreach ($fields as $field) {
                 if (is_array($field)) {
-                    // Relation based on 'itemtype'/'items_id' (polymorphic relationship)
-                    if ($this instanceof IPAddress && in_array('mainitemtype', $field) && in_array('mainitems_id', $field)) {
+                    if (
+                        $tablename === IPAddress::getTable()
+                        && in_array('mainitemtype', $field)
+                        && in_array('mainitems_id', $field)
+                    ) {
                         // glpi_ipaddresses relationship that does not respect naming conventions
                         $itemtype_field = 'mainitemtype';
                         $items_id_field = 'mainitems_id';
@@ -681,7 +691,7 @@ abstract class CommonDropdown extends CommonDBTM
      **/
     public function findID(array &$input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!empty($input["name"])) {
@@ -805,6 +815,7 @@ abstract class CommonDropdown extends CommonDBTM
             $res_rule = $rulecollection->processAllRules($ruleinput, [], []);
             if (isset($res_rule["name"])) {
                 $input["name"] = $res_rule["name"];
+                unset($external_params['id']); //ID won't match one set from rules
             }
         }
         // Merge extra input fields into $input
@@ -827,7 +838,7 @@ abstract class CommonDropdown extends CommonDBTM
             && (count($_SESSION['glpiactiveentities']) > 1)
             && !in_array('merge', $forbidden_actions)
         ) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'merge'] = __s('Merge and assign to current entity');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'merge'] = __s('Merge and assign to current entity');
         }
 
         return $actions;
@@ -886,7 +897,7 @@ abstract class CommonDropdown extends CommonDBTM
                                     // delete with purge for dropdown with trashbin (Budget)
                                     $item->delete(['id'          => $key,
                                         '_replace_by' => $newid,
-                                    ], 1);
+                                    ], true);
                                 } elseif ($newid > 0 && $key == $newid) {
                                     $input2['id'] = $newid;
                                     $item->update($input2);

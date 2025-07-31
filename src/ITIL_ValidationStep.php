@@ -87,7 +87,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
     #[Override()]
     public function cleanDBonPurge()
     {
-        $validation = new static::$validation_classname();
+        $validation = getItemForItemtype(static::$validation_classname);
         $validation->deleteByCriteria([
             $this->fields['itemtype']::getForeignKeyField() => $this->fields['items_id'],
         ]);
@@ -109,7 +109,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
         ) {
             $itil = $this->getItem();
             if (!($itil instanceof CommonITILObject)) {
-                throw new \RuntimeException();
+                throw new RuntimeException();
             }
 
             $new_status = static::getValidationStatusForITIL($itil);
@@ -124,7 +124,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
                         ]
                     )
                 ) {
-                    throw new \RuntimeException();
+                    throw new RuntimeException();
                 }
             }
         }
@@ -174,7 +174,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
      */
     public function getAchievements(): array
     {
-        $validations = (new static::$validation_classname())->find([
+        $validations = getItemForItemtype(static::$validation_classname)->find([
             'itils_validationsteps_id' => $this->getID(),
         ]);
 
@@ -200,7 +200,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
     }
 
     /**
-     * @param \CommonITILObject $itil
+     * @param CommonITILObject $itil
      * @return int
      */
     public static function getValidationStatusForITIL(CommonITILObject $itil): int
@@ -208,7 +208,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
         $validation_steps_status = static::getValidationStepsStatus($itil);
 
         // No validation for the ticket -> NONE
-        if (empty($validation_steps_status)) {
+        if ($validation_steps_status === []) {
             return CommonITILValidation::NONE;
         }
         // One validation step is REFUSED -> REFUSED
@@ -232,7 +232,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
      *
      * Return each step status for an itil in an array
      *
-     * @param \CommonITILObject $itil
+     * @param CommonITILObject $itil
      * @return int[] array of validation steps status : ComomITILValidation::WAITING|ComomITILValidation::ACCEPTED|ComomITILValidation::REFUSED
      */
     public static function getValidationStepsStatus(CommonITILObject $itil): array
@@ -249,7 +249,7 @@ abstract class ITIL_ValidationStep extends CommonDBChild
         foreach ($validationstep_ids as $validationstep_id) {
             $itil_vs = new static();
             if (!$itil_vs->getFromDB($validationstep_id)) {
-                throw new \RuntimeException();
+                throw new RuntimeException();
             }
 
             $result[$validationstep_id] = $itil_vs->getStatus();

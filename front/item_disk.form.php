@@ -83,7 +83,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $disk->check($_POST["id"], PURGE);
 
-    if ($disk->delete($_POST, 1)) {
+    if ($disk->delete($_POST, true)) {
         Event::log(
             $disk->fields['items_id'],
             $disk->fields['itemtype'],
@@ -94,7 +94,7 @@ if (isset($_POST["add"])) {
         );
     }
     $itemtype = $disk->fields['itemtype'];
-    $item = new $itemtype();
+    $item = getItemForItemtype($itemtype);
     $item->getFromDB($disk->fields['items_id']);
     Html::redirect($itemtype::getFormURLWithID($disk->fields['items_id']) .
                   ($item->fields['is_template'] ? "&withtemplate=1" : ""));

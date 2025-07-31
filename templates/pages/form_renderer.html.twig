@@ -41,12 +41,17 @@
     {# Is this a single or multi sections forms ? #}
     {% set is_single_section_form = form.getSections()|length == 1 %}
 
+    {# Check render layout to determine display behavior #}
+    {% set is_single_page_layout = form.fields.render_layout == constant('Glpi\\Form\\RenderLayout::SINGLE_PAGE').value %}
+    {% set use_step_by_step = not is_single_page_layout and not is_single_section_form %}
+
     <form
         id="forms_form_answers"
         method="POST"
         action="{{ path("/Form/SubmitAnswers") }}"
         {# The pointer-events-none class will be removed by the JS controller once it is loaded #}
         class="pointer-events-none"
+        data-glpi-form-render-layout="{{ form.fields.render_layout }}"
     >
         <div class="form-renderer mt-n5">
 
@@ -68,14 +73,13 @@
                 {% include "components/helpdesk_forms/delegation_alert.html.twig" %}
             </div>
 
-            {% set section_visible_index = 1 %}
             {% for section in form.getSections() %}
                 {# Is this the first section of a form ? #}
                 {% set is_first_section = loop.index0 == 0 %}
                 {% set section_index = loop.index0 %}
 
                 <div
-                    class="{{ is_first_section ? "" : "d-none" }}"
+                    class="{{ (is_single_page_layout or is_first_section) ? "" : "d-none" }}"
                     data-glpi-form-renderer-section="{{ section_index }}"
                     data-glpi-form-renderer-uuid="{{ section.fields.uuid }}"
                     data-glpi-form-renderer-id="{{ section.fields.id }}"
@@ -86,27 +90,18 @@
                     {% if not is_single_section_form %}
                         <div
                             class="bg-primary px-2 py-1 rounded-top "
-                            style="width: fit-content;"
-                            data-glpi-form-renderer-step-label
+                            style="width: fit-content; max-width: calc(100% - var(--tblr-border-radius) * 2);"
                         >
-                            {% if visibility_engine_output.isSectionVisible(section.getID()) %}
-                                {{ __("Step %1$s of %2$s")|format(
-                                    section_visible_index,
-                                    visibility_engine_output.getNumberOfVisibleSections()
-                                ) }}
-                                {% set section_visible_index = section_visible_index + 1 %}
-                            {% endif %}
+                            <h2 class="mb-0 {{ not section.fields.name ? "text-muted" : "" }}">
+                                {{ translate_item_key(section, constant('TRANSLATION_KEY_NAME', section))|default(__('Untitled section')) }}
+                            </h2>
                         </div>
                     {% endif %}
                     <div
                         class="card mb-3" {{ not is_single_section_form ? "style='border-top-left-radius: 0;'" : "" }}
                     >
                         <div class="card-body">
-                            {% if not is_single_section_form %}
-                                <h2 class="mb-1 {{ not section.fields.name ? "text-muted" : "" }}">
-                                {{ translate_item_key(section, constant('TRANSLATION_KEY_NAME', section))|default(__('Untitled section')) }}
-                            </h2>
-
+                            {% if not is_single_section_form and section.fields.description is not empty %}
                                 <div class="text-muted section-description mb-3">
                                     {{ translate_item_key(section, constant('TRANSLATION_KEY_DESCRIPTION', section))|safe_html }}
                                 </div>
@@ -148,7 +143,7 @@
                                         {% if not skip_question %}
                                             <section
                                                 aria-label="{{ form_block.fields.name }}"
-                                                class="{{ is_first_section ? "" : "d-none" }}"
+                                                class="{{ (is_single_page_layout or is_first_section) ? "" : "d-none" }}"
                                                 style="flex: 1;"
                                                 data-glpi-form-renderer-parent-section="{{ section_index }}"
                                                 data-glpi-form-renderer-id="{{ form_block.fields.id }}"
@@ -183,7 +178,7 @@
                                                     </div>
                                                 {% endif %}
 
-                                                <div class="text-muted block-description">
+                                                <div class="text-muted block-description" role="note" aria-label="{{ __('%s description')|format(form_block.getTypeName(1)) }}">
                                                     {{ translate_item_key(form_block, constant('TRANSLATION_KEY_DESCRIPTION', form_block))|safe_html }}
                                                 </div>
                                             </section>
@@ -202,28 +197,31 @@
 
             {# Actions #}
             <div class="d-flex justify-content-end" data-glpi-form-renderer-actions>
-                <button
-                    type="button"
-                    data-glpi-form-renderer-action="previous-section"
-                    class="btn btn-ghost-secondary d-none d-flex align-items-end me-2 pointer-events-none"
-                >
-                    <i class="ti ti-arrow-narrow-left-dashed me-2"></i>
-                    {{ __("Back") }}
-                </button>
+                {% if use_step_by_step and not is_single_section_form %}
+                    {# Navigation buttons for step-by-step mode #}
+                    <button
+                        type="button"
+                        data-glpi-form-renderer-action="previous-section"
+                        class="btn btn-ghost-secondary d-none d-flex align-items-end me-2 pointer-events-none"
+                    >
+                        <i class="ti ti-arrow-narrow-left-dashed me-2"></i>
+                        {{ __("Back") }}
+                    </button>
 
-                <button
-                    type="button"
-                    data-glpi-form-renderer-action="next-section"
-                    class="btn btn-primary pointer-events-none {{ is_single_section_form ? "d-none" : "" }} d-flex align-items-end"
-                >
-                    <i class="ti ti-arrow-narrow-right-dashed me-2"></i>
-                    {{ __("Continue") }}
-                </button>
+                    <button
+                        type="button"
+                        data-glpi-form-renderer-action="next-section"
+                        class="btn btn-primary pointer-events-none d-flex align-items-end"
+                    >
+                        <i class="ti ti-arrow-narrow-right-dashed me-2"></i>
+                        {{ __("Continue") }}
+                    </button>
+                {% endif %}
 
                 <button
                     type="button"
                     data-glpi-form-renderer-action="submit"
-                    class="btn btn-primary pointer-events-none {{ not is_single_section_form ? "d-none" : "" }} d-flex align-items-end"
+                    class="btn btn-primary pointer-events-none d-flex align-items-end {{ use_step_by_step ? 'd-none' : '' }}"
                     disabled
                     {% if not visibility_engine_output.isFormVisible() %}
                         data-glpi-form-renderer-hidden-by-condition
@@ -261,23 +259,25 @@
                 <p class="empty-subtitle text-secondary">
                     {{ __("Your form has been submitted successfully.") }}
                 </p>
-                <div class="mt-3 d-flex">
-                    {% if get_current_interface() == 'central' %}
-                        <a class="btn btn-outline-secondary me-2" href="{{ path('/ServiceCatalog') }}">
-                            <i class="ti ti-library me-1"></i>
-                            <span>{{ __("Go back to service catalog") }}</span>
+                {% if not unauthenticated_user %}
+                    <div class="mt-3 d-flex">
+                        {% if get_current_interface() == 'central' %}
+                            <a class="btn btn-outline-secondary me-2" href="{{ path('/ServiceCatalog') }}">
+                                <i class="ti ti-library me-1"></i>
+                                <span>{{ __("Go back to service catalog") }}</span>
+                            </a>
+                        {% else %}
+                            <a class="btn btn-outline-secondary me-2" href="{{ path('/Helpdesk') }}">
+                                <i class="ti ti-home me-1"></i>
+                                <span>{{ __("Take me home") }}</span>
+                            </a>
+                        {% endif %}
+                        <a class="btn btn-primary" href="{{ path('/front/ticket.php?' ~ my_tickets_url_param) }}">
+                            <i class="ti ti-article me-1"></i>
+                            <span>{{ __("See my tickets") }}</span>
                         </a>
-                    {% else %}
-                        <a class="btn btn-outline-secondary me-2" href="{{ path('/Helpdesk') }}">
-                            <i class="ti ti-home me-1"></i>
-                            <span>{{ __("Take me home") }}</span>
-                        </a>
-                    {% endif %}
-                    <a class="btn btn-primary" href="{{ path('/front/ticket.php?' ~ my_tickets_url_param) }}">
-                        <i class="ti ti-article me-1"></i>
-                        <span>{{ __("See my tickets") }}</span>
-                    </a>
-                </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </form>

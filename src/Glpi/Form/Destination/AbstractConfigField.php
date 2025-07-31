@@ -36,6 +36,7 @@
 namespace Glpi\Form\Destination;
 
 use Glpi\DBAL\JsonFieldInterface;
+use Glpi\Form\AnswersSet;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Form;
@@ -63,6 +64,26 @@ abstract class AbstractConfigField implements DestinationFieldInterface
         return null;
     }
 
+    #[Override]
+    public function applyConfiguratedValueToInputUsingAnswers(
+        JsonFieldInterface $config,
+        array $input,
+        AnswersSet $answers_set
+    ): array {
+        // Nothing to do by default
+        return $input;
+    }
+
+    #[Override]
+    public function applyConfiguratedValueAfterDestinationCreation(
+        FormDestination $destination,
+        JsonFieldInterface $config,
+        AnswersSet $answers_set,
+        array $created_objects
+    ): void {
+        // Nothing to do by default
+    }
+
     public function getConfig(Form $form, array $config): JsonFieldInterface
     {
         if ($this->supportAutoConfiguration() && $this->isAutoConfigurated($config)) {
@@ -77,7 +98,7 @@ abstract class AbstractConfigField implements DestinationFieldInterface
         }
 
         // Try to load config if defined
-        $config = $config[$this->getKey()] ?? null;
+        $config = $config[static::getKey()] ?? null;
         if ($config === null) {
             return $this->getDefaultConfig($form);
         }
@@ -88,7 +109,7 @@ abstract class AbstractConfigField implements DestinationFieldInterface
 
     public function isAutoConfigurated(array $config): bool
     {
-        return $config[$this->getAutoConfigKey()] ?? true;
+        return $config[static::getAutoConfigKey()] ?? true;
     }
 
     public static function getAutoConfigKey(): string
@@ -109,9 +130,9 @@ abstract class AbstractConfigField implements DestinationFieldInterface
             /** @var class-string<ConfigFieldWithStrategiesInterface> $config_class */
             if (
                 $this->canHaveMultipleStrategies() === false
-                && is_array($input[$this->getKey()][$config_class::getStrategiesInputName()] ?? null)
+                && is_array($input[static::getKey()][$config_class::getStrategiesInputName()] ?? null)
             ) {
-                $input[$this->getKey()][$config_class::getStrategiesInputName()] = $input[$this->getKey()][$config_class::getStrategiesInputName()][0];
+                $input[static::getKey()][$config_class::getStrategiesInputName()] = $input[static::getKey()][$config_class::getStrategiesInputName()][0];
             }
         }
 
@@ -126,6 +147,17 @@ abstract class AbstractConfigField implements DestinationFieldInterface
     public function canHaveMultipleStrategies(): bool
     {
         return false;
+    }
+
+    /**
+     * Returns an array of reusable strategies that can be used multiple times in the same field configuration.
+     * This is useful for fields that can have multiple instances of the same strategy.
+     *
+     * @return array<string> Strategie enum values that can be reused.
+     */
+    public function getReusableStrategies(): array
+    {
+        return [];
     }
 
     public function exportDynamicConfig(

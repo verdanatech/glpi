@@ -81,14 +81,14 @@ if (isset($_POST["add"])) {
         //TRANS: %s is the user login
         sprintf(__('%s deletes an item'), $_SESSION["glpiname"])
     );
-    $asset = new $_POST['itemtype']();
+    $asset = getItemForItemtype($_POST['itemtype']);
     $asset->getFromDB($item_vm->fields['items_id']);
     Html::redirect($asset->getFormURLWithID($item_vm->fields['items_id']) .
                   ($asset->fields['is_template'] ? "&withtemplate=1" : ""));
 } elseif (isset($_POST["purge"])) {
     $item_vm->check($_POST["id"], PURGE);
 
-    if ($item_vm->delete($_POST, 1)) {
+    if ($item_vm->delete($_POST, true)) {
         Event::log(
             $item_vm->fields['items_id'],
             $item_vm->fields['itemtype'],
@@ -98,7 +98,7 @@ if (isset($_POST["add"])) {
             sprintf(__('%s purges a virtual machine'), $_SESSION["glpiname"])
         );
     }
-    $asset = new $item_vm->fields['itemtype']();
+    $asset = getItemForItemtype($item_vm->fields['itemtype']);
     $asset->getFromDB($item_vm->fields['items_id']);
     Html::redirect($asset->getFormURLWithID($item_vm->fields['items_id']) .
                   ($asset->fields['is_template'] ? "&withtemplate=1" : ""));

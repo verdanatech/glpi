@@ -35,13 +35,24 @@
 
 namespace Glpi\System\Diagnostic;
 
+use Exception;
 use FilesystemIterator;
 use Glpi\Toolbox\VersionParser;
 use GuzzleHttp\Exception\GuzzleException;
+use JsonException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use RuntimeException;
+use Safe\Exceptions\FilesystemException;
 use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
+use Throwable;
+use Toolbox;
+
+use function Safe\file_get_contents;
+use function Safe\fileperms;
+use function Safe\json_decode;
+use function Safe\preg_replace;
 
 /**
  * @since 11.0.0
@@ -94,7 +105,7 @@ class SourceCodeIntegrityChecker
      *
      * @return array{algorithm: string, files: array<string, string>}
      *
-     * @throws \JsonException
+     * @throws JsonException
      */
     private function getBaselineManifest(): array
     {
@@ -104,20 +115,16 @@ class SourceCodeIntegrityChecker
             VersionParser::getNormalizedVersion(GLPI_VERSION, false)
         );
 
-        if (
-            \is_readable($manifest_path) === false
-            || ($manifest = \file_get_contents($manifest_path)) === false
-        ) {
-            throw new \RuntimeException('Error while trying to read the source code file manifest.');
-        }
-
         try {
-            $content = \json_decode($manifest, associative: true, flags: JSON_THROW_ON_ERROR);
-        } catch (\Throwable $e) {
-            throw new \RuntimeException('The source code file manifest is invalid.', previous: $e);
+            $manifest = file_get_contents($manifest_path);
+            $content = json_decode($manifest, associative: true, flags: JSON_THROW_ON_ERROR);
+        } catch (FilesystemException $e) {
+            throw new RuntimeException('Error while trying to read the source code file manifest.', $e->getCode(), $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('The source code file manifest is invalid.', $e->getCode(), previous: $e);
         }
         if (!isset($content['algorithm'], $content['files']) || !is_string($content['algorithm']) || !is_array($content['files'])) {
-            throw new \RuntimeException('The source code file manifest is invalid.');
+            throw new RuntimeException('The source code file manifest is invalid.');
         }
         return $content;
     }
@@ -138,7 +145,7 @@ class SourceCodeIntegrityChecker
             $path = $this->root_dir . '/' . $item;
 
             if (!\file_exists($path)) {
-                throw new \RuntimeException(sprintf('`%s` does not exist in the filesystem.', $path));
+                throw new RuntimeException(sprintf('`%s` does not exist in the filesystem.', $path));
             }
 
             if (is_dir($path)) {
@@ -188,13 +195,13 @@ class SourceCodeIntegrityChecker
         }
         // Summary where the key is the file and the value is the status. Ignore OK files
         $summary = [];
-        foreach ($altered as $file => $hash) {
+        foreach (array_keys($altered) as $file) {
             $summary[$file] = self::STATUS_ALTERED;
         }
-        foreach ($added as $file => $hash) {
+        foreach (array_keys($added) as $file) {
             $summary[$file] = self::STATUS_ADDED;
         }
-        foreach ($missing as $file => $hash) {
+        foreach (array_keys($missing) as $file) {
             $summary[$file] = self::STATUS_MISSING;
         }
 
@@ -215,7 +222,7 @@ class SourceCodeIntegrityChecker
         $version_to_get = VersionParser::getNormalizedVersion(GLPI_VERSION);
         $gh_releases_endpoint = 'https://api.github.com/repos/glpi-project/glpi/releases/tags/' . $version_to_get;
 
-        $client = \Toolbox::getGuzzleClient([
+        $client = Toolbox::getGuzzleClient([
             'connect_timeout' => 10, // 10 seconds timeout
         ]);
 
@@ -281,9 +288,10 @@ class SourceCodeIntegrityChecker
                 $file_perms   = @substr(sprintf('%o', fileperms($this->root_dir . '/' . $file)), -4) ?: '0644';
                 $extra_header = 'new file mode 10' . $file_perms;
             } else {
-                $original_content = file_get_contents('phar://' . $release_path . '/glpi/' . $file);
-                if ($original_content === false) {
-                    $errors[] = sprintf('Failed to get original contents of file `%s`.', $file);
+                try {
+                    $original_content = file_get_contents('phar://' . $release_path . '/glpi/' . $file);
+                } catch (Throwable $e) {
+                    $errors[] = sprintf('Failed to get original contents of file `%s`: %s', $file, $e->getMessage());
                     continue;
                 }
             }
@@ -292,9 +300,10 @@ class SourceCodeIntegrityChecker
                 $file_perms   = @substr(sprintf('%o', fileperms('phar://' . $release_path . '/glpi/' . $file)), -4) ?: '0644';
                 $extra_header = 'deleted file mode 10' . $file_perms;
             } else {
-                $current_content = file_get_contents($this->root_dir . '/' . $file);
-                if ($current_content === false) {
-                    $errors[] = sprintf('Fails to get current contents of file `%s`.', $file);
+                try {
+                    $current_content = file_get_contents($this->root_dir . '/' . $file);
+                } catch (Throwable $e) {
+                    $errors[] = sprintf('Failed to get current contents of file `%s`: %s', $file, $e->getMessage());
                     continue;
                 }
             }
@@ -316,7 +325,7 @@ class SourceCodeIntegrityChecker
                     $diff .= "$extra_header\n";
                 }
                 $diff .= "$file_diff\n";
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $errors[] = $e->getMessage();
             }
         }

@@ -67,6 +67,8 @@ abstract class LevelAgreementLevel extends RuleTicket
         // Override in order not to use glpi_rules table.
     }
 
+    abstract public function showForParent(LevelAgreement $la);
+
     /**
      * @since 0.85
      **/
@@ -346,7 +348,7 @@ abstract class LevelAgreementLevel extends RuleTicket
      **/
     public static function getAlreadyUsedExecutionTime($las_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = [];
@@ -386,8 +388,7 @@ abstract class LevelAgreementLevel extends RuleTicket
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if ($item::class === static::$parentclass) {
-            /** @var OlaLevel|SlaLevel $level */
+        if ($item instanceof LevelAgreement) {
             $level = new static();
             $level->showForParent($item);
         }
@@ -407,20 +408,15 @@ abstract class LevelAgreementLevel extends RuleTicket
         return abs($this->fields['execution_time']) >= DAY_TIMESTAMP;
     }
 
-    /**
-     * Show the Level Agreement rule form
-     *
-     * {@inheritdoc}
-     **/
     public function showForm($ID, array $options = [])
     {
         /** @var class-string<LevelAgreement> $parent_class */
         $parent_class = static::$parentclass;
-        $canedit = $this->can($parent_class::$rightname, UPDATE);
+        $canedit = $this->can($ID, UPDATE);
         if (isset($options['la'])) {
             $la = $options['la'];
         } else {
-            $la = new $parent_class();
+            $la = getItemForItemtype($parent_class);
             $la->getFromDB($this->fields[$parent_class::getForeignKeyField()]);
         }
 
@@ -434,6 +430,8 @@ abstract class LevelAgreementLevel extends RuleTicket
                 'canedit' => $canedit,
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -442,7 +440,7 @@ abstract class LevelAgreementLevel extends RuleTicket
      */
     final protected function showForLA(LevelAgreement $la): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $la->getField('id');
@@ -472,7 +470,7 @@ abstract class LevelAgreementLevel extends RuleTicket
         $la_level = new static();
         foreach ($iterator as $data) {
             $la_level->getFromResultSet($data);
-            $la_level->getRuleWithCriteriasAndActions($la_level->getID(), 1, 1);
+            $la_level->getRuleWithCriteriasAndActions($la_level->getID(), true, true);
 
             if ($la_level->fields["execution_time"] !== 0) {
                 $execution_time = Html::timestampToString($la_level->fields["execution_time"], false);

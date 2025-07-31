@@ -36,13 +36,18 @@
 use Glpi\DBAL\QueryExpression;
 use Glpi\Plugin\Hooks;
 
-/// Common DataBase Relation Table Manager Class
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
+use function Safe\preg_match;
+
+/**
+ * Common DataBase Relation Table Manager Class
+ */
 abstract class CommonDBChild extends CommonDBConnexity
 {
     // Mapping between DB fields
     // * definition
-
-    /** @var class-string<\CommonDBTM>|string $itemtype Class name or field name (start with itemtype) for link to Parent */
+    /** @var class-string<CommonDBTM>|string $itemtype Class name or field name (start with itemtype) for link to Parent */
     public static $itemtype;
     public static $items_id; // Field name
     // * rights
@@ -274,9 +279,9 @@ abstract class CommonDBChild extends CommonDBConnexity
     public static function displayRecursiveItems(array $recursiveItems, $elementToDisplay, bool $display = true)
     {
 
-        if ((!is_array($recursiveItems)) || (count($recursiveItems) == 0)) {
+        if ($recursiveItems === []) {
             echo __('Item not linked to an object');
-            return;
+            return false;
         }
 
         switch ($elementToDisplay) {
@@ -306,6 +311,8 @@ abstract class CommonDBChild extends CommonDBConnexity
                 }
                 break;
         }
+
+        return true;
     }
 
 
@@ -432,7 +439,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             ) {
                 if (
                     ($itemToGetEntity instanceof CommonDBTM)
-                    && $itemToGetEntity->isEntityForwardTo(get_called_class())
+                    && $itemToGetEntity->isEntityForwardTo(static::class)
                 ) {
                     $input['entities_id']  = $itemToGetEntity->getEntityID();
                     $input['is_recursive'] = intval($itemToGetEntity->isRecursive());
@@ -864,7 +871,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         $result = '';
 
         if ($canedit) {
-            $lower_name         = strtolower(get_called_class());
+            $lower_name         = strtolower(static::class);
             $child_count_js_var = htmlescape('nb' . $lower_name . 's');
             $div_id             = htmlescape("add_" . $lower_name . "_to_" . $item->getType() . "_" . $items_id);
             $add_label          = htmlescape(sprintf(__('Add a new %s'), static::getTypeName()));
@@ -905,7 +912,7 @@ abstract class CommonDBChild extends CommonDBConnexity
      **/
     public static function showChildsForItemForm(CommonDBTM $item, $field_name, $canedit = null, bool $display = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $items_id = $item->getID();
@@ -925,7 +932,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             }
         }
 
-        $lower_name = strtolower(get_called_class());
+        $lower_name = strtolower(static::class);
         $div_id     = htmlescape("add_" . $lower_name . "_to_" . $item->getType() . "_" . $items_id);
 
         $query = [
@@ -1013,7 +1020,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             return static::$items_id;
         }
 
-        throw new \RuntimeException('Cannot guess field for itemtype ' . $itemtype . ' on ' . static::class);
+        throw new RuntimeException('Cannot guess field for itemtype ' . $itemtype . ' on ' . static::class);
     }
 
     protected function autoinventoryInformation()

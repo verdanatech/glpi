@@ -37,6 +37,8 @@ namespace Glpi\Features;
 
 use CommonDBConnexity;
 use CommonDBTM;
+use DBmysql;
+use Infocom;
 use Session;
 
 /**
@@ -173,8 +175,7 @@ trait Clonable
      */
     public function prepareInputForClone($input)
     {
-        if (method_exists($this, 'prepareGroupFields')) {
-            // Toolbox::hasTrait doesn't work to tell PHPStan this method exists even when using generics and assert-if-true
+        if ($this instanceof AssignableItemInterface) {
             $input = $this->prepareGroupFields($input);
         }
         return $input;
@@ -231,7 +232,7 @@ trait Clonable
      */
     public function clone(array $override_input = [], bool $history = true, bool $clone_as_template = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($DB->isSlave()) {
@@ -270,12 +271,12 @@ trait Clonable
             $new_item->post_clone($this, $history);
 
             if (
-                \Infocom::canApplyOn($this)
+                Infocom::canApplyOn($this)
                 && isset($new_item->input['states_id'])
                 && !($new_item->input['is_template'] ?? false)
             ) {
                 //Check if we have to automatically fill dates
-                \Infocom::manageDateOnStatusChange($new_item);
+                Infocom::manageDateOnStatusChange($new_item);
             }
         }
 
@@ -390,8 +391,7 @@ trait Clonable
      */
     public function post_clone($source, $history)
     {
-        if (method_exists($this, 'updateGroupFields')) {
-            // Toolbox::hasTrait doesn't work to tell PHPStan this method exists even when using generics and assert-if-true
+        if ($this instanceof AssignableItemInterface) {
             $this->updateGroupFields();
         }
     }

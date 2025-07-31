@@ -32,14 +32,18 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Event;
 use Glpi\Helpdesk\DefaultDataManager;
+use Glpi\Message\MessageType;
+use Glpi\OAuth\Server;
+use Glpi\Progress\AbstractProgressIndicator;
 use Glpi\Rules\RulesManager;
 use Glpi\System\Diagnostic\DatabaseSchemaIntegrityChecker;
 use Glpi\Toolbox\VersionParser;
-use Glpi\Progress\AbstractProgressIndicator;
-use Glpi\Message\MessageType;
 use Psr\Log\LoggerAwareTrait;
+
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  *  Update class
@@ -149,7 +153,7 @@ class Update
      */
     final public function isUpdatedSchemaConsistent(): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $checker = new DatabaseSchemaIntegrityChecker($DB, false, true, true, true, true, true);
@@ -176,7 +180,7 @@ class Update
     ): bool {
         if ($current_version === null) {
             if ($this->version === null) {
-                throw new \RuntimeException('Cannot process updates without any version specified!');
+                throw new RuntimeException('Cannot process updates without any version specified!');
             }
             $current_version = $this->version;
         }
@@ -211,18 +215,16 @@ class Update
             $sql_mode = $DB->doQuery(sprintf('SELECT @@sql_mode as %s', $DB->quoteName('sql_mode')))->fetch_assoc()['sql_mode'] ?? '';
             $sql_mode_flags = array_filter(
                 explode(',', $sql_mode),
-                function (string $flag) {
-                    return !in_array(
-                        trim($flag),
-                        [
-                            'STRICT_ALL_TABLES',
-                            'STRICT_TRANS_TABLES',
-                            'NO_ZERO_IN_DATE',
-                            'NO_ZERO_DATE',
-                            'ERROR_FOR_DIVISION_BY_ZERO',
-                        ]
-                    );
-                }
+                fn(string $flag) => !in_array(
+                    trim($flag),
+                    [
+                        'STRICT_ALL_TABLES',
+                        'STRICT_TRANS_TABLES',
+                        'NO_ZERO_IN_DATE',
+                        'NO_ZERO_DATE',
+                        'ERROR_FOR_DIVISION_BY_ZERO',
+                    ]
+                )
             );
             $DB->doQuery(sprintf('SET SESSION sql_mode = %s', $DB->quote(implode(',', $sql_mode_flags))));
         }
@@ -230,12 +232,12 @@ class Update
         $migrations = $this->getMigrationsToDo($current_version, $force_latest);
 
         $number_of_steps = count($migrations);
-        $init_form_weight = round($number_of_steps * 0.1); // 10 % of the update process
-        $init_rules_weight = round($number_of_steps * 0.1); // 10 % of the update process
-        $structure_check_weight = round($number_of_steps * 0.02); // 2 % of the update process
+        $init_form_weight = (int) round($number_of_steps * 0.1); // 10 % of the update process
+        $init_rules_weight = (int) round($number_of_steps * 0.1); // 10 % of the update process
+        $structure_check_weight = (int) round($number_of_steps * 0.02); // 2 % of the update process
         $post_update_weight = 1;
         $cron_config_weight = 1;
-        $generate_keys_weight = round($number_of_steps * 0.02); // 2 % of the update process
+        $generate_keys_weight = (int) round($number_of_steps * 0.02); // 2 % of the update process
         $number_of_steps = count($migrations)
             + $init_form_weight
             + $init_rules_weight
@@ -255,7 +257,7 @@ class Update
 
             try {
                 $migration_specs['function']();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $progress_indicator?->addMessage(
                     MessageType::Error,
                     sprintf(
@@ -399,13 +401,32 @@ class Update
             );
         }
 
-        $private_key_path = GLPI_CONFIG_DIR . '/oauth.pem';
-        $public_key_path = GLPI_CONFIG_DIR . '/oauth.pub';
-        if (!file_exists($private_key_path) && !file_exists($public_key_path)) {
-            \Glpi\OAuth\Server::generateKeys();
-        }
+        //generate keys, if needed
+        Server::generateKeys();
+
         $progress_indicator?->advance($generate_keys_weight);
         $progress_indicator?->addMessage(MessageType::Success, __('Security keys generated.'));
+
+        if (
+            (Config::getConfigurationValue('core', 'plugins_execution_mode') ?? null) === Plugin::EXECUTION_MODE_SUSPENDED_BY_UPDATE
+            && VersionParser::getIntermediateVersion($current_version) === VersionParser::getIntermediateVersion(GLPI_VERSION)
+        ) {
+            // The target version is the same intermediate/major version.
+            // Resume plugins execution if it was previously suspended by a GLPI codebase update.
+            $progress_indicator?->setProgressBarMessage(__('Resuming plugins execution…'));
+
+            (new Plugin())->resumeAllPluginsExecution();
+
+            Event::log(
+                '',
+                Plugin::class,
+                3,
+                "setup",
+                __('Execution of all the plugins has been resumed after the database update.')
+            );
+
+            $progress_indicator?->addMessage(MessageType::Success, __('Execution of all active plugins has been resumed.'));
+        }
 
         $progress_indicator?->setProgressBarMessage('');
         $progress_indicator?->addMessage(MessageType::Success, __('Update done.'));
@@ -423,7 +444,7 @@ class Update
      */
     public function setMigration(Migration $migration_instance)
     {
-        /** @var \Migration $migration */
+        /** @var Migration $migration */
         global $migration; // Migration scripts are using global `$migration`
         $migration = $migration_instance;
 

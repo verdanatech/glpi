@@ -32,10 +32,13 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\Event;
+use Glpi\Features\Clonable;
+
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
 
 //!  Consumable Class
 /**
@@ -45,7 +48,7 @@ use Glpi\Event;
  **/
 class Consumable extends CommonDBChild
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     protected static $forward_entity_to = ['Infocom'];
@@ -128,7 +131,7 @@ class Consumable extends CommonDBChild
      */
     public function backToStock(array $input, $history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->update(
@@ -168,7 +171,7 @@ class Consumable extends CommonDBChild
      **/
     public function out($ID, $itemtype = '', $items_id = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (
@@ -196,7 +199,7 @@ class Consumable extends CommonDBChild
     public static function getMassiveActionsForItemtype(
         array &$actions,
         $itemtype,
-        $is_deleted = 0,
+        $is_deleted = false,
         ?CommonDBTM $checkitem = null
     ) {
         // Special actions only for self
@@ -313,7 +316,7 @@ class Consumable extends CommonDBChild
      **/
     public static function getTotalNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -333,7 +336,7 @@ class Consumable extends CommonDBChild
      **/
     public static function getOldNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -356,7 +359,7 @@ class Consumable extends CommonDBChild
      **/
     public static function getUnusedNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -379,7 +382,7 @@ class Consumable extends CommonDBChild
      */
     public static function getStockTarget(int $tID): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $it = $DB->request([
@@ -403,7 +406,7 @@ class Consumable extends CommonDBChild
      */
     public static function getAlarmThreshold(int $tID): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $it = $DB->request([
@@ -467,7 +470,7 @@ class Consumable extends CommonDBChild
      **/
     public static function isNew($cID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -490,7 +493,7 @@ class Consumable extends CommonDBChild
      **/
     public static function isOld($cID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -579,7 +582,7 @@ class Consumable extends CommonDBChild
 
     public static function showForUser(User $user)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $user::class;
@@ -668,7 +671,7 @@ class Consumable extends CommonDBChild
             'showmassiveactions' => true,
             'massiveactionparams' => [
                 'num_displayed'    => min($_SESSION['glpilist_limit'], $filtered_number),
-                'container'        => 'mass' . __CLASS__ . mt_rand(),
+                'container'        => 'mass' . self::class . mt_rand(),
                 'specific_actions' => [
                     'delete' => __('Delete permanently'),
                     'Consumable' . MassiveAction::CLASS_ACTION_SEPARATOR . 'backtostock' => __('Back to stock'),
@@ -684,7 +687,7 @@ class Consumable extends CommonDBChild
      **/
     public static function showSummary()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!self::canView()) {
@@ -764,7 +767,7 @@ class Consumable extends CommonDBChild
             'give_to' => __('In stock'),
             'total'   => 0,
         ];
-        foreach ($types as $id_type => $type) {
+        foreach (array_keys($types) as $id_type) {
             if (!isset($new[$id_type])) {
                 $new[$id_type] = 0;
             }
@@ -775,7 +778,7 @@ class Consumable extends CommonDBChild
 
         foreach ($used as $itemtype_items_id => $val) {
             [$itemtype, $items_id] = explode('####', $itemtype_items_id);
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
             $item_name = '';
             if ($item->getFromDB($items_id)) {
                 //TRANS: %1$s is a type name - %2$s is a name
@@ -786,7 +789,7 @@ class Consumable extends CommonDBChild
                 'total'   => 0,
             ];
 
-            foreach ($types as $id_type => $type) {
+            foreach (array_keys($types) as $id_type) {
                 if (!isset($val[$id_type])) {
                     $val[$id_type] = 0;
                 }
@@ -797,7 +800,7 @@ class Consumable extends CommonDBChild
         }
 
         $footer = [__('Total')];
-        foreach ($types as $id_type => $type) {
+        foreach (array_keys($types) as $id_type) {
             $footer[] = array_sum(array_column($entries, $id_type));
         }
         $footer[] = array_sum(array_column($entries, 'total'));
@@ -1005,7 +1008,7 @@ class Consumable extends CommonDBChild
                 return " ";
 
             case '7': // Infocom shortcut
-                $id = $values['id'];
+                $id = (int) $values['id'];
                 ob_start();
                 Infocom::showDisplayLink(self::class, $id);
                 return ob_get_clean();

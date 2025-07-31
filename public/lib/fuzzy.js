@@ -360,8 +360,8 @@ if (process.env.NODE_ENV === 'production') {
 /***/ 1075:
 /***/ ((module) => {
 
-/*! hotkeys-js v3.13.10 | MIT © 2025 kenny wong <wowohoo@qq.com> https://jaywcjlove.github.io/hotkeys-js */
-let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().indexOf("firefox");function addEvent(e,t,n,o){e.addEventListener?e.addEventListener(t,n,o):e.attachEvent&&e.attachEvent("on".concat(t),n)}function removeEvent(e,t,n,o){e.removeEventListener?e.removeEventListener(t,n,o):e.detachEvent&&e.detachEvent("on".concat(t),n)}function getMods(t,e){var n=e.slice(0,e.length-1);for(let e=0;e<n.length;e++)n[e]=t[n[e].toLowerCase()];return n}function getKeys(e){var t=(e=(e="string"!=typeof e?"":e).replace(/\s/g,"")).split(",");let n=t.lastIndexOf("");for(;0<=n;)t[n-1]+=",",t.splice(n,1),n=t.lastIndexOf("");return t}function compareArray(e,t){var n=e.length<t.length?t:e,o=e.length<t.length?e:t;let r=!0;for(let e=0;e<n.length;e++)~o.indexOf(n[e])||(r=!1);return r}let _keyMap={backspace:8,"\u232b":8,tab:9,clear:12,enter:13,"\u21a9":13,return:13,esc:27,escape:27,space:32,left:37,up:38,right:39,down:40,del:46,delete:46,ins:45,insert:45,home:36,end:35,pageup:33,pagedown:34,capslock:20,num_0:96,num_1:97,num_2:98,num_3:99,num_4:100,num_5:101,num_6:102,num_7:103,num_8:104,num_9:105,num_multiply:106,num_add:107,num_enter:108,num_subtract:109,num_decimal:110,num_divide:111,"\u21ea":20,",":188,".":190,"/":191,"`":192,"-":isff?173:189,"=":isff?61:187,";":isff?59:186,"'":222,"[":219,"]":221,"\\":220},_modifier={"\u21e7":16,shift:16,"\u2325":18,alt:18,option:18,"\u2303":17,ctrl:17,control:17,"\u2318":91,cmd:91,command:91},modifierMap={16:"shiftKey",18:"altKey",17:"ctrlKey",91:"metaKey",shiftKey:16,ctrlKey:17,altKey:18,metaKey:91},_mods={16:!1,18:!1,17:!1,91:!1},_handlers={};for(let e=1;e<20;e++)_keyMap["f".concat(e)]=111+e;let _downKeys=[],winListendFocus=null,_scope="all",elementEventMap=new Map,code=e=>_keyMap[e.toLowerCase()]||_modifier[e.toLowerCase()]||e.toUpperCase().charCodeAt(0),getKey=t=>Object.keys(_keyMap).find(e=>_keyMap[e]===t),getModifier=t=>Object.keys(_modifier).find(e=>_modifier[e]===t);function setScope(e){_scope=e||"all"}function getScope(){return _scope||"all"}function getPressedKeyCodes(){return _downKeys.slice(0)}function getPressedKeyString(){return _downKeys.map(e=>getKey(e)||getModifier(e)||String.fromCharCode(e))}function getAllKeyCodes(){let r=[];return Object.keys(_handlers).forEach(e=>{_handlers[e].forEach(e=>{var{key:e,scope:t,mods:n,shortcut:o}=e;r.push({scope:t,shortcut:o,mods:n,keys:e.split("+").map(e=>code(e))})})}),r}function filter(e){var e=e.target||e.srcElement,t=e.tagName;let n=!0;var o="INPUT"===t&&!["checkbox","radio","range","button","file","reset","submit","color"].includes(e.type);return n=!e.isContentEditable&&(!o&&"TEXTAREA"!==t&&"SELECT"!==t||e.readOnly)?n:!1}function isPressed(e){return"string"==typeof e&&(e=code(e)),!!~_downKeys.indexOf(e)}function deleteScope(e,t){var n,o;let r;for(o in e=e||getScope(),_handlers)if(Object.prototype.hasOwnProperty.call(_handlers,o))for(n=_handlers[o],r=0;r<n.length;)n[r].scope===e?n.splice(r,1).forEach(e=>{e=e.element;return removeKeyEvent(e)}):r++;getScope()===e&&setScope(t||"all")}function clearModifier(e){let t=e.keyCode||e.which||e.charCode;var n=_downKeys.indexOf(t);if(n<0||_downKeys.splice(n,1),e.key&&"meta"==e.key.toLowerCase()&&_downKeys.splice(0,_downKeys.length),(t=93!==t&&224!==t?t:91)in _mods)for(var o in _mods[t]=!1,_modifier)_modifier[o]===t&&(hotkeys[o]=!1)}function unbind(n){if(void 0===n)Object.keys(_handlers).forEach(e=>{Array.isArray(_handlers[e])&&_handlers[e].forEach(e=>eachUnbind(e)),delete _handlers[e]}),removeKeyEvent(null);else if(Array.isArray(n))n.forEach(e=>{e.key&&eachUnbind(e)});else if("object"==typeof n)n.key&&eachUnbind(n);else if("string"==typeof n){for(var o=arguments.length,r=Array(1<o?o-1:0),s=1;s<o;s++)r[s-1]=arguments[s];let[e,t]=r;"function"==typeof e&&(t=e,e=""),eachUnbind({key:n,scope:e,method:t,splitKey:"+"})}}let eachUnbind=e=>{let{key:t,scope:s,method:i,splitKey:n="+"}=e;getKeys(t).forEach(e=>{var e=e.split(n),t=e.length,r=e[t-1],r="*"===r?"*":code(r);if(_handlers[r]){s=s||getScope();let n=1<t?getMods(_modifier,e):[],o=[];_handlers[r]=_handlers[r].filter(e=>{var t=(!i||e.method===i)&&e.scope===s&&compareArray(e.mods,n);return t&&o.push(e.element),!t}),o.forEach(e=>removeKeyEvent(e))}})};function eventHandler(t,n,o,e){if(n.element===e){let e;if(n.scope===o||"all"===n.scope){for(var r in e=0<n.mods.length,_mods)Object.prototype.hasOwnProperty.call(_mods,r)&&(!_mods[r]&&~n.mods.indexOf(+r)||_mods[r]&&!~n.mods.indexOf(+r))&&(e=!1);(0!==n.mods.length||_mods[16]||_mods[18]||_mods[17]||_mods[91])&&!e&&"*"!==n.shortcut||(n.keys=[],n.keys=n.keys.concat(_downKeys),!1===n.method(t,n)&&(t.preventDefault?t.preventDefault():t.returnValue=!1,t.stopPropagation&&t.stopPropagation(),t.cancelBubble)&&(t.cancelBubble=!0))}}}function dispatch(n,t){var e,o=_handlers["*"];let r=n.keyCode||n.which||n.charCode;if(hotkeys.filter.call(this,n)){if(93!==r&&224!==r||(r=91),~_downKeys.indexOf(r)||229===r||_downKeys.push(r),["metaKey","ctrlKey","altKey","shiftKey"].forEach(e=>{var t=modifierMap[e];n[e]&&!~_downKeys.indexOf(t)?_downKeys.push(t):!n[e]&&~_downKeys.indexOf(t)?_downKeys.splice(_downKeys.indexOf(t),1):"metaKey"===e&&n[e]&&(_downKeys=_downKeys.filter(e=>e in modifierMap||e===r))}),r in _mods){for(var s in _mods[r]=!0,_modifier)Object.prototype.hasOwnProperty.call(_modifier,s)&&(e=modifierMap[_modifier[s]],hotkeys[s]=n[e]);if(!o)return}for(var i in _mods)Object.prototype.hasOwnProperty.call(_mods,i)&&(_mods[i]=n[modifierMap[i]]);n.getModifierState&&(!n.altKey||n.ctrlKey)&&n.getModifierState("AltGraph")&&(~_downKeys.indexOf(17)||_downKeys.push(17),~_downKeys.indexOf(18)||_downKeys.push(18),_mods[17]=!0,_mods[18]=!0);var d=getScope();if(o)for(let e=0;e<o.length;e++)o[e].scope===d&&("keydown"===n.type&&o[e].keydown||"keyup"===n.type&&o[e].keyup)&&eventHandler(n,o[e],d,t);if(r in _handlers){var a=_handlers[r],l=a.length;for(let e=0;e<l;e++)if(("keydown"===n.type&&a[e].keydown||"keyup"===n.type&&a[e].keyup)&&a[e].key){var c=a[e],y=c.splitKey,p=c.key.split(y),f=[];for(let e=0;e<p.length;e++)f.push(code(p[e]));f.sort().join("")===_downKeys.sort().join("")&&eventHandler(n,c,d,t)}}}}function hotkeys(e,t,n){_downKeys=[];var o,r=getKeys(e);let s=[],i="all",d=document,a=0,l=!1,c=!0,y="+",p=!1,f=!1;for(void 0===n&&"function"==typeof t&&(n=t),"[object Object]"===Object.prototype.toString.call(t)&&(t.scope&&(i=t.scope),t.element&&(d=t.element),t.keyup&&(l=t.keyup),void 0!==t.keydown&&(c=t.keydown),void 0!==t.capture&&(p=t.capture),"string"==typeof t.splitKey&&(y=t.splitKey),!0===t.single)&&(f=!0),"string"==typeof t&&(i=t),f&&unbind(e,i);a<r.length;a++)e=r[a].split(y),s=[],1<e.length&&(s=getMods(_modifier,e)),(e="*"===(e=e[e.length-1])?"*":code(e))in _handlers||(_handlers[e]=[]),_handlers[e].push({keyup:l,keydown:c,scope:i,mods:s,shortcut:r[a],method:n,key:r[a],splitKey:y,element:d});void 0!==d&&window&&(elementEventMap.has(d)||(t=function(){return dispatch(0<arguments.length&&void 0!==arguments[0]?arguments[0]:window.event,d)},o=function(){var e=0<arguments.length&&void 0!==arguments[0]?arguments[0]:window.event;dispatch(e,d),clearModifier(e)},elementEventMap.set(d,{keydownListener:t,keyupListenr:o,capture:p}),addEvent(d,"keydown",t,p),addEvent(d,"keyup",o,p)),winListendFocus||(t=()=>{_downKeys=[]},winListendFocus={listener:t,capture:p},addEvent(window,"focus",t,p)))}function trigger(t){let n=1<arguments.length&&void 0!==arguments[1]?arguments[1]:"all";Object.keys(_handlers).forEach(e=>{_handlers[e].filter(e=>e.scope===n&&e.shortcut===t).forEach(e=>{e&&e.method&&e.method()})})}function removeKeyEvent(t){var e,n,o,r=Object.values(_handlers).flat();r.findIndex(e=>{e=e.element;return e===t})<0&&({keydownListener:o,keyupListenr:n,capture:e}=elementEventMap.get(t)||{},o)&&n&&(removeEvent(t,"keyup",n,e),removeEvent(t,"keydown",o,e),elementEventMap.delete(t)),0<r.length&&0<elementEventMap.size||(Object.keys(elementEventMap).forEach(e=>{var{keydownListener:t,keyupListenr:n,capture:o}=elementEventMap.get(e)||{};t&&n&&(removeEvent(e,"keyup",n,o),removeEvent(e,"keydown",t,o),elementEventMap.delete(e))}),elementEventMap.clear(),Object.keys(_handlers).forEach(e=>delete _handlers[e]),winListendFocus&&({listener:n,capture:o}=winListendFocus,removeEvent(window,"focus",n,o),winListendFocus=null))}let _api={getPressedKeyString:getPressedKeyString,setScope:setScope,getScope:getScope,deleteScope:deleteScope,getPressedKeyCodes:getPressedKeyCodes,getAllKeyCodes:getAllKeyCodes,isPressed:isPressed,filter:filter,trigger:trigger,unbind:unbind,keyMap:_keyMap,modifier:_modifier,modifierMap:modifierMap};for(let e in _api)Object.prototype.hasOwnProperty.call(_api,e)&&(hotkeys[e]=_api[e]);if("undefined"!=typeof window){let t=window.hotkeys;hotkeys.noConflict=e=>(e&&window.hotkeys===hotkeys&&(window.hotkeys=t),hotkeys),window.hotkeys=hotkeys}module.exports=hotkeys;
+/*! hotkeys-js v3.13.15 | MIT © 2025 kenny wong <wowohoo@qq.com> https://jaywcjlove.github.io/hotkeys-js */
+let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().indexOf("firefox");function addEvent(e,t,n,o){e.addEventListener?e.addEventListener(t,n,o):e.attachEvent&&e.attachEvent("on".concat(t),n)}function removeEvent(e,t,n,o){e.removeEventListener?e.removeEventListener(t,n,o):e.detachEvent&&e.detachEvent("on".concat(t),n)}function getMods(t,e){var n=e.slice(0,e.length-1);for(let e=0;e<n.length;e++)n[e]=t[n[e].toLowerCase()];return n}function getKeys(e){var t=(e=(e="string"!=typeof e?"":e).replace(/\s/g,"")).split(",");let n=t.lastIndexOf("");for(;0<=n;)t[n-1]+=",",t.splice(n,1),n=t.lastIndexOf("");return t}function compareArray(e,t){var n=e.length<t.length?t:e,o=e.length<t.length?e:t;let r=!0;for(let e=0;e<n.length;e++)~o.indexOf(n[e])||(r=!1);return r}let _keyMap={backspace:8,"\u232b":8,tab:9,clear:12,enter:13,"\u21a9":13,return:13,esc:27,escape:27,space:32,left:37,up:38,right:39,down:40,arrowup:38,arrowdown:40,arrowleft:37,arrowright:39,del:46,delete:46,ins:45,insert:45,home:36,end:35,pageup:33,pagedown:34,capslock:20,num_0:96,num_1:97,num_2:98,num_3:99,num_4:100,num_5:101,num_6:102,num_7:103,num_8:104,num_9:105,num_multiply:106,num_add:107,num_enter:108,num_subtract:109,num_decimal:110,num_divide:111,"\u21ea":20,",":188,".":190,"/":191,"`":192,"-":isff?173:189,"=":isff?61:187,";":isff?59:186,"'":222,"{":219,"}":221,"[":219,"]":221,"\\":220},_modifier={"\u21e7":16,shift:16,"\u2325":18,alt:18,option:18,"\u2303":17,ctrl:17,control:17,"\u2318":91,cmd:91,meta:91,command:91},modifierMap={16:"shiftKey",18:"altKey",17:"ctrlKey",91:"metaKey",shiftKey:16,ctrlKey:17,altKey:18,metaKey:91},_mods={16:!1,18:!1,17:!1,91:!1},_handlers={};for(let e=1;e<20;e++)_keyMap["f".concat(e)]=111+e;let _downKeys=[],winListendFocus=null,_scope="all",elementEventMap=new Map,code=e=>_keyMap[e.toLowerCase()]||_modifier[e.toLowerCase()]||e.toUpperCase().charCodeAt(0),getKey=t=>Object.keys(_keyMap).find(e=>_keyMap[e]===t),getModifier=t=>Object.keys(_modifier).find(e=>_modifier[e]===t);function setScope(e){_scope=e||"all"}function getScope(){return _scope||"all"}function getPressedKeyCodes(){return _downKeys.slice(0)}function getPressedKeyString(){return _downKeys.map(e=>getKey(e)||getModifier(e)||String.fromCharCode(e))}function getAllKeyCodes(){let r=[];return Object.keys(_handlers).forEach(e=>{_handlers[e].forEach(e=>{var{key:e,scope:t,mods:n,shortcut:o}=e;r.push({scope:t,shortcut:o,mods:n,keys:e.split("+").map(e=>code(e))})})}),r}function filter(e){var e=e.target||e.srcElement,t=e.tagName;let n=!0;var o="INPUT"===t&&!["checkbox","radio","range","button","file","reset","submit","color"].includes(e.type);return n=!e.isContentEditable&&(!o&&"TEXTAREA"!==t&&"SELECT"!==t||e.readOnly)?n:!1}function isPressed(e){return"string"==typeof e&&(e=code(e)),!!~_downKeys.indexOf(e)}function deleteScope(e,t){var n,o;let r;for(o in e=e||getScope(),_handlers)if(Object.prototype.hasOwnProperty.call(_handlers,o))for(n=_handlers[o],r=0;r<n.length;)n[r].scope===e?n.splice(r,1).forEach(e=>{e=e.element;return removeKeyEvent(e)}):r++;getScope()===e&&setScope(t||"all")}function clearModifier(e){let t=e.keyCode||e.which||e.charCode;e.key&&"capslock"==e.key.toLowerCase()&&(t=code(e.key));var n=_downKeys.indexOf(t);if(n<0||_downKeys.splice(n,1),e.key&&"meta"==e.key.toLowerCase()&&_downKeys.splice(0,_downKeys.length),(t=93!==t&&224!==t?t:91)in _mods)for(var o in _mods[t]=!1,_modifier)_modifier[o]===t&&(hotkeys[o]=!1)}function unbind(n){if(void 0===n)Object.keys(_handlers).forEach(e=>{Array.isArray(_handlers[e])&&_handlers[e].forEach(e=>eachUnbind(e)),delete _handlers[e]}),removeKeyEvent(null);else if(Array.isArray(n))n.forEach(e=>{e.key&&eachUnbind(e)});else if("object"==typeof n)n.key&&eachUnbind(n);else if("string"==typeof n){for(var o=arguments.length,r=Array(1<o?o-1:0),s=1;s<o;s++)r[s-1]=arguments[s];let[e,t]=r;"function"==typeof e&&(t=e,e=""),eachUnbind({key:n,scope:e,method:t,splitKey:"+"})}}let eachUnbind=e=>{let{key:t,scope:s,method:i,splitKey:n="+"}=e;getKeys(t).forEach(e=>{var e=e.split(n),t=e.length,r=e[t-1],r="*"===r?"*":code(r);if(_handlers[r]){s=s||getScope();let n=1<t?getMods(_modifier,e):[],o=[];_handlers[r]=_handlers[r].filter(e=>{var t=(!i||e.method===i)&&e.scope===s&&compareArray(e.mods,n);return t&&o.push(e.element),!t}),o.forEach(e=>removeKeyEvent(e))}})};function eventHandler(t,n,o,e){if(n.element===e){let e;if(n.scope===o||"all"===n.scope){for(var r in e=0<n.mods.length,_mods)Object.prototype.hasOwnProperty.call(_mods,r)&&(!_mods[r]&&~n.mods.indexOf(+r)||_mods[r]&&!~n.mods.indexOf(+r))&&(e=!1);(0!==n.mods.length||_mods[16]||_mods[18]||_mods[17]||_mods[91])&&!e&&"*"!==n.shortcut||(n.keys=[],n.keys=n.keys.concat(_downKeys),!1===n.method(t,n)&&(t.preventDefault?t.preventDefault():t.returnValue=!1,t.stopPropagation&&t.stopPropagation(),t.cancelBubble)&&(t.cancelBubble=!0))}}}function dispatch(n,t){var e,o=_handlers["*"];let r=n.keyCode||n.which||n.charCode;if((!n.key||"capslock"!=n.key.toLowerCase())&&hotkeys.filter.call(this,n)){if(93!==r&&224!==r||(r=91),~_downKeys.indexOf(r)||229===r||_downKeys.push(r),["metaKey","ctrlKey","altKey","shiftKey"].forEach(e=>{var t=modifierMap[e];n[e]&&!~_downKeys.indexOf(t)?_downKeys.push(t):!n[e]&&~_downKeys.indexOf(t)?_downKeys.splice(_downKeys.indexOf(t),1):"metaKey"===e&&n[e]&&(_downKeys=_downKeys.filter(e=>e in modifierMap||e===r))}),r in _mods){for(var s in _mods[r]=!0,_modifier)Object.prototype.hasOwnProperty.call(_modifier,s)&&(e=modifierMap[_modifier[s]],hotkeys[s]=n[e]);if(!o)return}for(var i in _mods)Object.prototype.hasOwnProperty.call(_mods,i)&&(_mods[i]=n[modifierMap[i]]);n.getModifierState&&(!n.altKey||n.ctrlKey)&&n.getModifierState("AltGraph")&&(~_downKeys.indexOf(17)||_downKeys.push(17),~_downKeys.indexOf(18)||_downKeys.push(18),_mods[17]=!0,_mods[18]=!0);var d=getScope();if(o)for(let e=0;e<o.length;e++)o[e].scope===d&&("keydown"===n.type&&o[e].keydown||"keyup"===n.type&&o[e].keyup)&&eventHandler(n,o[e],d,t);if(r in _handlers){var a=_handlers[r],l=a.length;for(let e=0;e<l;e++)if(("keydown"===n.type&&a[e].keydown||"keyup"===n.type&&a[e].keyup)&&a[e].key){var c=a[e],y=c.splitKey,p=c.key.split(y),f=[];for(let e=0;e<p.length;e++)f.push(code(p[e]));f.sort().join("")===_downKeys.sort().join("")&&eventHandler(n,c,d,t)}}}}function hotkeys(e,t,n){_downKeys=[];var o,r=getKeys(e);let s=[],i="all",d=document,a=0,l=!1,c=!0,y="+",p=!1,f=!1;for(void 0===n&&"function"==typeof t&&(n=t),"[object Object]"===Object.prototype.toString.call(t)&&(t.scope&&(i=t.scope),t.element&&(d=t.element),t.keyup&&(l=t.keyup),void 0!==t.keydown&&(c=t.keydown),void 0!==t.capture&&(p=t.capture),"string"==typeof t.splitKey&&(y=t.splitKey),!0===t.single)&&(f=!0),"string"==typeof t&&(i=t),f&&unbind(e,i);a<r.length;a++)e=r[a].split(y),s=[],1<e.length&&(s=getMods(_modifier,e)),(e="*"===(e=e[e.length-1])?"*":code(e))in _handlers||(_handlers[e]=[]),_handlers[e].push({keyup:l,keydown:c,scope:i,mods:s,shortcut:r[a],method:n,key:r[a],splitKey:y,element:d});void 0!==d&&window&&(elementEventMap.has(d)||(t=function(){return dispatch(0<arguments.length&&void 0!==arguments[0]?arguments[0]:window.event,d)},o=function(){var e=0<arguments.length&&void 0!==arguments[0]?arguments[0]:window.event;dispatch(e,d),clearModifier(e)},elementEventMap.set(d,{keydownListener:t,keyupListenr:o,capture:p}),addEvent(d,"keydown",t,p),addEvent(d,"keyup",o,p)),winListendFocus||(t=()=>{_downKeys=[]},winListendFocus={listener:t,capture:p},addEvent(window,"focus",t,p)))}function trigger(t){let n=1<arguments.length&&void 0!==arguments[1]?arguments[1]:"all";Object.keys(_handlers).forEach(e=>{_handlers[e].filter(e=>e.scope===n&&e.shortcut===t).forEach(e=>{e&&e.method&&e.method()})})}function removeKeyEvent(t){var e,n,o,r=Object.values(_handlers).flat();r.findIndex(e=>{e=e.element;return e===t})<0&&({keydownListener:o,keyupListenr:n,capture:e}=elementEventMap.get(t)||{},o)&&n&&(removeEvent(t,"keyup",n,e),removeEvent(t,"keydown",o,e),elementEventMap.delete(t)),0<r.length&&0<elementEventMap.size||(Object.keys(elementEventMap).forEach(e=>{var{keydownListener:t,keyupListenr:n,capture:o}=elementEventMap.get(e)||{};t&&n&&(removeEvent(e,"keyup",n,o),removeEvent(e,"keydown",t,o),elementEventMap.delete(e))}),elementEventMap.clear(),Object.keys(_handlers).forEach(e=>delete _handlers[e]),winListendFocus&&({listener:n,capture:o}=winListendFocus,removeEvent(window,"focus",n,o),winListendFocus=null))}let _api={getPressedKeyString:getPressedKeyString,setScope:setScope,getScope:getScope,deleteScope:deleteScope,getPressedKeyCodes:getPressedKeyCodes,getAllKeyCodes:getAllKeyCodes,isPressed:isPressed,filter:filter,trigger:trigger,unbind:unbind,keyMap:_keyMap,modifier:_modifier,modifierMap:modifierMap};for(let e in _api)Object.prototype.hasOwnProperty.call(_api,e)&&(hotkeys[e]=_api[e]);if("undefined"!=typeof window){let t=window.hotkeys;hotkeys.noConflict=e=>(e&&window.hotkeys===hotkeys&&(window.hotkeys=t),hotkeys),window.hotkeys=hotkeys}module.exports=hotkeys;
 
 /***/ }),
 
@@ -370,7 +370,7 @@ let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().inde
 
 "use strict";
 /**! 
- * hotkeys-js v3.13.10 
+ * hotkeys-js v3.13.15 
  * A simple micro-library for defining and dispatching keyboard shortcuts. It has no dependencies. 
  * 
  * Copyright (c) 2025 kenny wong <wowohoo@qq.com> 
@@ -385,7 +385,7 @@ let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().inde
 
 const isff = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase().indexOf('firefox') > 0 : false;
 
-// 绑定事件
+/** Bind event */
 function addEvent(object, event, method, useCapture) {
   if (object.addEventListener) {
     object.addEventListener(event, method, useCapture);
@@ -401,21 +401,21 @@ function removeEvent(object, event, method, useCapture) {
   }
 }
 
-// 修饰键转换成对应的键码
+/** Convert modifier keys to their corresponding key codes */
 function getMods(modifier, key) {
   const mods = key.slice(0, key.length - 1);
   for (let i = 0; i < mods.length; i++) mods[i] = modifier[mods[i].toLowerCase()];
   return mods;
 }
 
-// 处理传的key字符串转换成数组
+/** Process the input key string and convert it to an array */
 function getKeys(key) {
   if (typeof key !== 'string') key = '';
-  key = key.replace(/\s/g, ''); // 匹配任何空白字符,包括空格、制表符、换页符等等
-  const keys = key.split(','); // 同时设置多个快捷键，以','分割
+  key = key.replace(/\s/g, ''); // Match any whitespace character, including spaces, tabs, form feeds, etc.
+  const keys = key.split(','); // Allow multiple shortcuts separated by ','
   let index = keys.lastIndexOf('');
 
-  // 快捷键可能包含','，需特殊处理
+  // Shortcut may include ',' — special handling needed
   for (; index >= 0;) {
     keys[index - 1] += ',';
     keys.splice(index, 1);
@@ -424,7 +424,7 @@ function getKeys(key) {
   return keys;
 }
 
-// 比较修饰键的数组
+/** Compare arrays of modifier keys */
 function compareArray(a1, a2) {
   const arr1 = a1.length >= a2.length ? a1 : a2;
   const arr2 = a1.length >= a2.length ? a2 : a1;
@@ -451,6 +451,11 @@ const _keyMap = {
   up: 38,
   right: 39,
   down: 40,
+  /// https://w3c.github.io/uievents/#events-keyboard-key-location
+  arrowup: 38,
+  arrowdown: 40,
+  arrowleft: 37,
+  arrowright: 39,
   del: 46,
   delete: 46,
   ins: 45,
@@ -485,6 +490,8 @@ const _keyMap = {
   '=': isff ? 61 : 187,
   ';': isff ? 59 : 186,
   '\'': 222,
+  '{': 219,
+  '}': 221,
   '[': 219,
   ']': 221,
   '\\': 220
@@ -506,6 +513,7 @@ const _modifier = {
   // metaKey
   '⌘': 91,
   cmd: 91,
+  meta: 91,
   command: 91
 };
 const modifierMap = {
@@ -531,25 +539,29 @@ for (let k = 1; k < 20; k++) {
   _keyMap["f".concat(k)] = 111 + k;
 }
 
-let _downKeys = []; // 记录摁下的绑定键
-let winListendFocus = null; // window是否已经监听了focus事件
-let _scope = 'all'; // 默认热键范围
-const elementEventMap = new Map(); // 已绑定事件的节点记录
+/** Record the pressed keys */
+let _downKeys = [];
+/** Whether the window has already listened to the focus event */
+let winListendFocus = null;
+/** Default hotkey scope */
+let _scope = 'all';
+/** Map to record elements with bound events */
+const elementEventMap = new Map();
 
-// 返回键码
+/** Return key code */
 const code = x => _keyMap[x.toLowerCase()] || _modifier[x.toLowerCase()] || x.toUpperCase().charCodeAt(0);
 const getKey = x => Object.keys(_keyMap).find(k => _keyMap[k] === x);
 const getModifier = x => Object.keys(_modifier).find(k => _modifier[k] === x);
 
-// 设置获取当前范围（默认为'所有'）
+/** Set or get the current scope (defaults to 'all') */
 function setScope(scope) {
   _scope = scope || 'all';
 }
-// 获取当前范围
+/** Get the current scope */
 function getScope() {
   return _scope || 'all';
 }
-// 获取摁下绑定键的键值
+/** Get the key codes of the currently pressed keys */
 function getPressedKeyCodes() {
   return _downKeys.slice(0);
 }
@@ -577,8 +589,7 @@ function getAllKeyCodes() {
   return result;
 }
 
-// 表单控件控件判断 返回 Boolean
-// hotkey is effective only when filter return true
+/** hotkey is effective only when filter return true */
 function filter(event) {
   const target = event.target || event.srcElement;
   const {
@@ -593,20 +604,20 @@ function filter(event) {
   return flag;
 }
 
-// 判断摁下的键是否为某个键，返回true或者false
+/** Determine whether the pressed key matches a specific key, returns true or false */
 function isPressed(keyCode) {
   if (typeof keyCode === 'string') {
-    keyCode = code(keyCode); // 转换成键码
+    keyCode = code(keyCode); // Convert to key code
   }
   return _downKeys.indexOf(keyCode) !== -1;
 }
 
-// 循环删除handlers中的所有 scope(范围)
+/** Loop through and delete all handlers with the specified scope */
 function deleteScope(scope, newScope) {
   let handlers;
   let i;
 
-  // 没有指定scope，获取scope
+  // If no scope is specified, get the current scope
   if (!scope) scope = getScope();
   for (const key in _handlers) {
     if (Object.prototype.hasOwnProperty.call(_handlers, key)) {
@@ -627,30 +638,37 @@ function deleteScope(scope, newScope) {
     }
   }
 
-  // 如果scope被删除，将scope重置为all
+  // If the current scope has been deleted, reset the scope to 'all'
   if (getScope() === scope) setScope(newScope || 'all');
 }
 
-// 清除修饰键
+/** Clear modifier keys */
 function clearModifier(event) {
   let key = event.keyCode || event.which || event.charCode;
+  if (event.key && event.key.toLowerCase() === 'capslock') {
+    // Ensure that when capturing keystrokes in modern browsers,
+    // uppercase and lowercase letters (such as R and r) return the same key value.
+    // https://github.com/jaywcjlove/hotkeys-js/pull/514
+    // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+    key = code(event.key);
+  }
   const i = _downKeys.indexOf(key);
 
-  // 从列表中清除按压过的键
+  // Remove the pressed key from the list
   if (i >= 0) {
     _downKeys.splice(i, 1);
   }
-  // 特殊处理 cmmand 键，在 cmmand 组合快捷键 keyup 只执行一次的问题
+  // Special handling for the command key: fix the issue where keyup only triggers once for command combos
   if (event.key && event.key.toLowerCase() === 'meta') {
     _downKeys.splice(0, _downKeys.length);
   }
 
-  // 修饰键 shiftKey altKey ctrlKey (command||metaKey) 清除
+  // Clear modifier keys: shiftKey, altKey, ctrlKey, (command || metaKey)
   if (key === 93 || key === 224) key = 91;
   if (key in _mods) {
     _mods[key] = false;
 
-    // 将修饰键重置为false
+    // Reset the modifier key status to false
     for (const k in _modifier) if (_modifier[k] === key) hotkeys[k] = false;
   }
 }
@@ -690,7 +708,7 @@ function unbind(keysInfo) {
   }
 }
 
-// 解除绑定某个范围的快捷键
+/** Unbind hotkeys for a specific scope */
 const eachUnbind = _ref3 => {
   let {
     key,
@@ -705,12 +723,12 @@ const eachUnbind = _ref3 => {
     const lastKey = unbindKeys[len - 1];
     const keyCode = lastKey === '*' ? '*' : code(lastKey);
     if (!_handlers[keyCode]) return;
-    // 判断是否传入范围，没有就获取范围
+    // If scope is not provided, get the current scope
     if (!scope) scope = getScope();
     const mods = len > 1 ? getMods(_modifier, unbindKeys) : [];
     const unbindElements = [];
     _handlers[keyCode] = _handlers[keyCode].filter(record => {
-      // 通过函数判断，是否解除绑定，函数相等直接返回
+      // Check if the method matches; if method is provided, must be equal to unbind
       const isMatchingMethod = method ? record.method === method : true;
       const isUnbind = isMatchingMethod && record.scope === scope && compareArray(record.mods, mods);
       if (isUnbind) unbindElements.push(record.element);
@@ -720,16 +738,16 @@ const eachUnbind = _ref3 => {
   });
 };
 
-// 对监听对应快捷键的回调函数进行处理
+/** Handle the callback function for the corresponding hotkey */
 function eventHandler(event, handler, scope, element) {
   if (handler.element !== element) {
     return;
   }
   let modifiersMatch;
 
-  // 看它是否在当前范围
+  // Check if it is within the current scope
   if (handler.scope === scope || handler.scope === 'all') {
-    // 检查是否匹配修饰符（如果有返回true）
+    // Check whether modifier keys match (returns true if they do)
     modifiersMatch = handler.mods.length > 0;
     for (const y in _mods) {
       if (Object.prototype.hasOwnProperty.call(_mods, y)) {
@@ -739,7 +757,7 @@ function eventHandler(event, handler, scope, element) {
       }
     }
 
-    // 调用处理程序，如果是修饰键不做处理
+    // Call the handler function; ignore if it's only a modifier key
     if (handler.mods.length === 0 && !_mods[16] && !_mods[18] && !_mods[17] && !_mods[91] || modifiersMatch || handler.shortcut === '*') {
       handler.keys = [];
       handler.keys = handler.keys.concat(_downKeys);
@@ -752,16 +770,24 @@ function eventHandler(event, handler, scope, element) {
   }
 }
 
-// 处理keydown事件
+/** Handle the keydown event */
 function dispatch(event, element) {
   const asterisk = _handlers['*'];
   let key = event.keyCode || event.which || event.charCode;
-
-  // 表单控件过滤 默认表单控件不触发快捷键
+  // Ensure that when capturing keystrokes in modern browsers,
+  // uppercase and lowercase letters (such as R and r) return the same key value.
+  // https://github.com/jaywcjlove/hotkeys-js/pull/514
+  // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+  // CapsLock key
+  // There's an issue where `keydown` and `keyup` events are not triggered after CapsLock is enabled to activate uppercase.
+  if (event.key && event.key.toLowerCase() === 'capslock') {
+    return;
+  }
+  // Form control filter: by default, shortcut keys are not triggered in form elements
   if (!hotkeys.filter.call(this, event)) return;
 
-  // Gecko(Firefox)的command键值224，在Webkit(Chrome)中保持一致
-  // Webkit左右 command 键值不一样
+  // In Gecko (Firefox), the command key code is 224; unify it with WebKit (Chrome)
+  // In WebKit, left and right command keys have different codes
   if (key === 93 || key === 224) key = 91;
 
   /**
@@ -782,10 +808,8 @@ function dispatch(event, element) {
     } else if (!event[keyName] && _downKeys.indexOf(keyNum) > -1) {
       _downKeys.splice(_downKeys.indexOf(keyNum), 1);
     } else if (keyName === 'metaKey' && event[keyName]) {
-      // 如果command被按下，那就清空所有除event按键外的非装饰键。
-      // 因为command被按下的情况下非装饰键的keyup永远都不会触发。这是已知的浏览器限制。
-      // If command key is pressed, clear all non-decorating keys except for key in event.
-      // This is because keyup for a non-decorating key will NEVER be triggered when command is pressed.
+      // If the command key is pressed, clear all non-modifier keys except the current event key.
+      // This is because keyup for non-modifier keys will NEVER be triggered when command is pressed.
       // This is a known browser limitation.
       _downKeys = _downKeys.filter(k => k in modifierMap || k === key);
     }
@@ -795,7 +819,7 @@ function dispatch(event, element) {
    */
   if (key in _mods) {
     _mods[key] = true;
-    // 将特殊字符的key注册到 hotkeys 上
+    // Register special modifier keys to the `hotkeys` object
     for (const k in _modifier) {
       if (Object.prototype.hasOwnProperty.call(_modifier, k)) {
         const eventKey = modifierMap[_modifier[k]];
@@ -805,7 +829,7 @@ function dispatch(event, element) {
     if (!asterisk) return;
   }
 
-  // 将 modifierMap 里面的修饰键绑定到 event 中
+  // Bind the modifier keys in modifierMap to the event
   for (const e in _mods) {
     if (Object.prototype.hasOwnProperty.call(_mods, e)) {
       _mods[e] = event[modifierMap[e]];
@@ -828,9 +852,9 @@ function dispatch(event, element) {
     _mods[18] = true;
   }
 
-  // 获取范围 默认为 `all`
+  // Get the current scope (defaults to 'all')
   const scope = getScope();
-  // 对任何快捷键都需要做的处理
+  // Handle any hotkeys registered as '*'
   if (asterisk) {
     for (let i = 0; i < asterisk.length; i++) {
       if (asterisk[i].scope === scope && (event.type === 'keydown' && asterisk[i].keydown || event.type === 'keyup' && asterisk[i].keyup)) {
@@ -838,7 +862,7 @@ function dispatch(event, element) {
       }
     }
   }
-  // key 不在 _handlers 中返回
+  // If the key is not registered, return
   if (!(key in _handlers)) return;
   const handlerKey = _handlers[key];
   const keyLen = handlerKey.length;
@@ -850,12 +874,12 @@ function dispatch(event, element) {
           splitKey
         } = record;
         const keyShortcut = record.key.split(splitKey);
-        const _downKeysCurrent = []; // 记录当前按键键值
+        const _downKeysCurrent = []; // Store the current key codes
         for (let a = 0; a < keyShortcut.length; a++) {
           _downKeysCurrent.push(code(keyShortcut[a]));
         }
         if (_downKeysCurrent.sort().join('') === _downKeys.sort().join('')) {
-          // 找到处理内容
+          // Match found, call the handler
           eventHandler(event, record, scope, element);
         }
       }
@@ -864,48 +888,54 @@ function dispatch(event, element) {
 }
 function hotkeys(key, option, method) {
   _downKeys = [];
-  const keys = getKeys(key); // 需要处理的快捷键列表
+  /** List of hotkeys to handle */
+  const keys = getKeys(key);
   let mods = [];
-  let scope = 'all'; // scope默认为all，所有范围都有效
-  let element = document; // 快捷键事件绑定节点
+  /** Default scope is 'all', meaning effective in all scopes */
+  let scope = 'all';
+  /** Element to which the hotkey events are bound */
+  let element = document;
   let i = 0;
   let keyup = false;
   let keydown = true;
   let splitKey = '+';
   let capture = false;
-  let single = false; // 单个callback
+  /** Allow only a single callback */
+  let single = false;
 
-  // 对为设定范围的判断
+  // Determine if the second argument is a function (no options provided)
   if (method === undefined && typeof option === 'function') {
     method = option;
   }
+
+  // Parse options object
   if (Object.prototype.toString.call(option) === '[object Object]') {
-    if (option.scope) scope = option.scope; // eslint-disable-line
-    if (option.element) element = option.element; // eslint-disable-line
-    if (option.keyup) keyup = option.keyup; // eslint-disable-line
-    if (option.keydown !== undefined) keydown = option.keydown; // eslint-disable-line
-    if (option.capture !== undefined) capture = option.capture; // eslint-disable-line
-    if (typeof option.splitKey === 'string') splitKey = option.splitKey; // eslint-disable-line
-    if (option.single === true) single = true; // eslint-disable-line
+    if (option.scope) scope = option.scope; // Set scope
+    if (option.element) element = option.element; // Set binding element
+    if (option.keyup) keyup = option.keyup;
+    if (option.keydown !== undefined) keydown = option.keydown;
+    if (option.capture !== undefined) capture = option.capture;
+    if (typeof option.splitKey === 'string') splitKey = option.splitKey;
+    if (option.single === true) single = true;
   }
   if (typeof option === 'string') scope = option;
 
-  // 如果只允许单个callback，先unbind
+  // If only one callback is allowed, unbind the existing one first
   if (single) unbind(key, scope);
 
-  // 对于每个快捷键进行处理
+  // Handle each hotkey
   for (; i < keys.length; i++) {
-    key = keys[i].split(splitKey); // 按键列表
+    key = keys[i].split(splitKey); // Split into individual keys
     mods = [];
 
-    // 如果是组合快捷键取得组合快捷键
+    // If it's a combination, extract modifier keys
     if (key.length > 1) mods = getMods(_modifier, key);
 
-    // 将非修饰键转化为键码
+    // Convert non-modifier key to key code
     key = key[key.length - 1];
-    key = key === '*' ? '*' : code(key); // *表示匹配所有快捷键
+    key = key === '*' ? '*' : code(key); // '*' means match all hotkeys
 
-    // 判断key是否在_handlers中，不在就赋一个空数组
+    // Initialize handler array if this key has no handlers yet
     if (!(key in _handlers)) _handlers[key] = [];
     _handlers[key].push({
       keyup,
@@ -919,7 +949,7 @@ function hotkeys(key, option, method) {
       element
     });
   }
-  // 在全局document上设置快捷键
+  // Register hotkey event listeners on the global document
   if (typeof element !== 'undefined' && window) {
     if (!elementEventMap.has(element)) {
       const keydownListener = function () {
@@ -939,6 +969,7 @@ function hotkeys(key, option, method) {
       addEvent(element, 'keydown', keydownListener, capture);
       addEvent(element, 'keyup', keyupListenr, capture);
     }
+    // Register focus event listener once to clear pressed keys on window focus
     if (!winListendFocus) {
       const listener = () => {
         _downKeys = [];
@@ -963,7 +994,7 @@ function trigger(shortcut) {
   });
 }
 
-// 销毁事件,unbind之后判断element上是否还有键盘快捷键，如果没有移除监听
+/** Clean up event listeners. After unbinding, check whether the element still has any hotkeys bound. If not, remove its event listeners. */
 function removeKeyEvent(element) {
   const values = Object.values(_handlers).flat();
   const findindex = values.findIndex(_ref4 => {
@@ -985,7 +1016,7 @@ function removeKeyEvent(element) {
     }
   }
   if (values.length <= 0 || elementEventMap.size <= 0) {
-    // 移除所有的元素上的监听
+    // Remove all event listeners from all elements
     const eventKeys = Object.keys(elementEventMap);
     eventKeys.forEach(el => {
       const {
@@ -999,11 +1030,11 @@ function removeKeyEvent(element) {
         elementEventMap.delete(el);
       }
     });
-    // 清空 elementEventMap
+    // Clear the elementEventMap
     elementEventMap.clear();
-    // 清空 _handlers
+    // Clear all handlers
     Object.keys(_handlers).forEach(key => delete _handlers[key]);
-    // 移除window上的focus监听
+    // Remove the global window focus event listener
     if (winListendFocus) {
       const {
         listener,

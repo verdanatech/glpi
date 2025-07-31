@@ -33,6 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Plugin\Hooks;
@@ -41,8 +42,10 @@ use Glpi\Search\Output\HTMLSearchOutput;
 use Glpi\Search\Output\Pdf;
 use Glpi\Search\SearchEngine;
 use Glpi\Stat\StatData;
-use Glpi\Application\View\TemplateRenderer;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\mktime;
+use function Safe\strtotime;
 
 /**
  *  Stat class
@@ -73,7 +76,7 @@ class Stat extends CommonGLPI
      */
     public static function getItems($itemtype, $date1, $date2, $type, $parent = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!$item = getItemForItemtype($itemtype)) {
@@ -220,7 +223,12 @@ class Stat extends CommonGLPI
                 break;
 
             case "type":
-                $types = $item::getTypes();
+                // TODO: would be better to use an interface + instanceof here.
+                if (!method_exists($item, "getTypes")) {
+                    throw new RuntimeException("Given item doesn't support getTypes() operation");
+                }
+
+                $types = $item::getTypes(); // @phpstan-ignore method.staticCall (phpstan seems to think that method_exist = non static method, which is not true)
                 foreach ($types as $id => $v) {
                     $tmp['id']   = $id;
                     $tmp['link'] = $v;
@@ -424,18 +432,18 @@ class Stat extends CommonGLPI
      * @param string $date2
      * @param integer $start
      * @param array $value
-     * @param string $value2 (default '')
+     * @param int|string $value2
      * @return void
      *
      * @since 0.85 (before show with same parameters)
      **/
-    public static function showTable($itemtype, $type, $date1, $date2, $start, array $value, $value2 = "")
+    public static function showTable($itemtype, $type, $date1, $date2, $start, array $value, $value2 = '')
     {
         $numrows = count($value);
         // Set display type for export if define
         $output_type = $_GET["display_type"] ?? Search::HTML_OUTPUT;
         $output = SearchEngine::getOutputForLegacyKey($output_type);
-        $is_html_output = is_a($output, HTMLSearchOutput::class);
+        $is_html_output = $output instanceof HTMLSearchOutput;
         $html_output = '';
 
         if ($numrows === 0 && $is_html_output) {
@@ -699,7 +707,7 @@ class Stat extends CommonGLPI
                             $max_rate = 5;
                         }
                         // Scale satisfaction accordingly
-                        $avgsatisfaction = $avgsatisfaction * ($max_rate / 5);
+                        $avgsatisfaction *= $max_rate / 5;
                         $avgsatisfaction = TicketSatisfaction::displaySatisfaction($avgsatisfaction, 0);
                     }
                 } else {
@@ -727,9 +735,9 @@ class Stat extends CommonGLPI
 
                 $timedisplay = $nb_solved > 0 ? array_sum($data) / $nb_solved : 0;
 
-                if ($is_html_output || is_a($output, Pdf::class)) {
-                    $timedisplay = Html::timestampToString($timedisplay, 0, false);
-                } elseif (is_a($output, Csv::class)) {
+                if ($is_html_output || $output instanceof Pdf) {
+                    $timedisplay = Html::timestampToString($timedisplay, false, false);
+                } elseif ($output instanceof Csv) {
                     $timedisplay = Html::timestampToCsvString($timedisplay);
                 }
                 if ($is_html_output) {
@@ -762,9 +770,9 @@ class Stat extends CommonGLPI
             } else {
                 $timedisplay = 0;
             }
-            if ($is_html_output || is_a($output, Pdf::class)) {
-                $timedisplay = Html::timestampToString($timedisplay, 0, false);
-            } elseif (is_a($output, Csv::class)) {
+            if ($is_html_output || $output instanceof Pdf) {
+                $timedisplay = Html::timestampToString($timedisplay, false, false);
+            } elseif ($output instanceof Csv) {
                 $timedisplay = Html::timestampToCsvString($timedisplay);
             }
             if ($is_html_output) {
@@ -796,9 +804,9 @@ class Stat extends CommonGLPI
             } else {
                 $timedisplay = 0;
             }
-            if ($is_html_output || is_a($output, Pdf::class)) {
-                $timedisplay = Html::timestampToString($timedisplay, 0, false);
-            } elseif (is_a($output, Csv::class)) {
+            if ($is_html_output || $output instanceof Pdf) {
+                $timedisplay = Html::timestampToString($timedisplay, false, false);
+            } elseif ($output instanceof Csv) {
                 $timedisplay = Html::timestampToCsvString($timedisplay);
             }
             if ($is_html_output) {
@@ -848,9 +856,9 @@ class Stat extends CommonGLPI
                 $timedisplay = 0;
             }
 
-            if ($is_html_output || is_a($output, Pdf::class)) {
-                $timedisplay = Html::timestampToString($timedisplay, 0, false);
-            } elseif (is_a($output, Csv::class)) {
+            if ($is_html_output || $output instanceof Pdf) {
+                $timedisplay = Html::timestampToString($timedisplay, false, false);
+            } elseif ($output instanceof Csv) {
                 $timedisplay = Html::timestampToCsvString($timedisplay);
             }
             if ($is_html_output) {
@@ -865,9 +873,9 @@ class Stat extends CommonGLPI
             // The total actiontime to resolve
             $timedisplay = $total_actiontime;
 
-            if ($is_html_output || is_a($output, Pdf::class)) {
-                $timedisplay = Html::timestampToString($timedisplay, 0, false);
-            } elseif (is_a($output, Csv::class)) {
+            if ($is_html_output || $output instanceof Pdf) {
+                $timedisplay = Html::timestampToString($timedisplay, false, false);
+            } elseif ($output instanceof Csv) {
                 $timedisplay = Html::timestampToCsvString($timedisplay);
             }
             if ($is_html_output) {
@@ -932,7 +940,7 @@ class Stat extends CommonGLPI
      * @param string $begin
      * @param string $end
      * @param string $param
-     * @param array $value
+     * @param string|array $value
      * @param string $value2 (default '')
      * @param $add_criteria          (default [''])
      *
@@ -950,7 +958,7 @@ class Stat extends CommonGLPI
     ) {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
-        $DB = \DBConnection::getReadConnection();
+        $DB = DBConnection::getReadConnection();
 
         if (!$item = getItemForItemtype($itemtype)) {
             return;
@@ -1614,7 +1622,7 @@ class Stat extends CommonGLPI
 
         $output_type = $_GET["display_type"] ?? Search::HTML_OUTPUT;
         $output = SearchEngine::getOutputForLegacyKey($output_type);
-        $is_html_output = is_a($output, HTMLSearchOutput::class);
+        $is_html_output = $output instanceof HTMLSearchOutput;
 
         if (empty($date2)) {
             $date2 = date("Y-m-d");
@@ -1623,7 +1631,7 @@ class Stat extends CommonGLPI
 
         // 1 an par defaut
         if (empty($date1)) {
-            $date1 = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d"), date("Y") - 1));
+            $date1 = date("Y-m-d", mktime(0, 0, 0, (int) date("m"), (int) date("d"), ((int) date("Y")) - 1));
         }
         $date1 .= " 00:00:00";
 
@@ -1874,8 +1882,8 @@ class Stat extends CommonGLPI
 
         foreach ($values as $reports) {
             if (is_array($reports)) {
-                foreach ($reports as $key => $name) {
-                    if (stripos($_SERVER['REQUEST_URI'], $key) !== false) {
+                foreach (array_keys($reports) as $key) {
+                    if (stripos($_SERVER['REQUEST_URI'], (string) $key) !== false) {
                         $selected = $key;
                     }
                 }
@@ -1929,7 +1937,7 @@ class Stat extends CommonGLPI
      * @param string|null $csv_link Link to download the dataset as csv
      *
      * @return string|void
-     * @phpstan-return $display ? void : string
+     * @phpstan-return ($display is true ? void : string)
      */
     public function displayLineGraph(
         $title,
@@ -2103,7 +2111,7 @@ TWIG, $twig_params);
      * @param string|null $csv_link Link to download the dataset as csv
      *
      * @return string|void
-     * @phpstan-return $display ? void : string
+     * @phpstan-return ($display is true ? void : string)
      */
     public function displayPieGraph(
         $title,
@@ -2233,7 +2241,7 @@ TWIG, $twig_params);
      * @param boolean $display  Whether to display directly; defauts to true
      *
      * @return void|string
-     * @phpstan-return $display ? void : string
+     * @phpstan-return ($display is true ? void : string)
      */
     public function displaySearchForm($itemtype, $date1, $date2, $display = true)
     {

@@ -37,6 +37,8 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryUnion;
 
+use function Safe\preg_match;
+
 /**
  * Represent an IPv4 or an IPv6 address. Both textual (ie. human readable)
  * and binary (ie. : used for request) are present
@@ -86,7 +88,7 @@ class IPAddress extends CommonDBChild
      *
      * For IPv4 addresses, the first three bytes are set to [0, 0, 0xffff]
      * This is used for SQL requests.
-     * @var int[]
+     * @var string|int[]
      */
     protected $binary  = [0, 0, 0, 0];
 
@@ -230,7 +232,7 @@ class IPAddress extends CommonDBChild
     public static function showForItem(CommonGLPI $item, $withtemplate = 0)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $DB;
 
@@ -278,7 +280,7 @@ class IPAddress extends CommonDBChild
         $networkname = new NetworkName();
         foreach ($it as $data) {
             if (!array_key_exists($data['item_type'], $item_objs)) {
-                $item_objs[$data['item_type']] = new $data['item_type']();
+                $item_objs[$data['item_type']] = getItemForItemtype($data['item_type']);
             }
             $linked_item = $item_objs[$data['item_type']];
             $linked_item->getFromDB($data['item_id']);
@@ -339,7 +341,7 @@ class IPAddress extends CommonDBChild
      **/
     public static function countForItem(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         switch ($item->getType()) {
@@ -575,7 +577,7 @@ class IPAddress extends CommonDBChild
      **/
     public function setAddressFromString($address, $itemtype = "", $items_id = -1)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $this->disableAddress();
@@ -698,7 +700,7 @@ class IPAddress extends CommonDBChild
                     break;
 
                 case 3: // Only '::' allows three empty singletons ('::x::' = four empty singletons)
-                    if (!($start_with_empty and $end_with_empty)) {
+                    if (!($start_with_empty && $end_with_empty)) {
                         return false;
                     }
                     // Middle value must be '' otherwise EXTREMITY CHECKS returned an error
@@ -759,7 +761,7 @@ class IPAddress extends CommonDBChild
      **/
     public function setAddressFromBinary($address, $itemtype = "", $items_id = -1)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $this->disableAddress();
@@ -940,7 +942,7 @@ class IPAddress extends CommonDBChild
      **/
     public static function getItemsByIPAddress($IPaddress)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // We must resolv binary address :
@@ -1070,7 +1072,7 @@ class IPAddress extends CommonDBChild
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         $content = self::getTypeName();
 
@@ -1099,7 +1101,7 @@ class IPAddress extends CommonDBChild
                 );
             }
 
-            IPNetwork::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
+            IPNetwork::getHTMLTableHeader(self::class, $base, $super, $father, $options);
         }
     }
 
@@ -1112,7 +1114,7 @@ class IPAddress extends CommonDBChild
     private static function getCriteriaLinkedToNetwork(IPNetwork $network): array
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $CFG_GLPI, $DB;
@@ -1281,7 +1283,7 @@ class IPAddress extends CommonDBChild
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($item instanceof IPNetwork) {
@@ -1345,7 +1347,7 @@ class IPAddress extends CommonDBChild
 
                         if ((!empty($line['item_id'])) && (!empty($line['item_type']))) {
                             $itemtype = $line['item_type'];
-                            $item     = new $itemtype();
+                            $item     = getItemForItemtype($itemtype);
                             $item->getFromDB($line['item_id']);
                             $row->addCell($item_header, $item->getLink(), $father);
                         }
@@ -1353,7 +1355,7 @@ class IPAddress extends CommonDBChild
                     $row->addCell($entity_header, $line['entity'], $father);
                 } elseif ((!empty($line['addr_item_id'])) && (!empty($line['addr_item_type']))) {
                     $itemtype = $line['addr_item_type'];
-                    $item     = new $itemtype();
+                    $item     = getItemForItemtype($itemtype);
                     $item->getFromDB($line['addr_item_id']);
                     if ($item instanceof CommonDBChild) {
                         $items    = $item->recursivelyGetItems();
@@ -1373,7 +1375,7 @@ class IPAddress extends CommonDBChild
                 return;
             }
 
-            $header = $row->getGroup()->getHeaderByName('Internet', __CLASS__);
+            $header = $row->getGroup()->getHeaderByName('Internet', self::class);
             if (!$header) {
                 return;
             }
@@ -1410,7 +1412,7 @@ class IPAddress extends CommonDBChild
                     $this_cell = $row->addCell($header, $content, $father);
 
                     if (isset($options['display_isDynamic']) && ($options['display_isDynamic'])) {
-                        $dyn_header = $row->getGroup()->getHeaderByName('Internet', __CLASS__ . '_dynamic');
+                        $dyn_header = $row->getGroup()->getHeaderByName('Internet', self::class . '_dynamic');
                         $this_cell  = $row->addCell(
                             $dyn_header,
                             Dropdown::getYesNo($address->fields['is_dynamic']),

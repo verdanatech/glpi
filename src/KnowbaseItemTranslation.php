@@ -65,7 +65,7 @@ class KnowbaseItemTranslation extends CommonDBChild
     public function defineTabs($options = [])
     {
         $ong = [];
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
         $this->addStandardTab(KnowbaseItem_Revision::class, $ong, $options);
         $this->addStandardTab(KnowbaseItem_Comment::class, $ong, $options);
@@ -162,7 +162,7 @@ TWIG, $twig_params);
      *
      * @param KnowbaseItem $item
      *
-     * @return true;
+     * @return true
      **/
     public static function showTranslations(KnowbaseItem $item)
     {
@@ -253,7 +253,7 @@ TWIG, $twig_params);
      */
     public function showForm($ID = -1, array $options = [])
     {
-        if ((!($ID > 0) && !isset($options['parent'])) || !($options['parent'] instanceof CommonDBTM)) {
+        if (($ID <= 0 && !isset($options['parent'])) || !($options['parent'] instanceof CommonDBTM)) {
             // parent is mandatory in new item form
             trigger_error('Parent item must be defined in `$options["parent"]`.', E_USER_WARNING);
             return false;
@@ -311,7 +311,7 @@ TWIG, $twig_params);
     public static function getNumberOfTranslationsForItem($item)
     {
         return countElementsInTable(
-            getTableForItemType(__CLASS__),
+            getTableForItemType(self::class),
             ['knowbaseitems_id' => $item->getID()]
         );
     }
@@ -325,7 +325,7 @@ TWIG, $twig_params);
      **/
     public static function getAlreadyTranslatedForItem(KnowbaseItem $item): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = [];

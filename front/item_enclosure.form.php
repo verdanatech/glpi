@@ -39,7 +39,7 @@ use Glpi\Exception\Http\BadRequestHttpException;
 
 Session::checkCentralAccess();
 
-$ien = new \Item_Enclosure();
+$ien = new Item_Enclosure();
 $enclosure = new Enclosure();
 
 if (isset($_POST['update'])) {
@@ -58,7 +58,7 @@ if (isset($_POST['update'])) {
     Html::redirect($url);
 } elseif (isset($_POST['purge'])) {
     $ien->check($_POST['id'], PURGE);
-    $ien->delete($_POST, 1);
+    $ien->delete($_POST, true);
     $url = $enclosure->getFormURLWithID($_POST['enclosures_id']);
     Html::redirect($url);
 }

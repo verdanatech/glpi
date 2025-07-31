@@ -35,21 +35,26 @@
 
 namespace Glpi\Form\QuestionType;
 
+use CommonDBTM;
 use Exception;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
+use Glpi\Form\Condition\ConditionHandler\ActorConditionHandler;
+use Glpi\Form\Condition\UsedAsCriteriaInterface;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Export\Specification\DataRequirementSpecification;
 use Glpi\Form\Migration\FormQuestionDataConverterInterface;
-use Glpi\Form\Condition\ConditionHandler\ActorConditionHandler;
-use Glpi\Form\Condition\UsedAsCriteriaInterface;
 use Glpi\Form\Question;
 use Group;
 use InvalidArgumentException;
 use Override;
+use Safe\Exceptions\JsonException;
 use Supplier;
 use User;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 /**
  * "Actors" questions represent an input field for actors (requesters, ...)
@@ -126,7 +131,7 @@ abstract class AbstractQuestionTypeActors extends AbstractQuestionType implement
             isset($input['is_multiple_actors'])
             && count($input) === 1
             && filter_var($input['is_multiple_actors'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== null
-        ) || empty($input);
+        ) || $input === [];
     }
 
     #[Override]
@@ -149,7 +154,7 @@ abstract class AbstractQuestionTypeActors extends AbstractQuestionType implement
 
             $actor_parts = explode('-', $actor);
             $itemtype = getItemtypeForForeignKeyField($actor_parts[0]);
-            $item_id = $actor_parts[1];
+            $item_id = (int) $actor_parts[1];
 
             // Check if the itemtype is allowed
             if (!in_array($itemtype, $this->getAllowedActorTypes())) {
@@ -202,13 +207,16 @@ abstract class AbstractQuestionTypeActors extends AbstractQuestionType implement
             return false;
         }
 
-        /** @var ?QuestionTypeActorsExtraDataConfig $config */
-        $config = $this->getExtraDataConfig(json_decode($question->fields['extra_data'], true) ?? []);
-        if ($config === null) {
+        try {
+            /** @var ?QuestionTypeActorsExtraDataConfig $config */
+            $config = $this->getExtraDataConfig(json_decode($question->fields['extra_data'] ?? '', true) ?? []);
+            if ($config === null) {
+                return false;
+            }
+            return $config->isMultipleActors();
+        } catch (JsonException $e) {
             return false;
         }
-
-        return $config->isMultipleActors();
     }
 
     /**
@@ -498,8 +506,7 @@ TWIG;
 
         // Handler users, groups and suppliers ids.
         foreach ($to_handle as $itemtype => $data_key) {
-            /** @var class-string<\CommonDBTM> $itemtype */
-
+            /** @var class-string<CommonDBTM> $itemtype */
             // Iterate on ids
             $ids = $default_value_config[$data_key] ?? [];
             foreach ($ids as $i => $item_id) {
@@ -546,8 +553,7 @@ TWIG;
 
         // Handler users, groups and suppliers ids.
         foreach ($to_handle as $itemtype => $data_key) {
-            /** @var class-string<\CommonDBTM> $itemtype */
-
+            /** @var class-string<CommonDBTM> $itemtype */
             // Iterate on names
             $names = $default_value_data[$data_key] ?? [];
             foreach ($names as $i => $name) {

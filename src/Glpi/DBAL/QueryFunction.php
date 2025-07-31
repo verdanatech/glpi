@@ -35,7 +35,11 @@
 
 namespace Glpi\DBAL;
 
+use DBmysql;
 use DBmysqlIterator;
+
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  *  Query function class
@@ -75,11 +79,9 @@ class QueryFunction
      */
     private static function getExpression(string $func_name, array $params, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
-        $params = array_map(static function ($p) use ($DB) {
-            return $p instanceof QueryExpression || $p === null ? $p : $DB::quoteName($p);
-        }, $params);
+        $params = array_map(static fn($p) => $p instanceof QueryExpression || $p === null ? $p : $DB::quoteName($p), $params);
         return new QueryExpression($func_name . '(' . implode(', ', $params) . ')', $alias);
     }
 
@@ -105,14 +107,14 @@ class QueryFunction
     /**
      * Build an DATE_ADD SQL function call
      * @param string|QueryExpression $date Date to add interval to
-     * @param string|QueryExpression $interval Interval to add
-     * @param int|string|QueryExpression $interval_unit Interval unit
+     * @param int|string|QueryExpression $interval Interval to add
+     * @param string $interval_unit Interval unit
      * @param string|null $alias Function result alias (will be automatically quoted)
      * @return QueryExpression
      */
     public static function dateAdd(string|QueryExpression $date, int|string|QueryExpression $interval, string $interval_unit, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $date = $date instanceof QueryExpression ? $date : $DB::quoteName($date);
         $interval = is_string($interval) ? $DB::quoteValue($interval) : $interval;
@@ -130,7 +132,7 @@ class QueryFunction
      */
     public static function dateSub(string|QueryExpression $date, int|string|QueryExpression $interval, string $interval_unit, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $date = $date instanceof QueryExpression ? $date : $DB::quoteName($date);
         $interval = is_string($interval) ? $DB::quoteValue($interval) : $interval;
@@ -177,7 +179,7 @@ class QueryFunction
      */
     public static function groupConcat(string|QueryExpression $expression, ?string $separator = null, bool $distinct = false, array|string|null $order_by = null, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $expression = $expression instanceof QueryExpression ? $expression : $DB::quoteName($expression);
@@ -205,7 +207,7 @@ class QueryFunction
      */
     public static function sum(string|QueryExpression $expression, bool $distinct = false, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $expression = $expression instanceof QueryExpression ? $expression : $DB::quoteName($expression);
@@ -226,7 +228,7 @@ class QueryFunction
      */
     public static function count(string|QueryExpression $expression, bool $distinct = false, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $expression = $expression instanceof QueryExpression ? $expression : $DB::quoteName($expression);
@@ -247,7 +249,7 @@ class QueryFunction
      */
     public static function cast(string|QueryExpression $expression, string $type, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $expression = $expression instanceof QueryExpression ? $expression : $DB::quoteName($expression);
@@ -263,7 +265,7 @@ class QueryFunction
      */
     public static function convert(string|QueryExpression $expression, string $transcoding, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $expression = $expression instanceof QueryExpression ? $expression : $DB::quoteName($expression);
         return new QueryExpression('CONVERT(' . $expression . ' USING ' . $transcoding . ')', $alias);
@@ -327,7 +329,7 @@ class QueryFunction
      */
     public static function dateFormat(string|QueryExpression $expression, string $format, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $format = new QueryExpression($DB::quoteValue($format));
         return self::getExpression('DATE_FORMAT', [$expression, $format], $alias);
@@ -343,7 +345,7 @@ class QueryFunction
      */
     public static function lpad(string|QueryExpression $expression, int $length, string $pad_string, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $length = new QueryExpression((string) $length);
         $pad_string = new QueryExpression($DB::quoteValue($pad_string));
@@ -361,7 +363,7 @@ class QueryFunction
     public static function substring(string|QueryExpression $expression, int $start, int $length, ?string $alias = null): QueryExpression
     {
         return self::getExpression('SUBSTRING', [
-            $expression, new QueryExpression($start), new QueryExpression($length),
+            $expression, new QueryExpression((string) $start), new QueryExpression((string) $length),
         ], $alias);
     }
 
@@ -451,7 +453,7 @@ class QueryFunction
      */
     public static function locate(string|QueryExpression $substring, string|QueryExpression $expression, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $substring = is_string($substring) ? new QueryExpression($DB::quoteValue($substring)) : $substring;
         return self::getExpression('LOCATE', [$substring, $expression], $alias);
@@ -459,11 +461,9 @@ class QueryFunction
 
     public static function concat_ws(string|QueryExpression $separator, array $params, ?string $alias = null): QueryExpression
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
-        $params = array_map(static function ($p) use ($DB) {
-            return $p instanceof QueryExpression || $p === null ? $p : $DB::quoteName($p);
-        }, $params);
+        $params = array_map(static fn($p) => $p instanceof QueryExpression || $p === null ? $p : $DB::quoteName($p), $params);
         $separator = $separator instanceof QueryExpression ? $separator : $DB::quoteName($separator);
         return new QueryExpression('CONCAT_WS(' . $separator . ', ' . implode(', ', $params) . ')', $alias);
     }

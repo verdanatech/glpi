@@ -36,7 +36,18 @@
 namespace Glpi\System\Log;
 
 use CommonGLPI;
+use RuntimeException;
 use Toolbox;
+
+use function Safe\file_get_contents;
+use function Safe\file_put_contents;
+use function Safe\filemtime;
+use function Safe\filesize;
+use function Safe\preg_match;
+use function Safe\preg_replace_callback;
+use function Safe\preg_split;
+use function Safe\readfile;
+use function Safe\scandir;
 
 final class LogParser extends CommonGLPI
 {
@@ -57,7 +68,7 @@ final class LogParser extends CommonGLPI
     public function __construct(string $directory = GLPI_LOG_DIR)
     {
         if (!is_dir($directory)) {
-            throw new \RuntimeException(sprintf('Invalid directory "%s".', $directory));
+            throw new RuntimeException(sprintf('Invalid directory "%s".', $directory));
         }
 
         $this->directory = $directory;
@@ -236,7 +247,7 @@ final class LogParser extends CommonGLPI
             return false;
         }
 
-        return unlink($fullpath);
+        return unlink($fullpath); //@phpstan-ignore theCodingMachineSafe.function (false is expected)
     }
 
     /**
@@ -246,15 +257,17 @@ final class LogParser extends CommonGLPI
      *
      * @return string|null
      */
-    private function getFullPath(string $filepath): ?string
+    public function getFullPath(string $filepath): ?string
     {
-        $filepath = str_replace('\\', '/', $filepath);
-
-        if (preg_match('/\/..\//', $filepath) === 1) {
-            return null; // Security check
+        $logs_dir_path = realpath($this->directory); //@phpstan-ignore theCodingMachineSafe.function (false is explicitly tested)
+        if ($logs_dir_path === false) {
+            return null;
         }
 
-        $fullpath = $this->directory . '/' . $filepath;
+        $fullpath = realpath($logs_dir_path . '/' . $filepath); //@phpstan-ignore theCodingMachineSafe.function (false is explicitly tested)
+        if ($fullpath === false || !str_starts_with($fullpath, $logs_dir_path)) {
+            return null; // Security check
+        }
 
         return file_exists($fullpath) && !is_dir($fullpath) ? $fullpath : null;
     }

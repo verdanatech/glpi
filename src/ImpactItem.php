@@ -52,7 +52,7 @@ class ImpactItem extends CommonDBTM
         CommonDBTM $item,
         bool $create_if_missing = true
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $it = $DB->request([
@@ -71,7 +71,7 @@ class ImpactItem extends CommonDBTM
 
         if ($res) {
             $id = $res['id'];
-        } elseif (!$res && $create_if_missing) {
+        } elseif ($create_if_missing) {
             $id = $impact_item->add([
                 'itemtype' => get_class($item),
                 'items_id' => $item->fields['id'],

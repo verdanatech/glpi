@@ -41,6 +41,9 @@ use Glpi\DBAL\QueryUnion;
 use Glpi\Plugin\Hooks;
 use Glpi\Search\SearchOption;
 
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
+
 /**
  * This class manages locks
  * Lock management is available for objects and link between objects. It relies on the use of
@@ -76,7 +79,7 @@ class Lock extends CommonGLPI
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -131,7 +134,7 @@ TWIG;
             // get locked field for other lockable object
             foreach ($CFG_GLPI['inventory_lockable_objects'] as $lockable_itemtype) {
                 $lockable_itemtype_table = getTableForItemType($lockable_itemtype);
-                $lockable_object = new $lockable_itemtype();
+                $lockable_object = getItemForItemtype($lockable_itemtype);
                 $query  = [
                     'SELECT' => $lockedfield_table . ".*",
                     'FROM'   => $lockedfield_table,
@@ -221,7 +224,7 @@ TWIG;
                 } elseif (isForeignKeyField($row['field'])) {
                     // on fkey, we can try to retrieve the object
                     $object = getItemtypeForForeignKeyField($row['field']);
-                    if ($object !== 'UNKNOWN') {
+                    if ($object !== null) {
                         $field_label = $object::getTypeName(1);
                     }
                 }
@@ -231,7 +234,7 @@ TWIG;
                 }
 
                 //load object
-                $object = new $row['itemtype']();
+                $object = getItemForItemtype($row['itemtype']);
                 $object->getFromDB($row['items_id']);
 
                 $default_itemtype_label = $row['itemtype']::getTypeName();
@@ -275,7 +278,7 @@ TWIG;
                 // specific link for CommonDBRelation itemtype (like Item_OperatingSystem)
                 // get 'real' object name inside URL name
                 // ex: get 'Ubuntu 22.04.1 LTS' instead of 'Computer asus-desktop'
-                if ($default_items_id !== null && is_a($row['itemtype'], CommonDBRelation::class, true)) {
+                if ($default_items_id !== null && is_a($row['itemtype'], CommonDBRelation::class, true) && is_a($default_itemtype, CommonDBTM::class, true)) {
                     $related_object = new $default_itemtype();
                     $related_object->getFromDB($object->fields[$default_items_id]);
                     $name = htmlescape($related_object->getName());
@@ -311,9 +314,7 @@ TWIG;
             'entries' => $entries,
             'total_number' => count($entries),
             'filtered_number' => count($entries),
-            'showmassiveactions' => count(array_filter($entries, static function ($entry) {
-                return $entry['showmassiveactions'];
-            })) > 0,
+            'showmassiveactions' => count(array_filter($entries, static fn($entry) => $entry['showmassiveactions'])) > 0,
             'massiveactionparams' => [
                 'num_displayed' => count($entries),
                 'container'     => 'mass' . static::class . mt_rand(),
@@ -369,9 +370,7 @@ TWIG, $twig_params);
             // Calculate reverse lookup array to avoid array_search in the callback
             $types_flipped = array_flip($types);
             // Sort results to match the order of the types in $CFG_GLPI['directconnect_types']
-            usort($results, static function ($a, $b) use ($types_flipped) {
-                return $types_flipped[$a['itemtype_peripheral']] - $types_flipped[$b['itemtype_peripheral']];
-            });
+            usort($results, static fn($a, $b) => $types_flipped[$a['itemtype_peripheral']] - $types_flipped[$b['itemtype_peripheral']]);
 
             $subtable = [
                 'columns' => [
@@ -876,7 +875,7 @@ TWIG, $twig_params);
             ];
 
             foreach ($types as $type) {
-                $type_item = new $type();
+                $type_item = getItemForItemtype($type);
 
                 $associated_type  = str_replace('Item_', '', $type);
                 $associated_table = getTableForItemType($associated_type);
@@ -906,7 +905,7 @@ TWIG, $twig_params);
 
                 foreach ($iterator as $data) {
                     $show_checkbox = $type_item->can($data['id'], UPDATE) || $type_item->can($data['id'], PURGE);
-                    $object_item_type = new $type();
+                    $object_item_type = getItemForItemtype($type);
                     $object_item_type->getFromDB($data['id']);
                     $object_name = htmlescape($data['name']);
                     $object_link = "<a href='" . $object_item_type->getLinkURL() . "'>{$object_name}</a>";
@@ -1301,8 +1300,8 @@ TWIG);
             return;
         }
 
-        $action_unlock_component = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_component';
-        $action_unlock_fields = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_fields';
+        $action_unlock_component = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_component';
+        $action_unlock_fields = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'unlock_fields';
 
         if (
             Session::haveRight($itemtype::$rightname, UPDATE)
@@ -1370,7 +1369,7 @@ TWIG);
         CommonDBTM $baseitem,
         array $ids
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         switch ($ma->getAction()) {
@@ -1437,7 +1436,7 @@ TWIG);
                         } else {
                             $ma->itemDone($baseItemType, $id, MassiveAction::ACTION_KO);
 
-                            $erroredItem = new $baseItemType();
+                            $erroredItem = getItemForItemtype($baseItemType);
                             $erroredItem->getFromDB($id);
                             $ma->addMessage($erroredItem->getErrorMessage(ERROR_ON_ACTION));
                         }

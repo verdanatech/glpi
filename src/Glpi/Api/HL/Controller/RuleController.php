@@ -35,14 +35,24 @@
 
 namespace Glpi\Api\HL\Controller;
 
+use Entity;
 use Glpi\Api\HL\Doc as Doc;
+use Glpi\Api\HL\Doc\Parameter;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\Middleware\ResultFormatterMiddleware;
+use Glpi\Api\HL\ResourceAccessor;
 use Glpi\Api\HL\Route;
 use Glpi\Api\HL\RouteVersion;
-use Glpi\Api\HL\Search;
 use Glpi\Http\JSONResponse;
 use Glpi\Http\Request;
 use Glpi\Http\Response;
+use JsonException;
+use LogicException;
+use Rule;
+use RuleAction;
+use RuleCollection;
+use RuleCriteria;
+use Session;
 
 #[Route(path: '/Rule', tags: ['Rule'], requirements: [
     'collection' => [self::class, 'getRuleCollections'],
@@ -54,13 +64,13 @@ use Glpi\Http\Response;
         [
             'name' => 'collection',
             'description' => 'Rule Collection',
-            'location' => Doc\Parameter::LOCATION_PATH,
-            'schema' => ['type' => Doc\Schema::TYPE_STRING],
+            'location' => Parameter::LOCATION_PATH,
+            'schema' => ['type' => Schema::TYPE_STRING],
         ],
         [
             'name' => 'rule_id',
             'description' => 'Rule Collection',
-            'location' => Doc\Parameter::LOCATION_PATH,
+            'location' => Parameter::LOCATION_PATH,
         ],
     ]
 )]
@@ -71,110 +81,110 @@ final class RuleController extends AbstractController
         $schemas = [
             'RuleCriteria' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-itemtype' => 'RuleCriteria',
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'rule' => self::getDropdownTypeSchema(class: \Rule::class, full_schema: 'Rule') + ['x-writeonly' => true],
+                    'rule' => self::getDropdownTypeSchema(class: Rule::class, full_schema: 'Rule') + ['x-writeonly' => true],
                     'criteria' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'The criteria to use. See /Rule/Collection/{collection}/CriteriaCriteria for a complete list of criteria.',
                     ],
                     'condition' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
+                        'type' => Schema::TYPE_INTEGER,
                         'description' => 'The condition to use. See /Rule/Collection/{collection}/CriteriaCondition for a complete list of conditions.',
                     ],
                     'pattern' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'The value/pattern to match against. If the condition relates to regular expressions, this value needs to be a valid regular expression including the delimiters.',
                     ],
                 ],
             ],
             'RuleCriteriaCondition' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 // No x-itemtype because it isn't in the DB. It cannot be searched.
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                     ],
-                    'description' => ['type' => Doc\Schema::TYPE_STRING],
+                    'description' => ['type' => Schema::TYPE_STRING],
                     'fields' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'description' => 'Fields/criteria that can be used with this condition. See /Rule/Collection/{collection}/CriteriaCriteria for a complete list of fields/criteria.',
                         'items' => [
-                            'type' => Doc\Schema::TYPE_STRING,
+                            'type' => Schema::TYPE_STRING,
                         ],
                     ],
                 ],
             ],
             'RuleCriteriaCriteria' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 // No x-itemtype because it isn't in the DB. It cannot be searched.
                 'properties' => [
-                    'id' => ['type' => Doc\Schema::TYPE_STRING],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
+                    'id' => ['type' => Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
                 ],
             ],
             'RuleActionType' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 // No x-itemtype because it isn't in the DB. It cannot be searched.
                 'properties' => [
-                    'id' => ['type' => Doc\Schema::TYPE_STRING],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
+                    'id' => ['type' => Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
                     'fields' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'description' => 'Fields/actions that can be used with this action. See /Rule/Collection/{collection}/ActionField for a complete list of fields/actions.',
                         'items' => [
-                            'type' => Doc\Schema::TYPE_STRING,
+                            'type' => Schema::TYPE_STRING,
                         ],
                     ],
                 ],
             ],
             'RuleActionField' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 // No x-itemtype because it isn't in the DB. It cannot be searched.
                 'properties' => [
-                    'id' => ['type' => Doc\Schema::TYPE_STRING],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
+                    'id' => ['type' => Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
                     'action_types' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'description' => 'Action types that can be used with this field. See /Rule/Collection/{collection}/ActionType for a complete list of action types.',
                         'items' => [
-                            'type' => Doc\Schema::TYPE_STRING,
+                            'type' => Schema::TYPE_STRING,
                         ],
                     ],
                 ],
             ],
             'RuleAction' => [
                 'x-version-introduced' => '2.0',
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-itemtype' => 'RuleAction',
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'rule' => self::getDropdownTypeSchema(class: \Rule::class, full_schema: 'Rule') + ['x-writeonly' => true],
+                    'rule' => self::getDropdownTypeSchema(class: Rule::class, full_schema: 'Rule') + ['x-writeonly' => true],
                     'action_type' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'The action to perform. See /Rule/Collection/{collection}/ActionType for a complete list of actions.',
                     ],
                     'field' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'The field to modify. See /Rule/Collection/{collection}/ActionField for a complete list of fields.',
                     ],
                     'value' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'The value to set. If the field relates to regular expressions, this can include a # followed by 0 through 9 to indicate a captured value from the criteria regular expression.',
                     ],
                 ],
@@ -182,31 +192,31 @@ final class RuleController extends AbstractController
         ];
         $schemas['Rule'] = [
             'x-version-introduced' => '2.0',
-            'type' => Doc\Schema::TYPE_OBJECT,
+            'type' => Schema::TYPE_OBJECT,
             'x-itemtype' => 'Rule',
             'properties' => [
                 'id' => [
-                    'type' => Doc\Schema::TYPE_INTEGER,
-                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                    'type' => Schema::TYPE_INTEGER,
+                    'format' => Schema::FORMAT_INTEGER_INT64,
                     'x-readonly' => true,
                 ],
                 'uuid' => [
-                    'type' => Doc\Schema::TYPE_STRING,
+                    'type' => Schema::TYPE_STRING,
                     'x-readonly' => true,
                 ],
                 'sub_type' => [
-                    'type' => Doc\Schema::TYPE_STRING,
+                    'type' => Schema::TYPE_STRING,
                     'x-writeonly' => true,
                 ],
-                'entity' => self::getDropdownTypeSchema(class: \Entity::class, full_schema: 'Entity'),
-                'is_recursive' => ['type' => Doc\Schema::TYPE_BOOLEAN],
-                'name' => ['type' => Doc\Schema::TYPE_STRING],
-                'description' => ['type' => Doc\Schema::TYPE_STRING],
-                'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                'is_active' => ['type' => Doc\Schema::TYPE_BOOLEAN],
+                'entity' => self::getDropdownTypeSchema(class: Entity::class, full_schema: 'Entity'),
+                'is_recursive' => ['type' => Schema::TYPE_BOOLEAN],
+                'name' => ['type' => Schema::TYPE_STRING],
+                'description' => ['type' => Schema::TYPE_STRING],
+                'comment' => ['type' => Schema::TYPE_STRING],
+                'is_active' => ['type' => Schema::TYPE_BOOLEAN],
                 'match' => [
                     'description' => 'Logical operator to use when matching rule criteria',
-                    'type' => Doc\Schema::TYPE_STRING,
+                    'type' => Schema::TYPE_STRING,
                     'enum' => [
                         'AND',
                         'OR',
@@ -214,18 +224,18 @@ final class RuleController extends AbstractController
                 ],
                 'condition' => [
                     'description' => 'The condition that triggers evaluation of this rule. Typically, 1 is for "On Add" and 2 is for "On Update".',
-                    'type' => Doc\Schema::TYPE_INTEGER,
+                    'type' => Schema::TYPE_INTEGER,
                 ],
                 'ranking' => [
                     'description' => 'The order in which to evaluate this rule. Lower numbers are evaluated first. Changing the ranking of a rule may shift the rankings of other rules.',
-                    'type' => Doc\Schema::TYPE_INTEGER,
-                    'format' => Doc\Schema::FORMAT_INTEGER_INT32,
+                    'type' => Schema::TYPE_INTEGER,
+                    'format' => Schema::FORMAT_INTEGER_INT32,
                 ],
                 'criteria' => [
-                    'type' => Doc\Schema::TYPE_ARRAY,
+                    'type' => Schema::TYPE_ARRAY,
                     'x-readonly' => true,
                     'items' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'x-full-schema' => 'RuleCriteria',
                         'x-join' => [
                             'table' => 'glpi_rulecriterias',
@@ -237,10 +247,10 @@ final class RuleController extends AbstractController
                     ],
                 ],
                 'actions' => [
-                    'type' => Doc\Schema::TYPE_ARRAY,
+                    'type' => Schema::TYPE_ARRAY,
                     'x-readonly' => true,
                     'items' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'x-full-schema' => 'RuleAction',
                         'x-join' => [
                             'table' => 'glpi_ruleactions',
@@ -252,13 +262,13 @@ final class RuleController extends AbstractController
                     ],
                 ],
                 'date_creation' => [
-                    'type' => Doc\Schema::TYPE_STRING,
-                    'format' => Doc\Schema::FORMAT_STRING_DATE_TIME,
+                    'type' => Schema::TYPE_STRING,
+                    'format' => Schema::FORMAT_STRING_DATE_TIME,
                     'x-readonly' => true,
                 ],
                 'date_mod' => [
-                    'type' => Doc\Schema::TYPE_STRING,
-                    'format' => Doc\Schema::FORMAT_STRING_DATE_TIME,
+                    'type' => Schema::TYPE_STRING,
+                    'format' => Schema::FORMAT_STRING_DATE_TIME,
                     'x-readonly' => true,
                 ],
             ],
@@ -271,11 +281,15 @@ final class RuleController extends AbstractController
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        /** @var class-string<\RuleCollection>[] $collections */
+        /** @var class-string<RuleCollection>[] $collections */
         $collections = $CFG_GLPI['rulecollections_types'];
         $visible_collections = [];
         foreach ($collections as $collection) {
-            /** @var \RuleCollection $instance */
+            if (!\is_a($collection, RuleCollection::class, true)) {
+                continue; // Ignore invalid classes
+            }
+
+            /** @var RuleCollection $instance */
             $instance = new $collection();
             if ($instance->canList()) {
                 $rule_class = $instance::getRuleClassName();
@@ -295,7 +309,7 @@ final class RuleController extends AbstractController
         if (!class_exists($rule_subtype)) {
             return self::getNotFoundErrorResponse();
         }
-        if (!\Session::haveRight($rule_subtype::$rightname, $right)) {
+        if (!Session::haveRight($rule_subtype::$rightname, $right)) {
             return self::getAccessDeniedErrorResponse();
         }
         return null;
@@ -305,11 +319,11 @@ final class RuleController extends AbstractController
     {
         $params = $request->getParameters();
         // Only allow updating if the criterion exists in the rule
-        $result = Search::getOneBySchema($this->getKnownSchema($schema, $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        $result = ResourceAccessor::getOneBySchema($this->getKnownSchema($schema, $this->getAPIVersion($request)), $request->getAttributes(), $params);
         try {
             $decoded = json_decode((string) $result->getBody(), true, 512, JSON_THROW_ON_ERROR);
             return isset($decoded['rule']['id']) && $decoded['rule']['id'] === (int) $request->getAttribute('rule_id');
-        } catch (\JsonException $e) {
+        } catch (JsonException $e) {
             return false;
         }
     }
@@ -324,14 +338,14 @@ final class RuleController extends AbstractController
                 'schema' => [
                     'type' => 'array',
                     'items' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'properties' => [
                             'name' => [
-                                'type' => Doc\Schema::TYPE_STRING,
+                                'type' => Schema::TYPE_STRING,
                                 'description' => 'Name of the rule collection',
                             ],
                             'rule_type' => [
-                                'type' => Doc\Schema::TYPE_STRING,
+                                'type' => Schema::TYPE_STRING,
                                 'description' => 'Type of the rules in the collection',
                             ],
                         ],
@@ -345,11 +359,15 @@ final class RuleController extends AbstractController
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        /** @var class-string<\RuleCollection>[] $collections */
+        /** @var class-string<RuleCollection>[] $collections */
         $collections = $CFG_GLPI['rulecollections_types'];
         $visible_collections = [];
         foreach ($collections as $collection) {
-            /** @var \RuleCollection $instance */
+            if (!\is_a($collection, RuleCollection::class, true)) {
+                continue; // Ignore invalid classes
+            }
+
+            /** @var RuleCollection $instance */
             $instance = new $collection();
             if ($instance->canList()) {
                 $rule_class = $instance::getRuleClassName();
@@ -381,13 +399,11 @@ final class RuleController extends AbstractController
         if ($response = $this->checkCollectionAccess($request, READ)) {
             return $response;
         }
-        /** @var class-string<\Rule> $rule_subtype */
-        $rule_subtype = 'Rule' . $request->getAttribute('collection');
-        $rule = new $rule_subtype();
+        $rule = $this->getRuleInstanceFromRequest($request);
         $possible_criteria = $rule->getCriterias();
         $conditions = [];
         foreach ($possible_criteria as $k => $v) {
-            $to_add = \RuleCriteria::getConditions($rule_subtype, $k);
+            $to_add = RuleCriteria::getConditions($rule::class, $k);
             foreach ($to_add as $i => &$j) {
                 $j = [
                     'id' => $i,
@@ -419,9 +435,7 @@ final class RuleController extends AbstractController
         if ($response = $this->checkCollectionAccess($request, READ)) {
             return $response;
         }
-        /** @var class-string<\Rule> $rule_subtype */
-        $rule_subtype = 'Rule' . $request->getAttribute('collection');
-        $rule = new $rule_subtype();
+        $rule = $this->getRuleInstanceFromRequest($request);
         $possible_criteria = $rule->getCriterias();
         $result = [];
         foreach ($possible_criteria as $k => $v) {
@@ -449,11 +463,9 @@ final class RuleController extends AbstractController
         if ($response = $this->checkCollectionAccess($request, READ)) {
             return $response;
         }
-        /** @var class-string<\Rule> $rule_subtype */
-        $rule_subtype = 'Rule' . $request->getAttribute('collection');
-        $rule = new $rule_subtype();
+        $rule = $this->getRuleInstanceFromRequest($request);
         $fields = $rule->getActions();
-        $types = \RuleAction::getActions();
+        $types = RuleAction::getActions();
         $result = [];
         foreach ($fields as $fk => $fv) {
             foreach ($types as $k => $v) {
@@ -487,9 +499,7 @@ final class RuleController extends AbstractController
         if ($response = $this->checkCollectionAccess($request, READ)) {
             return $response;
         }
-        /** @var class-string<\Rule> $rule_subtype */
-        $rule_subtype = 'Rule' . $request->getAttribute('collection');
-        $rule = new $rule_subtype();
+        $rule = $this->getRuleInstanceFromRequest($request);
         $possible_actions = $rule->getActions();
         $result = [];
         foreach ($possible_actions as $k => $v) {
@@ -524,7 +534,7 @@ final class RuleController extends AbstractController
         $filter .= ';sub_type==Rule' . $request->getAttribute('collection');
         $params['filter'] = $filter;
 
-        return Search::searchBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $params);
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{id}', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -549,7 +559,7 @@ final class RuleController extends AbstractController
         $filter .= ';sub_type==Rule' . $request->getAttribute('collection');
         $params['filter'] = $filter;
 
-        return Search::getOneBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{id}/Criteria', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -574,7 +584,7 @@ final class RuleController extends AbstractController
         $filter .= ';rule==' . $request->getAttribute('id');
         $params['filter'] = $filter;
 
-        return Search::searchBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $params);
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Criteria/{id}', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -599,7 +609,7 @@ final class RuleController extends AbstractController
         $filter .= ';rule==' . $request->getAttribute('rule_id');
         $params['filter'] = $filter;
 
-        return Search::getOneBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{id}/Action', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -624,7 +634,7 @@ final class RuleController extends AbstractController
         $filter .= ';rule==' . $request->getAttribute('rule_id');
         $params['filter'] = $filter;
 
-        return Search::searchBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $params);
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Action/{id}', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -649,7 +659,7 @@ final class RuleController extends AbstractController
         $filter .= ';rule==' . $request->getAttribute('rule_id');
         $params['filter'] = $filter;
 
-        return Search::getOneBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule', methods: ['POST'])]
@@ -659,7 +669,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'Rule',
             ],
         ]
@@ -673,7 +683,7 @@ final class RuleController extends AbstractController
         $params = $request->getParameters();
         $params['sub_type'] = 'Rule' . $request->getAttribute('collection');
 
-        return Search::createBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $params, [self::class, 'getRule'], [
+        return ResourceAccessor::createBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $params, [self::class, 'getRule'], [
             'mapped' => [
                 'collection' => $request->getAttribute('collection'),
             ],
@@ -687,7 +697,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'Rule',
             ],
         ]
@@ -701,7 +711,7 @@ final class RuleController extends AbstractController
         $params = $request->getParameters();
         $params['sub_type'] = 'Rule' . $request->getAttribute('collection');
 
-        return Search::updateBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{id}', methods: ['DELETE'])]
@@ -714,7 +724,7 @@ final class RuleController extends AbstractController
         if ($response = $this->checkCollectionAccess($request, PURGE)) {
             return $response;
         }
-        return Search::deleteBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('Rule', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Criteria', methods: ['POST'], middlewares: [ResultFormatterMiddleware::class])]
@@ -724,7 +734,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleCriteria',
             ],
         ]
@@ -738,7 +748,7 @@ final class RuleController extends AbstractController
         $params = $request->getParameters();
         $params['rule'] = $request->getAttribute('rule_id');
 
-        return Search::createBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $params, [self::class, 'getRuleCriterion'], [
+        return ResourceAccessor::createBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $params, [self::class, 'getRuleCriterion'], [
             'mapped' => [
                 'rule_id' => $request->getAttribute('rule_id'),
                 'collection' => $request->getAttribute('collection'),
@@ -753,7 +763,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleCriteria',
             ],
         ]
@@ -772,7 +782,7 @@ final class RuleController extends AbstractController
         $params['id'] = $request->getAttribute('id');
         $params['rule.id'] = $request->getAttribute('rule_id');
 
-        return Search::updateBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Criteria/{id}', methods: ['DELETE'], middlewares: [ResultFormatterMiddleware::class])]
@@ -782,7 +792,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleCriteria',
             ],
         ]
@@ -796,7 +806,7 @@ final class RuleController extends AbstractController
             return self::getNotFoundErrorResponse();
         }
 
-        return Search::deleteBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('RuleCriteria', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Action', methods: ['POST'], middlewares: [ResultFormatterMiddleware::class])]
@@ -806,7 +816,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleAction',
             ],
         ]
@@ -820,7 +830,7 @@ final class RuleController extends AbstractController
         $params = $request->getParameters();
         $params['rule'] = $request->getAttribute('rule_id');
 
-        return Search::createBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $params, [self::class, 'getRuleAction'], [
+        return ResourceAccessor::createBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $params, [self::class, 'getRuleAction'], [
             'mapped' => [
                 'rule_id' => $request->getAttribute('rule_id'),
                 'collection' => $request->getAttribute('collection'),
@@ -835,7 +845,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleAction',
             ],
         ]
@@ -854,7 +864,7 @@ final class RuleController extends AbstractController
         $params['id'] = $request->getAttribute('id');
         $params['rule.id'] = $request->getAttribute('rule_id');
 
-        return Search::updateBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $params);
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $params);
     }
 
     #[Route(path: '/Collection/{collection}/Rule/{rule_id}/Action/{id}', methods: ['DELETE'], middlewares: [ResultFormatterMiddleware::class])]
@@ -864,7 +874,7 @@ final class RuleController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'RuleAction',
             ],
         ]
@@ -878,6 +888,17 @@ final class RuleController extends AbstractController
             return self::getNotFoundErrorResponse();
         }
 
-        return Search::deleteBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('RuleAction', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+    }
+
+    private function getRuleInstanceFromRequest(Request $request): Rule
+    {
+        $expected_class = 'Rule' . $request->getAttribute('collection');
+
+        if (!\is_a($expected_class, Rule::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $expected_class();
     }
 }

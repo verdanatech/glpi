@@ -95,7 +95,8 @@ function getTableNameForForeignKeyField($fkname)
  *
  * @param $table string table name
  *
- * @return string itemtype corresponding to a table name parameter
+ * @return class-string<CommonDBTM>|null itemtype corresponding to a table name parameter,
+ *      or null if no valid itemtype is attached to the table
  **/
 function getItemTypeForTable($table)
 {
@@ -104,16 +105,35 @@ function getItemTypeForTable($table)
 }
 
 /**
+ * Return an item instance for the corresponding table.
+ */
+function getItemForTable(string $table): ?CommonDBTM
+{
+    $dbu = new DbUtils();
+    return $dbu->getItemForTable($table);
+}
+
+/**
  * Return ItemType for a foreign key
  *
  * @param string $fkname
  *
- * @return class-string<CommonDBTM> Itemtype class for the fkname parameter
+ * @return class-string<CommonDBTM>|null Itemtype class for the fkname parameter,
+ *      or null if no valid itemtype is attached to the foreign key field
  */
 function getItemtypeForForeignKeyField($fkname)
 {
     $dbu = new DbUtils();
     return $dbu->getItemtypeForForeignKeyField($fkname);
+}
+
+/**
+ * Return an item instance for the corresponding foreign key field.
+ */
+function getItemForForeignKeyField(string $fkname): ?CommonDBTM
+{
+    $dbu = new DbUtils();
+    return $dbu->getItemForForeignKeyField($fkname);
 }
 
 /**
@@ -309,7 +329,7 @@ function getTreeValueCompleteName($table, $ID, $withcomment = false, $translate 
  * @param $wholename    string   current name to complete (use for recursivity) (default '')
  * @param $level        integer  current level of recursion (default 0)
  *
- * @return string name
+ * @return array name
  **/
 function getTreeValueName($table, $ID, $wholename = "", $level = 0)
 {
@@ -353,8 +373,8 @@ function getSonsOf($table, $IDf)
  *
  * @since 0.84
  *
- * @param $table  string   table name
- * @param $IDf    integer  The ID of the father
+ * @param string $table    table name
+ * @param int    $IDf      The ID of the father
  *
  * @return array of IDs of the sons and the ancestors
  **/
@@ -548,7 +568,7 @@ function autoName($objectName, $field, $isTemplate, $itemtype, $entities_id = -1
  * @param string $begin  begin date
  * @param string $end    end date
  *
- * @return string
+ * @return array
  **/
 function getDateCriteria($field, $begin, $end)
 {
@@ -589,7 +609,7 @@ function importArrayFromDB($DATA)
  *
  * @param $time datetime: time
  *
- * @return  array
+ * @return string
  **/
 function get_hour_from_sql($time)
 {

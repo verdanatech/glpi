@@ -40,7 +40,7 @@
 <div class="py-2 px-3">
     <h2 class="d-flex">
         <i class="{{ icon }} me-2"></i>
-        {{ __("Items to create") }}
+        {{ _n("Item to create", "Items to create", get_plural_number()) }}
     </h2>
 
     {% for warning in warnings %}
@@ -84,13 +84,14 @@
             {{ __("No items will be created for this form.") }}
         </p>
     {% else %}
-        <div class="accordion mt-4" id="glpi-destinations-accordion">
+        <section class="accordion mt-4" id="glpi-destinations-accordion" aria-label="{{ __("Form destinations") }}">
             {% for destination in destinations %}
                 {% set is_expanded = active_destination == destination.getID() or destinations|length == 1 %}
                 {% set concrete_destination = destination.getConcreteDestinationItem() %}
                 {% set rand = random() %}
-                <div
+                <section
                     class="accordion-item"
+                    aria-label="{{ destination.getName() }}"
                 >
                     <div class="accordion-header">
                         <div
@@ -165,9 +166,9 @@
                             </form>
                         </div>
                     </div>
-                </div>
+                </section>
             {% endfor %}
-        </div>
+        </section>
     {% endif %}
 </div>
 
@@ -180,13 +181,3 @@
         new m.GlpiFormDestinationConditionController();
     });
 </script>
-
-<style>
-    /* Should be handled by tabler but it doesn't seem to be active */
-    .accordion-header {
-        color: var(--tblr-dark);
-    }
-    .accordion-item {
-        color: var(--tblr-dark);
-    }
-</style>

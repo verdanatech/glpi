@@ -35,12 +35,13 @@
 namespace Glpi\Controller;
 
 use CommonDBTM;
-use Html;
 use Glpi\Event;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\Exception\Http\NotFoundHttpException;
 use Glpi\Http\RedirectResponse;
+use Html;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -106,7 +107,7 @@ class GenericFormController extends AbstractController
         $post_data = $request->request->all();
 
         /* @var CommonDBTM $object */
-        $object = new $class();
+        $object = getItemForItemtype($class);
 
         if (!$object::isNewID($id) && !$object->getFromDB($id)) {
             throw new NotFoundHttpException();
@@ -130,7 +131,7 @@ class GenericFormController extends AbstractController
             'delete', 'restore' => $object->can($id, DELETE, $post_data),
             'purge' => $object->can($id, PURGE, $post_data),
             'update', 'unglobalize' => $object->can($id, UPDATE, $post_data),
-            default => throw new \RuntimeException(\sprintf("Unsupported object action \"%s\".", $form_action)),
+            default => throw new RuntimeException(\sprintf("Unsupported object action \"%s\".", $form_action)),
         };
 
         if (!$can_do_action) {
@@ -142,10 +143,10 @@ class GenericFormController extends AbstractController
             'add' => $object->add($post_data),
             'delete' => $object->delete($post_data),
             'restore' => $object->restore($post_data),
-            'purge' => $object->delete($post_data, 1),
+            'purge' => $object->delete($post_data, true),
             'update' => $object->update($post_data),
             'unglobalize' => $object->unglobalize(),
-            default => throw new \RuntimeException(\sprintf("Unsupported object action \"%s\".", $form_action)),
+            default => throw new RuntimeException(\sprintf("Unsupported object action \"%s\".", $form_action)),
         };
 
         if ($action_result) {
@@ -163,7 +164,7 @@ class GenericFormController extends AbstractController
             );
         }
 
-        $post_action = $object::getPostFormAction($form_action);
+        $post_action = $object::getPostFormAction($form_action, $action_result);
 
         return match ($post_action) {
             'backcreated' => $_SESSION['glpibackcreated']

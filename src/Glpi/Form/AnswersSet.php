@@ -38,9 +38,12 @@ namespace Glpi\Form;
 use CommonDBChild;
 use CommonDBTM;
 use Glpi\Form\Destination\AnswersSet_FormDestinationItem;
+use InvalidArgumentException;
 use Override;
 use ReflectionClass;
 use User;
+
+use function Safe\json_decode;
 
 /**
  * Answers set for a given helpdesk form
@@ -91,7 +94,7 @@ final class AnswersSet extends CommonDBChild
         foreach ($raw_answers as $raw_answer) {
             try {
                 $answers[] = Answer::fromDecodedJsonData($raw_answer);
-            } catch (\InvalidArgumentException $e) {
+            } catch (InvalidArgumentException $e) {
                 // Skip invalid data
                 continue;
             }
@@ -200,7 +203,7 @@ final class AnswersSet extends CommonDBChild
     /**
      * Get items linked to this form answers set
      *
-     * @return \CommonDBTM[]
+     * @return CommonDBTM[]
      */
     public function getCreatedItems(): array
     {
@@ -250,7 +253,7 @@ final class AnswersSet extends CommonDBChild
         // If no items were created, display one link to the answers themselves
         // TODO: delete this later as we will force at least one ticket to
         // be always created.
-        if (empty($links)) {
+        if ($links === []) {
             $links[] = $this->getLink();
         }
 

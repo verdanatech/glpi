@@ -38,6 +38,9 @@
  * @var Migration $migration
  */
 
+use function Safe\json_decode;
+use function Safe\json_encode;
+
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -99,6 +102,15 @@ SQL;
                 )
             );
         }
+    }
+
+    // Add `Asset` suffix to custom asset classes.
+    foreach ($definitions_iterator as $definition_data) {
+        $migration->renameItemtype(
+            'Glpi\\CustomAsset\\' . $definition_data['system_name'],
+            'Glpi\\CustomAsset\\' . $definition_data['system_name'] . 'Asset',
+            false
+        );
     }
 }
 
@@ -259,3 +271,6 @@ SQL;
     $migration->addField('glpi_assets_customfielddefinitions', 'date_mod', 'timestamp');
     $migration->addKey('glpi_assets_customfielddefinitions', 'date_mod');
 }
+
+// New config values
+$migration->addConfig(['glpi_11_assets_migration' => 0]);

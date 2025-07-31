@@ -35,6 +35,8 @@
 
 use Glpi\Features\Clonable;
 
+use function Safe\preg_match;
+
 /**
  * Blacklist Class
  *
@@ -54,9 +56,8 @@ class Blacklist extends CommonDropdown
     /**
      * Loaded blacklists.
      * Used for caching purposes.
-     * @var array
      */
-    private $blacklists;
+    private ?array $blacklists = null;
 
     public const IP             = 1;
     public const MAC            = 2;
@@ -265,7 +266,7 @@ class Blacklist extends CommonDropdown
 
     private function loadBlacklists()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request(['FROM' => self::getTable()]);
@@ -282,7 +283,7 @@ class Blacklist extends CommonDropdown
     /**
      * Get blacklisted items for a specific type
      *
-     * @param string $type type to get (see constants)
+     * @param int $type type to get (see constants)
      *
      * @return array Array of blacklisted items
      **/

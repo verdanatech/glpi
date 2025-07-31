@@ -32,7 +32,6 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Cache\CacheManager;
 use Glpi\Cache\I18nCache;
 use Glpi\Controller\InventoryController;
@@ -41,10 +40,26 @@ use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\SessionExpiredException;
 use Glpi\Plugin\Hooks;
 use Glpi\Session\SessionInfo;
+use Laminas\I18n\Translator\Translator;
+use Laminas\I18n\Translator\TranslatorInterface;
+use Safe\Exceptions\InfoException;
+use Safe\Exceptions\SessionException;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\ini_get;
+use function Safe\preg_match;
+use function Safe\scandir;
+use function Safe\session_id;
+use function Safe\session_regenerate_id;
+use function Safe\session_save_path;
+use function Safe\session_start;
+use function Safe\session_unset;
+use function Safe\session_write_close;
+use function Safe\strtotime;
 
 /**
  * Session Class
+ * @phpstan-import-type RightDefinition from Profile
  **/
 class Session
 {
@@ -255,6 +270,14 @@ class Session
             session_start();
         }
 
+        self::initVars();
+    }
+
+    /**
+     * Initialize session variables.
+     */
+    public static function initVars(): void
+    {
         // Define current time for sync of action timing
         $_SESSION["glpi_currenttime"] = date("Y-m-d H:i:s");
 
@@ -448,7 +471,7 @@ class Session
                     if ($val['is_recursive']) {
                         $entities = getSonsOf("glpi_entities", $val['id']);
                         if (count($entities)) {
-                            foreach ($entities as $key2 => $val2) {
+                            foreach (array_keys($entities) as $key2) {
                                 $newentities[$key2] = $key2;
                             }
                         }
@@ -477,7 +500,7 @@ class Session
                 if ($is_recursive) {
                     $entities = getSonsOf("glpi_entities", $ID);
                     if (count($entities)) {
-                        foreach ($entities as $key2 => $val2) {
+                        foreach (array_keys($entities) as $key2) {
                             $newentities[$key2] = $key2;
                         }
                     }
@@ -612,7 +635,7 @@ class Session
      **/
     public static function initEntityProfiles($userID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $_SESSION['glpiprofiles'] = [];
@@ -695,7 +718,7 @@ class Session
      **/
     public static function loadGroups()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $_SESSION["glpigroups"] = [];
@@ -739,7 +762,7 @@ class Session
                 // Stack of children to load
                 $children_to_load = [$data["groups_id"]];
 
-                while (!empty($children_to_load)) {
+                while ($children_to_load !== []) {
                     $next_child_to_load = array_pop($children_to_load);
 
                     // Note: we can't use getSonsOf here because some groups in the
@@ -783,13 +806,13 @@ class Session
      * @param string  $forcelang     Force to load a specific lang
      * @param boolean $with_plugins  Whether to load plugin languages or not
      *
-     * @return void
+     * @return string
      **/
     public static function loadLanguage($forcelang = '', $with_plugins = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \Laminas\I18n\Translator\TranslatorInterface $TRANSLATE
+         * @var TranslatorInterface $TRANSLATE
          */
         global $CFG_GLPI, $TRANSLATE;
 
@@ -820,12 +843,14 @@ class Session
             $_SESSION['glpipluralnumber'] = $CFG_GLPI["languages"][$trytoload][5];
         }
 
+        $_SESSION['glpiisrtl'] = self::isRTL($trytoload);
+
         // Redefine Translator caching logic to be able to drop laminas/laminas-cache dependency.
         $i18n_cache = !defined('TU_USER') ? new I18nCache((new CacheManager())->getTranslationsCacheInstance()) : null;
-        $TRANSLATE = new class ($i18n_cache) extends Laminas\I18n\Translator\Translator { // @phpstan-ignore class.extendsFinalByPhpDoc
+        $TRANSLATE = new class ($i18n_cache) extends Translator { // @phpstan-ignore class.extendsFinalByPhpDoc
             public function __construct(?I18nCache $cache)
             {
-                $this->cache = $cache;
+                $this->cache = $cache; // @phpstan-ignore assign.propertyType (laminas...)
             }
         };
 
@@ -834,7 +859,7 @@ class Session
         if (class_exists('Locale')) {
             // Locale class may be missing if intl extension is not installed.
             // In this case, we may still want to be able to load translations (for instance for requirements checks).
-            \Locale::setDefault($trytoload);
+            Locale::setDefault($trytoload);
         } else {
             trigger_error('Missing required intl PHP extension', E_USER_WARNING);
         }
@@ -987,11 +1012,7 @@ class Session
         ) { // Check cron jobs
             return $_SESSION["glpicronuserrunning"] ?? $_SESSION['glpiinventoryuserrunning'];
         }
-
-        if (isset($_SESSION["glpiID"])) {
-            return $_SESSION["glpiID"];
-        }
-        return false;
+        return $_SESSION["glpiID"] ?? false;
     }
 
     /**
@@ -1005,7 +1026,7 @@ class Session
      **/
     public static function checkValidSessionId()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (
@@ -1158,7 +1179,11 @@ class Session
             UNLOCK => 'UNLOCK',
         ];
         // Close session and force the default language so the logged right name is standardized
-        session_write_close();
+        try {
+            session_write_close();
+        } catch (SessionException $e) {
+            //empty catch; session may already be closed
+        }
         $current_lang = $_SESSION['glpilanguage'];
         self::loadLanguage('en_GB');
 
@@ -1190,7 +1215,7 @@ class Session
     }
 
     /**
-     * Check if I have the right $right to module $module (conpare to session variable)
+     * Check if I have the right $right to module $module (compare to session variable)
      *
      * @param string  $module Module to check
      * @param integer $right  Right to check
@@ -1207,7 +1232,7 @@ class Session
     }
 
     /**
-     * Check if I one right of array $rights to module $module (conpare to session variable)
+     * Check if I one right of array $rights to module $module (compare to session variable)
      *
      * @param string $module Module to check
      * @param array  $rights Rights to check
@@ -1372,7 +1397,7 @@ class Session
 
 
     /**
-     * Have I the right $right to module $module (conpare to session variable)
+     * Have I the right $right to module $module (compare to session variable)
      *
      * @param string  $module Module to check
      * @param integer $right  Right to check
@@ -1381,7 +1406,7 @@ class Session
      **/
     public static function haveRight($module, $right)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (self::isRightChecksDisabled() || Session::isInventory() || Session::isCron()) {
@@ -1405,7 +1430,7 @@ class Session
 
 
     /**
-     * Have I all rights of array $rights to module $module (conpare to session variable)
+     * Have I all rights of array $rights to module $module (compare to session variable)
      *
      * @param string    $module Module to check
      * @param integer[] $rights Rights to check
@@ -1454,10 +1479,7 @@ class Session
     public static function getActiveTab($itemtype)
     {
 
-        if (isset($_SESSION['glpi_tabs'][strtolower($itemtype)])) {
-            return $_SESSION['glpi_tabs'][strtolower($itemtype)];
-        }
-        return "";
+        return $_SESSION['glpi_tabs'][strtolower($itemtype)] ?? "";
     }
 
     /**
@@ -1588,11 +1610,7 @@ class Session
         if (isset($_REQUEST[$name])) {
             return $_SESSION['glpi_saved'][$itemtype][$name] = $_REQUEST[$name];
         }
-
-        if (isset($_SESSION['glpi_saved'][$itemtype][$name])) {
-            return $_SESSION['glpi_saved'][$itemtype][$name];
-        }
-        return $defvalue;
+        return $_SESSION['glpi_saved'][$itemtype][$name] ?? $defvalue;
     }
 
 
@@ -1897,7 +1915,7 @@ class Session
      */
     public static function canImpersonate($user_id, ?string &$message = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $is_super_admin = self::haveRight(Config::$rightname, UPDATE);
@@ -2074,12 +2092,11 @@ class Session
     /**
      * Return impersonator user id.
      *
-     * @return string|null
+     * @return int|null
      */
     public static function getImpersonatorId()
     {
-
-        return self::isImpersonateActive() ? $_SESSION['impersonator_id'] : null;
+        return self::isImpersonateActive() ? (int) $_SESSION['impersonator_id'] : null;
     }
 
     /**
@@ -2274,7 +2291,7 @@ class Session
      */
     public static function getCurrentTime(): ?string
     {
-        // TODO (11.0 refactoring): replace references to $_SESSION['glpi_currenttime'] by a call to this function
+        // TODO replace references to $_SESSION['glpi_currenttime'] by a call to this function
         return $_SESSION['glpi_currenttime'] ?? null;
     }
 
@@ -2294,7 +2311,11 @@ class Session
      */
     public static function canWriteSessionFiles(): bool
     {
-        $session_handler = ini_get('session.save_handler');
+        try {
+            $session_handler = ini_get('session.save_handler');
+        } catch (InfoException $e) {
+            $session_handler = false;
+        }
         return $session_handler !== false
             && (strtolower($session_handler) !== 'files' || is_writable(GLPI_SESSION_DIR));
     }
@@ -2352,7 +2373,7 @@ class Session
         }
 
         $profile = Profile::getById($profile_id);
-        if (!$profile) {
+        if (!$profile instanceof Profile) {
             throw new RuntimeException("Failed to load profile: $profile_id");
         }
 
@@ -2385,5 +2406,22 @@ class Session
     public static function isRightChecksDisabled(): bool
     {
         return self::$bypass_right_checks;
+    }
+
+    /**
+     * Is locale RTL
+     * See native PHP 8.5 function locale_is_right_to_left
+     *
+     * @param $locale
+     *
+     * @return bool
+     */
+    public static function isRTL($locale): bool
+    {
+        if (function_exists('locale_is_right_to_left')) {
+            return locale_is_right_to_left($locale);
+        }
+
+        return (bool) preg_match('/^(?:ar|he|fa|ur|ps|sd|ug|ckb|yi|dv|ku_arab|ku-arab)(?:[_-].*)?$/i', $locale);
     }
 }

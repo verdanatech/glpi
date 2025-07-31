@@ -66,7 +66,8 @@ final class ValidateAnswerController extends AbstractController
         $section = $this->loadSubmittedSection($request);
         $this->checkFormAccessPolicies($form, $request);
 
-        $validation_result = $this->checkSubmittedAnswersValidation($section, $request);
+        $questions_container = $section ?? $form;
+        $validation_result = $this->checkSubmittedAnswersValidation($questions_container, $request);
         return new JsonResponse([
             'success' => $validation_result->isValid(),
             'errors' => $validation_result->getErrors(),
@@ -81,18 +82,18 @@ final class ValidateAnswerController extends AbstractController
         }
 
         $form = Form::getById($forms_id);
-        if (!$form) {
+        if (!$form instanceof Form) {
             throw new NotFoundHttpException();
         }
 
         return $form;
     }
 
-    private function loadSubmittedSection(Request $request): Section
+    private function loadSubmittedSection(Request $request): ?Section
     {
         $section_uuid = $request->request->getString("section_uuid");
         if (!$section_uuid) {
-            throw new BadRequestHttpException();
+            return null;
         }
 
         $section = Section::getByUuid($section_uuid);
@@ -111,7 +112,7 @@ final class ValidateAnswerController extends AbstractController
         $provider = new EndUserInputNameProvider();
 
         $answers = $provider->getAnswers($post);
-        if (empty($answers)) {
+        if ($answers === []) {
             throw new BadRequestHttpException();
         }
 

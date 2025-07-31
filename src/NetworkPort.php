@@ -35,8 +35,12 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryUnion;
 use Glpi\Plugin\Hooks;
 use Glpi\Socket;
+
+use function Safe\preg_replace;
+use function Safe\strtotime;
 
 /**
  * NetworkPort Class
@@ -86,13 +90,13 @@ class NetworkPort extends CommonDBChild
             case 'input_for_instantiation':
             case 'input_for_NetworkName':
             case 'input_for_NetworkPortConnect':
-                Toolbox::deprecated(sprintf('Reading private property %s::%s is deprecated', __CLASS__, $property));
+                Toolbox::deprecated(sprintf('Reading private property %s::%s is deprecated', self::class, $property));
                 $value = $this->$property;
                 break;
             default:
                 $trace = debug_backtrace();
                 trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
+                    sprintf('Undefined property: %s::%s in %s on line %d', self::class, $property, $trace[0]['file'], $trace[0]['line']),
                     E_USER_WARNING
                 );
                 break;
@@ -111,13 +115,13 @@ class NetworkPort extends CommonDBChild
             case 'input_for_instantiation':
             case 'input_for_NetworkName':
             case 'input_for_NetworkPortConnect':
-                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', __CLASS__, $property));
+                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', self::class, $property));
                 $this->$property = $value;
                 break;
             default:
                 $trace = debug_backtrace();
                 trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
+                    sprintf('Undefined property: %s::%s in %s on line %d', self::class, $property, $trace[0]['file'], $trace[0]['line']),
                     E_USER_WARNING
                 );
                 break;
@@ -248,7 +252,7 @@ class NetworkPort extends CommonDBChild
 
     public function post_updateItem($history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (count($this->updates)) {
@@ -565,7 +569,7 @@ class NetworkPort extends CommonDBChild
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -640,7 +644,7 @@ class NetworkPort extends CommonDBChild
         ];
 
         $so = $netport->rawSearchOptions();
-        foreach (Plugin::getAddSearchOptions(__CLASS__) as $key => $data) {
+        foreach (Plugin::getAddSearchOptions(self::class) as $key => $data) {
             $so[] = ['id' => $key] + $data;
         }
 
@@ -728,7 +732,7 @@ class NetworkPort extends CommonDBChild
 
         $rand = mt_rand();
         if ($showmassiveactions) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+            Html::openMassiveActionsForm('mass' . self::class . $rand);
         }
 
         Session::initNavigateListItems(
@@ -746,7 +750,7 @@ class NetworkPort extends CommonDBChild
             $massiveactionparams = [
                 'num_displayed'  => min($_SESSION['glpilist_limit'], count($ports_iterator)),
                 'check_itemtype' => $itemtype,
-                'container'      => 'mass' . __CLASS__ . $rand,
+                'container'      => 'mass' . self::class . $rand,
                 'check_items_id' => $items_id,
             ];
             Html::showMassiveActions($massiveactionparams);
@@ -776,7 +780,7 @@ class NetworkPort extends CommonDBChild
         //display table headers
         echo "<tr>";
         if ($canedit) {
-            echo "<td>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand, '__RAND__') . "</td>";
+            echo "<td>" . Html::getCheckAllAsCheckbox('mass' . self::class . $rand, '__RAND__') . "</td>";
         }
         foreach ($dprefs as $dpref) {
             echo "<th>";
@@ -892,8 +896,11 @@ class NetworkPort extends CommonDBChild
      */
     protected function showPort(array $port, $dprefs, $so, $canedit, $agg, $rand, $with_ma = true)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
+        /**
+         * @var DBmysql $DB
+         * @var array $CFG_GLPI
+         */
+        global $DB, $CFG_GLPI;
 
         $css_class = 'netport';
         if ((int) $port['ifstatus'] === 1) {
@@ -909,7 +916,7 @@ class NetworkPort extends CommonDBChild
         $port_number = $port['logical_number'] ?? "";
         $whole_output = "<tr class='$css_class' id='port_number_{$port_number}'>";
         if ($canedit && $with_ma) {
-            $whole_output .= "<td>" . Html::getMassiveActionCheckBox(__CLASS__, $port['id']) . "</td>";
+            $whole_output .= "<td>" . Html::getMassiveActionCheckBox(self::class, $port['id']) . "</td>";
         }
         foreach ($dprefs as $dpref) {
             $output = '';
@@ -1073,7 +1080,7 @@ class NetworkPort extends CommonDBChild
 
                             $device2 = $oppositePort->getItem();
                             if ($device2 !== false) {
-                                $output .= $this->getUnmanagedLink($device2, $oppositePort);
+                                $output .= $this->getAssetLink($oppositePort);
 
                                 //equipments connected to hubs
                                 if ($device2::class === Unmanaged::class && $device2->fields['hub'] == 1) {
@@ -1093,26 +1100,43 @@ class NetworkPort extends CommonDBChild
                                         $list_ports[] = $npo;
                                     }
 
-                                    $hub_equipments = $DB->request([
-                                        'SELECT' => ['unm.*', 'netp.mac'],
-                                        'FROM'   => Unmanaged::getTable() . ' AS unm',
-                                        'INNER JOIN'   => [
-                                            self::getTable() . ' AS netp' => [
-                                                'ON' => [
-                                                    'netp'   => 'items_id',
-                                                    'unm'    => 'id', [
-                                                        'AND' => [
-                                                            'netp.itemtype' => $device2::class,
+                                    $itemtypes = $CFG_GLPI["networkport_types"];
+                                    $union = new QueryUnion();
+                                    foreach ($itemtypes as $related_class) {
+                                        $table = getTableForItemType($related_class);
+                                        $union->addQuery([
+                                            'SELECT' => [
+                                                'asset.id',
+                                                'netp.mac',
+                                                'netp.itemtype',
+                                                'netp.items_id',
+                                            ],
+                                            'FROM'   => $table . ' AS asset',
+                                            'INNER JOIN'   => [
+                                                NetworkPort::getTable() . ' AS netp' => [
+                                                    'ON' => [
+                                                        'netp'   => 'items_id',
+                                                        'asset'    => 'id',
+                                                        [
+                                                            'AND' => [
+                                                                'netp.itemtype' => $related_class,
+                                                            ],
                                                         ],
                                                     ],
                                                 ],
                                             ],
-                                        ],
-                                        'WHERE'  => [
-                                            'netp.itemtype'  => $device2::class,
-                                            'netp.id'  => $list_ports,
-                                        ],
-                                    ]);
+                                            'WHERE'  => [
+                                                'netp.itemtype'  => $related_class,
+                                                'netp.id'        => $list_ports,
+                                                'NOT'                => [
+                                                    'netp.itemtype'  => $device1::class, // Do not include the current asset
+                                                    'netp.items_id'  => $device1->getID(),
+                                                ],
+                                            ],
+                                        ]);
+                                    }
+
+                                    $hub_equipments = $DB->request(['FROM' => $union]);
 
                                     if (count($hub_equipments) > 10) {
                                         $houtput .= '<div>' . sprintf(
@@ -1121,10 +1145,10 @@ class NetworkPort extends CommonDBChild
                                         ) . '</div>';
                                     } else {
                                         foreach ($hub_equipments as $hrow) {
-                                            $hub = new Unmanaged();
-                                            $hub->getFromDB($hrow['id']);
-                                            $hub->fields['mac'] = $hrow['mac'];
-                                            $houtput .= '<div>' . $this->getUnmanagedLink($hub, $hub) . '</div>';
+                                            $asset = getItemForItemtype($hrow['itemtype']);
+                                            $asset->getFromDB($hrow['items_id']);
+                                            $asset->fields['mac'] = $hrow['mac'];
+                                            $houtput .= '<div>' . $this->getAssetLink($asset) . '</div>';
                                         }
                                     }
 
@@ -1205,13 +1229,13 @@ class NetworkPort extends CommonDBChild
                                 $netport_table = $this->getTable();
                                 $already_link_tables = [];
                                 $join = Search::addLeftJoin(
-                                    __CLASS__,
+                                    self::class,
                                     $netport_table,
                                     $already_link_tables,
                                     $option["table"],
                                     $option["linkfield"],
-                                    0,
-                                    0,
+                                    false,
+                                    '',
                                     $option["joinparams"],
                                     $option["field"]
                                 );
@@ -1240,7 +1264,7 @@ class NetworkPort extends CommonDBChild
 
     protected function getIpsForPort($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -1266,15 +1290,25 @@ class NetworkPort extends CommonDBChild
         return $iterator;
     }
 
-    protected function getUnmanagedLink($device, $port)
+    private function getAssetLink(CommonDBTM $asset): string
     {
-        $link = $port->getLink();
 
-        if (!empty($port->fields['mac'])) {
-            $link .= '<br/>' . htmlescape($port->fields['mac']);
+        if ($asset instanceof \NetworkPort) {
+            $link = $asset->getLink();
+        } else {
+            $link = sprintf(
+                '<i class="%1$s"></i> %2$s </i>',
+                $asset->getIcon(),
+                $asset->getLink(),
+            );
         }
 
-        $ips_iterator = $this->getIpsForPort($port::class, $port->getID());
+
+        if (!empty($asset->fields['mac'])) {
+            $link .= '<br/>' . htmlescape($asset->fields['mac']);
+        }
+
+        $ips_iterator = $this->getIpsForPort($asset->getType(), $asset->getID());
         $ips = '';
         foreach ($ips_iterator as $ipa) {
             $ips .= ' ' . htmlescape($ipa['name']);
@@ -1402,7 +1436,7 @@ class NetworkPort extends CommonDBChild
 
         // add purge action if main item is not dynamic
         // NetworkPort delete / purge are handled a different way on dynamic asset (lock)
-        if (!$checkitem->isDynamic()) {
+        if ($checkitem instanceof CommonDBTM && !$checkitem->isDynamic()) {
             $actions['NetworkPort' . MassiveAction::CLASS_ACTION_SEPARATOR . 'purge']    = __s('Delete permanently');
         }
 
@@ -1760,10 +1794,9 @@ class NetworkPort extends CommonDBChild
         }
 
         $itemtype = $this->fields['itemtype'];
-        /** @var CommonDBTM $itemtype */
-        $equipment = new $itemtype();
+        $equipment = getItemForItemtype($itemtype);
 
-        if ($equipment->getFromDB($this->fields['items_id'])) {
+        if ($equipment && $equipment->getFromDB($this->fields['items_id'])) {
             return sprintf(
                 '<i class="%1$s"></i> %2$s > <i class="%3$s"></i> %4$s',
                 $equipment::getIcon(),
@@ -1785,7 +1818,7 @@ class NetworkPort extends CommonDBChild
      */
     public function isHubConnected($networkports_id): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $wired = new NetworkPort_NetworkPort();

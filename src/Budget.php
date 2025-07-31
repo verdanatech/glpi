@@ -32,18 +32,19 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Glpi\DBAL\QuerySubQuery;
 use Glpi\DBAL\QueryUnion;
+use Glpi\Features\Clonable;
 
 /**
  * Budget class
  */
 class Budget extends CommonDropdown
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory           = true;
@@ -82,7 +83,7 @@ class Budget extends CommonDropdown
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Document_Item::class, $ong, $options);
         $this->addStandardTab(KnowbaseItem_Item::class, $ong, $options);
         $this->addStandardTab(ManualLink::class, $ong, $options);
@@ -97,7 +98,7 @@ class Budget extends CommonDropdown
 
         if (!$withtemplate) {
             switch ($item->getType()) {
-                case __CLASS__:
+                case self::class:
                     return [1 => self::createTabEntry(__('Main')),
                         2 => self::createTabEntry(_n('Item', 'Items', Session::getPluralNumber()), 0, $item::getType(), 'ti ti-package'),
                     ];
@@ -112,12 +113,10 @@ class Budget extends CommonDropdown
         if ($item instanceof self) {
             switch ($tabnum) {
                 case 1:
-                    $item->showValuesByEntity();
-                    break;
+                    return $item->showValuesByEntity();
 
                 case 2:
-                    $item->showItems();
-                    break;
+                    return $item->showItems();
             }
         }
         return true;
@@ -286,7 +285,7 @@ class Budget extends CommonDropdown
      */
     private function getItemListCriteria(bool $entity_restrict = true): QueryUnion
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $budgets_id = $this->fields['id'];
@@ -309,7 +308,6 @@ class Budget extends CommonDropdown
         foreach ($iterator as $row) {
             $itemtypes[] = $row['itemtype'];
         }
-        $itemtypes = array_filter($itemtypes, static fn($itemtype) => is_a($itemtype, CommonDBTM::class, true) && $itemtype::canView());
         $infocom_itemtypes = [];
         $other_cost_tables = [
             'Contract' => ContractCost::getTable(),
@@ -319,6 +317,14 @@ class Budget extends CommonDropdown
             'Project' => ProjectCost::getTable(),
         ];
         foreach ($itemtypes as $itemtype) {
+            if (in_array($itemtype, $infocom_itemtypes)) {
+                continue; // prevent duplicates
+            }
+
+            if (!is_a($itemtype, CommonDBTM::class, true) || !$itemtype::canView()) {
+                continue;
+            }
+
             if (!in_array($itemtype, ['Contract', 'Ticket', 'Problem', 'Change', 'Project'], true)) {
                 $infocom_itemtypes[] = $itemtype;
             }
@@ -332,7 +338,7 @@ class Budget extends CommonDropdown
                 'SELECT'       => [
                     new QueryExpression($DB::quoteValue($itemtype), '_itemtype'),
                     $item_table => ['id', 'entities_id'],
-                    'glpi_infocoms.value',
+
                 ],
                 'FROM'         => 'glpi_infocoms',
                 'INNER JOIN'   => [
@@ -361,11 +367,17 @@ class Budget extends CommonDropdown
             $criteria['SELECT'][$item_table][] = $item->maybeDeleted() ? 'is_deleted' : new QueryExpression('0', 'is_deleted');
             $criteria['SELECT'][$item_table][] = $item->isField('serial') ? 'serial' : new QueryExpression('NULL', 'serial');
             $criteria['SELECT'][$item_table][] = $item->isField('otherserial') ? 'otherserial' : new QueryExpression('NULL', 'otherserial');
+            if ($item instanceof Item_Devices) {
+                $criteria['SELECT'][$item_table][] = $item::$items_id_2 . ' AS devices_id';
+            } else {
+                $criteria['SELECT'][] = new QueryExpression('NULL', 'devices_id');
+            }
+            $criteria['SELECT'][] = 'glpi_infocoms.value';
             if ($item->maybeTemplate()) {
                 $criteria['WHERE'][$item_table . '.is_template'] = 0;
             }
 
-            $queries[] = new \Glpi\DBAL\QuerySubQuery($criteria);
+            $queries[] = new QuerySubQuery($criteria);
         }
 
         foreach ($other_cost_tables as $itemtype => $cost_table) {
@@ -377,6 +389,7 @@ class Budget extends CommonDropdown
                     $item_table => ['id', 'entities_id'],
                     new QueryExpression('NULL', 'serial'),
                     new QueryExpression('NULL', 'otherserial'),
+                    new QueryExpression('NULL', 'devices_id'),
                 ],
                 'FROM' => $cost_table,
                 'INNER JOIN' => [
@@ -402,11 +415,7 @@ class Budget extends CommonDropdown
             if ($entity_restrict) {
                 $criteria['WHERE'] += getEntitiesRestrictCriteria($item_table);
             }
-            if ($item instanceof Item_Devices) {
-                $criteria['ORDERBY'][] = $item_table . '.itemtype';
-            } else {
-                $criteria['ORDERBY'][] = $item_table . '.name';
-            }
+            $criteria['ORDERBY'][] = $item_table . '.name';
 
             $criteria['SELECT'][] = match ($itemtype) {
                 'Ticket', 'Problem', 'Change' => QueryFunction::sum(
@@ -423,7 +432,7 @@ class Budget extends CommonDropdown
                 $criteria['WHERE'][$item_table . '.is_template'] = 0;
             }
 
-            $queries[] = new \Glpi\DBAL\QuerySubQuery($criteria);
+            $queries[] = new QuerySubQuery($criteria);
         }
 
         return new QueryUnion($queries);
@@ -432,11 +441,11 @@ class Budget extends CommonDropdown
     /**
      * Print the HTML array of Items on a budget
      *
-     * @return void
+     * @return bool
      **/
-    public function showItems()
+    public function showItems(): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $budgets_id = $this->fields['id'];
@@ -475,15 +484,14 @@ class Budget extends CommonDropdown
             ];
 
             if (!array_key_exists($itemtype, $items)) {
-                $items[$itemtype] = new $itemtype();
+                $items[$itemtype] = getItemForItemtype($itemtype);
             }
 
             $name = NOT_AVAILABLE;
             if ($items[$itemtype]->getFromDB($data["id"])) {
                 if ($items[$itemtype] instanceof Item_Devices) {
-                    $tmpitemtype = $items[$itemtype]::$itemtype_2;
-                    $tmpitem = new $itemtype();
-                    if ($tmpitem->getFromDB($data[$items[$itemtype]::$items_id_2])) {
+                    $tmpitem = getItemForItemtype($items[$itemtype]::$itemtype_2);
+                    if ($tmpitem->getFromDB($data['devices_id'])) {
                         $name = $tmpitem->getLink(['additional' => true]);
                     }
                 } else {
@@ -527,16 +535,18 @@ class Budget extends CommonDropdown
             'filtered_number' => $total_count,
             'showmassiveactions' => false,
         ]);
+
+        return true;
     }
 
     /**
      * Print the HTML array of value consumed for a budget
      *
-     * @return void
+     * @return bool
      **/
-    public function showValuesByEntity()
+    public function showValuesByEntity(): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $budgets_id = $this->fields['id'];
@@ -649,6 +659,8 @@ class Budget extends CommonDropdown
             'filtered_number' => count($entries),
             'showmassiveactions' => false,
         ]);
+
+        return true;
     }
 
     public static function getIcon()

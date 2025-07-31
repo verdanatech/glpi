@@ -33,6 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
+use function Safe\preg_match;
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
@@ -42,18 +45,24 @@ if (
     || (isset($_POST['allow_email']) && $_POST['allow_email'])
 ) {
     if (preg_match('/[^a-z_\-0-9]/i', $_POST['field'])) {
-        throw new \RuntimeException('Invalid field provided!');
+        throw new RuntimeException('Invalid field provided!');
     }
 
     $default_email = "";
     $emails        = [];
     if (isset($_POST['typefield']) && ($_POST['typefield'] == 'supplier')) {
         $supplier = new Supplier();
+        if (!$supplier->can($_POST["value"], READ)) {
+            throw new AccessDeniedHttpException();
+        }
         if ($supplier->getFromDB($_POST["value"])) {
             $default_email = $supplier->fields['email'];
         }
     } else {
-        $user          = new User();
+        $user = new User();
+        if (!$user->can($_POST["value"], READ)) {
+            throw new AccessDeniedHttpException();
+        }
         if ($user->getFromDB($_POST["value"])) {
             $default_email = $user->getDefaultEmail();
             $emails        = $user->getAllEmails();
@@ -71,7 +80,7 @@ if (
         if (NotificationMailing::isUserAddressValid($_POST['alternative_email'][$user_index])) {
             $default_email = $_POST['alternative_email'][$user_index];
         } else {
-            throw new \RuntimeException('Invalid email provided!');
+            throw new RuntimeException('Invalid email provided!');
         }
     }
 
@@ -98,7 +107,7 @@ if (
         echo "<input type='hidden' size='25' name='" . htmlescape($_POST['field']) . "[alternative_email][]'
              value=''>";
     } elseif (count($emails) > 1) {
-        // Several emails : select in the list
+        // Several emails: select in the list
         $emailtab = [];
         foreach ($emails as $new_email) {
             if ($new_email != $default_email) {

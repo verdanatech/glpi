@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
 /**
  * Ticket Template class
  *
@@ -40,7 +42,13 @@
  **/
 class TicketTemplate extends ITILTemplate
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
+
+    #[Override]
+    public static function getPredefinedFields(): ITILTemplatePredefinedField
+    {
+        return new TicketTemplatePredefinedField();
+    }
 
     public static function getTypeName($nb = 0)
     {

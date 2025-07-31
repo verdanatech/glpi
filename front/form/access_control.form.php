@@ -36,6 +36,9 @@
 require_once(__DIR__ . '/../_check_webserver_config.php');
 
 use Glpi\Form\AccessControl\FormAccessControl;
+use Psr\Log\LoggerInterface;
+
+use function Safe\json_encode;
 
 /**
  * Ajax endpoint to update an access control item.
@@ -65,12 +68,13 @@ try {
         // Unknown request
         throw new InvalidArgumentException("Unknown action");
     }
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     // Log error
-    trigger_error(
-        // Insert POST data into logs to ease debugging
+    /** @var LoggerInterface $PHPLOGGER */
+    global $PHPLOGGER;
+    $PHPLOGGER->error(
         $e->getMessage() . ": " . json_encode($_POST),
-        E_USER_WARNING
+        ['exception' => $e]
     );
 
     Session::addMessageAfterRedirect(
@@ -78,7 +82,7 @@ try {
         false,
         ERROR
     );
-} finally {
-    // Redirect to previous page
-    Html::back();
 }
+
+// Redirect to previous page
+Html::back();

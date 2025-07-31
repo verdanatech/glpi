@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\glob;
+
 /**
  * @since 0.85
  */
@@ -86,7 +88,7 @@ class GLPIPDF extends TCPDF
 
         if ($title !== null) {
             $this->SetTitle($title);
-            $this->SetHeaderData('', '', $title, '');
+            $this->SetHeaderData('', 0, $title, '');
         }
 
         $this->SetCreator('GLPI');
@@ -116,7 +118,7 @@ class GLPIPDF extends TCPDF
     public function Header() // phpcs:ignore PSR1.Methods.CamelCapsMethodName
     {
         // Title
-        $this->Cell(0, $this->config['margin_bottom'], $this->title, 0, false, 'C', 0, '', 0, false, 'M', 'M');
+        $this->Cell(0, $this->config['margin_bottom'], $this->title, 0, 0, 'C', false, '', 0, false, 'M', 'M');
     }
 
 
@@ -136,7 +138,7 @@ class GLPIPDF extends TCPDF
         $text .= sprintf(" - %s/%s", $this->getAliasNumPage(), $this->getAliasNbPages());
 
         // Page number
-        $this->Cell(0, $this->config['margin_footer'], $text, 0, false, 'C', 0, '', 0, false, 'T', 'M');
+        $this->Cell(0, $this->config['margin_footer'], $text, 0, 0, 'C', false, '', 0, false, 'T', 'M');
     }
 
     /**
@@ -167,13 +169,13 @@ class GLPIPDF extends TCPDF
 
             // skip subfonts
             if (
-                ((substr($font, -1) == 'b') || (substr($font, -1) == 'i'))
+                ((str_ends_with($font, 'b')) || (str_ends_with($font, 'i')))
                 && isset($list[substr($font, 0, -1)])
             ) {
                 return;
             }
             if (
-                ((substr($font, -2) == 'bi'))
+                ((str_ends_with($font, 'bi')))
                 && isset($list[substr($font, 0, -2)])
             ) {
                 return;

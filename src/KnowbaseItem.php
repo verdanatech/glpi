@@ -32,23 +32,29 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Event;
+use Glpi\Features\Clonable;
+use Glpi\Features\TreeBrowse;
+use Glpi\Features\TreeBrowseInterface;
 use Glpi\Form\ServiceCatalog\ServiceCatalog;
 use Glpi\Form\ServiceCatalog\ServiceCatalogLeafInterface;
 use Glpi\RichText\RichText;
 use Glpi\UI\IllustrationManager;
 
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\preg_replace_callback;
+
 /**
  * KnowbaseItem Class
  **/
-class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, ServiceCatalogLeafInterface
+class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, ServiceCatalogLeafInterface, TreeBrowseInterface
 {
-    use Glpi\Features\Clonable;
-    use Glpi\Features\TreeBrowse;
+    use Clonable;
+    use TreeBrowse;
 
     public static $browse_default = true;
 
@@ -223,7 +229,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
     public function defineTabs($options = [])
     {
         $ong = [];
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(KnowbaseItem_Item::class, $ong, $options);
         $this->addStandardTab(Document_Item::class, $ong, $options);
         $this->addStandardTab(KnowbaseItemTranslation::class, $ong, $options);
@@ -261,22 +267,22 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if ($item::class === self::class) {
-            switch ($tabnum) {
-                case 1:
-                    $item->showFull();
-                    break;
-
-                case 2:
-                    $item->showVisibility();
-                    break;
-
-                case 3:
-                    $item->showForm($item->getID());
-                    break;
-            }
+        if (!$item instanceof self) {
+            return false;
         }
-        return true;
+        switch ($tabnum) {
+            case 1:
+                return (bool) $item->showFull();
+
+            case 2:
+                return $item->showVisibility();
+
+            case 3:
+                return $item->showForm($item->getID());
+
+            default:
+                return false;
+        }
     }
 
     /**
@@ -775,16 +781,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
         NotificationEvent::raiseEvent('delete', $this);
     }
 
-    /**
-     * Print out an HTML "<form>" for knowbase item
-     *
-     * @param integer $ID
-     * @param array $options
-     *     - target for the Form
-     *
-     * @return void
-     **/
-    public function showForm($ID, array $options = [])
+    public function showForm($ID, array $options = []): bool
     {
         // show kb item form
         if (
@@ -793,7 +790,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
                 [UPDATE, self::PUBLISHFAQ, self::KNOWBASEADMIN]
             )
         ) {
-            return;
+            return false;
         }
 
         $canedit = $this->can($ID, UPDATE);
@@ -801,6 +798,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
         $item = null;
         // Load ticket solution
         if (empty($ID) && !empty($options['item_itemtype']) && !empty($options['item_items_id'])) {
+            /** @var ?CommonITILObject $item */
             if ($item = getItemForItemtype($options['item_itemtype'])) {
                 if ($item->getFromDB($options['item_items_id'])) {
                     $this->fields['name']   = $item->getField('name');
@@ -813,8 +811,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
                         ]);
                         $this->fields['answer'] = $fup->getField('content');
                     } elseif (isset($options['_task_to_kb'])) {
-                        $tasktype = $item::class . 'Task';
-                        $task = new $tasktype();
+                        $task = $item->getTaskClassInstance();
                         $task->getFromDB($options['_task_to_kb']);
                         $this->fields['answer'] = $task->getField('content');
                     } elseif (isset($options['_sol_to_kb'])) {
@@ -853,6 +850,8 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
                 'canedit' => $canedit,
             ] + $options,
         ]);
+
+        return true;
     }
 
     /**
@@ -862,7 +861,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
      */
     public function updateCounter()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // update counter view
@@ -888,7 +887,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1043,7 +1042,7 @@ TWIG, $twig_params);
      **/
     public static function getListRequest(array $params, $type = 'search')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = array_replace([
@@ -1051,6 +1050,11 @@ TWIG, $twig_params);
             'knowbaseitemcategories_id' => KnowbaseItemCategory::SEEALL,
             'faq' => false,
         ], $params);
+
+        // Mysql's MATCH AGAINST do not accept expressions that contains only spaces
+        if (trim($params['contains']) === '') {
+            $params['contains'] = '';
+        }
 
         $criteria = [
             'SELECT' => [
@@ -1178,7 +1182,7 @@ TWIG, $twig_params);
                     $expr = "(MATCH(" . $DB->quoteName('glpi_knowbaseitems.name') . ", " . $DB->quoteName('glpi_knowbaseitems.answer') . ")
                            AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)";
 
-                    if (!empty($addscore)) {
+                    if ($addscore !== []) {
                         foreach ($addscore as $addscore_field) {
                             $expr .= " + MATCH(" . $DB->quoteName($addscore_field) . ")
                                         AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)";
@@ -1195,7 +1199,7 @@ TWIG, $twig_params);
                         ),
                     ];
 
-                    if (!empty($addscore)) {
+                    if ($addscore !== []) {
                         foreach ($addscore as $addscore_field) {
                             $ors[] = [
                                 'NOT' => [$addscore_field => null],
@@ -1677,7 +1681,7 @@ TWIG, $twig_params);
      **/
     public static function showRecentPopular(string $type = "", bool $display = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $faq = !Session::haveRight(self::$rightname, READ);
@@ -2136,7 +2140,7 @@ TWIG, $twig_params);
      */
     public static function getForCategory($category_id, $kbi = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($kbi === null) {

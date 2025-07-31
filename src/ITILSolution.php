@@ -110,7 +110,7 @@ class ITILSolution extends CommonDBChild
 
     public function canCreateItem(): bool
     {
-        $item = new $this->fields['itemtype']();
+        $item = getItemForItemtype($this->fields['itemtype']);
         $item->getFromDB($this->fields['items_id']);
         return $item->canSolve();
     }
@@ -123,14 +123,15 @@ class ITILSolution extends CommonDBChild
     public function post_getFromDB()
     {
         // Bandaid to avoid loading parent item if not needed
-        // TODO: replace by proper lazy loading in GLPI 11.0
+        // TODO: replace by proper lazy loading
         if (
             $this->item == null // No item loaded
             || $this->item->getType() !== $this->fields['itemtype'] // Another item is loaded
             || $this->item->getID() !== $this->fields['items_id']   // Another item is loaded
         ) {
-            $this->item = new $this->fields['itemtype']();
-            $this->item->getFromDB($this->fields['items_id']);
+            if ($this->item = getItemForItemtype($this->fields['itemtype'])) {
+                $this->item->getFromDB($this->fields['items_id']);
+            }
         }
     }
 
@@ -181,26 +182,25 @@ class ITILSolution extends CommonDBChild
 
     public function prepareInputForAdd($input)
     {
-        if (!isset($input['users_id']) && !(Session::isCron() || strpos($_SERVER['REQUEST_URI'] ?? '', 'crontask.form.php') !== false)) {
+        if (!isset($input['users_id']) && !(Session::isCron() || str_contains($_SERVER['REQUEST_URI'] ?? '', 'crontask.form.php'))) {
             $input['users_id'] = Session::getLoginUserID();
         }
 
+        $parent_item = isset($input['itemtype']) ? getItemForItemtype($input['itemtype']) : null;
         if (
-            $this->item == null
-            || (isset($input['itemtype']) && isset($input['items_id']))
+            $parent_item === null
+            || !array_key_exists('items_id', $input)
+            || $parent_item->getFromDB((int) $input['items_id']) === false
         ) {
-            $this->item = new $input['itemtype']();
-            $this->item->getFromDB($input['items_id']);
+            return false;
         }
+
+        $this->item = $parent_item;
 
         // Handle template
         if (isset($input['_solutiontemplates_id'])) {
             $template = new SolutionTemplate();
-            $parent_item = new $input['itemtype']();
-            if (
-                !$template->getFromDB($input['_solutiontemplates_id'])
-                || !$parent_item->getFromDB($input['items_id'])
-            ) {
+            if (!$template->getFromDB($input['_solutiontemplates_id'])) {
                 return false;
             }
             $input = array_replace(
@@ -222,7 +222,6 @@ class ITILSolution extends CommonDBChild
             $template_fields = $template->fields;
             unset($template_fields['id']);
             if (isset($template_fields['content'])) {
-                $parent_item = new $input['itemtype']();
                 $parent_item->getFromDB($input['items_id']);
                 $template_fields['content'] = $template->getRenderedContent($parent_item);
             }
@@ -292,7 +291,7 @@ class ITILSolution extends CommonDBChild
         //adding a solution mean the ITIL object is now solved
         //and maybe closed (according to entitiy configuration)
         if ($this->item == null) {
-            $this->item = new $this->fields['itemtype']();
+            $this->item = getItemForItemtype($this->fields['itemtype']);
             $this->item->getFromDB($this->fields['items_id']);
         }
 
@@ -347,7 +346,7 @@ class ITILSolution extends CommonDBChild
     public function prepareInputForUpdate($input)
     {
 
-        if (!isset($this->fields['itemtype'])) {
+        if (!isset($this->fields['itemtype']) || !is_a($this->fields['itemtype'], CommonDBTM::class, true)) {
             return false;
         }
         $input["_job"] = new $this->fields['itemtype']();
@@ -511,7 +510,7 @@ class ITILSolution extends CommonDBChild
      * before loading the item, thus avoiding one useless DB query (or many more queries
      * when looping on children items)
      *
-     * TODO 11.0 move method and `item` property into parent class
+     * TODO move method and `item` property into parent class
      *
      * @param CommonITILObject $parent Parent item
      *

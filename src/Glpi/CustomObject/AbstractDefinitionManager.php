@@ -34,6 +34,8 @@
 
 namespace Glpi\CustomObject;
 
+use function Safe\spl_autoload_register;
+
 /**
  * Abstract class for custom object definition managers
  * @template ConcreteDefinition of AbstractDefinition
@@ -42,17 +44,16 @@ abstract class AbstractDefinitionManager
 {
     /**
      * Definitions cache.
-     * @var array<int, mixed>
+     * @var array<int, ConcreteDefinition>
      */
-    private ?array $definitions_data = null;
+    private array $definitions = [];
 
     abstract public static function getInstance(): self;
 
     /**
-     * @return class-string<AbstractDefinition>
-     * @phpstan-return class-string<ConcreteDefinition>
+     * @phpstan-return ConcreteDefinition
      */
-    abstract public static function getDefinitionClass(): string;
+    abstract public static function getDefinitionClassInstance(): AbstractDefinition;
 
     /**
      * Returns the regex pattern of reserved system names
@@ -84,13 +85,33 @@ abstract class AbstractDefinitionManager
     abstract public function autoloadClass(string $classname): void;
 
     /**
-     * Boostrap all the active definitions.
+     * Boot the definitions.
      */
-    final public function bootstrapDefinitions(): void
+    final public function bootDefinitions(): void
     {
+        $definition_object = static::getDefinitionClassInstance();
+
+        $this->definitions = [];
+
+        $definitions_data = getAllDataFromTable($definition_object::getTable());
+        foreach ($definitions_data as $definition_data) {
+            $definition = new $definition_object();
+            $definition->getFromResultSet($definition_data);
+            $this->registerDefinition($definition);
+        }
+
+        // Bootstrap definitions
         foreach ($this->getDefinitions(true) as $definition) {
             $this->bootstrapDefinition($definition);
         }
+    }
+
+    /**
+     * Register a definition.
+     */
+    public function registerDefinition(AbstractDefinition $definition): void
+    {
+        $this->definitions[$definition->fields['system_name']] = $definition;
     }
 
     /**
@@ -105,10 +126,7 @@ abstract class AbstractDefinitionManager
     {
         $classes = [];
 
-        foreach ($this->getDefinitions() as $definition) {
-            if (!$definition->isActive()) {
-                continue;
-            }
+        foreach ($this->getDefinitions(true) as $definition) {
             $classes[] = $definition->getCustomObjectClassName($with_namespace);
         }
 
@@ -131,7 +149,7 @@ abstract class AbstractDefinitionManager
      */
     final public function clearDefinitionsCache(): void
     {
-        $this->definitions_data = null;
+        $this->definitions = [];
     }
 
     /**
@@ -143,24 +161,13 @@ abstract class AbstractDefinitionManager
      */
     final public function getDefinitions(bool $only_active = false): array
     {
-        $definition_class = static::getDefinitionClass();
-
-        if ($this->definitions_data === null) {
-            $this->definitions_data = getAllDataFromTable($definition_class::getTable());
+        if (!$only_active) {
+            return $this->definitions;
         }
 
-        $definitions = [];
-        foreach ($this->definitions_data as $definition_data) {
-            if ($only_active && (bool) $definition_data['is_active'] !== true) {
-                continue;
-            }
-
-            $system_name = $definition_data['system_name'];
-            $definition = new $definition_class();
-            $definition->getFromResultSet($definition_data);
-            $definitions[$system_name] = $definition;
-        }
-
-        return $definitions;
+        return \array_filter(
+            $this->definitions,
+            fn(AbstractDefinition $definition) => $definition->isActive()
+        );
     }
 }

@@ -81,6 +81,9 @@ The present file will list all changes made to the project; according to the
 - Validations are only allowed on Tickets and Changes that are not solved or closed.
 - Searching project tasks in the legacy API is no longer restricted to only tasks the user is assigned to.
 - Renamed `From email header` and `To email header` criteria in the mails receiver rules to `From email address` and `To email address` respectively.
+- Replaced text mentions of "Validations" with "Approvals" to unify the terminology used.
+- User passwords are no longer wiped when the authentication source/server doesn't actually change during "Change of the authentication method" action.
+- Single item actions (Actions menu in item form) are now filtered by certain attributes of the item. For example, a Computer which has reservations enabled will not show the `Authorize reservations` action.
 
 ### Deprecated
 - Survey URL tags `TICKETCATEGORY_ID` and `TICKETCATEGORY_NAME` are deprecated and replaced by `ITILCATEGORY_ID` and `ITILCATEGORY_NAME` respectively.
@@ -240,6 +243,10 @@ The present file will list all changes made to the project; according to the
 - The `$store_path` parameter has been removed from the `Dropdown::dropdownIcons()` method.
 - The `PLUGINS_DIRECTORIES` constant has been renamed to `GLPI_PLUGINS_DIRECTORIES`.
 - Most of the `Profile::show*()` methods have been made private.
+- `server` parameter of `User::changeAuthMethod()` now defaults to '0' instead of '-1' which was an invalid value when using unsigned integers.
+- `checkitem` parameter of `CommonDBTM::getMassiveActionsForItemtype()` is now the actual item being acted on when in single item mode.
+  To identify the difference between the generic item instance given for multi-item mode, use the `isNewItem()` method.
+- TinyMCE library is now loaded automatically on every page.
 
 #### Deprecated
 - Usage of the `/marketplace` path for plugins URLs. All plugins URLs should now start with `/plugins`.
@@ -352,6 +359,7 @@ The present file will list all changes made to the project; according to the
 - Handling of encoded/escaped value in `autoName()`.
 - `closeDBConnections`
 - `regenerateTreeCompleteName()`
+- `Ajax::updateItemOnInputTextEvent()`
 - `Appliance::getMassiveActionsForItemtype()`
 - `AuthLDAP::ldapChooseDirectory()`
 - `AuthLDAP::displayLdapFilter()`
@@ -385,6 +393,7 @@ The present file will list all changes made to the project; according to the
 - `CommonITILActor::showSupplierNotificationForm()`
 - `CommonITILObject::$userentity_oncreate` property.
 - `CommonITILObject::getAssignName()`
+- `CommonITILObject::getContentTemplatesParametersClass()`
 - `CommonITILObject::isValidator()`
 - `CommonITILObject::showActorAddFormOnCreate()`
 - `CommonITILValidation::alreadyExists()`
@@ -516,6 +525,7 @@ The present file will list all changes made to the project; according to the
 - `NetworkName::getInternetNameFromID()`
 - `NetworkPort::getAvailableDisplayOptions()`
 - `NetworkPort::getNetworkPortInstantiationsWithNames()`
+- `NetworkPort::getUnmanagedLink()`
 - `NetworkPort::resetConnections()`
 - `NetworkPortInstantiation::getGlobalInstantiationNetworkPortDisplayOptions()`
 - `NetworkPortInstantiation::getInstantiationHTMLTable()` and all sub classes overrides.
@@ -532,6 +542,7 @@ The present file will list all changes made to the project; according to the
 - `PlanningRecall::specificForm()`
 - `Plugin::haveImport()`
 - `Plugin::migrateItemType()`
+- `Plugin::unactivateAll()`
 - `ProfileRight::updateProfileRightAsOtherRight()`
 - `ProfileRight::updateProfileRightsAsOtherRights()`
 - `Project::commonListHeader()`
@@ -540,6 +551,7 @@ The present file will list all changes made to the project; according to the
 - `ProjectTask::showDebug()`
 - `QuerySubQuery` class. Replaced by `Glpi\DBAL\QuerySubQuery`.
 - `QueryUnion` class. Replaced by `Glpi\DBAL\QueryUnion`.
+- `QueuedNotification::forceSendFor()`
 - `Reminder::addVisibilityJoins()`
 - `ReminderTranslation::canBeTranslated()`. Translations are now always active.
 - `ReminderTranslation::isReminderTranslationActive()`. Translations are now always active.
@@ -550,6 +562,7 @@ The present file will list all changes made to the project; according to the
 - `RSSFeed::showDiscoveredFeeds()`
 - `Rule::$can_sort` property.
 - `Rule::$orderby` property.
+- `Rule::getCollectionClassName()`
 - `Rule::showDebug()`
 - `Rule::showMinimalActionForm()`
 - `Rule::showMinimalCriteriaForm()`
@@ -633,13 +646,36 @@ The present file will list all changes made to the project; according to the
 - Usage of the `$link` and `$name` parameters in `Auth::getMethodName()`.
 
 
-## [10.0.19] unreleased
+## [10.0.20] unreleased
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### API changes
+
+#### Added
+
+#### Changes
+
+#### Deprecated
+
+#### Removed
+
+
+## [10.0.19] 2025-07-16
 
 ### Added
 
 ### Changed
 - Only unsolved/unclosed tickets will be shown in the dropdown when performing the "Merge as Followup" action.
 - Domain records must be attached to a domain. Existing unattached records will remain but will require a domain if edited.
+- Inactive suppliers are hidden in assigned technician dropdown results. This does not affect items already assigned to inactive suppliers.
+- Requesting an item with ID 0 (except for entities) from the API will now return a 404 instead of listing all items of the itemtype.
 
 ### Deprecated
 

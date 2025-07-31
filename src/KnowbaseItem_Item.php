@@ -221,7 +221,7 @@ class KnowbaseItem_Item extends CommonDBRelation
      **/
     public static function getItems(CommonDBTM $item, $start = 0, $limit = 0, $used = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $criteria = [
@@ -285,7 +285,7 @@ class KnowbaseItem_Item extends CommonDBRelation
         $kb_item = new KnowbaseItem();
         $kb_item->getEmpty();
         if ($kb_item->canViewItem()) {
-            $action_prefix = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR;
+            $action_prefix = self::class . MassiveAction::CLASS_ACTION_SEPARATOR;
 
             $actions[$action_prefix . 'add']
             = "<i class='" . self::getIcon() . "'></i>" .
@@ -327,7 +327,7 @@ class KnowbaseItem_Item extends CommonDBRelation
 
         switch ($field) {
             case 'items_id':
-                if (isset($values['itemtype'])) {
+                if (isset($values['itemtype']) && is_a($values['itemtype'], CommonDBTM::class, true)) {
                     if ($values[$field] > 0) {
                         $item = new $values['itemtype']();
                         $item->getFromDB($values[$field]);

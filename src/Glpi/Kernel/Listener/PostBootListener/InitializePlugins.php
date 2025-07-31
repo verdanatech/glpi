@@ -34,6 +34,7 @@
 
 namespace Glpi\Kernel\Listener\PostBootListener;
 
+use DBmysql;
 use Glpi\Application\Environment;
 use Glpi\Debug\Profiler;
 use Glpi\DependencyInjection\PluginContainer;
@@ -63,14 +64,17 @@ final readonly class InitializePlugins implements EventSubscriberInterface
             return;
         }
 
-        if (Environment::get()->shouldSetupTesterPlugin()) {
-            $this->setupTesterPlugin();
-        }
-
         Profiler::getInstance()->start('InitializePlugins::execute', Profiler::CATEGORY_BOOT);
 
         $plugin = new Plugin();
-        $plugin->init(true);
+
+        if (!$plugin->isPluginsExecutionSuspended()) {
+            if (Environment::get()->shouldSetupTesterPlugin()) {
+                $this->setupTesterPlugin();
+            }
+
+            $plugin->init();
+        }
 
         $this->pluginContainer->initializeContainer();
 
@@ -79,7 +83,7 @@ final readonly class InitializePlugins implements EventSubscriberInterface
 
     private function setupTesterPlugin(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB->updateOrInsert(table: Plugin::getTable(), params: [
             'directory' => 'tester',

@@ -55,6 +55,9 @@ class ItemAntivirus extends CommonDBChild
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
+        if (!$item instanceof CommonDBTM) {
+            throw new RuntimeException("Only CommonDBTM items are supported");
+        }
 
         // can exists for template
         if ($item::canView()) {
@@ -253,10 +256,13 @@ class ItemAntivirus extends CommonDBChild
      **/
     public function showForm($ID, array $options = [])
     {
-        /** @var CommonDBTM $itemtype */
         $itemtype = $this->fields['itemtype'];
 
         if (!Session::haveRight($itemtype::$rightname, READ)) {
+            return false;
+        }
+
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
             return false;
         }
 
@@ -291,7 +297,7 @@ class ItemAntivirus extends CommonDBChild
      **/
     private static function showForItem(CommonDBTM $asset, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $asset->fields['id'];

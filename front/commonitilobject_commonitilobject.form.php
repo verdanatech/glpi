@@ -47,11 +47,11 @@ Session::checkCentralAccess();
 if (isset($_POST['purge'], $_POST['id'])) {
     [$link_class_1, $link_class_2, $link_id] = explode('_', $_POST['id'], 3);
     $link_class = $link_class_1 . '_' . $link_class_2;
-    $itil_itil = new $link_class();
+    $itil_itil = getItemForItemtype($link_class);
     $_POST['id'] = $link_id;
     $itil_itil->check($_POST['id'], PURGE);
 
-    $itil_itil->delete($_POST, 1);
+    $itil_itil->delete($_POST, true);
 
     Event::log(
         $_POST['items_id'],

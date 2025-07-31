@@ -40,8 +40,15 @@ use Glpi\Log\ErrorLogHandler;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Safe\Exceptions\PcreException;
 
 use function Safe\define;
+use function Safe\ini_set;
+use function Safe\mkdir;
+use function Safe\preg_grep;
+use function Safe\preg_match;
+use function Safe\preg_replace_callback;
+use function Safe\session_name;
 
 final class SystemConfigurator
 {
@@ -84,8 +91,8 @@ final class SystemConfigurator
                 'GLPI_ENVIRONMENT_TYPE' => Environment::PRODUCTION->value,
 
                 // Constants related to system paths
-                'GLPI_CONFIG_DIR'      => $this->root_dir . '/../../config', // Path for configuration files (db, security key, ...)
-                'GLPI_VAR_DIR'         => $this->root_dir . '/../../files',  // Path for all files
+                'GLPI_CONFIG_DIR'      => $this->root_dir . '/config', // Path for configuration files (db, security key, ...)
+                'GLPI_VAR_DIR'         => $this->root_dir . '/files',  // Path for all files
                 'GLPI_MARKETPLACE_DIR' => $this->root_dir . '/marketplace', // Path for marketplace plugins
                 'GLPI_DOC_DIR'         => '{GLPI_VAR_DIR}', // Path for documents storage
                 'GLPI_CACHE_DIR'       => '{GLPI_VAR_DIR}/_cache', // Path for cache
@@ -116,22 +123,27 @@ final class SystemConfigurator
                     // allowlist (regex format) of URL that can be fetched from server side (used for RSS feeds and external calendars, among others)
                     // URL will be considered as safe as long as it matches at least one entry of the allowlist
 
-                    // `http://` URLs
-                    // - without presence of @ (username) and : (protocol) in host part of URL
-                    // - with optional `:80` default port
-                    // - with optional path
-                    '#^http://[^@:]+(:80)?(/.*)?$#',
-
-                    // `https://` URLs
-                    // - without presence of @ (username) and : (protocol) in host part of URL
-                    // - with optional `:443` default port
-                    // - with optional path
-                    '#^https://[^@:]+(:443)?(/.*)?$#',
-
-                    // `feed://` URLs
-                    // - without presence of @ (username) and : (protocol) in host part of URL
-                    // - with optional path
-                    '#^feed://[^@:]+(/.*)?$#',
+                    // Based on https://github.com/symfony/symfony/blob/7.3/src/Symfony/Component/Validator/Constraints/UrlValidator.php
+                    '~^
+                        (http|https|feed)://                                                # protocol
+                        (
+                            (?:
+                                (?:xn--[a-z0-9-]++\.)*+xn--[a-z0-9-]++                      # a domain name using punycode
+                                    |
+                                (?:[\pL\pN\pS\pM\-\_]++\.)+[\pL\pN\pM]++                    # a multi-level domain name
+                                    |
+                                [a-z0-9\-\_]++                                              # a single-level domain name
+                            )\.?
+                                |                                                           # or
+                            \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}                              # an IP address
+                                |                                                           # or
+                            \[
+                                (?:(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){6})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:::(?:(?:(?:[0-9a-f]{1,4})):){5})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){4})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,1}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){3})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,2}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){2})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,3}(?:(?:[0-9a-f]{1,4})))?::(?:(?:[0-9a-f]{1,4})):)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,4}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,5}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,6}(?:(?:[0-9a-f]{1,4})))?::))))
+                            \]                                                              # an IPv6 address
+                        )
+                        (?:/ (?:[\pL\pN\pS\pM\-._\~!$&\'()*+,;=:@]|%[0-9A-Fa-f]{2})* )*     # a path
+                        (?:\? (?:[\pL\pN\-._\~!$&\'\[\]()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?    # a query (optional)
+                    $~ixuD',
                 ],
                 'GLPI_DISALLOWED_UPLOADS_PATTERN' => '/\.(php\d*|phar)$/i', // Prevent upload of any PHP file / PHP archive; can be set to an empty value to allow every files
 
@@ -162,6 +174,7 @@ final class SystemConfigurator
                 'GLPI_SYSTEM_CRON'            => false, // `true` to use the system cron provided by the downstream package
                 'GLPI_TEXT_MAXSIZE'           => '4000', // character threshold for displaying read more button
                 'GLPI_WEBHOOK_ALLOW_RESPONSE_SAVING' => '0', // allow (1) or not (0) to save webhook response in database
+                'GLPI_WEBHOOK_CRA_MANDATORY' => false, // make challenge-response authentication mandatory or not for webhooks
             ],
         ];
 
@@ -222,9 +235,7 @@ final class SystemConfigurator
                 // Replace {GLPI_*} by value of corresponding constant
                 $value = preg_replace_callback(
                     '/\{(?<name>GLPI_[\w]+)\}/',
-                    function ($matches) {
-                        return defined($matches['name']) ? constant($matches['name']) : '';
-                    },
+                    fn($matches) => defined($matches['name']) ? constant($matches['name']) : '',
                     $constants[GLPI_ENVIRONMENT_TYPE][$name] ?? $constants['default'][$name]
                 );
 
@@ -235,13 +246,16 @@ final class SystemConfigurator
         // Try to create sub directories of `GLPI_VAR_DIR`, if they are not existing.
         // Silently fail, as handling errors is not really possible here.
         foreach ($constants_names as $name) {
-            if (preg_match('/^GLPI_[\w]+_DIR$/', $name) !== 1) {
+            try {
+                if (preg_match('/^GLPI_[\w]+_DIR$/', $name) !== 1) {
+                    continue;
+                }
+            } catch (PcreException $e) {
                 continue;
             }
             $value = constant($name);
             if (
-                preg_match('/^GLPI_[\w]+_DIR$/', $name)
-                && preg_match('/^' . preg_quote(GLPI_VAR_DIR, '/') . '\//', $value)
+                preg_match('/^' . preg_quote(GLPI_VAR_DIR, '/') . '\//', $value)
                 && !is_dir($value)
             ) {
                 @mkdir($value, recursive: true);

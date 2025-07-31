@@ -32,6 +32,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QuerySubQuery;
+
 /**
  * @var array $ADDTODISPLAYPREF
  * @var DBmysql $DB
@@ -153,12 +156,6 @@ $assignable_itemtypes = [
     ],
 ];
 
-if ($DB->tableExists('glpi_groups_assets') && !$DB->tableExists('glpi_groups_items')) {
-    // dev migration
-    // TODO Delete before GLPI 11.0 release
-    $migration->renameTable('glpi_groups_assets', 'glpi_groups_items');
-}
-
 if (!$DB->tableExists('glpi_groups_items')) {
     $query = <<<SQL
         CREATE TABLE `glpi_groups_items` (
@@ -191,13 +188,13 @@ foreach ($assignable_itemtypes as $itemtype => $specs) {
 
     // move groups to the new link table
     if ($DB->fieldExists($itemtype_table, 'groups_id')) {
-        $DB->insert('glpi_groups_items', new \Glpi\DBAL\QuerySubQuery([
+        $DB->insert('glpi_groups_items', new QuerySubQuery([
             'SELECT' => [
-                new \Glpi\DBAL\QueryExpression('NULL', 'id'),
+                new QueryExpression('NULL', 'id'),
                 'groups_id',
-                new \Glpi\DBAL\QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
+                new QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
                 'id AS items_id',
-                new \Glpi\DBAL\QueryExpression('1', 'type'),
+                new QueryExpression('1', 'type'),
             ],
             'FROM'   => $itemtype_table,
             'WHERE'  => [
@@ -206,13 +203,13 @@ foreach ($assignable_itemtypes as $itemtype => $specs) {
         ]));
     }
     if ($DB->fieldExists($itemtype_table, 'groups_id_tech')) {
-        $DB->insert('glpi_groups_items', new \Glpi\DBAL\QuerySubQuery([
+        $DB->insert('glpi_groups_items', new QuerySubQuery([
             'SELECT' => [
-                new \Glpi\DBAL\QueryExpression('NULL', 'id'),
+                new QueryExpression('NULL', 'id'),
                 'groups_id_tech AS groups_id',
-                new \Glpi\DBAL\QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
+                new QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
                 'id AS items_id',
-                new \Glpi\DBAL\QueryExpression('2', 'type'),
+                new QueryExpression('2', 'type'),
             ],
             'FROM'   => $itemtype_table,
             'WHERE'  => [

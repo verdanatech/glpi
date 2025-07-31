@@ -33,16 +33,17 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Inventoriable;
 
 /**
  * Not managed devices from inventory
  */
-class Unmanaged extends CommonDBTM
+class Unmanaged extends CommonDBTM implements AssignableItemInterface
 {
-    use Glpi\Features\Inventoriable;
+    use Inventoriable;
     use Glpi\Features\State;
     use AssignableItem;
 
@@ -276,7 +277,8 @@ class Unmanaged extends CommonDBTM
 
     public function getSpecificMassiveActions($checkitem = null)
     {
-        $actions = [];
+        $actions = parent::getSpecificMassiveActions($checkitem);
+
         if (self::canUpdate()) {
             $actions['Unmanaged' . MassiveAction::CLASS_ACTION_SEPARATOR . 'convert']    = __s('Convert');
         }
@@ -341,7 +343,7 @@ class Unmanaged extends CommonDBTM
      */
     public function convert(int $items_id, ?string $itemtype = null): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $this->getFromDB($items_id);
@@ -380,7 +382,7 @@ class Unmanaged extends CommonDBTM
             $itemtype = $this->fields['itemtype'];
         }
 
-        $asset = new $itemtype();
+        $asset = getItemForItemtype($itemtype);
         $asset_data = [
             'name'          => $this->fields['name'],
             'entities_id'   => $this->fields['entities_id'],
@@ -416,7 +418,7 @@ class Unmanaged extends CommonDBTM
             ];
             $lockfield->update($row);
         }
-        $this->deleteFromDB(1);
+        $this->deleteFromDB(true);
         return $assets_id;
     }
 

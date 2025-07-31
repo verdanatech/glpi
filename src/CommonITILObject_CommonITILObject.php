@@ -77,7 +77,7 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
                 // Allow reclassifying LINK_TO as DUPLICATE_WITH, but otherwise, no duplicates allowed
                 if ($link['items_id'] === $input[static::$items_id_1] || $link['items_id'] === $input[static::$items_id_2]) {
                     if ((int) $link['link'] === self::LINK_TO && (int) $input['link'] === self::DUPLICATE_WITH) {
-                        $link_item = new $link['link_class']();
+                        $link_item = getItemForItemtype($link['link_class']);
                         $link_item->delete(['id' => $link['id']]);
                         return $input;
                     }
@@ -185,9 +185,7 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
 
                     $link_class = self::getLinkClass($input['itemtype_1'], $input['itemtype_2']);
 
-                    if ($link_class !== null) {
-                        /* @var CommonDBRelation $link_class */
-                        /* @var CommonDBRelation $link */
+                    if (is_a($link_class, CommonDBRelation::class, true)) {
                         $condition = [];
                         $link = new $link_class();
                         if ($link_class::$itemtype_1 == $link_class::$itemtype_2) {
@@ -262,8 +260,8 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
     private function updateParentItems(): void
     {
 
-        $item_1 = new static::$itemtype_1();
-        $item_2 = new static::$itemtype_2();
+        $item_1 = getItemForItemtype(static::$itemtype_1);
+        $item_2 = getItemForItemtype(static::$itemtype_2);
 
         if (
             $item_1->getFromDB($this->fields[static::$items_id_1])
@@ -290,9 +288,9 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
     public static function getLinkedTo(string $itemtype, int $items_id): array
     {
         if (static::class === self::class) {
-            throw new \LogicException(sprintf('%s should be called only from sub classes.', __METHOD__));
+            throw new LogicException(sprintf('%s should be called only from sub classes.', __METHOD__));
         }
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $links = [];
@@ -383,7 +381,7 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
         return $links;
     }
 
-    protected static function getITILLinkTypes(): array
+    public static function getITILLinkTypes(): array
     {
         return [
             self::LINK_TO => [
@@ -524,10 +522,10 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
     public static function countLinksByStatus(string $itemtype, int $items_id, array $status = [], array $link_types = []): int
     {
         if (static::class === self::class) {
-            throw new \LogicException(sprintf('%s should be called only from sub classes.', __METHOD__));
+            throw new LogicException(sprintf('%s should be called only from sub classes.', __METHOD__));
         }
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $count = 0;
@@ -549,7 +547,7 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
                     unset($other_link_types[$key]);
                 }
                 // Count everything except SON_OF links using original parameters
-                if (!empty($other_link_types)) {
+                if ($other_link_types !== []) {
                     $count = static::countLinksByStatus($itemtype, $items_id, $status, $other_link_types);
                 }
 
@@ -570,11 +568,11 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
             ];
         }
 
-        if (!empty($link_types)) {
+        if ($link_types !== []) {
             $where['links.link'] = $link_types;
         }
 
-        if (!empty($status)) {
+        if ($status !== []) {
             $where['items.status'] = $status;
         }
 

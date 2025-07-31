@@ -37,6 +37,8 @@ use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\Exception\Http\NotFoundHttpException;
 
+use function Safe\json_encode;
+
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
@@ -65,7 +67,7 @@ switch ($action) {
         return;
     case 'get_items_from_itemtype':
         if (array_key_exists($_POST['itemtype'], Webhook::getSubItemForAssistance())) {
-            $object = new $_POST['itemtype']();
+            $object = getItemForItemtype($_POST['itemtype']);
             $data = $object->find();
             $values = [];
             foreach ($data as $items_id => $items_data) {
@@ -114,22 +116,22 @@ switch ($action) {
 
         $error = [];
         if (!$itemtype) {
-            $error[] = __('Please select an itemtype');
+            $error[] = __s('Please select an itemtype');
         }
 
         if (!$items_id) {
-            $error[] = __('Please select an item');
+            $error[] = __s('Please select an item');
         }
 
         if (!$event) {
-            $error[] = __('Please select an event');
+            $error[] = __s('Please select an event');
         }
 
         if (count($error) > 0) {
-            array_unshift($error, __("Result can't be loaded :"));
+            array_unshift($error, __s("Result can't be loaded :"));
             echo implode("<br>&nbsp; - ", $error);
         } else {
-            $obj = new $itemtype();
+            $obj = getItemForItemtype($itemtype);
             $obj->getFromDB($items_id);
             $path = $webhook->getApiPath($obj);
             echo $webhook->getResultForPath($path, $event, $itemtype, $items_id, $raw_output);

@@ -32,10 +32,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
+use Glpi\Features\Clonable;
 
 /**
  * Supplier class (suppliers)
@@ -43,7 +43,7 @@ use Glpi\Features\AssetImage;
 class Supplier extends CommonDBTM
 {
     use AssetImage;
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory           = true;
@@ -146,16 +146,16 @@ class Supplier extends CommonDBTM
         $actions = parent::getSpecificMassiveActions($checkitem);
         if ($isadmin) {
             $actions['Contact_Supplier' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add']
-               = _sx('button', 'Add a contact');
+               = "<i class='" . Contact::getIcon() . "'></i>" . _sx('button', 'Add a contact');
             $actions['Contract_Supplier' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add']
-               = _sx('button', 'Add a contract');
+               = "<i class='" . Contract::getIcon() . "'></i>" . _sx('button', 'Add a contract');
         }
         return $actions;
     }
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = [];
@@ -415,7 +415,7 @@ class Supplier extends CommonDBTM
      **/
     public function showInfocoms()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $instID = $this->fields['id'];
@@ -486,7 +486,7 @@ class Supplier extends CommonDBTM
                     $criteria['INNER JOIN']['glpi_consumableitems'] = [
                         'ON' => [
                             'glpi_consumableitems'  => 'id',
-                            'glpi_consumables'      => 'cartridgeitems_id',
+                            'glpi_consumables'      => 'consumableitems_id',
                         ],
                     ];
 
@@ -571,9 +571,7 @@ class Supplier extends CommonDBTM
                         if ($prem) {
                             $prem = false;
                             $title = $item->getTypeName($nb);
-                            if ($nb > 0) {
-                                $title = sprintf(__('%1$s: %2$s'), $title, $nb);
-                            }
+                            $title = sprintf(__('%1$s: %2$s'), $title, $nb);
                             echo "<td class='center top' rowspan='$nb'>" . htmlescape($title) . "</td>";
                         }
                         echo "<td class='center'>" . Dropdown::getDropdownName(
@@ -609,7 +607,7 @@ class Supplier extends CommonDBTM
      **/
     public static function getSuppliersByEmail($email)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         return $DB->request([

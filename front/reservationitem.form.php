@@ -46,10 +46,6 @@ if (!isset($_GET["id"])) {
 
 $ri = new ReservationItem();
 if (isset($_POST["add"])) {
-    if (str_contains($_POST['itemtype'], '%5C')) {
-        //TODO Remove when ReservationItem::showActivationFormForItem rewritten in Twig. Param is urlencoded by Html::getSimpleForm currently.
-        $_POST['itemtype'] = urldecode($_POST['itemtype']);
-    }
     $ri->check(-1, CREATE, $_POST);
     if ($newID = $ri->add($_POST)) {
         Event::log(
@@ -81,7 +77,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $ri->check($_POST["id"], PURGE);
-    $ri->delete($_POST, 1);
+    $ri->delete($_POST, true);
 
     Event::log(
         $_POST['id'],

@@ -35,8 +35,12 @@
 
 namespace Glpi\OAuth;
 
+use DateInterval;
+use Glpi\Exception\OAuth2KeyException;
 use Glpi\Http\Request;
+use GLPIKey;
 use League\OAuth2\Server\AuthorizationServer;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Grant\AuthCodeGrant;
 use League\OAuth2\Server\Grant\ClientCredentialsGrant;
 use League\OAuth2\Server\Grant\PasswordGrant;
@@ -47,9 +51,12 @@ use Safe\Exceptions\FilesystemException;
 use Safe\Exceptions\OpensslException;
 use Throwable;
 
+use function Safe\chmod;
 use function Safe\file_put_contents;
 use function Safe\openssl_pkey_export_to_file;
+use function Safe\openssl_pkey_get_details;
 use function Safe\openssl_pkey_new;
+use function Safe\unlink;
 
 final class Server
 {
@@ -92,19 +99,20 @@ final class Server
 
     public function __construct()
     {
+        //check for keys
+        self::checkKeys();
+
         $this->client_repository = new ClientRepository();
         $this->access_token_repository = new AccessTokenRepository();
         $this->scope_repository = new ScopeRepository();
 
-        $public_key_path = GLPI_CONFIG_DIR . '/oauth.pub';
-        $this->resource_server = new ResourceServer($this->access_token_repository, "file://$public_key_path");
+        $this->resource_server = new ResourceServer($this->access_token_repository, "file://" . self::PUBLIC_KEY_PATH);
 
-        $private_key_path = GLPI_CONFIG_DIR . '/oauth.pem';
-        $encryption_key = (new \GLPIKey())->get();
-        $this->auth_server = new AuthorizationServer($this->client_repository, $this->access_token_repository, $this->scope_repository, "file://$private_key_path", $encryption_key);
+        $encryption_key = (new GLPIKey())->get();
+        $this->auth_server = new AuthorizationServer($this->client_repository, $this->access_token_repository, $this->scope_repository, "file://" . self::PRIVATE_KEY_PATH, $encryption_key);
         $this->auth_server->enableGrantType(
             new ClientCredentialsGrant(),
-            new \DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
+            new DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
         );
 
         $this->auth_server->enableGrantType(
@@ -112,21 +120,21 @@ final class Server
                 new UserRepository(),
                 new RefreshTokenRepository()
             ),
-            new \DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
+            new DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
         );
 
         $this->auth_server->enableGrantType(
             new AuthCodeGrant(
                 new AuthCodeRepository(),
                 new RefreshTokenRepository(),
-                new \DateInterval('PT10M')
+                new DateInterval('PT10M')
             ),
-            new \DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
+            new DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
         );
 
         $this->auth_server->enableGrantType(
             new RefreshTokenGrant(new RefreshTokenRepository()),
-            new \DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
+            new DateInterval(self::GLPI_OAUTH_ACCESS_TOKEN_EXPIRES)
         );
     }
 
@@ -147,11 +155,15 @@ final class Server
     /**
      * @param Request $request
      * @return array
-     * @phpstan-return {client_id: string, user_id: string, scopes: string[]}
-     * @throws \League\OAuth2\Server\Exception\OAuthServerException
+     * @phpstan-return array{client_id: string, user_id: string, scopes: string[]}
+     * @throws OAuthServerException
+     * @throws OAuth2KeyException
      */
     public static function validateAccessToken(Request $request): array
     {
+        //check for keys
+        self::checkKeys();
+
         $new_request = self::getInstance()->resource_server->validateAuthenticatedRequest($request);
         return [
             'client_id' => $new_request->getAttribute('oauth_client_id'),
@@ -186,12 +198,26 @@ final class Server
         ];
     }
 
-    public static function generateKeys(): void
+    public static function checkKeys(): bool
     {
         if (
             file_exists(self::PRIVATE_KEY_PATH)
             && file_exists(self::PUBLIC_KEY_PATH)
         ) {
+            // Keys are already generated
+
+            if (is_readable(self::PRIVATE_KEY_PATH) && is_readable(self::PUBLIC_KEY_PATH)) {
+                return true;
+            } else {
+                throw new OAuth2KeyException('Either private or public OAuth keys cannot be read. Please check file system permissions');
+            }
+        }
+
+        return false;
+    }
+    public static function generateKeys(): void
+    {
+        if (self::checkKeys()) {
             // Keys are already generated
             return;
         }
@@ -235,39 +261,40 @@ final class Server
         try {
             $key = openssl_pkey_new($config);
         } catch (OpensslException $e) {
-            throw new RuntimeException("Unable to generate keys: " . $e->getMessage());
+            throw new RuntimeException("Unable to generate keys: " . $e->getMessage(), $e->getCode(), $e);
         }
 
         // Export private key to file
         try {
             openssl_pkey_export_to_file($key, self::PRIVATE_KEY_PATH);
         } catch (OpensslException $e) {
-            throw new RuntimeException("Unable to export private key: " . $e->getMessage());
+            throw new RuntimeException("Unable to export private key: " . $e->getMessage(), $e->getCode(), $e);
         }
 
         // Get public key
-        $pubkey = openssl_pkey_get_details($key);
-        if ($pubkey === false) {
+        try {
+            $pubkey = openssl_pkey_get_details($key);
+        } catch (OpensslException $e) {
             $error = openssl_error_string();
-            throw new RuntimeException("Unable to get public key details: $error");
+            throw new RuntimeException("Unable to get public key details: $error", $e->getCode(), $e);
         }
 
         // Export public key to file
         try {
             $written_bytes = file_put_contents(self::PUBLIC_KEY_PATH, $pubkey['key']);
         } catch (FilesystemException $e) {
-            throw new RuntimeException("Unable to export public key: " . $e->getMessage());
+            throw new RuntimeException("Unable to export public key: " . $e->getMessage(), $e->getCode(), $e);
         }
         if ($written_bytes !== strlen($pubkey['key'])) {
             throw new RuntimeException('Unable to export public key');
         }
 
-        // Set permisisons to both key files
-        if (
-            !chmod(self::PRIVATE_KEY_PATH, 0o660)
-            || !chmod(self::PUBLIC_KEY_PATH, 0o660)
-        ) {
-            throw new RuntimeException('Unable to set permissions on the generated keys');
+        // Set permissions to both key files
+        try {
+            chmod(self::PRIVATE_KEY_PATH, 0o660);
+            chmod(self::PUBLIC_KEY_PATH, 0o660);
+        } catch (FilesystemException $e) {
+            throw new RuntimeException('Unable to set permissions on the generated keys', $e->getCode(), $e);
         }
     }
 

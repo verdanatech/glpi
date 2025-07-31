@@ -32,11 +32,11 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Features\AssetImage;
+use Glpi\Features\Clonable;
 use Glpi\Plugin\Hooks;
-use Sabre\VObject;
+use Sabre\VObject\Component\VCard;
 
 /**
  * Contact class
@@ -44,7 +44,7 @@ use Sabre\VObject;
 class Contact extends CommonDBTM
 {
     use AssetImage;
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory           = true;
@@ -123,7 +123,7 @@ class Contact extends CommonDBTM
      */
     public function getAddress()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -161,7 +161,7 @@ class Contact extends CommonDBTM
      **/
     public function getWebsite()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -229,7 +229,7 @@ HTML;
 
         if ($isadmin) {
             $actions['Contact_Supplier' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add']
-               = _sx('button', 'Add a supplier');
+               = "<i class='" . Supplier::getIcon() . "'></i>" . _sx('button', 'Add a supplier');
         }
 
         return $actions;
@@ -241,7 +241,7 @@ HTML;
 
         if (isset($this->fields["id"]) && ($this->fields["id"] > 0)) {
             return formatUserName(
-                '',
+                0,
                 '',
                 ($this->fields["name"] ?? ''),
                 ($this->fields["firstname"] ?? '')
@@ -477,7 +477,7 @@ HTML;
             $title->getFromDB($this->fields['usertitles_id']);
         }
         // build the Vcard
-        $vcard = new VObject\Component\VCard([
+        $vcard = new VCard([
             'N'     => [$this->fields["name"], $this->fields["firstname"]],
             'EMAIL' => $this->fields["email"],
             'NOTE'  => $this->fields["comment"],

@@ -33,14 +33,22 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
 /**
  * Chang Template class
  *
- * since version 9.5.0
+ * @since 9.5.0
  **/
 class ChangeTemplate extends ITILTemplate
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
+
+    #[Override]
+    public static function getPredefinedFields(): ITILTemplatePredefinedField
+    {
+        return new ChangeTemplatePredefinedField();
+    }
 
     public static function getTypeName($nb = 0)
     {

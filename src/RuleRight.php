@@ -236,7 +236,7 @@ class RuleRight extends Rule
     public function displayAdditionalRuleCondition($condition, $criteria, $name, $value, $test = false)
     {
         if ($criteria['field'] === 'type') {
-            \Auth::dropdown([
+            Auth::dropdown([
                 'name'  => $name,
                 'value' => $value,
             ]);
@@ -336,7 +336,7 @@ class RuleRight extends Rule
 
     public function displayAdditionalRuleAction(array $action, $value = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         switch ($action['type']) {
@@ -395,7 +395,7 @@ class RuleRight extends Rule
             $this->checkGlobal(UPDATE);
         }
 
-        $canedit = $this->canEdit(static::$rightname);
+        $canedit = $this->canEdit($ID);
 
         $add_buttons = [];
         if (!$new_item && $canedit) {
@@ -420,5 +420,7 @@ class RuleRight extends Rule
             ],
         ], $options);
         TemplateRenderer::getInstance()->display('pages/admin/rules/ruleright_form.html.twig', $twig_params);
+
+        return true;
     }
 }

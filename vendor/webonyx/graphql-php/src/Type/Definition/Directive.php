@@ -2,7 +2,6 @@
 
 namespace GraphQL\Type\Definition;
 
-use GraphQL\Error\InvariantViolation;
 use GraphQL\Language\AST\DirectiveDefinitionNode;
 use GraphQL\Language\DirectiveLocation;
 
@@ -27,6 +26,7 @@ class Directive
     public const SKIP_NAME = 'skip';
     public const DEPRECATED_NAME = 'deprecated';
     public const REASON_ARGUMENT_NAME = 'reason';
+    public const ONE_OF_NAME = 'oneOf';
 
     /**
      * Lazily initialized.
@@ -75,21 +75,17 @@ class Directive
         $this->config = $config;
     }
 
-    /**
-     * @throws InvariantViolation
-     *
-     * @return array<string, Directive>
-     */
+    /** @return array<string, Directive> */
     public static function getInternalDirectives(): array
     {
         return [
             self::INCLUDE_NAME => self::includeDirective(),
             self::SKIP_NAME => self::skipDirective(),
             self::DEPRECATED_NAME => self::deprecatedDirective(),
+            self::ONE_OF_NAME => self::oneOfDirective(),
         ];
     }
 
-    /** @throws InvariantViolation */
     public static function includeDirective(): Directive
     {
         return self::$internalDirectives[self::INCLUDE_NAME] ??= new self([
@@ -109,7 +105,6 @@ class Directive
         ]);
     }
 
-    /** @throws InvariantViolation */
     public static function skipDirective(): Directive
     {
         return self::$internalDirectives[self::SKIP_NAME] ??= new self([
@@ -129,7 +124,6 @@ class Directive
         ]);
     }
 
-    /** @throws InvariantViolation */
     public static function deprecatedDirective(): Directive
     {
         return self::$internalDirectives[self::DEPRECATED_NAME] ??= new self([
@@ -151,7 +145,18 @@ class Directive
         ]);
     }
 
-    /** @throws InvariantViolation */
+    public static function oneOfDirective(): Directive
+    {
+        return self::$internalDirectives[self::ONE_OF_NAME] ??= new self([
+            'name' => self::ONE_OF_NAME,
+            'description' => 'Indicates that an Input Object is a OneOf Input Object (and thus requires exactly one of its fields be provided).',
+            'locations' => [
+                DirectiveLocation::INPUT_OBJECT,
+            ],
+            'args' => [],
+        ]);
+    }
+
     public static function isSpecifiedDirective(Directive $directive): bool
     {
         return array_key_exists($directive->name, self::getInternalDirectives());

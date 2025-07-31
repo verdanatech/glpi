@@ -48,6 +48,9 @@ use LogicException;
 use Override;
 use ReflectionClass;
 
+use function Safe\json_decode;
+use function Safe\json_encode;
+
 final class FormDestination extends CommonDBChild implements ConditionableCreationInterface
 {
     use ConditionableCreationTrait;
@@ -61,7 +64,7 @@ final class FormDestination extends CommonDBChild implements ConditionableCreati
     #[Override]
     public static function getTypeName($nb = 0)
     {
-        return __('Items to create', $nb);
+        return _n('Item to create', 'Items to create', $nb);
     }
 
     #[Override]

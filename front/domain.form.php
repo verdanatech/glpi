@@ -64,7 +64,7 @@ if (isset($_POST["add"])) {
     $domain->redirectToList();
 } elseif (isset($_POST["purge"])) {
     $domain->check($_POST['id'], PURGE);
-    $domain->delete($_POST, 1);
+    $domain->delete($_POST, true);
     $domain->redirectToList();
 } elseif (isset($_POST["update"])) {
     $domain->check($_POST['id'], UPDATE);
@@ -77,7 +77,7 @@ if (isset($_POST["add"])) {
     }
     Html::back();
 } elseif (isset($_POST["addrecord"])) {
-    $record = new \DomainRecord();
+    $record = new DomainRecord();
     $_POST['id'] = $_POST['domainrecords_id'];
     unset($_POST['domainrecords_id']);
     $record->check(-1, UPDATE, $_POST);

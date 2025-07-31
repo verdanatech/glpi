@@ -35,9 +35,12 @@
 
 namespace Glpi\Application\View\Extension;
 
+use DBmysql;
 use Toolbox;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
+
+use function Safe\filesize;
 
 /**
  * @since 10.0.0
@@ -67,7 +70,7 @@ class DocumentExtension extends AbstractExtension
     public function getDocumentIcon(string $filename): string
     {
         /** @var array $CFG_GLPI */
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $CFG_GLPI, $DB;
 
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));

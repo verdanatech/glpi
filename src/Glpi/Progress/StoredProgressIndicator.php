@@ -35,6 +35,7 @@
 namespace Glpi\Progress;
 
 use Glpi\Message\MessageType;
+use RuntimeException;
 
 /**
  * @final
@@ -44,7 +45,7 @@ class StoredProgressIndicator extends AbstractProgressIndicator
     /**
      * Storage service used to store the current indicator.
      */
-    private readonly ProgressStorage $progress_storage;
+    private ?ProgressStorage $progress_storage = null;
 
     /**
      * Storage key.
@@ -54,16 +55,35 @@ class StoredProgressIndicator extends AbstractProgressIndicator
     /**
      * Messages.
      *
-     * @var array<int, array{type: \Glpi\Message\MessageType, message: string}>
+     * @var array<int, array{type: MessageType, message: string}>
      */
     private array $messages = [];
 
-    public function __construct(ProgressStorage $progress_storage, string $storage_key)
+    public function __construct(string $storage_key)
     {
         parent::__construct();
 
+        $this->storage_key = $storage_key;
+    }
+
+    public function __serialize(): array
+    {
+        $data = [];
+
+        foreach (\get_object_vars($this) as $property => $value) {
+            if ($property === 'progress_storage') {
+                continue; // the storage service must not be stored in the storage file
+            }
+
+            $data[$property] = $value;
+        }
+
+        return $data;
+    }
+
+    public function setProgressStorage(ProgressStorage $progress_storage): void
+    {
         $this->progress_storage = $progress_storage;
-        $this->storage_key      = $storage_key;
     }
 
     public function addMessage(MessageType $type, string $message): void
@@ -78,13 +98,17 @@ class StoredProgressIndicator extends AbstractProgressIndicator
 
     protected function update(): void
     {
+        if (!($this->progress_storage instanceof ProgressStorage)) {
+            throw new RuntimeException('Progress indicator cannot be updated from a read-only context.');
+        }
+
         $this->store();
     }
 
     /**
      * Get the messages.
      *
-     * @return array<int, array{type: \Glpi\Message\MessageType, message: string}>
+     * @return array<int, array{type: MessageType, message: string}>
      */
     public function getMessages(): array
     {

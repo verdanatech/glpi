@@ -31,11 +31,11 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
+use function Safe\preg_replace;
 
 $links = $DB->request([
     'SELECT' => ['id', 'link', 'data'],

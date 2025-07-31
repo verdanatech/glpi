@@ -39,12 +39,16 @@ use CommonDBChild;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\Condition\ConditionableVisibilityInterface;
 use Glpi\Form\Condition\ConditionableVisibilityTrait;
-use Glpi\ItemTranslation\Context\TranslationHandler;
-use Glpi\ItemTranslation\Context\ProvideTranslationsInterface;
 use Glpi\Form\Condition\ConditionHandler\VisibilityConditionHandler;
 use Glpi\Form\Condition\UsedAsCriteriaInterface;
+use Glpi\ItemTranslation\Context\ProvideTranslationsInterface;
+use Glpi\ItemTranslation\Context\TranslationHandler;
+use LogicException;
 use Override;
 use Ramsey\Uuid\Uuid;
+use RuntimeException;
+
+use function Safe\json_encode;
 
 /**
  * Section of a given helpdesk form
@@ -141,7 +145,7 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
     {
         $form = $this->getItem();
         if (!$form instanceof Form) {
-            throw new \LogicException('Section must be attached to a form');
+            throw new LogicException('Section must be attached to a form');
         }
 
         $handlers = [];
@@ -162,6 +166,7 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
                     key: self::TRANSLATION_KEY_DESCRIPTION,
                     name: __('Section description'),
                     value: $this->fields['description'],
+                    is_rich_text: true,
                 );
             }
         }
@@ -197,9 +202,7 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
         $groupedBlocks = [];
 
         // Sort blocks by their vertical rank
-        usort($blocks, function ($a, $b) {
-            return $a->fields['vertical_rank'] <=> $b->fields['vertical_rank'];
-        });
+        usort($blocks, fn($a, $b) => $a->fields['vertical_rank'] <=> $b->fields['vertical_rank']);
 
         // Group blocks by their vertical rank
         foreach ($blocks as $block) {
@@ -222,9 +225,7 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
                 continue;
             }
 
-            usort($group, function ($a, $b) {
-                return $a->fields['horizontal_rank'] <=> $b->fields['horizontal_rank'];
-            });
+            usort($group, fn($a, $b) => $a->fields['horizontal_rank'] <=> $b->fields['horizontal_rank']);
         }
 
         return $groupedBlocks;
@@ -289,6 +290,21 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
         }
 
         return $this->comments;
+    }
+
+    /**
+     * Get the parent form of this section
+     *
+     * @return Form
+     */
+    public function getForm(): Form
+    {
+        $form = $this->getItem();
+        if (!($form instanceof Form)) {
+            throw new RuntimeException("Can't load parent form");
+        }
+
+        return $form;
     }
 
     /**

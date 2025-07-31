@@ -44,6 +44,8 @@ use Glpi\Form\Question;
 use InvalidArgumentException;
 use Override;
 
+use function Safe\json_decode;
+
 final class QuestionTypeDropdown extends AbstractQuestionTypeSelectable implements UsedAsCriteriaInterface
 {
     #[Override]
@@ -62,7 +64,7 @@ final class QuestionTypeDropdown extends AbstractQuestionTypeSelectable implemen
     public function convertExtraData(array $rawData): array
     {
         $config = new QuestionTypeDropdownExtraDataConfig(
-            options: json_decode($rawData['values'], true) ?? [],
+            options: json_decode($rawData['values'] ?? '[]', true) ?? [],
             is_multiple_dropdown: $rawData['fieldtype'] === 'multiselect'
         );
         return $config->jsonSerialize();
@@ -162,6 +164,7 @@ TWIG;
                     'init': init,
                     'no_label': true,
                     'multiple': false,
+                    'disabled': is_multiple_dropdown,
                     'display_emptychoice': true,
                     'field_class': 'single-preview-dropdown col-12' ~ (is_multiple_dropdown ? ' d-none' : ''),
                     'mb': '',
@@ -177,6 +180,7 @@ TWIG;
                     'init': init,
                     'no_label': true,
                     'multiple': true,
+                    'disabled': not is_multiple_dropdown,
                     'values': checked_values,
                     'field_class': 'multiple-preview-dropdown col-12' ~ (not is_multiple_dropdown ? ' d-none' : ''),
                     'mb': '',
@@ -246,11 +250,12 @@ TWIG;
                 values,
                 '',
                 {
-                    'no_label'  : true,
-                    'values'    : checked_values,
-                    'multiple'  : is_multiple,
-                    'mb'        : '',
-                    'aria_label': label,
+                    'no_label'           : true,
+                    'values'             : checked_values,
+                    'multiple'           : is_multiple,
+                    'mb'                 : '',
+                    'aria_label'         : label,
+                    'display_emptychoice': checked_values|length == 0,
                 }
             ) }}
 TWIG;

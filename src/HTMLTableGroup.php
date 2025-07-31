@@ -59,42 +59,6 @@ class HTMLTableGroup extends HTMLTableBase
         $this->content    = $content;
     }
 
-    public function __get(string $property)
-    {
-        // TODO Deprecate access to variables in GLPI 11.0.
-        $value = null;
-        switch ($property) {
-            case 'ordered_headers':
-                $value = $this->$property;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-        return $value;
-    }
-
-    public function __set(string $property, $value)
-    {
-        // TODO Deprecate access to variables in GLPI 11.0.
-        switch ($property) {
-            case 'ordered_headers':
-                $this->$property = $value;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-    }
-
     public function getName()
     {
         return $this->name;
@@ -129,7 +93,7 @@ class HTMLTableGroup extends HTMLTableBase
     public function tryAddHeader()
     {
         if ($this->ordered_headers !== null) {
-            throw new \Exception('Implementation error: must define all headers before any row');
+            throw new Exception('Implementation error: must define all headers before any row');
         }
     }
 

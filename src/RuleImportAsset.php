@@ -33,10 +33,13 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\AssetDefinitionManager;
 use Glpi\Asset\Capacity\IsInventoriableCapacity;
+use Glpi\Inventory\Conf;
+use Glpi\Inventory\MainAsset\GenericNetworkAsset;
+use Glpi\Inventory\MainAsset\GenericPrinterAsset;
+use Glpi\Inventory\MainAsset\MainAsset;
 use Glpi\Plugin\Hooks;
 
 class RuleImportAsset extends Rule
@@ -437,7 +440,7 @@ class RuleImportAsset extends Rule
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $PLUGIN_HOOKS
          */
         global $CFG_GLPI, $DB, $PLUGIN_HOOKS;
@@ -463,29 +466,37 @@ class RuleImportAsset extends Rule
             isset($input['itemtype'])
             && (is_array($input['itemtype']))
         ) {
-            $itemtypeselected = array_merge($itemtypeselected, $input['itemtype']);
+            foreach ($input['itemtype'] as $k => $v) {
+                if (!is_a($v, CommonDBTM::class, true)) {
+                    unset($input['itemtype'][$k]);
+                    continue;
+                }
+                $itemtypeselected[] = $v;
+            }
         } elseif (
             isset($input['itemtype'])
             && (!empty($input['itemtype']))
+            && is_a($input['itemtype'], CommonDBTM::class, true)
         ) {
             $itemtypeselected[] = $input['itemtype'];
         } else {
             foreach ($CFG_GLPI["asset_types"] as $itemtype) {
                 if (
                     class_exists($itemtype)
+                    && is_a($itemtype, CommonDBTM::class, true)
                     && $itemtype !== SoftwareLicense::class
                     && $itemtype !== Certificate::class
                 ) {
                     $itemtypeselected[] = $itemtype;
                 }
             }
-            $itemtypeselected[] = "Unmanaged";
-            $itemtypeselected[] = "Peripheral";//used for networkinventory
+            $itemtypeselected[] = Unmanaged::class;
+            $itemtypeselected[] = Peripheral::class;//used for networkinventory
         }
 
         $found = false;
         foreach ($itemtypeselected as $itemtype) {
-            $item = new $itemtype();
+            $item = new $itemtype(); //$itemtypeselected entries are filtered to contain only CommonDBTM classes - should be safe.
             $itemtable = $item->getTable();
 
             // Build the request to check if the asset exists in GLPI
@@ -501,10 +512,8 @@ class RuleImportAsset extends Rule
             ];
 
             // do not reconcile if it's a template
-            if (is_a($item, CommonDBTM::class, true)) {
-                if ($item->maybeTemplate()) {
-                    $it_criteria['WHERE'][] = ['is_template' =>  0];
-                }
+            if ($item->maybeTemplate()) {
+                $it_criteria['WHERE'][] = ['is_template' =>  0];
             }
 
             if ($this->link_criteria_port) {
@@ -792,7 +801,7 @@ class RuleImportAsset extends Rule
 
                 case 'serial':
                     $serial = $input['serial'];
-                    $conf = new Glpi\Inventory\Conf();
+                    $conf = new Conf();
 
                     if (
                         isset($input['itemtype'])
@@ -955,7 +964,7 @@ class RuleImportAsset extends Rule
                     }
 
                     $back_class = Unmanaged::class;
-                    if (is_a($class, \Glpi\Inventory\MainAsset\MainAsset::class)) {
+                    if (is_a($class, MainAsset::class)) {
                         $back_class = $class->getItemtype();
                     }
                     if ($class && !isset($params['return'])) {
@@ -977,7 +986,7 @@ class RuleImportAsset extends Rule
                                 if ($class) {
                                     $class->rulepassed($items_id, $itemtype, $rules_id, $this->criterias_results['found_port']);
                                 } else {
-                                    $inputrulelog = $inputrulelog + [
+                                    $inputrulelog += [
                                         'items_id'  => $items_id,
                                         'itemtype'  => $itemtype,
                                     ];
@@ -1003,12 +1012,12 @@ class RuleImportAsset extends Rule
                         }
 
                         $back_class = Unmanaged::class;
-                        if (is_a($class, \Glpi\Inventory\MainAsset\MainAsset::class)) {
+                        if (is_a($class, MainAsset::class)) {
                             $back_class = $class->getItemtype();
                         }
 
                         if ($back_class === Unmanaged::class) {
-                            $conf = new \Glpi\Inventory\Conf();
+                            $conf = new Conf();
                             if ($conf->import_unmanaged == 0) {
                                 return $output;
                             }
@@ -1019,6 +1028,9 @@ class RuleImportAsset extends Rule
                         }
                         $output['found_inventories'] = [0, $back_class, $rules_id];
                         return $output;
+                    } elseif ($action->fields["value"] == self::RULE_ACTION_LINK_OR_NO_IMPORT) {
+                        // no import
+                        $output['action'] = self::LINK_RESULT_DENIED;
                     }
                 }
             }
@@ -1081,7 +1093,7 @@ TWIG, $twig_params);
 
         $types = [];
         foreach ($CFG_GLPI["ruleimportasset_types"] as $itemtype) {
-            if (class_exists($itemtype)) {
+            if (is_a($itemtype, CommonDBTM::class, true)) {
                 $item = new $itemtype();
                 $types[$itemtype] = $item->getTypeName();
             }
@@ -1220,13 +1232,13 @@ TWIG, $twig_params);
                 $asset_classname = $definition->getAssetClassName();
                 $main_asset = $definition->getCapacityConfiguration(IsInventoriableCapacity::class)->getValue('inventory_mainasset');
 
-                $origin_rule_itemtype = \Computer::class;
+                $origin_rule_itemtype = Computer::class;
                 switch ($main_asset) {
-                    case \Glpi\Inventory\MainAsset\GenericNetworkAsset::class:
-                        $origin_rule_itemtype = \NetworkEquipment::class;
+                    case GenericNetworkAsset::class:
+                        $origin_rule_itemtype = NetworkEquipment::class;
                         break;
-                    case \Glpi\Inventory\MainAsset\GenericPrinterAsset::class:
-                        $origin_rule_itemtype = \Printer::class;
+                    case GenericPrinterAsset::class:
+                        $origin_rule_itemtype = Printer::class;
                         break;
                 }
                 $this->addGenericAssetRules($rules, $asset_classname, $origin_rule_itemtype);

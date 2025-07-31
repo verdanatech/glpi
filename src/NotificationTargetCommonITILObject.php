@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryFunction;
+
 abstract class NotificationTargetCommonITILObject extends NotificationTarget
 {
     public $private_profiles = [];
@@ -165,7 +167,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -260,7 +262,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addLinkedGroupByType($type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $grouplinktable = getTableForItemType($this->obj->grouplinkclass);
@@ -295,7 +297,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addLinkedGroupWithoutSupervisorByType($type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $grouplinktable = getTableForItemType($this->obj->grouplinkclass);
@@ -326,7 +328,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addLinkedGroupSupervisorByType($type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $grouplinktable = getTableForItemType($this->obj->grouplinkclass);
@@ -425,7 +427,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addSupplier($sendprivate = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (
@@ -472,7 +474,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addValidationApprover($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($options['validation_id'])) {
@@ -506,7 +508,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      **/
     public function addValidationRequester($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($options['validation_id'])) {
@@ -539,15 +541,14 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addValidationTarget($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($options['validation_id'])) {
-            $validation_type = $this->obj->getType() . 'Validation';
-            $validation = new $validation_type();
+            $validation = $this->obj->getValidationClassInstance();
             $validation->getFromDB($options['validation_id']);
-            if ($validation->fields['itemtype_target'] === 'User') {
-                $validationtable = getTableForItemType($this->obj->getType() . 'Validation');
+            if ($validation->fields['itemtype_target'] === User::class) {
+                $validationtable = $validation::getTable();
 
                 $criteria = [
                     'LEFT JOIN' => [
@@ -566,12 +567,78 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
                 foreach ($iterator as $data) {
                     $this->addToRecipientsList($data);
                 }
-            } elseif ($validation->fields['itemtype_target'] === 'Group') {
+            } elseif ($validation->fields['itemtype_target'] === Group::class) {
                 $this->addForGroup(0, $validation->fields['items_id_target']);
             }
         }
     }
 
+    /**
+     * Add the approved subsititutes of all users who were asked for an approval answer.
+     * This does not account for substitutes of users when a group is the target of the validation.
+     *
+     * @param array $options Options
+     * @return void
+     */
+    public function addValidationTargetSubstitutes($options = [])
+    {
+        /** @var DBmysql $DB */
+        global $DB;
+
+        if (isset($options['validation_id'])) {
+            $validation = $this->obj->getValidationClassInstance();
+            $validation->getFromDB($options['validation_id']);
+            if ($validation->fields['itemtype_target'] === User::class) {
+                $validationtable = $validation::getTable();
+                $validator_substitute_table = ValidatorSubstitute::getTable();
+                $user_table = User::getTable();
+
+                $criteria = [
+                    'LEFT JOIN' => [
+                        $validator_substitute_table => [
+                            'ON' => [
+                                $validationtable => 'items_id_target',
+                                $validator_substitute_table => 'users_id',
+                            ],
+                        ],
+                        $user_table => [
+                            'ON' => [
+                                $validator_substitute_table => 'users_id_substitute',
+                                $user_table => 'id',
+                            ],
+                        ],
+                        $user_table . ' AS target_user' => [
+                            'ON' => [
+                                $validationtable => 'items_id_target',
+                                'target_user' => 'id',
+                            ],
+                        ],
+                    ],
+                ] + $this->getDistinctUserCriteria() + $this->getProfileJoinCriteria();
+                $criteria['FROM'] = $validationtable;
+                $criteria['WHERE']["$validationtable.id"] = $options['validation_id'];
+                $criteria['WHERE'][] = [
+                    [
+                        'OR' => [
+                            ['target_user.substitution_start_date' => null],
+                            ['target_user.substitution_start_date' => ['<=', QueryFunction::now()]],
+                        ],
+                    ],
+                    [
+                        'OR' => [
+                            ['target_user.substitution_end_date' => null],
+                            ['target_user.substitution_end_date' => ['>=', QueryFunction::now()]],
+                        ],
+                    ],
+                ];
+
+                $iterator = $DB->request($criteria);
+                foreach ($iterator as $data) {
+                    $this->addToRecipientsList($data);
+                }
+            }
+        }
+    }
 
     /**
      * Add author related to the followup
@@ -582,7 +649,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addFollowupAuthor($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (isset($options['followup_id'])) {
@@ -610,7 +677,6 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
         }
     }
 
-
     /**
      * Add task author
      *
@@ -620,7 +686,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addTaskAuthor($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // In case of delete task pass user id
@@ -668,7 +734,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addTaskAssignUser($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // In case of delete task pass user id
@@ -718,7 +784,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      */
     public function addTaskAssignGroup($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // In case of delete task pass user id
@@ -747,7 +813,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
 
     public function addAdditionnalInfosForTarget()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -787,7 +853,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
 
     protected function getShowPrivateInfo(array $data)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($data['users_id']) || count($this->private_profiles) === 0) {
@@ -811,7 +877,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
 
     protected function getIsSelfServiceInfo(array $data)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($data['users_id']) || count($this->central_profiles) === 0) {
@@ -926,6 +992,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
         if (($event == 'validation') || ($event == 'validation_answer') || ($event == 'validation_reminder')) {
             $this->addTarget(Notification::VALIDATION_REQUESTER, __('Approval requester'));
             $this->addTarget(Notification::VALIDATION_TARGET, __('Approval target'));
+            $this->addTarget(Notification::VALIDATION_TARGET_SUBSTITUTES, __('Approval target substitutes'));
             $this->addTarget(Notification::VALIDATION_APPROVER, __('Approver'));
         }
 
@@ -1009,6 +1076,10 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
 
                     case Notification::VALIDATION_TARGET:
                         $this->addValidationTarget($options);
+                        break;
+
+                    case Notification::VALIDATION_TARGET_SUBSTITUTES:
+                        $this->addValidationTargetSubstitutes($options);
                         break;
 
                         //Send to the ITIL object validation approver
@@ -1153,11 +1224,11 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
      *
      * @return array
      **/
-    public function getDataForObject(CommonDBTM $item, array $options, $simple = false)
+    public function getDataForObject(CommonITILObject $item, array $options, $simple = false)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1421,7 +1492,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
             $pending_reason_item = new PendingReason_Item();
             $followup_template = ITILFollowupTemplate::getById($pending_reason->fields['itilfollowuptemplates_id']);
             if (
-                $pending_reason && $pending_reason_item->getFromDBByRequest([
+                $pending_reason_item->getFromDBByRequest([
                     'WHERE'  => [
                         'itemtype'  => $objettype,
                         'items_id'  => $item->fields['id'],
@@ -1435,7 +1506,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
                 $data["##$objettype.reminder.bumpremaining##"] = $pending_reason_item->getField('followups_before_resolution') - $pending_reason_item->getField('bump_count');
                 $data["##$objettype.reminder.bumptotal##"]     = $pending_reason_item->getField('followups_before_resolution');
                 $data["##$objettype.reminder.deadline##"]      = $pending_reason_item->getAutoResolvedate();
-                $data["##$objettype.reminder.text##"]          = $followup_template !== false ? $followup_template->getRenderedContent($item) : '';
+                $data["##$objettype.reminder.text##"]          = $followup_template instanceof ITILFollowupTemplate ? $followup_template->getRenderedContent($item) : '';
                 $data["##$objettype.reminder.name##"]          = $pending_reason->getField('name');
             }
         }
@@ -1449,7 +1520,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
 
             foreach ($linked as $link) {
                 $itemtype = $link['itemtype'];
-                $link_item = new $link['itemtype']();
+                $link_item = getItemForItemtype($itemtype);
                 if ($link_item->getFromDB($link['items_id'])) {
                     $tmp = [];
                     $tmp['##linked' . strtolower($itemtype) . '.id##'] = $link['items_id'];
@@ -1502,7 +1573,8 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
                 $tmp['##followup.isprivate##']   = Dropdown::getYesNo($followup['is_private']);
 
                 // Check if the author need to be anonymized
-                if ($are_names_anonymized && ITILFollowup::getById($followup['id'])->isFromSupportAgent()) {
+                $itilfup = ITILFollowup::getById($followup['id']);
+                if ($are_names_anonymized && $itilfup instanceof ITILFollowup && $itilfup->isFromSupportAgent()) {
                     $tmp['##followup.author##'] = User::getAnonymizedNameForUser(
                         $followup['users_id'],
                         $item->fields['entities_id']
@@ -1670,8 +1742,7 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
             $data["##$objettype.numberofcosts##"] = count($data['costs']);
 
             //Task infos
-            $tasktype = $item->getType() . 'Task';
-            $taskobj  = new $tasktype();
+            $taskobj = $item->getTaskClassInstance();
             $restrict = [$item->getForeignKeyField() => $item->getField('id')];
             if (
                 $taskobj->maybePrivate()
@@ -1757,11 +1828,13 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
                 $item_users_id = (int) $timeline_data['item']['users_id'];
 
                 // Check if the author need to be anonymized
+                $itilfup = ITILFollowup::getById($timeline_data['item']['id']);
                 if (
                     $item_users_id > 0
                     && $timeline_data['type'] == ITILFollowup::getType()
                     && $are_names_anonymized
-                    && ITILFollowup::getById($timeline_data['item']['id'])->isFromSupportAgent()
+                    && $itilfup instanceof ITILFollowup
+                    && $itilfup->isFromSupportAgent()
                 ) {
                     $tmptimelineitem['##timelineitems.author##'] = User::getAnonymizedNameForUser(
                         $item_users_id,
@@ -1776,9 +1849,8 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
             }
 
             /** @var CommonITILObject $item */
-            $inquest_type = $item::getSatisfactionClass();
-            if ($inquest_type !== null) {
-                $inquest = new $inquest_type();
+            $inquest = $item::getSatisfactionClassInstance();
+            if ($inquest !== null) {
                 $data['##satisfaction.type##'] = '';
                 $data['##satisfaction.datebegin##'] = '';
                 $data['##satisfaction.dateanswered##'] = '';
@@ -2386,8 +2458,8 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
             ]);
         }
 
-        $inquest_type = $this->obj::getSatisfactionClass();
-        if ($inquest_type !== null) {
+        $inquest = $this->obj::getSatisfactionClassInstance();
+        if ($inquest !== null) {
             $tags = ['satisfaction.datebegin' => __('Creation date of the satisfaction survey'),
                 'satisfaction.dateanswered' => __('Response date to the satisfaction survey'),
                 'satisfaction.satisfaction' => __('Satisfaction'),

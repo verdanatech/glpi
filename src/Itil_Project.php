@@ -32,8 +32,9 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryUnion;
 
 /**
  * Relation between Itil items and Projects
@@ -106,26 +107,25 @@ class Itil_Project extends CommonDBRelation
             case Change::class:
             case Problem::class:
             case Ticket::class:
-                self::showForItil($item);
-                break;
+                return self::showForItil($item);
 
             case Project::class:
-                self::showForProject($item);
-                break;
+                return self::showForProject($item);
         }
-        return true;
+        return false;
     }
 
     /**
      * Show ITIL items for a project.
      *
      * @param Project $project
-     * @return void
+     *
+     * @return bool
      **/
-    public static function showForProject(Project $project)
+    public static function showForProject(Project $project): bool
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $DB, $CFG_GLPI;
@@ -146,7 +146,7 @@ class Itil_Project extends CommonDBRelation
                 'SELECT'          => [
                     "$link_table.id AS linkid",
                     "$link_table.items_id AS id",
-                    new \Glpi\DBAL\QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
+                    new QueryExpression($DB::quoteValue($itemtype), 'itemtype'),
                 ],
                 'DISTINCT'        => true,
                 'FROM'            => $link_table,
@@ -167,7 +167,7 @@ class Itil_Project extends CommonDBRelation
         }
 
         $it = $DB->request([
-            'FROM' => new \Glpi\DBAL\QueryUnion($queries),
+            'FROM' => new QueryUnion($queries),
         ]);
         $entries_by_itemtype = [];
         $used  = [];
@@ -242,17 +242,20 @@ TWIG, $twig_params);
                 'specific_actions' => ['purge' => _x('button', 'Delete permanently')],
             ],
         ]);
+
+        return true;
     }
 
     /**
      * Show projects for an ITIL item.
      *
      * @param CommonITILObject $itil
-     * @return void
+     *
+     * @return bool
      **/
-    public static function showForItil(CommonITILObject $itil)
+    public static function showForItil(CommonITILObject $itil): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $itil->getID();
@@ -355,5 +358,7 @@ TWIG, $twig_params);
                 'container'     => 'mass' . self::class . mt_rand(),
             ],
         ]);
+
+        return true;
     }
 }

@@ -32,6 +32,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\preg_match_all;
+
 /**
  * Update from 9.5.1 to 9.5.2
  *
@@ -40,8 +42,8 @@
 function update951to952()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
@@ -84,7 +86,7 @@ function update951to952()
             preg_match_all('/document\\.send\\.php\\?docid=([0-9]+)/', $data[$field], $matches);
 
             // No inline documents found in this item, skip to next
-            if (!isset($matches[1])) {
+            if (count($matches[1]) === 0) {
                 continue;
             }
 

@@ -37,13 +37,18 @@ use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
+use function Safe\getimagesize;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\strtotime;
+
 class NotificationEventMailing extends NotificationEventAbstract
 {
     /**
      * Mailer service.
-     * @var GLPIMailer
      */
-    private static $mailer = null;
+    private static ?GLPIMailer $mailer = null;
 
     public static function getTargetFieldName()
     {
@@ -63,7 +68,7 @@ class NotificationEventMailing extends NotificationEventAbstract
             $data[$field] = UserEmail::getDefaultForUser($data['users_id']);
         }
 
-        if (empty($data[$field]) or !NotificationMailing::isUserAddressValid($data[$field])) {
+        if (empty($data[$field]) || !NotificationMailing::isUserAddressValid($data[$field])) {
             $data[$field] = null;
         } else {
             $data[$field] = trim(Toolbox::strtolower($data[$field]));
@@ -124,7 +129,7 @@ class NotificationEventMailing extends NotificationEventAbstract
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -390,9 +395,7 @@ class NotificationEventMailing extends NotificationEventAbstract
                     }
 
                     $mail->text($current->fields['body_text']);
-                    if ($is_html) {
-                        $mail->html($current->fields['body_html']);
-                    }
+                    $mail->html($current->fields['body_html']);
                 }
 
                 self::attachDocuments($mail, $documents_to_attach);
@@ -415,7 +418,7 @@ class NotificationEventMailing extends NotificationEventAbstract
                 if (!empty($current->fields['messageid'])) {
                     $mail->getHeaders()->addHeader('Message-Id', $current->fields['messageid']);
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 self::handleFailedSend($current, $e->getMessage());
             }
 

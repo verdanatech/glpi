@@ -32,18 +32,21 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Egulias\EmailValidator\EmailValidator;
 use Egulias\EmailValidator\Validation\RFCValidation;
 use Glpi\Error\ErrorHandler;
 use Glpi\Mail\SMTP\OauthConfig;
 use League\OAuth2\Client\Grant\RefreshToken;
+use Safe\DateTime;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
+
+use function Safe\preg_replace;
 
 /** GLPI Mailer class
  *
@@ -67,13 +70,13 @@ class GLPIMailer
      * Errors that may have occurred during email sending.
      * @var string|null
      */
-    private ?string $error;
+    private ?string $error = null;
 
     /**
      * Debug log.
      * @var string|null
      */
-    private ?string $debug;
+    private ?string $debug = null;
 
     public function __construct(?TransportInterface $transport = null)
     {
@@ -217,20 +220,17 @@ class GLPIMailer
             $sent_message = $this->transport->send($this->email);
             $this->debug = $sent_message->getDebug();
             return true;
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (TransportExceptionInterface $e) {
             $this->error = $e->getMessage();
             $this->debug = $e->getDebug();
-        } catch (\LogicException $e) {
+        } catch (LogicException $e) {
             $this->error = $e->getMessage();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error = $e->getMessage();
             ErrorHandler::logCaughtException($e);
         }
 
-        if ($this->error !== null) {
-            Toolbox::logInFile('mail-error', $this->error . "\n");
-        }
-
+        Toolbox::logInFile('mail-error', $this->error . "\n");
         return false;
     }
 
@@ -288,7 +288,7 @@ class GLPIMailer
                 $value = $this->email->getTextBody() ?? '';
                 break;
             case 'MessageID':
-                $value = $this->email->getHeaders()->get('Message-Id')->getBodyAsString() ?? '';
+                $value = $this->email->getHeaders()->get('Message-Id')->getBodyAsString();
                 break;
             case 'From':
                 $value = $this->email->getHeaders()->get('From')->getAddresses()[0]->getAddress() ?? '';
@@ -297,17 +297,17 @@ class GLPIMailer
                 $value = $this->email->getHeaders()->get('From')->getAddresses()[0]->getName() ?? '';
                 break;
             case 'Sender':
-                $value = $this->email->getHeaders()->get('Sender')->getBodyAsString() ?? '';
+                $value = $this->email->getHeaders()->get('Sender')->getBodyAsString();
                 break;
             case 'MessageDate':
-                $value = $this->email->getHeaders()->get('Date')->getBodyAsString() ?? '';
+                $value = $this->email->getHeaders()->get('Date')->getBodyAsString();
                 break;
             case 'ErrorInfo':
                 $value = $this->error ?? '';
                 break;
             default:
                 trigger_error(
-                    sprintf('Undefined property %s::$%s', __CLASS__, $property),
+                    sprintf('Undefined property %s::$%s', self::class, $property),
                     E_USER_WARNING
                 );
                 $deprecation = false;
@@ -345,7 +345,7 @@ class GLPIMailer
                 $header = $this->email->getHeaders()->get('From');
                 if ($header === null || count($header->getAddresses()) === 0) {
                     trigger_error(
-                        sprintf('Unable to define "FromName" property when "From" property is not defined.'),
+                        'Unable to define "FromName" property when "From" property is not defined.',
                         E_USER_WARNING
                     );
                 } else {
@@ -363,7 +363,7 @@ class GLPIMailer
                 break;
             default:
                 trigger_error(
-                    sprintf('Undefined property %s::$%s', __CLASS__, $property),
+                    sprintf('Undefined property %s::$%s', self::class, $property),
                     E_USER_WARNING
                 );
                 $deprecation = false;
@@ -371,7 +371,7 @@ class GLPIMailer
         }
 
         if ($deprecation) {
-            Toolbox::deprecated(sprintf('Usage of property %s::$%s is deprecated', __CLASS__, $property));
+            Toolbox::deprecated(sprintf('Usage of property %s::$%s is deprecated', self::class, $property));
         }
     }
 
@@ -384,7 +384,7 @@ class GLPIMailer
                 // public function addCustomHeader($name, $value = null)
                 $name  = array_key_exists(0, $arguments) && is_string($arguments[0]) ? $arguments[0] : null;
                 $value = array_key_exists(1, $arguments) && is_string($arguments[1]) ? $arguments[1] : null;
-                if (null === $value && strpos($name, ':') !== false) {
+                if (null === $value && str_contains($name, ':')) {
                     [$name, $value] = explode(':', $name, 2);
                 }
                 if ($name !== null && $value !== null) {
@@ -464,10 +464,10 @@ class GLPIMailer
                 // Trigger fatal error to block execution.
                 // As we cannot know which return value type is expected, it is safer to to ensure
                 // that caller will not continue execution using a void return value.
-                throw new \RuntimeException(sprintf('Call to undefined method %s::%s()', __CLASS__, $method));
+                throw new RuntimeException(sprintf('Call to undefined method %s::%s()', self::class, $method));
         }
 
-        Toolbox::deprecated(sprintf('Usage of method %s::%s() is deprecated', __CLASS__, $method));
+        Toolbox::deprecated(sprintf('Usage of method %s::%s() is deprecated', self::class, $method));
     }
 
     public static function __callstatic(string $method, array $arguments)
@@ -475,6 +475,6 @@ class GLPIMailer
         // Trigger fatal error to block execution.
         // As we cannot know which return value type is expected, it is safer to to ensure
         // that caller will not continue execution using a void return value.
-        throw new \RuntimeException(sprintf('Call to undefined method %s::%s()', __CLASS__, $method));
+        throw new RuntimeException(sprintf('Call to undefined method %s::%s()', self::class, $method));
     }
 }

@@ -35,6 +35,7 @@
 
 namespace Glpi\Form\QuestionType;
 
+use CommonDBTM;
 use CommonItilObject_Item;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
@@ -43,7 +44,11 @@ use Glpi\Form\Condition\UsedAsCriteriaInterface;
 use Glpi\Form\Question;
 use InvalidArgumentException;
 use Override;
+use Safe\Exceptions\JsonException;
 use Session;
+
+use function Safe\json_decode;
+use function Safe\preg_match;
 
 final class QuestionTypeUserDevice extends AbstractQuestionType implements UsedAsCriteriaInterface
 {
@@ -56,7 +61,7 @@ final class QuestionTypeUserDevice extends AbstractQuestionType implements UsedA
             isset($input['is_multiple_devices'])
             && count($input) === 1
             && filter_var($input['is_multiple_devices'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== null
-        ) || empty($input);
+        ) || $input === [];
     }
 
     /**
@@ -71,13 +76,16 @@ final class QuestionTypeUserDevice extends AbstractQuestionType implements UsedA
             return false;
         }
 
-        /** @var ?QuestionTypeUserDevicesConfig $config */
-        $config = $this->getExtraDataConfig(json_decode($question->fields['extra_data'], true) ?? []);
-        if ($config === null) {
+        try {
+            /** @var ?QuestionTypeUserDevicesConfig $config */
+            $config = $this->getExtraDataConfig(json_decode($question->fields['extra_data'], true) ?? []);
+            if ($config === null) {
+                return false;
+            }
+            return $config->isMultipleDevices();
+        } catch (JsonException $e) {
             return false;
         }
-
-        return $config->isMultipleDevices();
     }
 
     #[Override]
@@ -221,8 +229,8 @@ TWIG;
             $device_parts = [];
             if (
                 preg_match('/^(?<itemtype>.+)_(?<id>\d+)$/', $device, $device_parts) !== 1
-                || !is_a($device_parts['itemtype'], \CommonDBTM::class, true)
-                || $device_parts['itemtype']::getById($device_parts['id']) === false
+                || !is_a($device_parts['itemtype'], CommonDBTM::class, true)
+                || $device_parts['itemtype']::getById((int) $device_parts['id']) === false
             ) {
                 continue;
             }

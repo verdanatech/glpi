@@ -40,6 +40,8 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 use Twig\TwigTest;
 
+use function Safe\ini_get;
+
 /**
  * @since 10.0.0
  */
@@ -119,7 +121,7 @@ class PhpExtension extends AbstractExtension
      */
     public function isInstanceof($value, $classname): bool
     {
-        return is_object($value) && $value instanceof $classname;
+        return $value instanceof $classname;
     }
 
     /**

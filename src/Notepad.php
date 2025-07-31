@@ -35,6 +35,8 @@
 
 use Glpi\Application\View\TemplateRenderer;
 
+use function Safe\getimagesize;
+
 /**
  * Notepad class
  *
@@ -160,7 +162,7 @@ class Notepad extends CommonDBChild
      **/
     public static function getAllForItem(CommonDBTM $item, $target = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $data = [];
@@ -184,14 +186,14 @@ class Notepad extends CommonDBChild
             ],
             'ORDERBY'   => 'date_mod DESC',
         ];
-        if (!is_null($target) && $target = 'Ticket') {
+        if ($target === Ticket::class) {
             $query['WHERE']['visible_from_ticket'] = true;
         }
         $iterator = $DB->request($query);
         $document_obj = new Document();
 
         foreach ($iterator as $note) {
-            $document_items = Document_Item::getItemsAssociatedTo(__CLASS__, $note['id']);
+            $document_items = Document_Item::getItemsAssociatedTo(self::class, $note['id']);
             foreach ($document_items as $document_item) {
                 if (!$document_obj->getFromDB($document_item->fields['documents_id'])) {
                     continue;

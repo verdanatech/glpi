@@ -37,6 +37,8 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\Plugin\Hooks;
 use Glpi\Toolbox\URL;
 
+use function Safe\json_encode;
+
 /**
  * @since 9.5.0
  */
@@ -81,15 +83,19 @@ class Impact extends CommonGLPI
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
+
+        if ((int) $withtemplate > 0) {
+            return '';
+        }
 
         // Class of the current item
         $class = $item::class;
 
         // Only enabled for CommonDBTM
         if (!is_a($item, "CommonDBTM", true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Argument \$item ($class) must be a CommonDBTM."
             );
         }
@@ -99,7 +105,7 @@ class Impact extends CommonGLPI
 
         // Check if itemtype is valid
         if (!$is_enabled_asset && !$is_itil_object) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Argument \$item ($class) is not a valid target for impact analysis."
             );
         }
@@ -141,16 +147,16 @@ class Impact extends CommonGLPI
         $tabnum = 1,
         $withtemplate = 0
     ) {
-        // Impact analysis should not be available outside of central
-        if (Session::getCurrentInterface() !== "central") {
+        // Impact analysis should not be available outside of central or used with templates
+        if (Session::getCurrentInterface() !== "central" || $withtemplate != 0) {
             return false;
         }
 
         $class = get_class($item);
 
         // Only enabled for CommonDBTM
-        if (!$item instanceof \CommonDBTM) {
-            throw new \InvalidArgumentException(
+        if (!$item instanceof CommonDBTM) {
+            throw new InvalidArgumentException(
                 "Argument \$item ($class) must be a CommonDBTM)."
             );
         }
@@ -168,7 +174,7 @@ class Impact extends CommonGLPI
         }
 
         // For an ITIL object, load the first linked element by default
-        if ($item instanceof \CommonITILObject) {
+        if ($item instanceof CommonITILObject) {
             $linked_items = $item->getLinkedItems();
 
             // Search for a valid linked item of this ITILObject
@@ -176,7 +182,7 @@ class Impact extends CommonGLPI
             foreach ($linked_items as $itemtype => $linked_item_ids) {
                 $class = $itemtype;
                 if (self::isEnabled($class)) {
-                    $item = new $class();
+                    $item = getItemForItemtype($class);
                     foreach ($linked_item_ids as $linked_item_id) {
                         if (!$item->getFromDB($linked_item_id)) {
                             continue;
@@ -191,7 +197,7 @@ class Impact extends CommonGLPI
             }
 
             // No valid linked item were found, tab shouldn't be visible
-            if (empty($items_data)) {
+            if ($items_data === []) {
                 return false;
             }
 
@@ -382,7 +388,7 @@ JS);
             echo '</a>';
         }
         if ($can_update && $impact_context) {
-            echo '<i id="impact-list-settings" class="ti ti-cog impact-pointer impact-list-tools" title="' . __s('Settings') . '"></i>';
+            echo '<i id="impact-list-settings" class="ti ti-filter-cog impact-pointer impact-list-tools" title="' . __s('Settings') . '"></i>';
         }
         echo '</div>';
 
@@ -494,7 +500,7 @@ TWIG, $twig_params);
             $("#impact-list-settings").click(function() {
                glpi_html_dialog({
                   title: ' . json_encode(__("Settings")) . ',
-                  body: ' . ($setting_dialog || '{}') . ',
+                  body: ' . $setting_dialog . ',
                });
             });
 
@@ -637,7 +643,7 @@ JS);
             }
 
             // Add to itemtype
-            $itemtype_item = new $itemtype();
+            $itemtype_item = getItemForItemtype($itemtype);
             $itemtype_item->getFromDB($items_id);
             $data[$itemtype][] = [
                 'stored' => $itemtype_item,
@@ -703,7 +709,7 @@ JS);
                 break;
 
             default:
-                throw new \InvalidArgumentException("Invalid direction : $direction");
+                throw new InvalidArgumentException("Invalid direction : $direction");
         }
 
         // Insert start node in the queue
@@ -888,19 +894,19 @@ JS);
      */
     public static function searchAsset(string $itemtype, array $used, string $filter, int $page = 0): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Check if this type is enabled in config
         if (!self::isEnabled($itemtype)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "itemtype ($itemtype) must be enabled in config"
             );
         }
 
         // Check class exist and is a child of CommonDBTM
         if (!is_subclass_of($itemtype, "CommonDBTM", true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "itemtype ($itemtype) must be a valid child of CommonDBTM"
             );
         }
@@ -1199,7 +1205,7 @@ JS);
         int $direction,
         array $explored_nodes = []
     ): void {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Source and target are determined by the direction in which we are
@@ -1214,7 +1220,7 @@ JS);
                 $target = "source";
                 break;
             default:
-                throw new \InvalidArgumentException(
+                throw new InvalidArgumentException(
                     "Invalid value for argument \$direction ($direction)."
                 );
         }
@@ -1454,7 +1460,7 @@ JS);
                 $to = self::getNodeID($itemA);
                 break;
             default:
-                throw new \InvalidArgumentException(
+                throw new InvalidArgumentException(
                     "Invalid value for argument \$direction ($direction)."
                 );
         }
@@ -1635,9 +1641,9 @@ TWIG, $twig_params);
             }
 
             // Look for a matching asset in the DB
-            $asset = new $itemtype();
+            $asset = getItemForItemtype($itemtype);
             return $asset->getFromDB($items_id) !== false;
-        } catch (\ReflectionException $e) {
+        } catch (ReflectionException $e) {
             // Class does not exist
             return false;
         }
@@ -1671,7 +1677,7 @@ TWIG, $twig_params);
         return match ($direction) {
             self::DIRECTION_FORWARD => self::getNodeID($itemA) . self::EDGE_ID_DELIMITER . self::getNodeID($itemB),
             self::DIRECTION_BACKWARD => self::getNodeID($itemB) . self::EDGE_ID_DELIMITER . self::getNodeID($itemA),
-            default => throw new \InvalidArgumentException(
+            default => throw new InvalidArgumentException(
                 "Invalid value for argument \$direction ($direction)."
             ),
         };
@@ -1682,9 +1688,9 @@ TWIG, $twig_params);
      *
      * @param CommonDBTM $item The item being purged
      */
-    public static function clean(\CommonDBTM $item): void
+    public static function clean(CommonDBTM $item): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Skip if not a valid impact type
@@ -1693,7 +1699,7 @@ TWIG, $twig_params);
         }
 
         // Remove each relation
-        $DB->delete(\ImpactRelation::getTable(), [
+        $DB->delete(ImpactRelation::getTable(), [
             'OR' => [
                 [
                     'itemtype_source' => get_class($item),

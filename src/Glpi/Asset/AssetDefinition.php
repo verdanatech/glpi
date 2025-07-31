@@ -34,26 +34,31 @@
 
 namespace Glpi\Asset;
 
+use AutoUpdateSystem;
 use CommonGLPI;
+use Computer;
+use DBmysql;
+use DisplayPreference;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\Capacity\CapacityInterface;
 use Glpi\Asset\CustomFieldType\DropdownType;
 use Glpi\Asset\CustomFieldType\StringType;
 use Glpi\Asset\CustomFieldType\TextType;
 use Glpi\CustomObject\AbstractDefinition;
-use Glpi\DBAL\QueryExpression;
-use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
-use Glpi\Search\SearchOption;
 use Group;
 use Location;
+use LogicException;
 use Manufacturer;
 use Profile;
 use Session;
 use User;
 
+use function Safe\json_decode;
+use function Safe\json_encode;
+
 /**
- * @extends AbstractDefinition<\Glpi\Asset\Asset>
+ * @extends AbstractDefinition<Asset>
  */
 final class AssetDefinition extends AbstractDefinition
 {
@@ -72,6 +77,11 @@ final class AssetDefinition extends AbstractDefinition
     public static function getCustomObjectNamespace(): string
     {
         return 'Glpi\\CustomAsset';
+    }
+
+    public static function getCustomObjectClassSuffix(): string
+    {
+        return 'Asset';
     }
 
     public static function getDefinitionManagerClass(): string
@@ -223,7 +233,7 @@ final class AssetDefinition extends AbstractDefinition
         $field_display = $this->getDecodedFieldsField();
         $field_match = array_filter($field_display, static fn($field) => $field['key'] === $field_key);
         $field_options = [];
-        if (!empty($field_match)) {
+        if ($field_match !== []) {
             $field_options = reset($field_match)['field_options'] ?? [];
         }
         // Merge field options with overrides
@@ -234,7 +244,7 @@ final class AssetDefinition extends AbstractDefinition
         $custom_field->fields['name'] = $field_key;
         $custom_field->fields['label'] = $all_fields[$field_key]['text'];
         $custom_field->fields['type'] = $all_fields[$field_key]['type'];
-        $custom_field->fields['itemtype'] = \Computer::class; // Doesn't matter what it is as long as it's not empty
+        $custom_field->fields['itemtype'] = Computer::class; // Doesn't matter what it is as long as it's not empty
         $custom_field->fields['field_options'] = $field_options;
 
         $options_allowlist = ['required', 'readonly', 'full_width', 'hidden'];
@@ -266,15 +276,6 @@ TWIG, $twig_params);
             }
         }
         $input = $this->managePictures($input);
-
-        if (\array_key_exists('system_name', $input) && preg_match('/(Model|Type)$/i', $input['system_name']) === 1) {
-            Session::addMessageAfterRedirect(
-                __s('The system name must not end with the word "Model" or the word "Type".'),
-                false,
-                ERROR
-            );
-            return false;
-        }
 
         return parent::prepareInputForAdd($input);
     }
@@ -366,7 +367,7 @@ TWIG, $twig_params);
             3, // Location
             19, // Last Update
         ];
-        $pref = new \DisplayPreference();
+        $pref = new DisplayPreference();
         foreach ($prefs as $field) {
             $pref->add([
                 'itemtype' => $this->getAssetClassName(),
@@ -464,46 +465,12 @@ TWIG, $twig_params);
         $capacity_instance->onCapacityUpdated($this->getAssetClassName(), $capacity->getConfig(), $updated_capacity->getConfig());
     }
 
-    public function rawSearchOptions()
-    {
-        $search_options = parent::rawSearchOptions();
-
-        $search_options[] = [
-            'id'   => 'capacities',
-            'name' => __('Capacities'),
-        ];
-        foreach (AssetDefinitionManager::getInstance()->getAvailableCapacities() as $capacity) {
-            // capacity is stored in a JSON array, so entry is surrounded by double quotes
-            $search_string = json_encode($capacity::class);
-            // Backslashes must be doubled in LIKE clause, according to MySQL documentation:
-            // > To search for \, specify it as \\\\; this is because the backslashes are stripped
-            // > once by the parser and again when the pattern match is made,
-            // > leaving a single backslash to be matched against.
-            $search_string = str_replace('\\', '\\\\', $search_string);
-
-            $search_options[] = [
-                'id'            => SearchOption::generateAProbablyUniqueId($capacity::class),
-                'table'         => self::getTable(),
-                'field'         => sprintf('_capacities_%s', $capacity::class),
-                'name'          => $capacity->getLabel(),
-                'computation'   => QueryFunction::if(
-                    condition: ['capacities' => ['LIKE', '%' . $search_string . '%']],
-                    true_expression: new QueryExpression('1'),
-                    false_expression: new QueryExpression('0')
-                ),
-                'datatype'      => 'bool',
-            ];
-        }
-
-        return $search_options;
-    }
-
     /**
      * Get the definition's concrete asset class name.
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\Asset>
+     * @phpstan-return class-string<Asset>
      */
     public function getAssetClassName(bool $with_namespace = true): string
     {
@@ -515,11 +482,22 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\AssetModel>
+     * @phpstan-return class-string<AssetModel>
      */
     public function getAssetModelClassName(bool $with_namespace = true): string
     {
         return $this->getAssetClassName($with_namespace) . 'Model';
+    }
+
+    public function getAssetModelClassInstance(): AssetModel
+    {
+        $classname = $this->getAssetModelClassName();
+
+        if (!\is_a($classname, AssetModel::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $classname();
     }
 
     /**
@@ -527,11 +505,22 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\AssetType>
+     * @phpstan-return class-string<AssetType>
      */
     public function getAssetTypeClassName(bool $with_namespace = true): string
     {
         return $this->getAssetClassName($with_namespace) . 'Type';
+    }
+
+    public function getAssetTypeClassInstance(): AssetType
+    {
+        $classname = $this->getAssetTypeClassName();
+
+        if (!\is_a($classname, AssetType::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $classname();
     }
 
     /**
@@ -539,7 +528,7 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\RuleDictionaryModel>
+     * @phpstan-return class-string<RuleDictionaryModel>
      */
     public function getAssetModelDictionaryClassName(bool $with_namespace = true): string
     {
@@ -555,7 +544,7 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\RuleDictionaryModelCollection>
+     * @phpstan-return class-string<RuleDictionaryModelCollection>
      */
     public function getAssetModelDictionaryCollectionClassName(bool $with_namespace = true): string
     {
@@ -571,7 +560,7 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\RuleDictionaryType>
+     * @phpstan-return class-string<RuleDictionaryType>
      */
     public function getAssetTypeDictionaryClassName(bool $with_namespace = true): string
     {
@@ -587,7 +576,7 @@ TWIG, $twig_params);
      *
      * @param bool $with_namespace
      * @return string
-     * @phpstan-return class-string<\Glpi\Asset\RuleDictionaryTypeCollection>
+     * @phpstan-return class-string<RuleDictionaryTypeCollection>
      */
     public function getAssetTypeDictionaryCollectionClassName(bool $with_namespace = true): string
     {
@@ -642,7 +631,7 @@ TWIG, $twig_params);
     /**
      * Return the decoded value of the `capacities` field.
      *
-     * @return \Glpi\Asset\Capacity[]
+     * @return Capacity[]
      */
     private function getDecodedCapacitiesField(): array
     {
@@ -652,7 +641,7 @@ TWIG, $twig_params);
     /**
      * Decoded the given value of the `capacities` field.
      *
-     * @return \Glpi\Asset\Capacity[]
+     * @return Capacity[]
      */
     private function decodeCapacities(string $encoded): array
     {
@@ -755,7 +744,7 @@ TWIG, $twig_params);
                 'type' => TextType::class,
             ],
             'autoupdatesystems_id' => [
-                'text' => \AutoUpdateSystem::getTypeName(1),
+                'text' => AutoUpdateSystem::getTypeName(1),
                 'type' => DropdownType::class,
             ],
         ];
@@ -777,7 +766,7 @@ TWIG, $twig_params);
 
         $default = [];
         $order = 0;
-        foreach ($all_fields as $key => $label) {
+        foreach (array_keys($all_fields) as $key) {
             $default[] = [
                 'key'   => $key,
                 'order' => $order,
@@ -863,7 +852,7 @@ TWIG, $twig_params);
      */
     public function getCustomFieldDefinitions(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($this->custom_field_definitions === null) {
@@ -894,10 +883,7 @@ TWIG, $twig_params);
     {
         $enabled_profiles = [];
         foreach ($profile_data as $data) {
-            $helpdesk_item_types = json_decode($data['helpdesk_item_type'], associative: true) ?? [];
-            if (!is_array($helpdesk_item_types)) {
-                $helpdesk_item_types = [];
-            }
+            $helpdesk_item_types = importArrayFromDB($data['helpdesk_item_type']);
             if (in_array($this->getCustomObjectClassName(), $helpdesk_item_types, true)) {
                 $enabled_profiles[] = $data['id'];
             }
@@ -905,7 +891,7 @@ TWIG, $twig_params);
 
         $twig_params = [
             'enabled_profiles' => $enabled_profiles,
-            'label' => sprintf(__('Profiles that can associate %s with tickets, problems or changes'), $this->getTranslatedName(\Session::getPluralNumber())),
+            'label' => sprintf(__('Profiles that can associate %s with tickets, problems or changes'), $this->getTranslatedName(Session::getPluralNumber())),
         ];
         // language=Twig
         return TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
@@ -918,7 +904,7 @@ TWIG, $twig_params);
 
     protected function syncProfilesRights(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::syncProfilesRights();
@@ -938,7 +924,7 @@ TWIG, $twig_params);
             'FROM' => Profile::getTable(),
         ]);
         foreach ($it as $data) {
-            $old_values[$data['id']] = json_decode($data['helpdesk_item_type'], associative: true);
+            $old_values[$data['id']] = importArrayFromDB($data['helpdesk_item_type']);
             if (!is_array($old_values[$data['id']])) {
                 $old_values[$data['id']] = [];
             }
@@ -964,5 +950,26 @@ TWIG, $twig_params);
                 $profile->update(['id' => $profile_id] + $changes);
             }
         }
+    }
+
+    /**
+     * Return the SQL system criteria to be used by the asset concrete classes.
+     */
+    public function getSystemSQLCriteriaForConcreteClass(?string $tablename = null): array
+    {
+        $table_prefix = $tablename !== null
+            ? $tablename . '.'
+            : '';
+
+        // Keep only items from current definition must be shown.
+        $criteria = [
+            $table_prefix . self::getForeignKeyField() => $this->getID(),
+        ];
+
+        // Add another layer to the array to prevent losing duplicates keys if the
+        // result of the function is merged with another array.
+        $criteria = [crc32(serialize($criteria)) => $criteria];
+
+        return $criteria;
     }
 }

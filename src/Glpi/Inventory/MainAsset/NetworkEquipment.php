@@ -41,6 +41,10 @@ use Glpi\Inventory\Asset\NetworkPort;
 use NetworkEquipmentModel;
 use NetworkEquipmentType;
 use NetworkName;
+use RuntimeException;
+use stdClass;
+
+use function Safe\preg_replace;
 
 class NetworkEquipment extends MainAsset
 {
@@ -49,7 +53,7 @@ class NetworkEquipment extends MainAsset
     protected $extra_data = [
         'network_device'                          => null,
         'network_components'                      => null,
-        '\Glpi\Inventory\Asset\NetworkPort'       => null,
+        NetworkPort::class       => null,
     ];
 
     protected function getModelsFieldName(): string
@@ -96,13 +100,13 @@ class NetworkEquipment extends MainAsset
             }
             $this->hardware = $device;
 
-            foreach ($device as $key => $property) {
+            foreach ($device as $key => $property) { // @phpstan-ignore foreach.nonIterable
                 $val->$key = $property;
             }
 
             if (property_exists($device, 'ips')) {
                 $portkey = 'management';
-                $port = new \stdClass();
+                $port = new stdClass();
                 if (property_exists($device, 'mac')) {
                     $port->mac = $device->mac;
                 }
@@ -131,14 +135,15 @@ class NetworkEquipment extends MainAsset
             $this->data = [];
             $switches = $this->getStackedSwitches();
             foreach ($switches as $switch) {
+                $switch_name = $switch->name ?? $switch->description;
                 $stack = clone $val;
                 $stack->firmware = $switch->firmware ?? $switch->version ?? '';
                 $stack->serial = $switch->serial;
                 $stack->model = $switch->model;
                 $stack->$model_field = $switch->model;
-                $stack->description = $stack->name . ' - ' . ($switch->name ?? $switch->description);
-                $stack->name = $stack->name . ' - ' . ($switch->name ?? $switch->description);
-                if (($switch->name ?? $switch->description) != $switch->stack_number ?? '') {
+                $stack->description = $stack->name . ' - ' . $switch_name;
+                $stack->name = $stack->name . ' - ' . $switch_name;
+                if ($switch_name != ($switch->stack_number ?? '')) {
                     $stack->name .= ' - ' . $switch->stack_number;
                 }
                 $stack->stack_number = $switch->stack_number ?? null;
@@ -162,7 +167,7 @@ class NetworkEquipment extends MainAsset
                     $wcontrol->ips = [$ap->ip];
 
                     //add internal port
-                    $port = new \stdClass();
+                    $port = new stdClass();
                     $port->mac = $ap->mac;
                     $port->name = 'Management';
                     $port->is_internal = true;
@@ -171,7 +176,7 @@ class NetworkEquipment extends MainAsset
                     $port->ipaddress = [$ap->ip];
                     $wcontrol->ap_port = $port;
 
-                    $firmware = new \stdClass();
+                    $firmware = new stdClass();
                     $firmware->description = $ap->comment ?? '';
                     $firmware->name = $ap->model ?? '';
                     $firmware->devicefirmwaretypes_id = 'device';
@@ -191,12 +196,12 @@ class NetworkEquipment extends MainAsset
     /**
      * After rule engine passed, update task (log) and create item if required
      *
-     * @param integer $items_id id of the item (0 if new)
-     * @param string  $itemtype Item type
-     * @param integer $rules_id Matched rule id, if any
-     * @param integer $ports_id Matched port id, if any
+     * @param integer       $items_id id of the item (0 if new)
+     * @param string        $itemtype Item type
+     * @param integer       $rules_id Matched rule id, if any
+     * @param integer|array $ports_id Matched port id, if any
      */
-    public function rulepassed($items_id, $itemtype, $rules_id, $ports_id = 0)
+    public function rulepassed($items_id, $itemtype, $rules_id, $ports_id = [])
     {
         if (property_exists($this->data[$this->current_key], 'is_ap')) {
             $bkp_assets = $this->assets;
@@ -210,27 +215,25 @@ class NetworkEquipment extends MainAsset
                 ;
                 $np->prepare();
                 $np->handleLinks();
-                $this->assets = ['\Glpi\Inventory\Asset\NetworkPort' => [$np]];
+                $this->assets = [NetworkPort::class => [$np]];
             }
         }
 
-        if (method_exists($this, 'getManagementPorts')) {
-            $mports = $this->getManagementPorts();
-            $np = new NetworkPort($this->item, $mports);
-            if ($np->checkConf($this->conf)) {
-                $np
-                    ->setMainAsset($this)
-                    ->setAgent($this->getAgent())
-                    ->setEntityID($this->getEntityID())
-                ;
-                $np->prepare();
-                $np->handleLinks();
-                if (!isset($this->assets['\Glpi\Inventory\Asset\NetworkPort'])) {
-                    $np->addNetworkPorts($mports);
-                    $this->assets['\Glpi\Inventory\Asset\NetworkPort'] = [$np];
-                } else {
-                    $this->assets['\Glpi\Inventory\Asset\NetworkPort'][0]->addNetworkPorts($np->getNetworkPorts());
-                }
+        $mports = $this->getManagementPorts();
+        $np = new NetworkPort($this->item, $mports);
+        if ($np->checkConf($this->conf)) {
+            $np
+                ->setMainAsset($this)
+                ->setAgent($this->getAgent())
+                ->setEntityID($this->getEntityID())
+            ;
+            $np->prepare();
+            $np->handleLinks();
+            if (!isset($this->assets[NetworkPort::class])) {
+                $np->addNetworkPorts($mports);
+                $this->assets[NetworkPort::class] = [$np];
+            } else {
+                $this->assets[NetworkPort::class][0]->addNetworkPorts($np->getNetworkPorts());
             }
         }
 
@@ -251,7 +254,7 @@ class NetworkEquipment extends MainAsset
         return parent::handleLinks();
     }
 
-    protected function portCreated(\stdClass $port, int $netports_id)
+    protected function portCreated(stdClass $port, int $netports_id)
     {
         if (property_exists($port, 'is_internal') && $port->is_internal) {
             return;
@@ -301,6 +304,7 @@ class NetworkEquipment extends MainAsset
             return false;
         }
 
+        $stack_component = $this->getStackComponentName($components);
         $elt_count = 0;
         foreach ($components as $component) {
             if (!property_exists($component, 'type')) {
@@ -312,7 +316,7 @@ class NetworkEquipment extends MainAsset
                         $elt_count += $this->isStackedSwitch($component->index);
                     }
                     break;
-                case 'chassis':
+                case $stack_component:
                     if (property_exists($component, 'serial')) {
                         ++$elt_count;
                     }
@@ -324,7 +328,7 @@ class NetworkEquipment extends MainAsset
     }
 
     /**
-     * Get detected switches (osrted by their index)
+     * Get detected switches (sorted by their index)
      *
      * @return array
      */
@@ -335,21 +339,20 @@ class NetworkEquipment extends MainAsset
             return [];
         }
 
+        $stack_component = $this->getStackComponentName($components);
         $switches = [];
         $stack_number = 1;
         foreach ($components as $component) {
-            switch ($component->type) {
-                case 'chassis':
-                    if (property_exists($component, 'serial')) {
-                        if (property_exists($component, 'stack_number')) {
-                            $stack_number = $component->stack_number;
-                        } else {
-                            $component->stack_number = $stack_number;
-                        }
-                        $switches[$component->index] = $component;
+            if ($component->type == $stack_component) {
+                if (property_exists($component, 'serial')) {
+                    if (property_exists($component, 'stack_number')) {
+                        $stack_number = $component->stack_number;
+                    } else {
+                        $component->stack_number = $stack_number;
                     }
-                    $stack_number++;
-                    break;
+                    $switches[$component->index] = $component;
+                }
+                $stack_number++;
             }
         }
 
@@ -358,14 +361,42 @@ class NetworkEquipment extends MainAsset
     }
 
     /**
+     * Get stack component name
+     *
+     * @param array $components Network components
+     *
+     * @return string
+     */
+    public function getStackComponentName(array $components): string
+    {
+        $name = null;
+        foreach ($components as $component) {
+            if (!property_exists($component, 'type')) {
+                continue;
+            }
+            switch ($component->type) {
+                case 'chassis':
+                    if (property_exists($component, 'serial')) {
+                        $name = 'chassis';
+                    }
+                    break;
+                case 'module':
+                    if (property_exists($component, 'serial') && $name === null) {
+                        $name = 'module';
+                    }
+                    break;
+            }
+        }
+        return $name ?? 'chassis';
+    }
+
+    /**
      * Is device a wireless controller
      * Relies on level/dependencies of network_components
      *
-     * @param integer $parent_index Parent index for recursive calls
-     *
      * @return boolean
      */
-    public function isWirelessController($parent_index = 0): bool
+    public function isWirelessController(): bool
     {
         $components = $this->extra_data['network_components'] ?? [];
         if (!count($components)) {
@@ -412,7 +443,7 @@ class NetworkEquipment extends MainAsset
     public function getStackId()
     {
         if (count($this->data) != 1) {
-            throw new \RuntimeException('Exactly one entry in data is expected.');
+            throw new RuntimeException('Exactly one entry in data is expected.');
         } else {
             $data = current($this->data);
 

@@ -44,6 +44,10 @@ use Glpi\Form\Category;
 use Glpi\Plugin\Hooks;
 use Glpi\SocketModel;
 
+use function Safe\json_encode;
+use function Safe\opendir;
+use function Safe\preg_match;
+
 class Dropdown
 {
     //Empty value displayed in a dropdown
@@ -237,7 +241,7 @@ class Dropdown
 
         // Manage entity_sons
         if (
-            !($params['entity'] < 0)
+            $params['entity'] >= 0
             && $params['entity_sons']
         ) {
             if (is_array($params['entity'])) {
@@ -304,7 +308,7 @@ class Dropdown
                 false
             );
             if ($result['count'] === 0) {
-                return;
+                return false;
             }
         }
 
@@ -533,7 +537,7 @@ class Dropdown
             Toolbox::deprecated('Usage of the `$withcomment` parameter is deprecated. Use `Dropdown::getDropdownComments()` instead.');
         }
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $id = (int) $id; // Prevent unexpected value type to be sent in the SQL request
@@ -646,7 +650,7 @@ class Dropdown
      **/
     public static function getDropdownComments(string $table, int $id, bool $translate = true, bool $tooltip = true): string
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = getItemTypeForTable($table);
@@ -834,7 +838,7 @@ class Dropdown
      **/
     public static function getDropdownArrayNames($table, $ids)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tabs = [];
@@ -927,7 +931,7 @@ class Dropdown
      **/
     public static function dropdownUsedItemTypes($name, $itemtype_ref, $options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $p['value'] = 0;
@@ -1555,11 +1559,7 @@ HTML;
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
-
-        if (isset($CFG_GLPI["languages"][$value][0])) {
-            return $CFG_GLPI["languages"][$value][0];
-        }
-        return $value;
+        return $CFG_GLPI["languages"][$value][0] ?? $value;
     }
 
 
@@ -1822,18 +1822,18 @@ HTML;
             'add_data_attributes_itemtype_dropdown' => '',
         ];
 
-        if (is_array($options) && count($options)) {
+        if (count($options)) {
             foreach ($options as $key => $val) {
                 $params[$key] = $val;
             }
         }
 
-        $select = self::showItemType($params['itemtypes'], [
+        $out = self::showItemType($params['itemtypes'], [
             'checkright'          => $params['checkright'],
             'name'                => $params['itemtype_name'],
             'emptylabel'          => $params['emptylabel'],
             'display_emptychoice' => $params['display_emptychoice'],
-            'display'             => $params['display'],
+            'display'             => false,
             'rand'                => $params['rand'],
             'track_changes'       => $params['itemtype_track_changes'],
             'init'                => $params['init'],
@@ -1864,7 +1864,7 @@ HTML;
         if (!empty($params['default_itemtype']) && $params['default_items_id'] > 0) {
             $p_ajax["value"] = $params['default_items_id'];
             // If default itemtype is a CommonDBTM
-            if (is_subclass_of($params['default_itemtype'], 'CommonDBTM', true)) {
+            if (is_subclass_of($params['default_itemtype'], CommonDBTM::class, true)) {
                 $item = new $params['default_itemtype']();
                 $item->getFromDB($params['default_items_id']);
                 $p_ajax["valuename"] = $item->getName();
@@ -1874,20 +1874,15 @@ HTML;
         $field_id = Html::cleanId("dropdown_" . $params['itemtype_name'] . $params['rand']);
         $show_id  = Html::cleanId("show_" . $params['items_id_name'] . $params['rand']);
 
-        $ajax = Ajax::updateItemOnSelectEvent(
+        $out .= Ajax::updateItemOnSelectEvent(
             $field_id,
             $show_id,
             $params['ajax_page'],
             $p_ajax,
-            $params['display']
+            false
         );
 
-        $out = "";
-        if (!$params['display']) {
-            $out .= $select . $ajax;
-        }
-
-        $out .= "<br><span id='$show_id'></span>\n";
+        $out .= "<br><span id='" . htmlescape($show_id) . "'></span>";
 
         // We check $options as the caller will set $options['default_itemtype'] only if it needs a
         // default itemtype and the default value can be '' thus empty won't be valid !
@@ -2182,16 +2177,16 @@ HTML;
         }
 
         // Generate array values
-        foreach ($values as $i => $val) {
+        foreach (array_keys($values) as $i) {
             if ($params['inhours']) {
                 $day  = 0;
-                $hour = floor($i / HOUR_TIMESTAMP);
+                $hour = (int) floor($i / HOUR_TIMESTAMP);
             } else {
-                $day  = floor($i / DAY_TIMESTAMP);
-                $hour = floor(($i % DAY_TIMESTAMP) / HOUR_TIMESTAMP);
+                $day  = (int) floor($i / DAY_TIMESTAMP);
+                $hour = (int) floor(($i % DAY_TIMESTAMP) / HOUR_TIMESTAMP);
             }
-            $minute     = floor(($i % HOUR_TIMESTAMP) / MINUTE_TIMESTAMP);
-            if ($minute === '0') {
+            $minute     = (int) floor(($i % HOUR_TIMESTAMP) / MINUTE_TIMESTAMP);
+            if ((int) $minute === 0) {
                 $minute = '00';
             }
             if ($day > 0) {
@@ -2402,10 +2397,8 @@ HTML;
 
             if (!empty($param['add_data_attributes'])) {
                 if (is_array($param['add_data_attributes'])) {
-                    $output .= implode(' ', array_map(
-                        function ($key, $value) {
-                            return htmlescape('data-' . $key) . '="' . htmlescape($value) . '"';
-                        },
+                    $output .= ' ' . implode(' ', array_map(
+                        fn($key, $value) => htmlescape('data-' . $key) . '="' . htmlescape($value) . '"',
                         array_keys($param['add_data_attributes']),
                         $param['add_data_attributes']
                     ));
@@ -2843,19 +2836,19 @@ HTML;
      * @param array   $post Posted values
      * @param boolean $json Encode to JSON, default to true
      *
-     * @return string|array
+     * @return string|array|false
      */
     public static function getDropdownValue($post, $json = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         // check if asked itemtype is the one originally requested by the form
         if (!Session::validateIDOR($post)) {
-            return;
+            return false;
         }
 
         if (isset($post['entity_restrict']) && 'default' === $post['entity_restrict']) {
@@ -2863,8 +2856,8 @@ HTML;
         } elseif (
             isset($post["entity_restrict"])
             && !is_array($post["entity_restrict"])
-            && (substr($post["entity_restrict"], 0, 1) === '[')
-            && (substr($post["entity_restrict"], -1) === ']')
+            && (str_starts_with($post["entity_restrict"], '['))
+            && (str_ends_with($post["entity_restrict"], ']'))
         ) {
             $decoded = Toolbox::jsonDecode($post['entity_restrict']);
             $entities = [];
@@ -2878,7 +2871,7 @@ HTML;
 
         // Security
         if (!($item = getItemForItemtype($post['itemtype']))) {
-            return;
+            return false;
         }
 
         $table = $item->getTable();
@@ -3039,8 +3032,8 @@ HTML;
                     $recur = false;
                 }
 
-                if (isset($post["entity_restrict"]) && !($post["entity_restrict"] < 0)) {
-                    $where = $where + getEntitiesRestrictCriteria(
+                if (isset($post["entity_restrict"]) && $post["entity_restrict"] >= 0) {
+                    $where += getEntitiesRestrictCriteria(
                         $table,
                         '',
                         $post["entity_restrict"],
@@ -3053,7 +3046,7 @@ HTML;
                 } else {
                     // If private item do not use entity
                     if (!$item->maybePrivate()) {
-                        $where = $where + getEntitiesRestrictCriteria($table, '', '', $recur);
+                        $where += getEntitiesRestrictCriteria($table, '', '', $recur);
 
                         if (count($_SESSION['glpiactiveentities']) > 1) {
                             $multi = true;
@@ -3365,8 +3358,8 @@ HTML;
             if ($item->isEntityAssign()) {
                 $multi = $item->maybeRecursive();
 
-                if (isset($post["entity_restrict"]) && !($post["entity_restrict"] < 0)) {
-                    $where = $where + getEntitiesRestrictCriteria(
+                if (isset($post["entity_restrict"]) && $post["entity_restrict"] >= 0) {
+                    $where += getEntitiesRestrictCriteria(
                         $table,
                         "entities_id",
                         $post["entity_restrict"],
@@ -3379,7 +3372,7 @@ HTML;
                 } else {
                     // Do not use entity if may be private
                     if (!$item->maybePrivate()) {
-                        $where = $where + getEntitiesRestrictCriteria($table, '', '', $multi);
+                        $where += getEntitiesRestrictCriteria($table, '', '', $multi);
 
                         if (count($_SESSION['glpiactiveentities']) > 1) {
                             $multi = true;
@@ -3646,7 +3639,7 @@ HTML;
 
                     if (isset($data['transname']) && !empty($data['transname'])) {
                         $outputval = $data['transname'];
-                    } elseif ($field == 'itemtype' && class_exists($data['itemtype'])) {
+                    } elseif ($field == 'itemtype' && class_exists($data['itemtype']) && is_a($data[$field], CommonDBTM::class, true)) {
                         $tmpitem = new $data[$field]();
                         if ($tmpitem->getFromDB($data['items_id'])) {
                             $outputval = sprintf(__('%1$s - %2$s'), $tmpitem->getTypeName(), $tmpitem->getName());
@@ -3725,7 +3718,7 @@ HTML;
 
     private static function filterDisplayWith(CommonDBTM $item, array $fields): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Filter invalid fields
@@ -3751,23 +3744,23 @@ HTML;
      * @param array   $post Posted values
      * @param boolean $json Encode to JSON, default to true
      *
-     * @return string|array
+     * @return string|array|false
      */
     public static function getDropdownConnect($post, $json = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post)) {
-            return;
+            return false;
         }
 
         if (!isset($post['fromtype']) || !($fromitem = getItemForItemtype($post['fromtype']))) {
-            return;
+            return false;
         }
 
         if (isset($post['entity_restrict'])) {
@@ -3789,7 +3782,7 @@ HTML;
         // Make a select box
         $table = getTableForItemType($post["itemtype"]);
         if (!$item = getItemForItemtype($post['itemtype'])) {
-            return;
+            return false;
         }
 
         $where = [];
@@ -3812,13 +3805,13 @@ HTML;
 
         $multi = $item->maybeRecursive();
 
-        if (isset($post["entity_restrict"]) && !($post["entity_restrict"] < 0)) {
-            $where = $where + getEntitiesRestrictCriteria($table, '', $post["entity_restrict"], $multi);
+        if (isset($post["entity_restrict"]) && $post["entity_restrict"] >= 0) {
+            $where += getEntitiesRestrictCriteria($table, '', $post["entity_restrict"], $multi);
             if (is_array($post["entity_restrict"]) && (count($post["entity_restrict"]) > 1)) {
                 $multi = true;
             }
         } else {
-            $where = $where + getEntitiesRestrictCriteria($table, '', $_SESSION['glpiactiveentities'], $multi);
+            $where += getEntitiesRestrictCriteria($table, '', $_SESSION['glpiactiveentities'], $multi);
             if (count($_SESSION['glpiactiveentities']) > 1) {
                 $multi = true;
             }
@@ -3953,30 +3946,28 @@ HTML;
      * @param array   $post Posted values
      * @param boolean $json Encode to JSON, default to true
      *
-     * @return string|array
+     * @return string|array|false
      */
     public static function getDropdownFindNum($post, $json = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         // Security
         if (!$DB->tableExists($post['table'])) {
-            return;
+            return false;
         }
 
-        $itemtypeisplugin = isPluginItemType($post['itemtype']);
-
-        // check if asked itemtype is the one originaly requested by the form
+        // check if asked itemtype is the one originally requested by the form
         if (!Session::validateIDOR($post)) {
-            return;
+            return false;
         }
 
         if (!$item = getItemForItemtype($post['itemtype'])) {
-            return;
+            return false;
         }
 
         $where = $item->getSystemSQLCriteria();
@@ -4049,7 +4040,7 @@ HTML;
 
             // allow opening ticket on recursive object (printer, software, ...)
             $recursive = $item->maybeRecursive();
-            $where     = $where + getEntitiesRestrictCriteria($post['table'], '', $entity, $recursive);
+            $where += getEntitiesRestrictCriteria($post['table'], '', $entity, $recursive);
         }
 
         if (!isset($post['page'])) {
@@ -4177,7 +4168,7 @@ HTML;
         }
 
         for ($i = $post['min']; $i <= $post['max']; $i += $post['step']) {
-            if (!empty($post['searchText']) && strstr($i, $post['searchText']) || empty($post['searchText'])) {
+            if (!empty($post['searchText']) && strstr($i, (string) $post['searchText']) || empty($post['searchText'])) {
                 if (!in_array($i, $used)) {
                     $values["$i"] = $i;
                 }
@@ -4232,7 +4223,7 @@ HTML;
      * @param array   $post Posted values
      * @param boolean $json Encode to JSON, default to true
      *
-     * @return string|array
+     * @return string|array|false
      */
     public static function getDropdownUsers($post, $json = true)
     {
@@ -4241,7 +4232,7 @@ HTML;
 
         // check if asked itemtype is the one originaly requested by the form
         if (!Session::validateIDOR($post + ['itemtype' => 'User', 'right' => ($post['right'] ?? "")])) {
-            return;
+            return false;
         }
 
         if (!isset($post['right'])) {
@@ -4391,7 +4382,7 @@ HTML;
         }
 
         // prevent instanciation of bad classes
-        if (!is_subclass_of($post['itiltemplate_class'], 'ITILTemplate')) {
+        if (!is_subclass_of($post['itiltemplate_class'], ITILTemplate::class)) {
             return false;
         }
         $template = new $post['itiltemplate_class']();
@@ -4473,18 +4464,21 @@ HTML;
         if (
             $post["actortype"] == 'assign'
             && !$template->isHiddenField("_suppliers_id_{$post['actortype']}")
-            && in_array('Supplier', $post['returned_itemtypes'])
+            && in_array(Supplier::class, $post['returned_itemtypes'])
         ) {
-            // Bypass checks, idor token validation has already been made earlier in method
-            $supplier_idor = Session::getNewIDORToken('Supplier', ['entity_restrict' => $entity_restrict]);
-
-            $suppliers    = Dropdown::getDropdownValue([
-                'itemtype'            => 'Supplier',
-                '_idor_token'         => $supplier_idor,
+            $supplier_params = [
+                'itemtype'            => Supplier::class,
                 'display_emptychoice' => false,
                 'searchText'          => $post['searchText'],
                 'entity_restrict'     => $entity_restrict,
-            ], false);
+                'condition'           => [],
+            ];
+            if (!$post['inactive_deleted']) {
+                $supplier_params['condition'] = static::addNewCondition(['is_active' => 1]);
+            }
+            // Bypass checks, idor token validation has already been made earlier in method
+            $supplier_idor = Session::getNewIDORToken(Supplier::class, ['entity_restrict' => $entity_restrict, 'condition' => $supplier_params['condition']]);
+            $suppliers    = Dropdown::getDropdownValue($supplier_params + ['_idor_token' => $supplier_idor], false);
             foreach ($suppliers['results'] as $supplier) {
                 if (isset($supplier['children'])) {
                     foreach ($supplier['children'] as &$children) {
@@ -4494,7 +4488,7 @@ HTML;
                         $children['items_id']          = $children['id'];
                         $children['id']                = "Supplier_" . $children['id'];
                         $children['itemtype']          = "Supplier";
-                        $children['use_notification']  = strlen($supplier_obj->fields['email']) > 0 ? 1 : 0;
+                        $children['use_notification']  = strlen($supplier_obj->fields['email'] ?? '') > 0 ? 1 : 0;
                         $children['default_email']     = $supplier_obj->fields['email'];
                         $children['alternative_email'] = '';
                     }

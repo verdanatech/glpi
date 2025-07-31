@@ -35,6 +35,8 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\ContentTemplates\Parameters\ChangeParameters;
+use Glpi\ContentTemplates\Parameters\CommonITILObjectParameters;
+use Glpi\DBAL\QueryExpression;
 use Glpi\RichText\RichText;
 
 /**
@@ -59,10 +61,6 @@ class Change extends CommonITILObject
     public const IMPACT_MASK_FIELD             = 'impact_mask';
     public const STATUS_MATRIX_FIELD           = 'change_status';
 
-
-    public const READMY                        = 1;
-    public const READALL                       = 1024;
-
     // Specific status for changes
     public const EVALUATION             = 9;
     public const TEST                   = 11;
@@ -85,7 +83,7 @@ class Change extends CommonITILObject
 
         return (self::isAllowedStatus($this->fields['status'], self::SOLVED)
               // No edition on closed status
-              && !in_array($this->fields['status'], $this->getClosedStatusArray())
+              && !in_array($this->fields['status'], static::getClosedStatusArray())
               && (Session::haveRight(self::$rightname, UPDATE)
                   || (Session::haveRight(self::$rightname, self::READMY)
                       && ($this->isUser(CommonITILActor::ASSIGN, Session::getLoginUserID())
@@ -157,7 +155,7 @@ class Change extends CommonITILObject
     public function canReopen()
     {
         return Session::haveRight('followup', CREATE)
-             && in_array($this->fields["status"], $this->getClosedStatusArray())
+             && in_array($this->fields["status"], static::getClosedStatusArray())
              && ($this->isAllowedStatus($this->fields['status'], self::INCOMING)
                  || $this->isAllowedStatus($this->fields['status'], self::EVALUATION));
     }
@@ -221,8 +219,8 @@ class Change extends CommonITILObject
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($this->canAdminActors()) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_actor'] = __s('Add an actor');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'update_notif']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_actor'] = __s('Add an actor');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'update_notif']
                = __s('Set notifications for all actors');
         }
 
@@ -233,8 +231,8 @@ class Change extends CommonITILObject
     {
 
         if (static::canView()) {
-            switch ($item->getType()) {
-                case __CLASS__:
+            switch ($item::class) {
+                case self::class:
                     $ong = [];
                     if ($item->canUpdate()) {
                         $ong[1] = static::createTabEntry(__('Statistics'), 0, null, 'ti ti-chart-pie');
@@ -248,6 +246,36 @@ class Change extends CommonITILObject
                     }
 
                     return $ong;
+
+                case User::class:
+                    $nb = 0;
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = countElementsInTable(
+                            ['glpi_changes', 'glpi_changes_users'],
+                            [
+                                'glpi_changes_users.changes_id'  => new QueryExpression(DBmysql::quoteName('glpi_changes.id')),
+                                'glpi_changes_users.users_id'    => $item->getID(),
+                                'glpi_changes_users.type'        => CommonITILActor::REQUESTER,
+                                'glpi_changes.is_deleted'        => 0,
+                            ] + getEntitiesRestrictCriteria(self::getTable())
+                        );
+                    }
+                    return self::createTabEntry(__('Created changes'), $nb, $item::getType());
+
+                case Group::class:
+                    $nb = 0;
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = countElementsInTable(
+                            ['glpi_changes', 'glpi_changes_groups'],
+                            [
+                                'glpi_changes_groups.changes_id' => new QueryExpression(DBmysql::quoteName('glpi_changes.id')),
+                                'glpi_changes_groups.groups_id'  => $item->getID(),
+                                'glpi_changes_groups.type'       => CommonITILActor::REQUESTER,
+                                'glpi_changes.is_deleted'        => 0,
+                            ] + getEntitiesRestrictCriteria(self::getTable())
+                        );
+                    }
+                    return self::createTabEntry(__('Created changes'), $nb, $item::getType());
             }
         }
         return '';
@@ -268,6 +296,10 @@ class Change extends CommonITILObject
                         break;
                 }
                 break;
+
+            case User::class:
+            case Group::class:
+                return self::showListForItem($item, $withtemplate);
         }
         return true;
     }
@@ -277,7 +309,7 @@ class Change extends CommonITILObject
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(ChangeValidation::class, $ong, $options);
         $this->addStandardTab(ChangeCost::class, $ong, $options);
         $this->addStandardTab(Itil_Project::class, $ong, $options);
@@ -348,7 +380,7 @@ class Change extends CommonITILObject
             if (
                 isset($this->input["status"]) && $this->input["status"]
                 && in_array("status", $this->updates)
-                && in_array($this->input["status"], $this->getSolvedStatusArray())
+                && in_array($this->input["status"], static::getSolvedStatusArray())
             ) {
                 $mailtype = "solved";
             }
@@ -357,7 +389,7 @@ class Change extends CommonITILObject
                 isset($this->input["status"])
                 && $this->input["status"]
                 && in_array("status", $this->updates)
-                && in_array($this->input["status"], $this->getClosedStatusArray())
+                && in_array($this->input["status"], static::getClosedStatusArray())
             ) {
                 $mailtype = "closed";
             }
@@ -373,7 +405,7 @@ class Change extends CommonITILObject
 
     public function post_addItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::post_addItem();
@@ -839,16 +871,8 @@ class Change extends CommonITILObject
             return false;
         }
 
-        $restrict = self::getListForItemRestrict($item);
-        $criteria['WHERE'] = $restrict + getEntitiesRestrictCriteria(self::getTable());
-        $criteria['WHERE']['glpi_changes.is_deleted'] = 0;
-        $criteria['LIMIT'] = (int) $_SESSION['glpilist_limit'];
-
         $options = [
             'metacriteria' => [],
-            'restrict' => $restrict,
-            'criteria' => $criteria,
-            'reset'    => 'reset',
         ];
 
         switch (get_class($item)) {
@@ -856,7 +880,7 @@ class Change extends CommonITILObject
                 // Mini search engine
                 /** @var Group $item */
                 if ($item->haveChildren()) {
-                    $tree = (int) Session::getSavedOption(__CLASS__, 'tree', 0);
+                    $tree = (int) Session::getSavedOption(self::class, 'tree', 0);
                     TemplateRenderer::getInstance()->display('components/form/item_itilobject_group.html.twig', [
                         'tree' => $tree,
                     ]);
@@ -872,27 +896,25 @@ class Change extends CommonITILObject
     {
         $restrict = [];
 
-        switch (get_class($item)) {
-            case User::class:
+        switch (true) {
+            case $item instanceof User:
                 $restrict['glpi_changes_users.users_id'] = $item->getID();
                 $restrict['glpi_changes_users.type'] = CommonITILActor::REQUESTER;
                 break;
 
-            case Supplier::class:
+            case $item instanceof Supplier:
                 $restrict['glpi_changes_suppliers.suppliers_id'] = $item->getID();
                 $restrict['glpi_changes_suppliers.type'] = CommonITILActor::ASSIGN;
                 break;
 
-            case Group::class:
-                /** @var Group $item */
+            case $item instanceof Group:
                 if ($item->haveChildren()) {
-                    $tree = Session::getSavedOption(__CLASS__, 'tree', 0);
+                    $tree = Session::getSavedOption(self::class, 'tree', 0);
                 } else {
                     $tree = 0;
                 }
                 $restrict['glpi_changes_groups.groups_id'] = ($tree ? getSonsOf('glpi_groups', $item->getID()) : $item->getID());
                 $restrict['glpi_changes_groups.type'] = CommonITILActor::REQUESTER;
-                /** @var CommonDBTM $item */
                 break;
 
             default:
@@ -990,7 +1012,7 @@ class Change extends CommonITILObject
      */
     public function getActiveChangesForItem($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         return $DB->request([
@@ -1014,8 +1036,8 @@ class Change extends CommonITILObject
                 $this->getTable() . '.is_deleted' => 0,
                 'NOT'                         => [
                     $this->getTable() . '.status' => array_merge(
-                        $this->getSolvedStatusArray(),
-                        $this->getClosedStatusArray()
+                        static::getSolvedStatusArray(),
+                        static::getClosedStatusArray()
                     ),
                 ],
             ],
@@ -1045,14 +1067,9 @@ class Change extends CommonITILObject
         }
     }
 
-    public static function getTaskClass()
+    public static function getContentTemplatesParametersClassInstance(): CommonITILObjectParameters
     {
-        return ChangeTask::class;
-    }
-
-    public static function getContentTemplatesParametersClass(): string
-    {
-        return ChangeParameters::class;
+        return new ChangeParameters();
     }
 
     /**
@@ -1066,7 +1083,7 @@ class Change extends CommonITILObject
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1293,7 +1310,7 @@ class Change extends CommonITILObject
 
                         $main_header = "<a href=\"" . Change::getSearchURL() . "?" .
                         Toolbox::append_params($options, '&amp;') . "\">" .
-                        Html::makeTitle(__('Your changes to validate'), $displayed_row_count, $total_row_count) . "</a>";
+                        Html::makeTitle(__('Your changes to approve'), $displayed_row_count, $total_row_count) . "</a>";
 
                         break;
 
@@ -1451,7 +1468,7 @@ class Change extends CommonITILObject
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 

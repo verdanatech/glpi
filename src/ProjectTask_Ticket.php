@@ -107,7 +107,7 @@ class ProjectTask_Ticket extends CommonDBRelation
      **/
     public static function getTicketsTotalActionTime($projecttasks_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -167,7 +167,7 @@ class ProjectTask_Ticket extends CommonDBRelation
             ];
             echo TemplateRenderer::getInstance()->render('components/form/link_existing_or_new.html.twig', [
                 'rand' => $rand,
-                'link_itemtype' => __CLASS__,
+                'link_itemtype' => self::class,
                 'source_itemtype' => ProjectTask::class,
                 'source_items_id' => $ID,
                 'target_itemtype' => Ticket::class,
@@ -215,7 +215,7 @@ class ProjectTask_Ticket extends CommonDBRelation
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -306,7 +306,7 @@ class ProjectTask_Ticket extends CommonDBRelation
 
             echo TemplateRenderer::getInstance()->render('components/form/link_existing_or_new.html.twig', [
                 'rand' => $rand,
-                'link_itemtype' => __CLASS__,
+                'link_itemtype' => self::class,
                 'source_itemtype' => Ticket::class,
                 'source_items_id' => $ID,
                 'target_itemtype' => ProjectTask::class,

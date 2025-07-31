@@ -37,14 +37,18 @@ namespace Glpi\Console;
 
 use DBmysql;
 use Glpi\Console\Command\GlpiCommandInterface;
+use Glpi\Console\Exception\EarlyExitException;
 use Glpi\System\RequirementsManager;
 use Override;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+
+use function Safe\preg_replace;
 
 abstract class AbstractCommand extends Command implements GlpiCommandInterface
 {
@@ -80,7 +84,7 @@ abstract class AbstractCommand extends Command implements GlpiCommandInterface
     /**
      * Current progress bar.
      *
-     * @var ProgressBar
+     * @var ?ProgressBar
      */
     protected $progress_bar;
 
@@ -109,11 +113,14 @@ abstract class AbstractCommand extends Command implements GlpiCommandInterface
     protected function initDbConnection()
     {
 
-        /** @var \DBmysql|null $DB */
+        /** @var DBmysql|null $DB */
         global $DB;
 
         if ($this->requires_db && (!($DB instanceof DBmysql) || !$DB->connected)) {
-            throw new \Symfony\Component\Console\Exception\RuntimeException(__('Unable to connect to database.'));
+            throw new EarlyExitException(
+                '<error>' . __('Unable to connect to database.') . '</error>',
+                Application::ERROR_DB_UNAVAILABLE
+            );
         }
 
         $this->db = $DB;
@@ -205,7 +212,7 @@ abstract class AbstractCommand extends Command implements GlpiCommandInterface
             return;
         }
 
-        $db = property_exists($this, 'db') ? $this->db : null;
+        $db = $this->db;
 
         $requirements_manager = new RequirementsManager();
         $core_requirements = $requirements_manager->getCoreRequirementList(
@@ -245,7 +252,7 @@ abstract class AbstractCommand extends Command implements GlpiCommandInterface
     {
         $abort = false;
         if (!$this->input->getOption('no-interaction')) {
-            $question_helper = $this->getHelper('question');
+            $question_helper = new QuestionHelper();
             $run = $question_helper->ask(
                 $this->input,
                 $this->output,
@@ -260,7 +267,7 @@ abstract class AbstractCommand extends Command implements GlpiCommandInterface
         }
 
         if ($abort) {
-            throw new \Glpi\Console\Exception\EarlyExitException(
+            throw new EarlyExitException(
                 '<comment>' . __('Aborted.') . '</comment>',
                 0 // Success code
             );

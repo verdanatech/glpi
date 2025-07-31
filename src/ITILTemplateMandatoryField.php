@@ -76,13 +76,12 @@ abstract class ITILTemplateMandatoryField extends ITILTemplateField
 
     public function post_purgeItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::post_purgeItem();
 
-        $itil_class = static::$itiltype;
-        $itil_object = new $itil_class();
+        $itil_object = getItemForItemtype(static::$itiltype);
         $itemtype_id = $itil_object->getSearchOptionIDByField('field', 'itemtype', $itil_object->getTable());
         $items_id_id = $itil_object->getSearchOptionIDByField('field', 'items_id', $itil_object->getTable());
 
@@ -117,7 +116,7 @@ abstract class ITILTemplateMandatoryField extends ITILTemplateField
      **/
     public function getMandatoryFields($ID, $withtypeandcategory = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -126,8 +125,7 @@ abstract class ITILTemplateMandatoryField extends ITILTemplateField
             'ORDER'  => 'id',
         ]);
 
-        $tt_class       = static::$itemtype;
-        $tt             = new $tt_class();
+        $tt             = getItemForItemtype(static::$itemtype);
         $allowed_fields = $tt->getAllowedFields($withtypeandcategory);
         $fields         = [];
 

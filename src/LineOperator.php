@@ -89,7 +89,7 @@ class LineOperator extends CommonDropdown
 
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $input = parent::prepareInputForAdd($input);
@@ -114,8 +114,8 @@ class LineOperator extends CommonDropdown
         if ($result['cpt'] > 0) {
             Session::addMessageAfterRedirect(
                 __s('Mobile country code and network code combination must be unique!'),
-                ERROR,
-                true
+                false,
+                ERROR
             );
             return false;
         }

@@ -52,8 +52,12 @@ final class Item_Environment extends CommonDBChild
     }
 
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
+        if (!$item instanceof CommonDBTM) {
+            throw new RuntimeException("Only CommonDBTM items are supported");
+        }
+
         if ($item::canView()) {
             $nb = countElementsInTable(
                 self::getTable(),
@@ -85,7 +89,7 @@ final class Item_Environment extends CommonDBChild
 
     public static function showForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item->getType();

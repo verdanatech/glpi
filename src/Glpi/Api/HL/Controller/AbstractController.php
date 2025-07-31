@@ -36,13 +36,17 @@
 namespace Glpi\Api\HL\Controller;
 
 use CommonDBTM;
-use Glpi\Api\HL\Doc as Doc;
+use Entity;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\RoutePath;
 use Glpi\Api\HL\Router;
 use Glpi\Http\JSONResponse;
 use Glpi\Http\Request;
 use Glpi\Http\Response;
 use Glpi\Plugin\Hooks;
+use Plugin;
+use RuntimeException;
+use Session;
 
 /**
  * @phpstan-type AdditionalErrorMessage array{priority: string, message: string}
@@ -67,14 +71,13 @@ abstract class AbstractController
     public const CRUD_ACTION_DELETE = 'delete';
     public const CRUD_ACTION_PURGE = 'purge';
     public const CRUD_ACTION_RESTORE = 'restore';
-    public const CRUD_ACTION_LIST = 'list';
 
     protected const PARAMETER_RSQL_FILTER = [
         'name' => 'filter',
         'description' => 'RSQL query string',
         'location' => 'query',
         'schema' => [
-            'type' => Doc\Schema::TYPE_STRING,
+            'type' => Schema::TYPE_STRING,
         ],
     ];
 
@@ -83,8 +86,8 @@ abstract class AbstractController
         'description' => 'The first item to return',
         'location' => 'query',
         'schema' => [
-            'type' => Doc\Schema::TYPE_INTEGER,
-            'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+            'type' => Schema::TYPE_INTEGER,
+            'format' => Schema::FORMAT_INTEGER_INT64,
             'minimum' => 0,
             'default' => 0,
         ],
@@ -95,8 +98,8 @@ abstract class AbstractController
         'description' => 'The maximum number of items to return',
         'location' => 'query',
         'schema' => [
-            'type' => Doc\Schema::TYPE_INTEGER,
-            'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+            'type' => Schema::TYPE_INTEGER,
+            'format' => Schema::FORMAT_INTEGER_INT64,
             'minimum' => 0,
             'default' => 100,
         ],
@@ -108,7 +111,7 @@ abstract class AbstractController
                           If no direction is provided, asc is assumed. Multiple sorts can be provided by separating them with a comma.',
         'location' => 'query',
         'schema' => [
-            'type' => Doc\Schema::TYPE_STRING,
+            'type' => Schema::TYPE_STRING,
         ],
     ];
 
@@ -140,7 +143,7 @@ abstract class AbstractController
     {
         $schemas = static::getRawKnownSchemas();
         // Allow plugins to inject or modify schemas
-        $schemas = \Plugin::doHookFunction(Hooks::REDEFINE_API_SCHEMAS, [
+        $schemas = Plugin::doHookFunction(Hooks::REDEFINE_API_SCHEMAS, [
             'controller' => static::class,
             'schemas' => $schemas,
         ])['schemas'];
@@ -150,7 +153,7 @@ abstract class AbstractController
                 if (str_starts_with($schema_name, '_')) {
                     continue;
                 }
-                $schema = Doc\Schema::filterSchemaByAPIVersion($schema, $api_version);
+                $schema = Schema::filterSchemaByAPIVersion($schema, $api_version);
             }
         }
         // Remove any null schemas
@@ -182,7 +185,7 @@ abstract class AbstractController
             $field = $class::getForeignKeyField();
         }
         $schema = [
-            'type' => Doc\Schema::TYPE_OBJECT,
+            'type' => Schema::TYPE_OBJECT,
             'x-field' => $field,
             'x-itemtype' => $class,
             'x-join' => [
@@ -192,11 +195,11 @@ abstract class AbstractController
             ],
             'properties' => [
                 'id' => [
-                    'type' => Doc\Schema::TYPE_INTEGER,
-                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
-                    'x-readonly' => $class !== \Entity::class,
+                    'type' => Schema::TYPE_INTEGER,
+                    'format' => Schema::FORMAT_INTEGER_INT64,
+                    'x-readonly' => $class !== Entity::class,
                 ],
-                $name_field => ['type' => Doc\Schema::TYPE_STRING],
+                $name_field => ['type' => Schema::TYPE_STRING],
             ],
         ];
         if ($full_schema !== null) {
@@ -207,13 +210,13 @@ abstract class AbstractController
 
     /**
      * @return int
-     * @throws \RuntimeException if the user ID is not set in the current session
+     * @throws RuntimeException if the user ID is not set in the current session
      */
     protected function getMyUserID(): int
     {
-        $user_id = \Session::getLoginUserID();
+        $user_id = Session::getLoginUserID();
         if (!is_int($user_id)) {
-            throw new \RuntimeException('Invalid session');
+            throw new RuntimeException('Invalid session');
         }
         return $user_id;
     }
@@ -266,14 +269,12 @@ abstract class AbstractController
         $messages = $_SESSION['MESSAGE_AFTER_REDIRECT'] ?? [];
         $additional_messages = [];
         if (count($messages) > 0) {
-            $get_priority_name = static function ($priority) {
-                return match ($priority) {
-                    0 => 'info',
-                    1 => 'error',
-                    2 => 'warning',
-                    default => 'unknown',
-                };
-            };
+            $get_priority_name = (static fn($priority) => match ($priority) {
+                0 => 'info',
+                1 => 'error',
+                2 => 'warning',
+                default => 'unknown',
+            });
             foreach ($messages as $priority => $message_texts) {
                 foreach ($message_texts as $message) {
                     $additional_messages[] = [
@@ -364,9 +365,10 @@ abstract class AbstractController
     public static function getAPIPathForRouteFunction(string $controller, string $function, array $params = [], bool $allow_invalid = false): string
     {
         $route_paths = Router::getInstance()->getAllRoutes();
-        $matches = array_filter($route_paths, static function (/** @var RoutePath $route_path */$route_path) use ($controller, $function) {
-            return $route_path->getController() === $controller && $route_path->getMethod()->getName() === $function;
-        });
+        $matches = array_filter($route_paths, static fn(
+            /** @var RoutePath $route_path */
+            $route_path
+        ) => $route_path->getController() === $controller && $route_path->getMethod()->getName() === $function);
         if (count($matches) === 0) {
             return '/';
         }

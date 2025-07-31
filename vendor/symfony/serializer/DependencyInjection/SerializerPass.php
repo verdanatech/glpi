@@ -31,7 +31,10 @@ class SerializerPass implements CompilerPassInterface
 {
     use PriorityTaggedServiceTrait;
 
-    public function process(ContainerBuilder $container): void
+    /**
+     * @return void
+     */
+    public function process(ContainerBuilder $container)
     {
         if (!$container->hasDefinition('serializer')) {
             return;
@@ -53,6 +56,7 @@ class SerializerPass implements CompilerPassInterface
             }
 
             $container->getParameterBag()->remove('serializer.default_context');
+            $container->getDefinition('serializer')->setArgument('$defaultContext', $defaultContext);
         }
 
         if ($container->getParameter('kernel.debug') && $container->hasDefinition('serializer.data_collector')) {

@@ -35,6 +35,7 @@
 
 namespace Glpi\Features;
 
+use DBmysql;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QuerySubQuery;
 use Group_Item;
@@ -42,11 +43,13 @@ use Session;
 
 trait AssignableItem
 {
+    /** @see AssignableItemInterface::canView() */
     public static function canView(): bool
     {
         return Session::haveRightsOr(static::$rightname, [READ, READ_ASSIGNED, READ_OWNED]);
     }
 
+    /** @see AssignableItemInterface::canViewItem() */
     public function canViewItem(): bool
     {
         if (!parent::canViewItem()) {
@@ -67,11 +70,13 @@ trait AssignableItem
         return true;
     }
 
+    /** @see AssignableItemInterface::canUpdate() */
     public static function canUpdate(): bool
     {
         return Session::haveRightsOr(static::$rightname, [UPDATE, UPDATE_ASSIGNED, UPDATE_OWNED]);
     }
 
+    /** @see AssignableItemInterface::canUpdateItem() */
     public function canUpdateItem(): bool
     {
         if (!parent::canUpdateItem()) {
@@ -92,6 +97,7 @@ trait AssignableItem
         return true;
     }
 
+    /** @see AssignableItemInterface::getAssignableVisiblityCriteria() */
     public static function getAssignableVisiblityCriteria(): array
     {
         if (!Session::haveRightsOr(static::$rightname, [READ, READ_ASSIGNED, READ_OWNED])) {
@@ -150,12 +156,7 @@ trait AssignableItem
         return $criteria;
     }
 
-    /**
-     * @param string $interface
-     * @phpstan-param 'central'|'helpdesk' $interface
-     * @return array
-     * @phpstan-return array<integer, string|array>
-     */
+    /** @see AssignableItemInterface::getRights() */
     public function getRights($interface = 'central')
     {
         $rights = parent::getRights($interface);
@@ -168,7 +169,8 @@ trait AssignableItem
         return $rights;
     }
 
-    protected function prepareGroupFields(array $input)
+    /** @see AssignableItemInterface::prepareGroupFields() */
+    public function prepareGroupFields(array $input)
     {
         $fields = ['groups_id', 'groups_id_tech'];
         foreach ($fields as $field) {
@@ -183,7 +185,8 @@ trait AssignableItem
         return $input;
     }
 
-    public function prepareInputForAdd($input): array|false
+    /** @see AssignableItemInterface::prepareInputForAdd() */
+    public function prepareInputForAdd($input)
     {
         if ($input === false) {
             return false;
@@ -195,7 +198,8 @@ trait AssignableItem
         return $this->prepareGroupFields($input);
     }
 
-    public function prepareInputForUpdate($input): array|false
+    /** @see AssignableItemInterface::prepareInputForUpdate() */
+    public function prepareInputForUpdate($input)
     {
         if ($input === false) {
             return false;
@@ -207,12 +211,10 @@ trait AssignableItem
         return $this->prepareGroupFields($input);
     }
 
-    /**
-     * Update the values in the 'glpi_groups_items' link table as needed based on the groups set in the 'groups_id' and 'groups_id_tech' fields.
-     */
-    private function updateGroupFields()
+    /** @see AssignableItemInterface::updateGroupFields() */
+    public function updateGroupFields()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Find existing links
@@ -268,18 +270,21 @@ trait AssignableItem
         $this->loadGroupFields();
     }
 
+    /** @see AssignableItemInterface::post_addItem() */
     public function post_addItem()
     {
         parent::post_addItem();
         $this->updateGroupFields();
     }
 
+    /** @see AssignableItemInterface::post_updateItem() */
     public function post_updateItem($history = true)
     {
         parent::post_updateItem($history);
         $this->updateGroupFields();
     }
 
+    /** @see AssignableItemInterface::getEmpty() */
     public function getEmpty()
     {
         if (!parent::getEmpty()) {
@@ -294,7 +299,7 @@ trait AssignableItem
 
     private function loadGroupFields()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Find existing links
@@ -317,6 +322,7 @@ trait AssignableItem
         }
     }
 
+    /** @see AssignableItemInterface::post_getFromDB() */
     public function post_getFromDB()
     {
         $this->loadGroupFields();

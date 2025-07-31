@@ -32,16 +32,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Features\Clonable;
 use Glpi\RichText\RichText;
+
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
 
 /**
  * NotificationTemplate Class
  **/
 class NotificationTemplate extends CommonDBTM
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory = true;
@@ -208,7 +212,7 @@ class NotificationTemplate extends CommonDBTM
      * @param $event
      * @param $options      array
      *
-     * @return false|integer id of the template in templates_by_languages / false if computation failed
+     * @return false|string id of the template in templates_by_languages / false if computation failed
      **/
     public function getTemplateByLanguage(
         NotificationTarget $target,
@@ -216,8 +220,11 @@ class NotificationTemplate extends CommonDBTM
         $event = '',
         $options = []
     ) {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
+        /**
+         * @var array $CFG_GLPI
+         * @var DBmysql $DB
+         */
+        global $CFG_GLPI, $DB;
 
         $lang     = [];
         $language = $user_infos['language'];
@@ -240,6 +247,18 @@ class NotificationTemplate extends CommonDBTM
             Session::loadLanguage($language);
             $bak_language = $_SESSION["glpilanguage"];
             $_SESSION["glpilanguage"] = $language;
+
+            // set timezone from user, and reload object
+            $orig_tz = null;
+            if (isset($user_infos['additionnaloption']['timezone'])) {
+                $orig_tz = $DB->guessTimezone();
+                $DB->setTimezone($user_infos['additionnaloption']['timezone']);
+
+                if (is_a($options['item'], CommonDBTM::class, true)) {
+                    // reload item to ensure timestamps will be converted to the current user timezone
+                    $options['item']->getFromDB($options['item']->fields['id']);
+                }
+            }
 
             //If event is raised by a plugin, load it in order to get the language file available
             if ($plug = isPluginItemType(get_class($target->obj))) {
@@ -312,6 +331,11 @@ class NotificationTemplate extends CommonDBTM
             if ($plug = isPluginItemType(get_class($target->obj))) {
                 Plugin::loadLang(strtolower($plug['plugin']));
             }
+
+            // Restore original timezone
+            if ($orig_tz !== null) {
+                $DB->setTimezone($orig_tz);
+            }
         }
         if (isset($this->templates_by_languages[$tid])) {
             return $tid;
@@ -360,14 +384,14 @@ class NotificationTemplate extends CommonDBTM
 
                     //Manage FIRST & LAST statement
                     $foreachvalues = $data[$tag_infos];
-                    if (!empty($foreachvalues)) {
+                    if ($foreachvalues !== []) {
                         if (isset($out[1][$id]) && ($out[1][$id] != '')) {
                             if ($out[1][$id] == 'FIRST') {
                                 $foreachvalues = array_reverse($foreachvalues);
                             }
 
                             if (isset($out[2][$id]) && $out[2][$id]) {
-                                $foreachvalues = array_slice($foreachvalues, 0, $out[2][$id]);
+                                $foreachvalues = array_slice($foreachvalues, 0, (int) $out[2][$id]);
                             } else {
                                 $foreachvalues = array_slice($foreachvalues, 0, 1);
                             }
@@ -552,7 +576,7 @@ class NotificationTemplate extends CommonDBTM
      **/
     public function getByLanguage($language)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

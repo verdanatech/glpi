@@ -32,14 +32,16 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\Inventoriable;
 
-class DatabaseInstance extends CommonDBTM
+class DatabaseInstance extends CommonDBTM implements AssignableItemInterface
 {
-    use Glpi\Features\Clonable;
-    use Glpi\Features\Inventoriable;
+    use Clonable;
+    use Inventoriable;
     use Glpi\Features\State;
     use AssignableItem {
         prepareInputForAdd as prepareInputForAddAssignableItem;
@@ -108,7 +110,7 @@ class DatabaseInstance extends CommonDBTM
 
     public function getDatabases(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $dbs = [];
 
@@ -344,7 +346,7 @@ class DatabaseInstance extends CommonDBTM
         switch ($field) {
             case 'items_id':
                 $itemtype = $values[str_replace('items_id', 'itemtype', $field)] ?? null;
-                if ($itemtype !== null && class_exists($itemtype)) {
+                if ($itemtype !== null && class_exists($itemtype) && is_a($itemtype, CommonDBTM::class, true)) {
                     if ($values[$field] > 0) {
                         $item = new $itemtype();
                         if ($item->getFromDB($values[$field])) {
@@ -431,7 +433,7 @@ class DatabaseInstance extends CommonDBTM
 
     public static function showInstances(CommonDBTM $item, $withtemplate)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $instances = $DB->request([

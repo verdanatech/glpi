@@ -35,6 +35,7 @@
 namespace Glpi\Form\Destination\CommonITILField;
 
 use Glpi\Form\Form;
+use Glpi\Form\QuestionType\QuestionTypeEmail;
 use Glpi\Form\QuestionType\QuestionTypeObserver;
 use Override;
 use Session;
@@ -42,9 +43,9 @@ use Session;
 final class ObserverField extends ITILActorField
 {
     #[Override]
-    public function getAllowedQuestionType(): string
+    public function getAllowedQuestionType(): array
     {
-        return QuestionTypeObserver::class;
+        return [new QuestionTypeObserver(), new QuestionTypeEmail()];
     }
 
     #[Override]

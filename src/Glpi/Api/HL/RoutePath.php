@@ -35,6 +35,7 @@
 
 namespace Glpi\Api\HL;
 
+use Exception;
 use Glpi\Api\HL\Controller\AbstractController;
 use Glpi\Api\HL\Doc\Parameter;
 use Glpi\Api\HL\Middleware\AbstractMiddleware;
@@ -43,6 +44,12 @@ use Glpi\Http\Response;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
+use RuntimeException;
+use Throwable;
+
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace_callback;
 
 /**
  * @phpstan-type RoutePathCacheHint array{key: string, path: string, compiled_path: string, methods: string[], priority: int, security: int}
@@ -148,20 +155,20 @@ final class RoutePath
             [$controller, $method] = explode('::', $this->key);
             try {
                 if (!\is_a($controller, AbstractController::class, true)) {
-                    throw new \Exception('Invalid controller');
+                    throw new Exception('Invalid controller');
                 }
                 $this->controller = new ReflectionClass($controller);
                 $this->method = $this->controller->getMethod($method);
                 if (!$this->method->isPublic()) {
-                    throw new \Exception('Method is not public');
+                    throw new Exception('Method is not public');
                 }
                 $route_attributes = $this->method->getAttributes(Route::class);
                 if (count($route_attributes) === 0) {
-                    throw new \Exception("RoutePath has no Route attribute");
+                    throw new Exception("RoutePath has no Route attribute");
                 }
                 $this->route = $route_attributes[0]->newInstance();
-            } catch (\Throwable $e) {
-                throw new \RuntimeException(
+            } catch (Throwable $e) {
+                throw new RuntimeException(
                     "Unable to hydrate RoutePath {$this->key}: {$e->getMessage()}",
                     0,
                     $e
@@ -221,9 +228,7 @@ final class RoutePath
     public function isValidPath($path): bool
     {
         // Ensure no placeholders are left
-        $dynamic_expandable_placeholders = array_filter($this->getRouteRequirements(), static function ($v, $k) {
-            return is_callable($v);
-        }, ARRAY_FILTER_USE_BOTH);
+        $dynamic_expandable_placeholders = array_filter($this->getRouteRequirements(), static fn($v, $k) => is_callable($v), ARRAY_FILTER_USE_BOTH);
         $leftover_placeholders = [];
         preg_match_all('/\{([^}]+)\}/', $path, $leftover_placeholders);
         // Remove dynamic expandable placeholders
@@ -440,7 +445,7 @@ final class RoutePath
         }, $compiled_path);
 
         if ($compiled_path === null) {
-            throw new \RuntimeException('Failed to compile path');
+            throw new RuntimeException('Failed to compile path');
         }
 
         // Ensure the compiled path starts with a slash but does not end with one (unless the path is just '/')
@@ -461,9 +466,7 @@ final class RoutePath
         // Set parameters to defaults if not provided and a default is available
         $params = $request->getParameters();
         $docs = $this->getRouteDocs();
-        $matched_doc = array_filter($docs, static function (Doc\Route $doc) use ($request) {
-            return !count($doc->getMethods()) || in_array($request->getMethod(), $doc->getMethods(), true);
-        });
+        $matched_doc = array_filter($docs, static fn(Doc\Route $doc) => !count($doc->getMethods()) || in_array($request->getMethod(), $doc->getMethods(), true));
         if (count($matched_doc)) {
             $route_params = $matched_doc[0]->getParameters();
             /** @var Parameter $param */
@@ -477,7 +480,7 @@ final class RoutePath
         if ($response instanceof Response) {
             return $response;
         }
-        throw new \RuntimeException('Controller method must return a Response object');
+        throw new RuntimeException('Controller method must return a Response object');
     }
 
     /**

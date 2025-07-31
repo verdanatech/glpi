@@ -306,24 +306,14 @@ class Document_Item extends CommonDBRelation
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch ($item::class) {
-            case Document::class:
-                switch ($tabnum) {
-                    case 1:
-                        self::showForDocument($item);
-                        break;
-
-                    case 2:
-                        self::showForItem($item, $withtemplate);
-                        break;
-                }
-                break;
-
-            default:
-                self::showForitem($item, $withtemplate);
-                break;
+        if (!$item instanceof CommonDBTM) {
+            return false;
         }
-        return true;
+
+        if ($item instanceof Document && $tabnum === 1) {
+            return self::showForDocument($item);
+        }
+        return self::showForItem($item, $withtemplate);
     }
 
     /**
@@ -333,9 +323,9 @@ class Document_Item extends CommonDBRelation
      *
      * @param Document $doc Document object
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForDocument(Document $doc)
+    public static function showForDocument(Document $doc): bool
     {
         $instID = $doc->fields['id'];
         if (!$doc->can($instID, READ)) {
@@ -392,12 +382,10 @@ TWIG, $twig_params);
                     if (!($item = getItemForItemtype($main_itemtype))) {
                         continue;
                     }
-                    $itemtype = $main_itemtype;
                     $linkname_extra = "";
-                    if ($item instanceof ITILFollowup || $item instanceof ITILSolution) {
+                    if (($item instanceof ITILFollowup || $item instanceof ITILSolution) && is_a($data['itemtype'], CommonDBTM::class, true)) {
                         $linkname_extra = "(" . $item::getTypeName(1) . ")";
-                        $itemtype = $data['itemtype'];
-                        $item = new $itemtype();
+                        $item = new $data['itemtype']();
                         $item->getFromDB($data['items_id']);
                         $data['id'] = $item->fields['id'];
                         $data['entity'] = $item->fields['entities_id'];
@@ -406,8 +394,7 @@ TWIG, $twig_params);
                         || $item instanceof CommonITILValidation
                     ) {
                         $linkname_extra = "(" . CommonITILTask::getTypeName(1) . ")";
-                        $itemtype = $item::getItilObjectItemType();
-                        $item = new $itemtype();
+                        $item = $item::getItilObjectItemInstance();
                         $item->getFromDB($data[$item::getForeignKeyField()]);
                         $data['id'] = $item->fields['id'];
                         $data['entity'] = $item->fields['entities_id'];
@@ -417,7 +404,7 @@ TWIG, $twig_params);
                         $data["name"] = sprintf(__('%1$s: %2$s'), $item::getTypeName(1), $data["id"]);
                     }
 
-                    if ($itemtype === SoftwareLicense::class) {
+                    if ($item instanceof SoftwareLicense) {
                         $soft = new Software();
                         $soft->getFromDB($data['softwares_id']);
                         $data["name"] = sprintf(
@@ -439,13 +426,13 @@ TWIG, $twig_params);
                         $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["id"]);
                     }
                     if ($item instanceof Item_Devices) {
-                        $tmpitem = new $item::$itemtype_2();
+                        $tmpitem = getItemForItemtype($item::$itemtype_2);
                         if ($tmpitem->getFromDB($data[$item::$items_id_2])) {
                             $linkname = $tmpitem->getLink();
                         }
                     }
 
-                    $link     = $itemtype::getFormURLWithID($data['id']);
+                    $link = $item::getFormURLWithID($data['id']);
                     $name = '<a href="' . htmlescape($link) . '">' . htmlescape($linkname) . ' ' . htmlescape($linkname_extra) . "</a>";
 
                     $entity_name = '-';
@@ -494,6 +481,8 @@ TWIG, $twig_params);
                 'container'     => 'mass' . static::class . $rand,
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -501,10 +490,12 @@ TWIG, $twig_params);
      *
      * @since 0.84
      *
-     * @param CommonDBTM $item Object for which associated documents must be displayed
-     * @param $withtemplate    (default 0)
+     * @param CommonDBTM $item         Object for which associated documents must be displayed
+     * @param int        $withtemplate (default 0)
+     *
+     * @return bool
      **/
-    public static function showForItem(CommonDBTM $item, $withtemplate = 0)
+    public static function showForItem(CommonDBTM $item, $withtemplate = 0): bool
     {
         $ID = $item->getField('id');
 
@@ -526,6 +517,8 @@ TWIG, $twig_params);
 
         self::showAddFormForItem($item, $withtemplate, $params);
         self::showListForItem($item, $withtemplate, $params);
+
+        return true;
     }
 
     /**
@@ -541,7 +534,7 @@ TWIG, $twig_params);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -627,7 +620,7 @@ TWIG, $twig_params);
      */
     public static function showListForItem(CommonDBTM $item, $withtemplate = 0, $options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $canedit = $item->canAddItem('Document') && Document::canView();
@@ -876,7 +869,7 @@ TWIG, $twig_params);
     public function isFromSupportAgent()
     {
         // If not a CommonITILObject
-        if (!is_a($this->fields['itemtype'], 'CommonITILObject', true)) {
+        if (!is_a($this->fields['itemtype'], CommonITILObject::class, true)) {
             return true;
         }
 

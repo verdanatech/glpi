@@ -35,14 +35,18 @@
 
 namespace Glpi\Api\HL\Doc;
 
+use ArrayAccess;
 use CommonGLPI;
 use Glpi\Api\HL\Router;
 use Glpi\Toolbox\ArrayPathAccessor;
 
+use function Safe\preg_match;
+use function Safe\strtotime;
+
 /**
- * @implements \ArrayAccess<string, null|string|array<string, Schema>>
+ * @implements ArrayAccess<string, null|string|array<string, Schema>>
  */
-class Schema implements \ArrayAccess
+class Schema implements ArrayAccess
 {
     public const TYPE_STRING = 'string';
     public const TYPE_INTEGER = 'integer';
@@ -417,8 +421,8 @@ class Schema implements \ArrayAccess
         }
 
         // Check format
-        /** @var self::FORMAT_* $format_match */
-        $format_match = match ($format) {
+        /** @var self::FORMAT_* $format */
+        return match ($format) {
             self::FORMAT_BOOLEAN_BOOLEAN => is_bool($value),
             self::FORMAT_INTEGER_INT32 => ((abs($value) & 0x7FFFFFFF) === abs($value)),
             self::FORMAT_INTEGER_INT64 => ((abs($value) & 0x7FFFFFFFFFFFFFFF) === abs($value)),
@@ -436,7 +440,6 @@ class Schema implements \ArrayAccess
             self::FORMAT_STRING_DATE_TIME => is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|(\+|-)\d{2}:\d{2})$/', $value),
             default => true
         };
-        return $format_match;
     }
 
     public function isValid(array $content, string|null $operation = null): bool
@@ -507,8 +510,8 @@ class Schema implements \ArrayAccess
 
     /**
      * Combine multiple schemas into a single 'union' schema that allows searching across all of them
-     * @param non-empty-array<string, array> $schemas
-     * @return array{x-subtypes: array{schema_name: string, itemtype: string}, type: self::TYPE_OBJECT, properties: array}
+     * @param non-empty-array<string, array{x-itemtype: string, properties: mixed}> $schemas
+     * @return array{x-subtypes: list<array{schema_name: string, itemtype: string}>, type: self::TYPE_OBJECT, properties: array}
      * @see getUnionSchemaForItemtypes
      */
     public static function getUnionSchema(array $schemas): array
@@ -531,7 +534,7 @@ class Schema implements \ArrayAccess
     /**
      * Combine schemas related to multiple GLPI itemtypes into a single 'union' schema that allows searching across all of them
      * @param non-empty-array<string, class-string<CommonGLPI>> $itemtypes
-     * @return array{x-subtypes: array{schema_name: string, itemtype: string}, type: self::TYPE_OBJECT, properties: array}
+     * @return array{x-subtypes: list<array{schema_name: string, itemtype: string}>, type: self::TYPE_OBJECT, properties: array}
      * @see getUnionSchema
      */
     public static function getUnionSchemaForItemtypes(array $itemtypes, string $api_version): array

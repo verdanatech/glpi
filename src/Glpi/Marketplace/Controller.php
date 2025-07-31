@@ -43,11 +43,20 @@ use Glpi\Marketplace\Api\Plugins as PluginsApi;
 use GLPINetwork;
 use NotificationEvent;
 use Plugin;
+use Safe\Exceptions\FilesystemException;
 use Session;
 use Symfony\Component\HttpFoundation\Response;
 use Toolbox;
+use wapmorgan\UnifiedArchive\Exceptions\ArchiveExtractionException;
 use wapmorgan\UnifiedArchive\Formats;
 use wapmorgan\UnifiedArchive\UnifiedArchive;
+
+use function Safe\ini_set;
+use function Safe\ob_end_clean;
+use function Safe\ob_start;
+use function Safe\parse_url;
+use function Safe\realpath;
+use function Safe\session_write_close;
 
 /**
  * Nota: `CommonGLPI` is required here to be able to provide a displayable name for its crons and notifications.
@@ -225,7 +234,7 @@ class Controller extends CommonGLPI
             try {
                 // copy files
                 $archive->extract(GLPI_MARKETPLACE_DIR) !== false;
-            } catch (\wapmorgan\UnifiedArchive\Exceptions\ArchiveExtractionException $e) {
+            } catch (ArchiveExtractionException $e) {
                 $error = true;
             }
         }
@@ -310,9 +319,13 @@ class Controller extends CommonGLPI
         // Compute marketplace dir priority
         $marketplace_priority = null;
         foreach (GLPI_PLUGINS_DIRECTORIES as $position => $base_dir) {
-            if (realpath($base_dir) !== false && realpath($base_dir) === realpath(GLPI_MARKETPLACE_DIR)) {
-                $marketplace_priority = -$position;
-                break;
+            try {
+                if (realpath($base_dir) === realpath(GLPI_MARKETPLACE_DIR)) {
+                    $marketplace_priority = -$position;
+                    break;
+                }
+            } catch (FilesystemException $e) {
+                //no error
             }
         }
 
@@ -379,7 +392,7 @@ class Controller extends CommonGLPI
     public static function getAllUpdates()
     {
         $plugin_inst = new Plugin();
-        $plugin_inst->init(true);
+        $plugin_inst->checkStates(true); // force synchronization of the DB data with the filesystem data
         $installed   = $plugin_inst->getList();
 
         $updates = [];
@@ -572,21 +585,6 @@ class Controller extends CommonGLPI
         return $this->setPluginState("unactivate") == Plugin::NOTACTIVATED;
     }
 
-    /**
-     * Suspend current plugin
-     *
-     * @return bool
-     */
-    public function suspendPlugin(): bool
-    {
-        $plugin = new Plugin();
-        if ($plugin->getFromDBbyDir($this->plugin_key)) {
-            return $plugin->suspend();
-        }
-
-        return true;
-    }
-
 
     /**
      * Clean (remove database data) current plugin
@@ -662,7 +660,13 @@ class Controller extends CommonGLPI
         $plugin->getFromDBbyDir($this->plugin_key);
 
         // reload plugins
-        $plugin->init(true);
+        // FIXME: The marketplace should use 2 distinct requests for its actions
+        // 1. call the method (install, update, ...)
+        // 2. call an endpoint to refresh the corresponding plugin card
+        //
+        // Indeed, forcing the plugins boot/init here may cause issues when trying to reload a plugin already loaded.
+        $plugin->bootPlugins();
+        $plugin->init();
 
         ob_end_clean();
 

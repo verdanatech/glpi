@@ -51,6 +51,7 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Throwable;
 
 final class Kernel extends BaseKernel
 {
@@ -153,7 +154,7 @@ final class Kernel extends BaseKernel
         // and the log dirs are not writable.
         foreach ([$this->getCacheDir(), $this->getBuildDir(), $this->getLogDir()] as $dir) {
             if (
-                (is_dir($dir) === false && @mkdir($dir, recursive: true) === false)
+                (is_dir($dir) === false && @mkdir($dir, recursive: true) === false) // @phpstan-ignore theCodingMachineSafe.function
                 || is_writable($dir) === false
             ) {
                 $filesystem = new Filesystem();
@@ -278,7 +279,7 @@ final class Kernel extends BaseKernel
     {
         try {
             $response->send();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $event = new ExceptionEvent($this, $request, self::MAIN_REQUEST, $exception);
 
             $dispatcher = $this->container->get('event_dispatcher');

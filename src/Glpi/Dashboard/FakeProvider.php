@@ -37,10 +37,13 @@ namespace Glpi\Dashboard;
 
 use CommonDBTM;
 use CommonDevice;
+use CommonITILObject;
 use Group;
 use Session;
 use Ticket;
 use User;
+
+use function Safe\strtotime;
 
 final class FakeProvider extends Provider
 {
@@ -67,9 +70,7 @@ final class FakeProvider extends Provider
             ['Zachariah', 'Ellis'],
             ['Rena', 'Velez'],
         ];
-        return array_map(static function ($name) {
-            return formatUserName(0, '', $name[1], $name[0]);
-        }, $names);
+        return array_map(static fn($name) => formatUserName(0, '', $name[1], $name[0]), $names);
     }
 
     /**
@@ -155,7 +156,7 @@ final class FakeProvider extends Provider
                     'color'  => '#f1a129',
                 ], [
                     'number' => 31,
-                    'label'  => __("To validate"),
+                    'label'  => __("To approve"),
                     'url'    => '#',
                     'color'  => '#266ae9',
                 ], [
@@ -192,7 +193,7 @@ final class FakeProvider extends Provider
         $label = match ($case) {
             'notold' => _x('status', 'Not solved'),
             'late' => __("Late tickets"),
-            'waiting_validation' => __("Tickets waiting for validation"),
+            'waiting_validation' => __("Tickets waiting for approval"),
             'incoming' => __("Incoming tickets"),
             'waiting' => __("Pending tickets"),
             'assigned' => __("Assigned tickets"),
@@ -320,9 +321,7 @@ final class FakeProvider extends Provider
             ];
         }
         // sort by date so newest is first
-        usort($data, static function ($a, $b) {
-            return $b['date'] <=> $a['date'];
-        });
+        usort($data, static fn($a, $b) => $b['date'] <=> $a['date']);
         return [
             'data'   => $data,
             'number' => 5,
@@ -431,15 +430,15 @@ final class FakeProvider extends Provider
                 $date = date("Y-m", strtotime("-$i months"));
                 $date_labels[] = $date;
 
-                if ($i >= 4 && $status_i === \CommonITILObject::CLOSED) {
+                if ($i >= 4 && $status_i === CommonITILObject::CLOSED) {
                     $num = self::getObscureNumberForString($date . $status, 500) + 1500;
-                } elseif ($i >= 8 && $status_i === \CommonITILObject::CLOSED) {
+                } elseif ($i >= 8 && $status_i === CommonITILObject::CLOSED) {
                     $num = self::getObscureNumberForString($date . $status, 2500);
                 } elseif ($i >= 8) {
                     $num = 0;
                 } elseif ($i >= 4) {
                     $num = self::getObscureNumberForString($date . $status, 20);
-                } elseif (($i === 3 || $i === 2) && $status_i === \CommonITILObject::CLOSED) {
+                } elseif (($i === 3 || $i === 2) && $status_i === CommonITILObject::CLOSED) {
                     $num = self::getObscureNumberForString($date . $status, 500) + 1000;
                 } elseif ($i === 0) {
                     // base the max number on how far into the current month we are

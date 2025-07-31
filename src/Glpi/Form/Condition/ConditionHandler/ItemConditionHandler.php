@@ -34,8 +34,11 @@
 
 namespace Glpi\Form\Condition\ConditionHandler;
 
+use Glpi\Form\Condition\ConditionData;
 use Glpi\Form\Condition\ValueOperator;
 use Override;
+
+use function Safe\json_decode;
 
 final class ItemConditionHandler implements ConditionHandlerInterface
 {
@@ -61,7 +64,7 @@ final class ItemConditionHandler implements ConditionHandlerInterface
     }
 
     #[Override]
-    public function getTemplateParameters(): array
+    public function getTemplateParameters(ConditionData $condition): array
     {
         return ['itemtype' => $this->itemtype];
     }

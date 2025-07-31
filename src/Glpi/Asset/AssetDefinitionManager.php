@@ -35,6 +35,7 @@
 namespace Glpi\Asset;
 
 use Change_Item;
+use CommonDBTM;
 use CommonGLPI;
 use DirectoryIterator;
 use Dropdown;
@@ -47,6 +48,9 @@ use Item_Problem;
 use Item_Ticket;
 use ReflectionClass;
 use Session;
+
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  * @extends AbstractDefinitionManager<AssetDefinition>
@@ -66,7 +70,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
 
     /**
      * Dropdown itemtypes allowed for custom field definitions.
-     * @var array<string, array<class-string<\CommonDBTM>, string>>
+     * @var array<string, array<class-string<CommonDBTM>, string>>
      * @see self::getAllowedDropdownItemtypes()
      */
     private ?array $allowed_dropdown_itemtypes = null;
@@ -84,7 +88,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
         // Automatically build core capacities list.
         // Would be better to do it with a DI auto-discovery feature, but it is not possible yet.
         $directory_iterator = new DirectoryIterator(__DIR__ . '/Capacity');
-        /** @var \SplFileObject $file */
+        /** @var DirectoryIterator $file */
         foreach ($directory_iterator as $file) {
             $classname = $file->getExtension() === 'php'
                 ? 'Glpi\\Asset\\Capacity\\' . $file->getBasename('.php')
@@ -103,7 +107,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
 
         if ($this->custom_field_types === null) {
             $this->custom_field_types = [];
-            /** @var \SplFileObject $file */
+            /** @var DirectoryIterator $file */
             foreach ($directory_iterator as $file) {
                 // Compute class name with the expected namespace
                 $classname = $file->getExtension() === 'php'
@@ -147,9 +151,9 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
         self::$instance = null;
     }
 
-    public static function getDefinitionClass(): string
+    public static function getDefinitionClassInstance(): AbstractDefinition
     {
-        return AssetDefinition::class;
+        return new AssetDefinition();
     }
 
     public function getReservedSystemNamesPattern(): string
@@ -172,7 +176,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
             'Cable',
         ];
 
-        return '/^(.+(Model|Type)|' . \implode('|', $core_assets) . ')$/i';
+        return '/^(' . \implode('|', $core_assets) . ')$/i';
     }
 
     public function bootstrapDefinition(AbstractDefinition $definition): void
@@ -244,23 +248,24 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
      */
     public function autoloadClass(string $classname): void
     {
-        $definition_class = self::getDefinitionClass();
-        $ns = $definition_class::getCustomObjectNamespace() . '\\';
+        $definition_object = self::getDefinitionClassInstance();
+        $ns = $definition_object::getCustomObjectNamespace() . '\\';
 
         if (!\str_starts_with($classname, $ns)) {
             return;
         }
 
-        $system_name_pattern = $definition_class::SYSTEM_NAME_PATTERN;
+        $system_name_pattern = $definition_object::SYSTEM_NAME_PATTERN;
+        $class_suffix = $definition_object::getCustomObjectClassSuffix();
 
         $patterns = [
-            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')ModelCollection$/' => 'loadConcreteModelDictionaryCollectionClass',
-            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')TypeCollection$/' => 'loadConcreteTypeDictionaryCollectionClass',
-            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')Model$/' => 'loadConcreteModelDictionaryClass',
-            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')Type$/' => 'loadConcreteTypeDictionaryClass',
-            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')Model$/' => 'loadConcreteModelClass',
-            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')Type$/' => 'loadConcreteTypeClass',
-            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')$/' => 'loadConcreteClass',
+            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')' . $class_suffix . 'ModelCollection$/' => 'loadConcreteModelDictionaryCollectionClass',
+            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')' . $class_suffix . 'TypeCollection$/' => 'loadConcreteTypeDictionaryCollectionClass',
+            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')' . $class_suffix . 'Model$/' => 'loadConcreteModelDictionaryClass',
+            '/^' . preg_quote($ns, '/') . 'RuleDictionary(' . $system_name_pattern . ')' . $class_suffix . 'Type$/' => 'loadConcreteTypeDictionaryClass',
+            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')' . $class_suffix . 'Model$/' => 'loadConcreteModelClass',
+            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')' . $class_suffix . 'Type$/' => 'loadConcreteTypeClass',
+            '/^' . preg_quote($ns, '/') . '(' . $system_name_pattern . ')' . $class_suffix . '$/' => 'loadConcreteClass',
         ];
 
         foreach ($patterns as $pattern => $load_function) {
@@ -339,7 +344,7 @@ final class AssetDefinitionManager extends AbstractDefinitionManager
     /**
      * Returns the dropdown itemtypes allowed for custom field definitions.
      * @param bool $flatten If true, returns a flat array of itemtypes rather than separated by category.
-     * @return array<string, array<class-string<\CommonDBTM>, string>>
+     * @return array<string, array<class-string<CommonDBTM>, string>>
      */
     public function getAllowedDropdownItemtypes($flatten = false): array
     {

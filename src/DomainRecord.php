@@ -35,8 +35,9 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
 
-class DomainRecord extends CommonDBChild
+class DomainRecord extends CommonDBChild implements AssignableItemInterface
 {
     use AssignableItem {
         canUpdate as canUpdateAssignableItem;
@@ -229,7 +230,7 @@ class DomainRecord extends CommonDBChild
 
     public function canCreateItem(): bool
     {
-        return count($_SESSION['glpiactiveprofile']['managed_domainrecordtypes']);
+        return count($_SESSION['glpiactiveprofile']['managed_domainrecordtypes']) > 0;
     }
 
     public function canUpdateItem(): bool
@@ -317,7 +318,7 @@ class DomainRecord extends CommonDBChild
         }
 
         if (!Session::isCron() && (isset($input['domainrecordtypes_id']) || isset($this->fields['domainrecordtypes_id']))) {
-            if (!($_SESSION['glpiactiveprofile']['managed_domainrecordtypes'] === [-1])) {
+            if ($_SESSION['glpiactiveprofile']['managed_domainrecordtypes'] !== [-1]) {
                 if (isset($input['domainrecordtypes_id']) && !(in_array($input['domainrecordtypes_id'], $_SESSION['glpiactiveprofile']['managed_domainrecordtypes'], true))) {
                     //no right to use selected type
                     Session::addMessageAfterRedirect(
@@ -398,7 +399,7 @@ class DomainRecord extends CommonDBChild
      **/
     public static function showForDomain(Domain $domain)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $instID = $domain->fields['id'];

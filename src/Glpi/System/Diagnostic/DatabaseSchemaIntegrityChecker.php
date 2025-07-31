@@ -36,11 +36,20 @@
 namespace Glpi\System\Diagnostic;
 
 use DBmysql;
+use Exception;
 use Glpi\Toolbox\DatabaseSchema;
 use Glpi\Toolbox\VersionParser;
 use Plugin;
+use RuntimeException;
+use Safe\Exceptions\FilesystemException;
 use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
+
+use function Safe\file_get_contents;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\preg_replace_callback;
 
 /**
  * @since 10.0.0
@@ -218,16 +227,14 @@ class DatabaseSchemaIntegrityChecker
      * @return array    The parsed contents of the schema file.
      *                  Keys contains table names and values contains CREATE TABLE SQL queries.
      *
-     * @throws \RuntimeException Thrown if the specified schema file cannot be read.
+     * @throws RuntimeException Thrown if the specified schema file cannot be read.
      */
     public function extractSchemaFromFile(string $schema_path): array
     {
-        if (
-            !is_file($schema_path)
-            || !is_readable($schema_path)
-            || ($schema_sql = file_get_contents($schema_path)) === false
-        ) {
-            throw new \RuntimeException(sprintf(__('Unable to read installation file "%s".'), $schema_path));
+        try {
+            $schema_sql = file_get_contents($schema_path);
+        } catch (FilesystemException $e) {
+            throw new RuntimeException(sprintf(__('Unable to read installation file "%s".'), $schema_path), $e->getCode(), $e);
         }
 
         $matches = [];
@@ -334,7 +341,7 @@ class DatabaseSchemaIntegrityChecker
      *                      - `type`:       difference type, see self::RESULT_TYPE_* constants;
      *                      - `diff`:       diff string.
      *
-     * @throws \RuntimeException Thrown if schema file is not available.
+     * @throws RuntimeException Thrown if schema file is not available.
      */
     final public function checkCompleteSchemaForVersion(
         ?string $schema_version = null,
@@ -343,7 +350,7 @@ class DatabaseSchemaIntegrityChecker
     ): array {
         $schema_path = $this->getSchemaPath($schema_version, $context);
         if ($schema_path === null) {
-            throw new \RuntimeException('Schema file not available.');
+            throw new RuntimeException('Schema file not available.');
         }
 
         return $this->checkCompleteSchema($schema_path, $include_unknown_tables, $context);
@@ -362,7 +369,7 @@ class DatabaseSchemaIntegrityChecker
             if ($this->db->errno() == 1146) {
                 return ''; // Table does not exist, effective create table is empty (will output full proper query as diff).
             }
-            throw new \Exception(sprintf('Unable to get table "%s" structure', $table_name));
+            throw new Exception(sprintf('Unable to get table "%s" structure', $table_name));
         }
         return $create_table_res->fetch_assoc()['Create Table'];
     }
@@ -443,9 +450,7 @@ class DatabaseSchemaIntegrityChecker
             . '$/i';
         $columns = preg_replace_callback(
             $column_pattern,
-            function ($matches) {
-                return $matches['name'] . ' ' . strtolower($matches['type']) . ($matches['length'] ?? '') . ($matches['extra'] ?? '');
-            },
+            fn($matches) => $matches['name'] . ' ' . strtolower($matches['type']) . ($matches['length'] ?? '') . ($matches['extra'] ?? ''),
             $columns
         );
 

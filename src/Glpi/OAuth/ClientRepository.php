@@ -35,15 +35,18 @@
 
 namespace Glpi\OAuth;
 
+use DBmysql;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
 use League\OAuth2\Server\Repositories\ClientRepositoryInterface;
 use OAuthClient;
+
+use function Safe\json_decode;
 
 class ClientRepository implements ClientRepositoryInterface
 {
     public function getClientEntity($clientIdentifier): ?ClientEntityInterface
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

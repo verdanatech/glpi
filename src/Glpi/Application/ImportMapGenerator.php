@@ -40,6 +40,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Filesystem\Path;
 
+use function Safe\preg_replace;
+
 /**
  * Generates an import map for JavaScript modules with cache busting parameters
  *
@@ -91,7 +93,7 @@ class ImportMapGenerator
     public static function getInstance(): ImportMapGenerator
     {
         /** @var array $CFG_GLPI
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var CacheInterface $GLPI_CACHE
          */
         global $CFG_GLPI, $GLPI_CACHE;
 

@@ -32,18 +32,26 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\CalDAV\Backend\Calendar;
 use Glpi\DBAL\QueryFunction;
+use Glpi\Features\PlanningEvent;
 use Glpi\RichText\RichText;
+use Psr\Log\LoggerInterface;
 use RRule\RRule;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Component\VTodo;
+use Sabre\VObject\ParseException;
 use Sabre\VObject\Property\FlatText;
 use Sabre\VObject\Property\ICalendar\Recur;
 use Sabre\VObject\Reader;
-use Glpi\Features\PlanningEvent;
+use Safe\DateTime;
+
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\strtotime;
 
 /**
  * Planning Class
@@ -174,7 +182,7 @@ class Planning extends CommonGLPI
         $ong               = [];
         $ong['no_all_tab'] = true;
 
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
 
         return $ong;
     }
@@ -332,11 +340,28 @@ JAVASCRIPT;
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
+        if ($users_id === 0) {
+            return false;
+        }
+
         $planned = false;
         $message = '';
 
         foreach ($CFG_GLPI['planning_types'] as $itemtype) {
+            if (
+                !is_a($itemtype, CommonDBTM::class, true)
+            ) {
+                continue;
+            }
             $item = new $itemtype();
+            if (
+                // methods from the `Glpi\Features\PlanningEvent` trait
+                !method_exists($item, 'populatePlanning')
+                || !method_exists($item, 'getAlreadyPlannedInformation')
+            ) {
+                continue;
+            }
+
             $data = $item->populatePlanning([
                 'who'           => $users_id,
                 'whogroup'      => 0,
@@ -348,19 +373,14 @@ JAVASCRIPT;
                 $data = $data['items'] ?? [];
             }
 
-            if (
-                count($data)
-                && method_exists($itemtype, 'getAlreadyPlannedInformation')
-            ) {
-                foreach ($data as $val) {
-                    if (
-                        !isset($except[$itemtype])
-                        || (is_array($except[$itemtype]) && !in_array($val['id'], $except[$itemtype]))
-                    ) {
-                        $planned  = true;
-                        $message .= '- ' . $item->getAlreadyPlannedInformation($val);
-                        $message .= '<br/>';
-                    }
+            foreach ($data as $val) {
+                if (
+                    !isset($except[$itemtype])
+                    || (is_array($except[$itemtype]) && !in_array($val['id'], $except[$itemtype]))
+                ) {
+                    $planned  = true;
+                    $message .= '- ' . $item->getAlreadyPlannedInformation($val);
+                    $message .= '<br/>';
                 }
             }
         }
@@ -440,7 +460,7 @@ JAVASCRIPT;
                         }
                     }
                 }
-                $task = new ($item::getTaskClass());
+                $task = getItemForItemtype($item::getTaskClass());
                 if ($task->getFromDBByCrit(['tickets_id' => $item->fields['id']])) {
                     $users[$task->fields['users_id_tech']] = getUserName($task->fields['users_id_tech']);
                     $group_id = $task->fields['groups_id_tech'];
@@ -616,7 +636,7 @@ JAVASCRIPT;
     {
         if ($palette = self::getPalette($palette_name)) {
             if ($color_index >= count($palette)) {
-                $color_index = $color_index % count($palette);
+                $color_index %= count($palette);
             }
 
             return $palette[$color_index];
@@ -1032,24 +1052,28 @@ TWIG, $twig_params);
     {
         $item = getItemForItemtype($params['itemtype']);
         if ($item instanceof CommonDBTM) {
-            echo "<div class='center'>";
-            echo "<a href='" . htmlescape($params['url']) . "' class='btn btn-outline-secondary'>" .
-                "<i class='ti ti-eye'></i>" .
-                "<span>" . __s("View this item in its context") . "</span>" .
-            "</a>";
-            echo "</div>";
-            echo "<hr>";
+            $item->getFromDB((int) $params['id']);
+            $url = $item->getLinkURL();
+
             $rand = mt_rand();
             $options = [
                 'from_planning_edit_ajax' => true,
-                'formoptions'             => "id='edit_event_form$rand'",
+                'form_id'                 => "edit_event_form$rand",
                 'start'                   => date("Y-m-d", strtotime($params['start'])),
             ];
             if (isset($params['parentitemtype'])) {
                 $options['parent'] = getItemForItemtype($params['parentitemtype']);
                 $options['parent']->getFromDB($params['parentid']);
+                $url = $options['parent']->getLinkURL();
             }
-            $item->getFromDB((int) $params['id']);
+
+            echo "<div class='center'>";
+            echo "<a href='" . htmlescape($url) . "' class='btn btn-outline-secondary'>" .
+                "<i class='ti ti-eye'></i>" .
+                "<span>" . __s("View this item in its context") . "</span>" .
+            "</a>";
+            echo "</div>";
+            echo "<hr>";
             $item->showForm((int) $params['id'], $options);
             $callback = "glpi_close_all_dialogs();
                       GLPIPlanning.refresh();
@@ -1253,7 +1277,7 @@ TWIG, $twig_params);
                 'end'                => $params['end'],
                 'res_itemtype'       => $params['res_itemtype'],
                 'res_items_id'       => $params['res_items_id'],
-                'formoptions'        => "id='ajax_reminder$rand'",
+                'form_id'            => "ajax_reminder$rand",
             ]);
             $callback = "glpi_close_all_dialogs();
                       GLPIPlanning.refresh();
@@ -1297,7 +1321,7 @@ TWIG, $twig_params);
         } else {
             $ts = $CFG_GLPI['time_step'] * 60; // passage in minutes
             $time = time() + $ts - 60;
-            $time = floor($time / $ts) * $ts;
+            $time = ((int) floor($time / $ts)) * $ts;
             $begin = date("Y-m-d H:i", $time);
         }
 
@@ -1371,7 +1395,7 @@ TWIG, $twig_params);
      */
     public static function cloneEvent(array $event = [])
     {
-        $item = new $event['old_itemtype']();
+        $item = getItemForItemtype($event['old_itemtype']);
         $item->getFromDB((int) $event['old_items_id']);
 
         $input = array_merge($item->fields, [
@@ -1391,7 +1415,7 @@ TWIG, $twig_params);
             $key = match ($event['actor']['itemtype']) {
                 "group" => "groups_id_tech",
                 "user" => isset($item->fields['users_id_tech']) ? "users_id_tech" : "users_id",
-                default => throw new \RuntimeException(sprintf('Unexpected event actor itemtype `%s`.', $event['actor']['itemtype'])),
+                default => throw new RuntimeException(sprintf('Unexpected event actor itemtype `%s`.', $event['actor']['itemtype'])),
             };
 
             unset(
@@ -1430,7 +1454,7 @@ TWIG, $twig_params);
      */
     public static function deleteEvent(array $event = []): bool
     {
-        $item = new $event['itemtype']();
+        $item = getItemForItemtype($event['itemtype']);
 
         if (
             isset($event['day'], $event['instance'])
@@ -1732,7 +1756,7 @@ TWIG, $twig_params);
 
                 // append icon to distinguish reccurent event in views
                 // use UTC datetime to avoid some issues with rlan/phprrule
-                $dtstart_datetime  = new \DateTime($new_event['start']);
+                $dtstart_datetime  = new DateTime($new_event['start']);
                 unset($rrule['exceptions']); // remove exceptions key (as libraries throw exception for unknow keys)
                 $hr_rrule_o = new RRule(
                     array_merge(
@@ -1750,7 +1774,7 @@ TWIG, $twig_params);
                 // for fullcalendar, we need to pass start in the rrule key
                 unset($new_event['start'], $new_event['end']);
 
-                // For list view, only display only the next occurence
+                // For list view, only display only the next occurrence
                 // to avoid issues performances (range in list view can be 10 years long)
                 if ($param['view_name'] === "listFull") {
                     /** @var ?DateTime $next_date */
@@ -1842,7 +1866,6 @@ TWIG, $twig_params);
                     $_SESSION['glpi_plannings']['filters']['NotPlanned']['display']
                     && method_exists($params['planning_type'], 'populateNotPlanned')
                 ) {
-                    /** @var class-string $params['planning_type'] */
                     $not_planned = array_merge($not_planned, $params['planning_type']::populateNotPlanned($params));
                 }
             }
@@ -1853,18 +1876,14 @@ TWIG, $twig_params);
         }
 
         // fill type of planning
-        $raw_events = array_map(static function ($arr) use ($actor) {
-            return $arr + ['resourceId' => $actor];
-        }, $raw_events);
+        $raw_events = array_map(static fn($arr) => $arr + ['resourceId' => $actor], $raw_events);
 
         if ($_SESSION['glpi_plannings']['filters']['NotPlanned']['display']) {
-            $not_planned = array_map(static function ($arr) use ($actor) {
-                return $arr + [
-                    'not_planned' => true,
-                    'resourceId' => $actor,
-                    'event_type_color' => $_SESSION['glpi_plannings']['filters']['NotPlanned']['color'],
-                ];
-            }, $not_planned);
+            $not_planned = array_map(static fn($arr) => $arr + [
+                'not_planned' => true,
+                'resourceId' => $actor,
+                'event_type_color' => $_SESSION['glpi_plannings']['filters']['NotPlanned']['color'],
+            ], $not_planned);
         }
     }
 
@@ -1890,11 +1909,14 @@ TWIG, $twig_params);
             }
             try {
                 $vcalendar = Reader::read($calendar_data);
-            } catch (\Sabre\VObject\ParseException $exception) {
-                trigger_error(
+            } catch (ParseException $exception) {
+                /** @var LoggerInterface $PHPLOGGER */
+                global $PHPLOGGER;
+                $PHPLOGGER->error(
                     sprintf('Unable to parse calendar data from URL "%s"', $planning_params['url']),
-                    E_USER_WARNING
+                    ['exception' => $exception]
                 );
+
                 continue;
             }
             if (!$vcalendar instanceof VCalendar) {
@@ -1916,7 +1938,7 @@ TWIG, $twig_params);
                 ) {
                     continue;
                 }
-                $user_tz  = new \DateTimeZone(date_default_timezone_get());
+                $user_tz  = new DateTimeZone(date_default_timezone_get());
                 $begin_dt = $vcomp->DTSTART->getDateTime();
                 $begin_dt = $begin_dt->setTimeZone($user_tz);
                 $end_dt   = $vcomp->$end_date_prop->getDateTime();
@@ -1981,8 +2003,6 @@ TWIG, $twig_params);
             ) {
                 // item exists and is not in bin
 
-                $abort = false;
-
                 // if event has rrule property, check if we need to create a clone instance
                 if (
                     isset($item->fields['rrule'])
@@ -2001,91 +2021,89 @@ TWIG, $twig_params);
                     }
                 }
 
-                if (!$abort) {
-                    $update = [
-                        'id'   => $params['items_id'],
-                        'plan' => [
-                            'begin' => $params['start'],
-                            'end'   => $params['end'],
-                        ],
-                    ];
+                $update = [
+                    'id'   => $params['items_id'],
+                    'plan' => [
+                        'begin' => $params['start'],
+                        'end'   => $params['end'],
+                    ],
+                ];
 
-                    if (isset($item->fields['users_id_tech'])) {
-                        $update['users_id_tech'] = $item->fields['users_id_tech'];
-                    }
-
-                    // manage moving event between resource (actors)
-                    if (!empty($params['new_actor_itemtype']) && !empty($params['new_actor_items_id'])) {
-                        $new_actor_itemtype = strtolower($params['new_actor_itemtype']);
-
-                        // reminders don't have group assignement for planning
-                        if (
-                            !($new_actor_itemtype === 'group'
-                            && $item instanceof Reminder)
-                        ) {
-                            switch ($new_actor_itemtype) {
-                                case "group":
-                                    $update['groups_id_tech'] = $params['new_actor_items_id'];
-                                    if (strtolower($params['old_actor_itemtype']) === "user") {
-                                        $update['users_id_tech']  = 0;
-                                    }
-                                    break;
-
-                                case "user":
-                                    if (isset($item->fields['users_id_tech'])) {
-                                        $update['users_id_tech']  = $params['new_actor_items_id'];
-                                        if (strtolower($params['old_actor_itemtype']) === "group") {
-                                            $update['groups_id_tech']  = 0;
-                                        }
-                                    } else {
-                                        $update['users_id'] = $params['new_actor_items_id'];
-                                    }
-                                    break;
-                            }
-                        }
-
-                        // special case for project tasks
-                        // which have a link tables for their relation with groups/users
-                        if ($item instanceof ProjectTask) {
-                            // get actor for finding relation with item
-                            $actor = new $params['old_actor_itemtype']();
-                            $actor->getFromDB((int) $params['old_actor_items_id']);
-
-                            // get current relation
-                            $team_old = new ProjectTaskTeam();
-                            $team_old->getFromDBForItems($item, $actor);
-
-                            // if new relation already exists, delete old relation
-                            $actor_new = new $params['new_actor_itemtype']();
-                            $actor_new->getFromDB((int) $params['new_actor_items_id']);
-                            $team_new  = new ProjectTaskTeam();
-                            if ($team_new->getFromDBForItems($item, $actor_new)) {
-                                $team_old->delete([
-                                    'id' => $team_old->fields['id'],
-                                ]);
-                            } else {
-                                // else update relation
-                                $team_old->update([
-                                    'id'       => $team_old->fields['id'],
-                                    'itemtype' => $params['new_actor_itemtype'],
-                                    'items_id' => $params['new_actor_items_id'],
-                                ]);
-                            }
-                        }
-                    }
-
-                    if (is_subclass_of($item, "CommonITILTask")) {
-                        $parentitemtype = $item::getItilObjectItemType();
-                        if (!$update["_job"] = getItemForItemtype($parentitemtype)) {
-                            return;
-                        }
-
-                        $fkfield = $update["_job"]::getForeignKeyField();
-                        $update[$fkfield] = $item->fields[$fkfield];
-                    }
-
-                    return $item->update($update);
+                if (isset($item->fields['users_id_tech'])) {
+                    $update['users_id_tech'] = $item->fields['users_id_tech'];
                 }
+
+                // manage moving event between resource (actors)
+                if (!empty($params['new_actor_itemtype']) && !empty($params['new_actor_items_id'])) {
+                    $new_actor_itemtype = strtolower($params['new_actor_itemtype']);
+
+                    // reminders don't have group assignement for planning
+                    if (
+                        !($new_actor_itemtype === 'group'
+                        && $item instanceof Reminder)
+                    ) {
+                        switch ($new_actor_itemtype) {
+                            case "group":
+                                $update['groups_id_tech'] = $params['new_actor_items_id'];
+                                if (strtolower($params['old_actor_itemtype']) === "user") {
+                                    $update['users_id_tech']  = 0;
+                                }
+                                break;
+
+                            case "user":
+                                if (isset($item->fields['users_id_tech'])) {
+                                    $update['users_id_tech']  = $params['new_actor_items_id'];
+                                    if (strtolower($params['old_actor_itemtype']) === "group") {
+                                        $update['groups_id_tech']  = 0;
+                                    }
+                                } else {
+                                    $update['users_id'] = $params['new_actor_items_id'];
+                                }
+                                break;
+                        }
+                    }
+
+                    // special case for project tasks
+                    // which have a link tables for their relation with groups/users
+                    if ($item instanceof ProjectTask) {
+                        // get actor for finding relation with item
+                        $actor = getItemForItemtype($params['old_actor_itemtype']);
+                        $actor->getFromDB((int) $params['old_actor_items_id']);
+
+                        // get current relation
+                        $team_old = new ProjectTaskTeam();
+                        $team_old->getFromDBForItems($item, $actor);
+
+                        // if new relation already exists, delete old relation
+                        $actor_new = getItemForItemtype($params['new_actor_itemtype']);
+                        $actor_new->getFromDB((int) $params['new_actor_items_id']);
+                        $team_new  = new ProjectTaskTeam();
+                        if ($team_new->getFromDBForItems($item, $actor_new)) {
+                            $team_old->delete([
+                                'id' => $team_old->fields['id'],
+                            ]);
+                        } else {
+                            // else update relation
+                            $team_old->update([
+                                'id'       => $team_old->fields['id'],
+                                'itemtype' => $params['new_actor_itemtype'],
+                                'items_id' => $params['new_actor_items_id'],
+                            ]);
+                        }
+                    }
+                }
+
+                if (is_subclass_of($item, "CommonITILTask")) {
+                    $parentitemtype = $item::getItilObjectItemType();
+                    if (!$update["_job"] = getItemForItemtype($parentitemtype)) {
+                        return false;
+                    }
+
+                    $fkfield = $update["_job"]::getForeignKeyField();
+                    $update[$fkfield] = $item->fields[$fkfield];
+                }
+
+                return $item->update($update);
             }
         }
 
@@ -2144,7 +2162,6 @@ TWIG, $twig_params);
             && $val['itemtype'] !== 'NotPlanned'
             && method_exists($val['itemtype'], "displayPlanningItem")
         ) {
-            /** @var class-string $val['itemtype'] */
             $html .= $val['itemtype']::displayPlanningItem($val, $who, $type, $complete);
         }
 
@@ -2246,6 +2263,8 @@ TWIG, ['msg' => __('Your planning')]);
 
         if (count($interv) > 0) {
             foreach ($interv as $key => $val) {
+                $vevent = [];
+
                 if (isset($val['itemtype'])) {
                     if (isset($val[getForeignKeyFieldForItemType($val['itemtype'])])) {
                         $uid = $val['itemtype'] . "#" . $val[getForeignKeyFieldForItemType($val['itemtype'])];
@@ -2288,6 +2307,41 @@ TWIG, ['msg' => __('Your planning')]);
                 if (isset($val["url"])) {
                     $vevent['URL'] = $val["url"];
                 }
+
+                // RRULE
+                if (isset($val['rrule']) && count($val['rrule'])) {
+                    $rrule_parts = [];
+                    foreach ($val['rrule'] as $rrule_key => $rrule_value) {
+                        if (empty($rrule_value)) {
+                            continue;
+                        }
+
+                        if ($rrule_key === 'exceptions') {
+                            $vevent['EXDATE;VALUE=DATE'] = array_map(
+                                static function ($datestring) {
+                                    $date = new DateTime($datestring);
+                                    $date->setTimeZone(new DateTimeZone('UTC'));
+                                    return $date->format('Ymd');
+                                },
+                                $rrule_value
+                            );
+                            continue;
+                        }
+
+                        if ($rrule_key === 'until') {
+                            $until_date = new DateTime($rrule_value);
+                            $until_date->setTimeZone(new DateTimeZone('UTC'));
+                            $rrule_parts['UNTIL'] = $until_date->format('Ymd');
+                            continue;
+                        }
+
+                        $rrule_parts[strtoupper($rrule_key)] = $rrule_value;
+                    }
+                    if (count($rrule_parts) > 0) {
+                        $vevent['RRULE'] = $rrule_parts;
+                    }
+                }
+
                 $vcalendar->add('VEVENT', $vevent);
             }
         }
@@ -2378,20 +2432,20 @@ TWIG, ['msg' => __('Your planning')]);
      *
      * @return string|null
      */
-    private static function getCaldavBaseCalendarUrl(\CommonDBTM $item)
+    private static function getCaldavBaseCalendarUrl(CommonDBTM $item)
     {
         $calendar_uri = null;
 
         switch (get_class($item)) {
-            case \Group::class:
-                $calendar_uri = \Glpi\CalDAV\Backend\Calendar::PREFIX_GROUPS
+            case Group::class:
+                $calendar_uri = Calendar::PREFIX_GROUPS
                  . '/' . $item->fields['id']
-                 . '/' . \Glpi\CalDAV\Backend\Calendar::BASE_CALENDAR_URI;
+                 . '/' . Calendar::BASE_CALENDAR_URI;
                 break;
-            case \User::class:
-                $calendar_uri = \Glpi\CalDAV\Backend\Calendar::PREFIX_USERS
+            case User::class:
+                $calendar_uri = Calendar::PREFIX_USERS
                 . '/' . $item->fields['name']
-                . '/' . \Glpi\CalDAV\Backend\Calendar::BASE_CALENDAR_URI;
+                . '/' . Calendar::BASE_CALENDAR_URI;
                 break;
         }
 

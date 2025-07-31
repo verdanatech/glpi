@@ -32,10 +32,14 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Dashboard\Dashboard;
 use Glpi\Dashboard\Grid;
+use Glpi\Debug\Profiler;
 use Glpi\Error\ErrorHandler;
 use Glpi\Exception\Http\AccessDeniedHttpException;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 if (!isset($_REQUEST["action"])) {
     return;
@@ -61,18 +65,21 @@ if (
     Session::checkLoginUser();
 }
 
-$dashboard = new Glpi\Dashboard\Dashboard($_REQUEST['dashboard'] ?? "");
+$dashboard = new Dashboard($_REQUEST['dashboard'] ?? "");
 
 switch ($_POST['action'] ?? null) {
     case 'save_new_dashboard':
+        header("Content-Type: application/json; charset=UTF-8");
+
         if (!Session::haveRight('dashboard', CREATE)) {
             throw new AccessDeniedHttpException();
         }
 
-        echo $dashboard->saveNew(
+        $key = $dashboard->saveNew(
             $_POST['title']   ?? "",
             $_POST['context'] ?? ""
         );
+        echo json_encode($key);
         return;
 
     case 'save_items':
@@ -102,11 +109,14 @@ switch ($_POST['action'] ?? null) {
         return;
 
     case 'delete_dashboard':
+        header("Content-Type: application/json; charset=UTF-8");
+
         if (!$dashboard->canDeleteCurrent()) {
             throw new AccessDeniedHttpException();
         }
 
-        echo $dashboard->delete(['key' => $_POST['dashboard']]);
+        $success = $dashboard->delete(['key' => $_POST['dashboard']]);
+        echo json_encode($success);
         return;
 
     case 'set_last_dashboard':
@@ -115,6 +125,8 @@ switch ($_POST['action'] ?? null) {
         return;
 
     case 'clone_dashboard':
+        header("Content-Type: application/json; charset=UTF-8");
+
         if (!Session::haveRight('dashboard', CREATE) || !$dashboard->canViewCurrent()) {
             throw new AccessDeniedHttpException();
         }
@@ -133,17 +145,19 @@ switch ($_POST['action'] ?? null) {
 
 switch ($_GET['action'] ?? null) {
     case 'get_filter_data':
+        header("Content-Type: application/json; charset=UTF-8");
+
         if (!$dashboard->canViewCurrent()) {
             throw new AccessDeniedHttpException();
         }
 
-        echo $dashboard->getFilter();
+        echo $dashboard->getFilter(); // `Dashboard::getFilter()` already returns a JSON encoded string.
         return;
 }
 
-\Glpi\Debug\Profiler::getInstance()->start('Grid::construct');
+Profiler::getInstance()->start('Grid::construct');
 $grid = new Grid($_REQUEST['dashboard'] ?? "");
-\Glpi\Debug\Profiler::getInstance()->stop('Grid::construct');
+Profiler::getInstance()->stop('Grid::construct');
 
 header("Content-Type: text/html; charset=UTF-8");
 switch ($_REQUEST['action']) {
@@ -187,34 +201,35 @@ switch ($_REQUEST['action']) {
         }
 
         Session::writeClose();
-        \Glpi\Debug\Profiler::getInstance()->start('Get card HTML');
+        Profiler::getInstance()->start('Get card HTML');
         if ($embed) {
             $grid->initEmbedSession($_REQUEST);
         }
         echo $grid->getCardHtml($_REQUEST['card_id'], $_REQUEST);
-        \Glpi\Debug\Profiler::getInstance()->stop('Get card HTML');
+        Profiler::getInstance()->stop('Get card HTML');
         break;
 
     case 'get_cards':
+        header("Content-Type: application/json; charset=UTF-8");
+
         if (!$dashboard->canViewCurrent() && !$embed) {
             throw new AccessDeniedHttpException();
         }
 
         Session::writeClose();
-        header("Content-Type: application/json; charset=UTF-8");
         $cards = $request_data['cards'];
         unset($request_data['cards']);
         $result = [];
-        \Glpi\Debug\Profiler::getInstance()->start('Get cards HTML');
+        Profiler::getInstance()->start('Get cards HTML');
         foreach ($cards as $card) {
             try {
                 $result[$card['card_id']] = $grid->getCardHtml($card['card_id'], array_merge($request_data, $card));
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // Send exception to logger without actually exiting.
                 ErrorHandler::logCaughtException($e);
             }
         }
-        \Glpi\Debug\Profiler::getInstance()->stop('Get cards HTML');
+        Profiler::getInstance()->stop('Get cards HTML');
         echo json_encode($result);
         break;
 

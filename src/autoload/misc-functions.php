@@ -33,6 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
+use Twig\Runtime\EscaperRuntime;
+
+use function Safe\preg_match;
+
 /**
  * Is the script launch in Command line?
  *
@@ -76,7 +80,7 @@ function isPluginItemType($classname)
         $plug['plugin'] = $matches[1];
         $plug['class']  = $matches[2];
         return $plug;
-    } elseif (substr($classname, 0, \strlen(NS_PLUG)) === NS_PLUG) {
+    } elseif (str_starts_with($classname, NS_PLUG)) {
         $tab = explode('\\', $classname, 3);
         $plug           = [];
         $plug['plugin'] = $tab[1];
@@ -91,10 +95,26 @@ function isPluginItemType($classname)
  * Escape a string to make it safe to be printed in an HTML page.
  * This function is pretty similar to the `htmlspecialchars` function, but its signature is less strict.
  *
+ * This function will be deprecated/removed once all the HTML code of GLPI will be moved inside Twig templates.
+ *
  * @param mixed $str
  * @return string
  */
 function htmlescape(mixed $str): string
 {
     return htmlspecialchars((string) $str);
+}
+
+/**
+ * Escape a string to make it safe to be printed in a JS string variable.
+ *
+ * This function will be deprecated/removed once all the JS code of GLPI will be moved inside JS files or Twig templates.
+ *
+ * @param mixed $str
+ * @return string
+ */
+function jsescape(mixed $str): string
+{
+    // Rely on the Twig escaper
+    return (new EscaperRuntime())->escape((string) $str, 'js');
 }

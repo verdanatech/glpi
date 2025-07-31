@@ -35,15 +35,22 @@
 namespace Glpi\CustomObject;
 
 use CommonDBTM;
+use DBmysql;
+use DisplayPreference;
 use Dropdown;
 use Gettext\Languages\Category as Language_Category;
 use Gettext\Languages\CldrData as Language_CldrData;
 use Gettext\Languages\Language;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\CustomFieldDefinition;
+use LogicException;
 use Profile;
 use ProfileRight;
 use Session;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\preg_match;
 
 /**
  * Abstract class for custom object definition managers
@@ -81,6 +88,12 @@ abstract class AbstractDefinition extends CommonDBTM
     abstract public static function getCustomObjectNamespace(): string;
 
     /**
+     * Get the suffix to add to custom object classes.
+     * @return string
+     */
+    abstract public static function getCustomObjectClassSuffix(): string;
+
+    /**
      * Get the class name for the definition manager of this type.
      * @return class-string<AbstractDefinitionManager>
      */
@@ -105,13 +118,27 @@ abstract class AbstractDefinition extends CommonDBTM
      */
     public function getCustomObjectClassName(bool $with_namespace = true): string
     {
-        $classname = $this->fields['system_name'];
+        $classname = $this->fields['system_name'] . static::getCustomObjectClassSuffix();
 
         if ($with_namespace) {
             $classname = static::getCustomObjectNamespace() . '\\' . $classname;
         }
 
         return $classname;
+    }
+
+    /**
+     * @phpstan-return ConcreteClass
+     */
+    public function getCustomObjectClassInstance(): CommonDBTM
+    {
+        $classname = $this->getCustomObjectClassName();
+
+        if (!is_a($classname, CommonDBTM::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $classname();
     }
 
     /**
@@ -126,8 +153,7 @@ abstract class AbstractDefinition extends CommonDBTM
      */
     protected function getPossibleCustomObjectRights(): array
     {
-        $class = $this->getCustomObjectClassName();
-        return (new $class())->getRights();
+        return $this->getCustomObjectClassInstance()->getRights();
     }
 
     public static function getNameField()
@@ -175,7 +201,7 @@ abstract class AbstractDefinition extends CommonDBTM
 
     public function showForm($ID, array $options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $this->initForm($ID, $options);
@@ -231,7 +257,7 @@ abstract class AbstractDefinition extends CommonDBTM
      */
     protected function showProfilesForm(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $possible_rights = $this->getPossibleCustomObjectRights();
@@ -520,14 +546,16 @@ abstract class AbstractDefinition extends CommonDBTM
         return $has_errors ? false : $input;
     }
 
+    public function post_getFromDB()
+    {
+        // Clear the custom fields definitions cache when the object is reloaded
+        $this->custom_field_definitions = null;
+    }
+
     public function post_addItem()
     {
-        // Clear the definitions cache to ensure that the code triggerred by the capacities hooks
-        // will not use an outdated definition list.
-        static::getDefinitionManagerClass()::getInstance()->clearDefinitionsCache();
-
-        // Bootstrap the definition to make it usable right now.
-        static::getDefinitionManagerClass()::getInstance()->bootstrapDefinition($this);
+        // Register and bootstrap the definition to make it usable right now.
+        $this->registerAndBootstrapDefinition();
 
         if ($this->isActive()) {
             $this->syncProfilesRights();
@@ -537,12 +565,8 @@ abstract class AbstractDefinition extends CommonDBTM
 
     public function post_updateItem($history = true)
     {
-        // Clear the definitions cache to ensure that the code triggerred by the capacities hooks
-        // will not use an outdated definition list.
-        static::getDefinitionManagerClass()::getInstance()->clearDefinitionsCache();
-
-        // Bootstrap the definition to make it usable right now.
-        static::getDefinitionManagerClass()::getInstance()->bootstrapDefinition($this);
+        // Register and bootstrap the definition to make it usable right now.
+        $this->registerAndBootstrapDefinition();
 
         if (in_array('is_active', $this->updates, true)) {
             // Force menu refresh when active state change
@@ -558,6 +582,15 @@ abstract class AbstractDefinition extends CommonDBTM
         }
     }
 
+    private function registerAndBootstrapDefinition(): void
+    {
+        $manager = static::getDefinitionManagerClass()::getInstance();
+        $manager->registerDefinition($this);
+        if ($this->isActive()) {
+            $manager->bootstrapDefinition($this);
+        }
+    }
+
     public function cleanDBonPurge()
     {
         $this->purgeConcreteClassFromDb($this->getCustomObjectClassName());
@@ -566,16 +599,20 @@ abstract class AbstractDefinition extends CommonDBTM
     /**
      * Delete from the database all the data related to the given concrete class.
      *
-     * @param class-string<\CommonDBTM> $concrete_classname
+     * @param class-string<CommonDBTM> $concrete_classname
      */
     final protected function purgeConcreteClassFromDb(string $concrete_classname): void
     {
+        if (!\is_a($concrete_classname, CommonDBTM::class, true)) {
+            throw new LogicException();
+        }
+
         (new $concrete_classname())->deleteByCriteria(
             [static::getForeignKeyField() => $this->getID()],
             force: true,
             history: false
         );
-        (new \DisplayPreference())->deleteByCriteria(['itemtype' => $concrete_classname]);
+        (new DisplayPreference())->deleteByCriteria(['itemtype' => $concrete_classname]);
     }
 
     /**
@@ -624,7 +661,7 @@ abstract class AbstractDefinition extends CommonDBTM
      */
     protected function syncProfilesRights(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $rightname = $this->getCustomObjectRightname();
@@ -971,7 +1008,7 @@ TWIG, ['name' => $name, 'value' => $value]);
      */
     protected function validateProfileArray(mixed $profiles, bool $check_values = true): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!is_array($profiles)) {

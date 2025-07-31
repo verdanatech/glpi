@@ -66,6 +66,9 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
+use function Safe\ob_end_clean;
+use function Safe\ob_start;
+
 class RacksPluginToCoreCommand extends AbstractCommand
 {
     /**
@@ -345,7 +348,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
             );
             if (!$is_state_ok) {
                 // Should not happens as installation should put plugin in awaited state
-                throw new \Symfony\Component\Console\Exception\LogicException('Unexpected plugin state.');
+                throw new LogicException('Unexpected plugin state.');
             }
         }
 
@@ -406,7 +409,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
             $result = $this->db->delete($table, [1]);
 
             if (!$result) {
-                throw new \Symfony\Component\Console\Exception\RuntimeException(
+                throw new RuntimeException(
                     sprintf('Unable to truncate table "%s"', $table)
                 );
             }
@@ -526,8 +529,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
                     $model_label .= ' (' . $othermodel['comment'] . ')';
                 }
 
-                /** @var QuestionHelper $question_helper */
-                $question_helper = $this->getHelper('question');
+                $question_helper = new QuestionHelper();
                 $answer = $question_helper->ask(
                     $this->input,
                     $this->output,
@@ -580,7 +582,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
                 }
 
                 if (null === $new_model_itemtype) {
-                    throw new \Symfony\Component\Console\Exception\LogicException(
+                    throw new LogicException(
                         sprintf('Answer "%s" has no corresponding itemtype.', $answer)
                     );
                 }
@@ -1324,7 +1326,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
                     $old_item['plugin_racks_racks_id']
                 );
 
-                $item_input = $item_input + [
+                $item_input += [
                     'racks_id'    => null !== $rack ? $rack->fields['id'] : 0,
                     'position'    => $position,
                     'hpos'        => 0,
@@ -1405,7 +1407,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
             $itemtype = $mapping['itemtype'];
         }
 
-        if (!class_exists($itemtype)) {
+        if (!\is_a($itemtype, CommonDBTM::class, true)) {
             return null;
         }
 
@@ -1420,7 +1422,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
     /**
      * Returns fallback room id.
      *
-     * @return number
+     * @return int
      */
     private function getFallbackRoomId()
     {
@@ -1454,7 +1456,7 @@ class RacksPluginToCoreCommand extends AbstractCommand
     /**
      * Returns verbosity level for import errors.
      *
-     * @return number
+     * @return int
      */
     private function getImportErrorsVerbosity()
     {

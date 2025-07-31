@@ -32,12 +32,13 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
 
 //!  ConsumableItem Class
 /**
@@ -45,9 +46,9 @@ use Glpi\Features\AssignableItem;
  * @see Consumable
  * @author Julien Dombre
  */
-class ConsumableItem extends CommonDBTM
+class ConsumableItem extends CommonDBTM implements AssignableItemInterface
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     use AssetImage;
     use AssignableItem {
@@ -155,7 +156,7 @@ class ConsumableItem extends CommonDBTM
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = parent::rawSearchOptions();
@@ -333,7 +334,7 @@ class ConsumableItem extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -413,7 +414,7 @@ class ConsumableItem extends CommonDBTM
                     }
                 }
 
-                if (!empty($items)) {
+                if ($items !== []) {
                     $options = [
                         'entities_id' => $entity,
                         'items'       => $items,
@@ -439,7 +440,7 @@ class ConsumableItem extends CommonDBTM
                         ];
 
                         // add alerts
-                        foreach ($items as $ID => $consumable) {
+                        foreach (array_keys($items) as $ID) {
                             $input["items_id"] = $ID;
                             $alert->add($input);
                             unset($alert->fields['id']);

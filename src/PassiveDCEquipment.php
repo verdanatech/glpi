@@ -32,17 +32,21 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\DCBreadcrumb;
+use Glpi\Features\DCBreadcrumbInterface;
 use Glpi\Socket;
 
 /**
  * PassiveDCEquipment Class
  **/
-class PassiveDCEquipment extends CommonDBTM
+class PassiveDCEquipment extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface
 {
-    use Glpi\Features\AssignableItem;
-    use Glpi\Features\Clonable;
-    use Glpi\Features\DCBreadcrumb;
+    use AssignableItem;
+    use Clonable;
+    use DCBreadcrumb;
     use Glpi\Features\State;
 
     // From CommonDBTM

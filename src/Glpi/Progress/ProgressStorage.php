@@ -34,6 +34,10 @@
 
 namespace Glpi\Progress;
 
+use Glpi\Message\MessageType;
+use LogicException;
+use RuntimeException;
+
 use function Safe\fclose;
 use function Safe\fflush;
 use function Safe\flock;
@@ -50,18 +54,67 @@ class ProgressStorage
 {
     private readonly string $storage_dir;
 
+    /**
+     * Indicators related to operations executed by the current PHP process.
+     * @var StoredProgressIndicator[]
+     */
+    private array $current_process_indicators = [];
+
+    /**
+     * Callbacks to execute on operation failures.
+     * @var array<string, callable>
+     */
+    private array $failure_callbacks = [];
+
     public function __construct(string $storage_dir = GLPI_TMP_DIR)
     {
         $this->storage_dir = $storage_dir;
     }
 
-    public function spawnProgressIndicator(): StoredProgressIndicator
+    /**
+     * Spawn a progress indicator to be stored in the current storage.
+     */
+    public function spawnProgressIndicator(?callable $failure_callback = null): StoredProgressIndicator
     {
-        $progress_indicator = new StoredProgressIndicator($this, $this->getUniqueStorageKey());
+        $progress_indicator = new StoredProgressIndicator($this->getUniqueStorageKey());
+        $progress_indicator->setProgressStorage($this);
+
+        $this->current_process_indicators[] = $progress_indicator;
 
         $this->save($progress_indicator);
 
         return $progress_indicator;
+    }
+
+    /**
+     * Register a failure callback to be called if the operation fails.
+     */
+    public function registerFailureCallback(string $storage_key, callable $failure_callback): void
+    {
+        $this->failure_callbacks[$storage_key] = $failure_callback;
+    }
+
+    /**
+     * Mark all the progress indicators spawned in the current PHP process as failed.
+     * This function is expected to be used by the application error handler, to handle both
+     * non recoverable errors (execution timeouts or memory errors)
+     * and errors that were not caught.
+     */
+    public function failCurrentProcessIndicators(): void
+    {
+        foreach ($this->current_process_indicators as $progress_indicator) {
+            if ($progress_indicator->isFinished()) {
+                // The operation is already finished, it status should not be changed.
+                continue;
+            }
+
+            $progress_indicator->addMessage(MessageType::Error, __('An unexpected error occurred'));
+            $progress_indicator->fail();
+
+            if (\array_key_exists($progress_indicator->getStorageKey(), $this->failure_callbacks)) {
+                $this->failure_callbacks[$progress_indicator->getStorageKey()]();
+            }
+        }
     }
 
     public function getProgressIndicator(string $storage_key): ?StoredProgressIndicator
@@ -92,7 +145,7 @@ class ProgressStorage
         $progress = \unserialize($file_contents);
 
         if (!$progress instanceof StoredProgressIndicator) {
-            throw new \RuntimeException(\sprintf('Invalid data stored for key `%s`.', $storage_key));
+            throw new RuntimeException(\sprintf('Invalid data stored for key `%s`.', $storage_key));
         }
 
         return $progress;
@@ -103,7 +156,7 @@ class ProgressStorage
         $storage_key = $progress_indicator->getStorageKey();
 
         if (!$this->canAccessProgressIndicator($storage_key)) {
-            throw new \LogicException();
+            throw new LogicException();
         }
 
         $path = $this->getStorageFilePath($storage_key);

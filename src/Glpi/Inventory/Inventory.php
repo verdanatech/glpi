@@ -37,16 +37,67 @@ namespace Glpi\Inventory;
 
 use Agent;
 use CommonDBTM;
+use CronTask;
+use DBmysql;
+use Glpi\Asset\Asset;
 use Glpi\Asset\AssetDefinitionManager;
 use Glpi\Asset\Capacity\IsInventoriableCapacity;
+use Glpi\Inventory\Asset\Antivirus;
+use Glpi\Inventory\Asset\Battery;
+use Glpi\Inventory\Asset\Bios;
+use Glpi\Inventory\Asset\Camera;
+use Glpi\Inventory\Asset\Cartridge;
+use Glpi\Inventory\Asset\Controller;
+use Glpi\Inventory\Asset\DatabaseInstance;
+use Glpi\Inventory\Asset\Drive;
+use Glpi\Inventory\Asset\Environment;
+use Glpi\Inventory\Asset\Firmware;
+use Glpi\Inventory\Asset\GraphicCard;
 use Glpi\Inventory\Asset\InventoryAsset;
+use Glpi\Inventory\Asset\Memory;
+use Glpi\Inventory\Asset\Monitor;
+use Glpi\Inventory\Asset\NetworkCard;
+use Glpi\Inventory\Asset\NetworkPort;
+use Glpi\Inventory\Asset\OperatingSystem;
+use Glpi\Inventory\Asset\Peripheral;
+use Glpi\Inventory\Asset\PowerSupply;
+use Glpi\Inventory\Asset\Printer;
+use Glpi\Inventory\Asset\Process;
+use Glpi\Inventory\Asset\Processor;
+use Glpi\Inventory\Asset\RemoteManagement;
+use Glpi\Inventory\Asset\Sensor;
+use Glpi\Inventory\Asset\Simcard;
+use Glpi\Inventory\Asset\Software;
+use Glpi\Inventory\Asset\SoundCard;
+use Glpi\Inventory\Asset\VirtualMachine;
+use Glpi\Inventory\Asset\Volume;
 use Glpi\Inventory\MainAsset\Itemtype;
 use Glpi\Inventory\MainAsset\MainAsset;
 use Lockedfield;
+use Log;
+use Psr\Log\LoggerInterface;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use RefusedEquipment;
+use RegexIterator;
+use RuntimeException;
+use Safe\Exceptions\FilesystemException;
 use Session;
 use SNMPCredential;
+use stdClass;
+use Throwable;
 use Toolbox;
+
+use function Safe\copy;
+use function Safe\file_put_contents;
+use function Safe\filemtime;
+use function Safe\glob;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\mkdir;
+use function Safe\preg_replace;
+use function Safe\tempnam;
+use function Safe\unlink;
 
 /**
  * Handle inventory request
@@ -58,7 +109,7 @@ class Inventory
 
     /** @var integer */
     protected $mode;
-    /** @var \stdClass */
+    /** @var stdClass */
     protected $raw_data = null;
     /** @var array */
     protected $data = [];
@@ -78,11 +129,11 @@ class Inventory
     private $benchs = [];
     /** @var string|false */
     private $inventory_tmpfile = false;
-    /** @var string */
+    /** @var ?string */
     private $inventory_content;
     /** @var integer */
     private $inventory_format;
-    /** @var MainAsset */
+    /** @var ?MainAsset */
     private $mainasset;
     /** @var string */
     private $request_query;
@@ -141,20 +192,29 @@ class Inventory
             $schema->setExtraSubProperties($this->getSchemaExtraSubProps());
         }
 
+        $tempnam_ext = 'json_';
         if (Request::XML_MODE === $format) {
             $this->inventory_format = Request::XML_MODE;
-            $this->inventory_tmpfile = tempnam(GLPI_INVENTORY_DIR, 'xml_');
+            $tempnam_ext = 'xml_';
             $contentdata = $data->asXML();
             //convert legacy format
             $data = json_decode($converter->convert($contentdata));
         } else {
-            $this->inventory_tmpfile = tempnam(GLPI_INVENTORY_DIR, 'json_');
             $contentdata = json_encode($data, JSON_PRETTY_PRINT);
         }
 
         try {
+            $this->inventory_tmpfile = tempnam(GLPI_INVENTORY_DIR, $tempnam_ext);
+        } catch (FilesystemException $e) {
+            /** @var LoggerInterface $PHPLOGGER */
+            global $PHPLOGGER;
+            $PHPLOGGER->error($e->getMessage(), ['exception' => $e]);
+            $this->inventory_tmpfile = false;
+        }
+
+        try {
             $schema->validate($data);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             $this->errors[] = preg_replace(
                 '|\$ref\[file~2//.*/vendor/glpi-project/inventory_format/inventory.schema.json\]|',
                 '$ref[inventory.schema.json]',
@@ -198,7 +258,7 @@ class Inventory
     {
         //check
         if ($this->inError()) {
-            throw new \RuntimeException(print_r($this->getErrors(), true));
+            throw new RuntimeException(print_r($this->getErrors(), true));
         }
 
         $this->metadata = [
@@ -246,15 +306,15 @@ class Inventory
      */
     public function doInventory($test_rules = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         //check
         if ($this->inError()) {
-            throw new \RuntimeException(print_r($this->getErrors(), true));
+            throw new RuntimeException(print_r($this->getErrors(), true));
         }
 
-        \Log::useQueue();
+        Log::useQueue();
 
         if (!isset($_SESSION['glpiinventoryuserrunning'])) {
             $_SESSION['glpiinventoryuserrunning'] = 'inventory';
@@ -266,7 +326,7 @@ class Inventory
 
         $main_start = microtime(true); //bench
         try {
-            if (!$DB->inTransaction()) {
+            if (!defined('TU_USER')) {
                 $DB->beginTransaction();
             }
 
@@ -353,7 +413,7 @@ class Inventory
             $this->agent = new Agent();
             $this->agent->handleAgent($this->metadata);
 
-            $this->item = new $this->agent->fields['itemtype']();
+            $this->item = getItemForItemtype($this->agent->fields['itemtype']);
 
             //load existing itemtype, if any
             if (!empty($this->agent->fields['items_id'])) {
@@ -362,6 +422,14 @@ class Inventory
 
             //instanciate inventory main asset class, and proceed
             $main_class = $this->getMainClass();
+            if (!is_subclass_of($main_class, MainAsset::class, true)) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Main asset class %s is not a valid MainAsset class',
+                        $main_class
+                    )
+                );
+            }
             $main = new $main_class($this->item, $this->raw_data);
             $main
                 ->setDiscovery($this->is_discovery)
@@ -384,17 +452,19 @@ class Inventory
                 $this->handleItem();
 
                 if (!$this->mainasset->isNew()) {
-                    \Log::handleQueue();
+                    Log::handleQueue();
                 } else {
-                    \Log::resetQueue();
+                    Log::resetQueue();
                 }
 
                 if (!defined('TU_USER')) {
                     $DB->commit();
                 }
             }
-        } catch (\Throwable $e) {
-            $DB->rollback();
+        } catch (Throwable $e) {
+            if (!defined('TU_USER')) {
+                $DB->rollback();
+            }
             throw $e;
         } finally {
             unset($_SESSION['glpiinventoryuserrunning']);
@@ -465,7 +535,7 @@ class Inventory
             foreach ($items as $item) {
                 $itemtype = $item->getType();
                 if (!isset($item->fields['id']) || empty($item->fields['id'])) {
-                    throw new \RuntimeException('Item ID is missing :(');
+                    throw new RuntimeException('Item ID is missing :(');
                 }
                 $id = $item->fields['id'];
 
@@ -597,10 +667,10 @@ class Inventory
         }
 
         //not found, so we have a generic asset. Let's retrieve its MainAsset class
-        if ($this->item instanceof \Glpi\Asset\Asset) {
+        if ($this->item instanceof Asset) {
             $main_class = $this->item
                 ->getDefinition()
-                ->getCapacityConfiguration(\Glpi\Asset\Capacity\IsInventoriableCapacity::class)
+                ->getCapacityConfiguration(IsInventoriableCapacity::class)
                 ->getValue('inventory_mainasset');
         }
         if ($main_class === null || !class_exists($main_class)) {
@@ -618,7 +688,7 @@ class Inventory
     {
         //map existing keys in inventory format to their respective Inventory\Asset class if needed.
         foreach ($this->data as $key => &$value) {
-            $assettype = false;
+            $assettype = null;
 
             switch ($key) {
                 case 'accesslog': //not used
@@ -644,101 +714,101 @@ class Inventory
                 case 'pagecounters': //handled from Asset\Printer
                     break;
                 case 'cpus':
-                    $assettype = '\Glpi\Inventory\Asset\Processor';
+                    $assettype = Processor::class;
                     break;
                 case 'drives':
-                    $assettype = '\Glpi\Inventory\Asset\Volume';
+                    $assettype = Volume::class;
                     break;
                 case 'memories':
-                    $assettype = '\Glpi\Inventory\Asset\Memory';
+                    $assettype = Memory::class;
                     break;
                 case 'monitors':
-                    $assettype = '\Glpi\Inventory\Asset\Monitor';
+                    $assettype = Monitor::class;
                     break;
                 case 'networks':
-                    $assettype = '\Glpi\Inventory\Asset\NetworkCard';
+                    $assettype = NetworkCard::class;
                     break;
                 case 'operatingsystem':
-                    $assettype = '\Glpi\Inventory\Asset\OperatingSystem';
+                    $assettype = OperatingSystem::class;
                     break;
                 case 'printers':
-                    $assettype = '\Glpi\Inventory\Asset\Printer';
+                    $assettype = Printer::class;
                     break;
                 case 'softwares':
-                    $assettype = '\Glpi\Inventory\Asset\Software';
+                    $assettype = Software::class;
                     break;
                 case 'sounds':
-                    $assettype = '\Glpi\Inventory\Asset\SoundCard';
+                    $assettype = SoundCard::class;
                     break;
                 case 'storages':
-                    $assettype = '\Glpi\Inventory\Asset\Drive';
+                    $assettype = Drive::class;
                     break;
                 case 'usbdevices':
-                    $assettype = '\Glpi\Inventory\Asset\Peripheral';
+                    $assettype = Peripheral::class;
                     break;
                 case 'antivirus':
-                    $assettype = '\Glpi\Inventory\Asset\Antivirus';
+                    $assettype = Antivirus::class;
                     break;
                 case 'bios':
-                    $assettype = '\Glpi\Inventory\Asset\Bios';
+                    $assettype = Bios::class;
                     break;
                 case 'firmwares':
-                    $assettype = '\Glpi\Inventory\Asset\Firmware';
+                    $assettype = Firmware::class;
                     break;
                 case 'batteries':
-                    $assettype = '\Glpi\Inventory\Asset\Battery';
+                    $assettype = Battery::class;
                     break;
                 case 'controllers':
-                    $assettype = '\Glpi\Inventory\Asset\Controller';
+                    $assettype = Controller::class;
                     break;
                 case 'videos':
-                    $assettype = '\Glpi\Inventory\Asset\GraphicCard';
+                    $assettype = GraphicCard::class;
                     break;
                 case 'simcards':
-                    $assettype = '\Glpi\Inventory\Asset\Simcard';
+                    $assettype = Simcard::class;
                     break;
                 case 'virtualmachines':
-                    $assettype = '\Glpi\Inventory\Asset\VirtualMachine';
+                    $assettype = VirtualMachine::class;
                     break;
                 case 'processes':
-                    $assettype = '\Glpi\Inventory\Asset\Process';
+                    $assettype = Process::class;
                     break;
                 case 'envs':
-                    $assettype = '\Glpi\Inventory\Asset\Environment';
+                    $assettype = Environment::class;
                     break;
                 case 'sensors':
-                    $assettype = '\Glpi\Inventory\Asset\Sensor';
+                    $assettype = Sensor::class;
                     break;
                 case 'network_ports':
-                    $assettype = '\Glpi\Inventory\Asset\NetworkPort';
+                    $assettype = NetworkPort::class;
                     break;
                 case 'cartridges':
-                    $assettype = '\Glpi\Inventory\Asset\Cartridge';
+                    $assettype = Cartridge::class;
                     break;
                 case 'remote_mgmt':
-                    $assettype = '\Glpi\Inventory\Asset\RemoteManagement';
+                    $assettype = RemoteManagement::class;
                     break;
                 case 'cameras':
-                    $assettype = '\Glpi\Inventory\Asset\Camera';
+                    $assettype = Camera::class;
                     break;
                 case 'databases_services':
-                    $assettype = '\Glpi\Inventory\Asset\DatabaseInstance';
+                    $assettype = DatabaseInstance::class;
                     break;
                 case 'powersupplies':
-                    $assettype = '\Glpi\Inventory\Asset\PowerSupply';
+                    $assettype = PowerSupply::class;
                     break;
                 default:
                     if (method_exists($this, 'processExtraInventoryData')) {
                         $assettype = $this->processExtraInventoryData($key);
                     }
-                    if ($assettype === false) {
+                    if (!\is_string($value) || !is_a($assettype, InventoryAsset::class, true)) {
                         //unhandled
-                        throw new \RuntimeException("Unhandled schema entry $key");
+                        throw new RuntimeException("Unhandled schema entry $key");
                     }
                     break;
             }
 
-            if ($assettype !== false) {
+            if ($assettype !== null) {
                 //handle if asset type has been found.
                 $asset = new $assettype($this->item, (array) $value);
                 $asset->setMainAsset($this->mainasset);
@@ -759,7 +829,7 @@ class Inventory
     /**
      * Main item handling, including links
      *
-     * @return void;
+     * @return void
      */
     public function handleItem()
     {
@@ -778,7 +848,7 @@ class Inventory
     /**
      * Get agent
      *
-     * @return \Agent
+     * @return Agent
      */
     public function getAgent()
     {
@@ -903,14 +973,12 @@ class Inventory
     /**
      * Clean temporary inventory files
      *
-     * @param \CronTask $task CronTask instance
+     * @param CronTask $task CronTask instance
      *
-     * @return void
+     * @return int
      **/
     public static function cronCleantemp($task)
     {
-        $cron_status = 0;
-
         $conf = new Conf();
         $temp_files = glob(GLPI_INVENTORY_DIR . '/*.{' . implode(',', $conf->knownInventoryExtensions()) . '}', GLOB_BRACE);
 
@@ -918,8 +986,12 @@ class Inventory
         foreach ($temp_files as $temp_file) {
             //drop only inventory files that have been created more than 12 hours ago
             if (time() - filemtime($temp_file) >= $time_limit) {
-                unlink($temp_file);
-                $message = sprintf(__('File %1$s has been removed'), $temp_file);
+                try {
+                    unlink($temp_file);
+                    $message = sprintf(__('File %1$s has been removed'), $temp_file);
+                } catch (FilesystemException $e) {
+                    $message = sprintf(__('Unable to remove file %1$s'), $temp_file);
+                }
                 if ($task) {
                     $task->log($message);
                     $task->addVolume(1);
@@ -929,24 +1001,20 @@ class Inventory
             }
         }
 
-        $cron_status = 1;
-
-        return $cron_status;
+        return 1;
     }
 
     /**
      * Clean orphan inventory files
      *
-     * @param \CronTask $task CronTask instance
+     * @param CronTask $task CronTask instance
      *
-     * @return void
+     * @return int
      **/
     public static function cronCleanorphans($task)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
-
-        $cron_status = 0;
 
         $conf = new Conf();
         $existing_types = glob(GLPI_INVENTORY_DIR . '/*', GLOB_ONLYDIR);
@@ -956,9 +1024,9 @@ class Inventory
             $itemtype = str_replace(GLPI_INVENTORY_DIR . '/', '', $existing_type);
             // use `getItemForItemtype` to fix classname case (i.e. `refusedequipement` -> `RefusedEquipement`)
             $itemtype = getItemForItemtype($itemtype)::getType();
-            $inventory_files = new \RegexIterator(
-                new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($existing_type)
+            $inventory_files = new RegexIterator(
+                new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($existing_type)
                 ),
                 "/\\.(" . implode('|', $conf->knownInventoryExtensions()) . ")\$/i"
             );
@@ -970,7 +1038,7 @@ class Inventory
 
             if (!count($ids)) {
                 //no files, we're done
-                return;
+                return -1;
             }
 
             $iterator = $DB->request([
@@ -981,7 +1049,7 @@ class Inventory
 
             if (count($iterator) === count($ids)) {
                 //all assets are still present, we're done
-                return;
+                return -1;
             }
 
             //find missing assets
@@ -992,17 +1060,22 @@ class Inventory
 
             foreach ($orphans as $orphan) {
                 $dropfile = $ids[$orphan];
-                $res = @unlink($dropfile->getRealPath());
-                if (!$res) {
-                    trigger_error(sprintf(__('Unable to remove file %1$s'), $dropfile->getRealPath()), E_USER_WARNING);
+                try {
+                    unlink($dropfile->getRealPath());
                     $message = sprintf(
-                        __('File %1$s %2$s has not been removed'),
+                        __('File %1$s %2$s has been removed'),
                         $itemtype,
                         $dropfile->getFileName()
                     );
-                } else {
+                } catch (FilesystemException $e) {
+                    /** @var LoggerInterface $PHPLOGGER */
+                    global $PHPLOGGER;
+                    $PHPLOGGER->error(
+                        sprintf('Unable to remove file %1$s', $dropfile->getRealPath()),
+                        ['exception' => $e]
+                    );
                     $message = sprintf(
-                        __('File %1$s %2$s has been removed'),
+                        __('File %1$s %2$s has not been removed'),
                         $itemtype,
                         $dropfile->getFileName()
                     );
@@ -1016,9 +1089,7 @@ class Inventory
             }
         }
 
-        $cron_status = 1;
-
-        return $cron_status;
+        return 1;
     }
 
     public static function getTypeName($nb = 0)

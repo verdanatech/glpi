@@ -39,7 +39,7 @@ use Glpi\Exception\Http\BadRequestHttpException;
 
 Session::checkCentralAccess();
 
-$iapp = new \Appliance_Item();
+$iapp = new Appliance_Item();
 $app = new Appliance();
 
 if (isset($_POST['update'])) {
@@ -57,7 +57,7 @@ if (isset($_POST['update'])) {
     Html::back();
 } elseif (isset($_POST['purge'])) {
     $iapp->check($_POST['id'], PURGE);
-    $iapp->delete($_POST, 1);
+    $iapp->delete($_POST, true);
     $url = $app->getFormURLWithID($_POST['appliances_id']);
     Html::redirect($url);
 }

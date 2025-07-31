@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\preg_match;
+
 abstract class RuleCommonITILObjectCollection extends RuleCollection
 {
     // From RuleCollection
@@ -49,7 +51,7 @@ abstract class RuleCommonITILObjectCollection extends RuleCollection
 
     /**
      * Get the ITIL Object itemtype that this rule collection is for
-     * @return string "Ticket", "Change" or "Problem"
+     * @return class-string<CommonITILObject> "Ticket", "Change" or "Problem"
      */
     public static function getItemtype(): string
     {
@@ -73,7 +75,6 @@ abstract class RuleCommonITILObjectCollection extends RuleCollection
     public function preProcessPreviewResults($output)
     {
         $output = parent::preProcessPreviewResults($output);
-        /** @var CommonITILObject $itemtype */
         $itemtype = static::getItemtype();
         return $itemtype::showPreviewAssignAction($output);
     }

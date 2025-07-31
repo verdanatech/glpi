@@ -68,7 +68,7 @@ class Alert extends CommonDBTM
     public function clear($itemtype, $ID, $alert_type)
     {
 
-        return $this->deleteByCriteria(['itemtype' => $itemtype, 'items_id' => $ID, 'type' => $alert_type], 1);
+        return $this->deleteByCriteria(['itemtype' => $itemtype, 'items_id' => $ID, 'type' => $alert_type], true);
     }
 
 
@@ -85,7 +85,7 @@ class Alert extends CommonDBTM
     public function cleanDBonItemDelete($itemtype, $ID)
     {
 
-        return $this->deleteByCriteria(['itemtype' => $itemtype, 'items_id' => $ID], 1);
+        return $this->deleteByCriteria(['itemtype' => $itemtype, 'items_id' => $ID], true);
     }
 
     public static function dropdown($options = [])
@@ -223,7 +223,7 @@ class Alert extends CommonDBTM
      */
     public static function alertExists($itemtype, $items_id, $type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($items_id <= 0 || $type <= 0) {
@@ -251,7 +251,7 @@ class Alert extends CommonDBTM
      */
     public static function getAlertDate($itemtype, $items_id, $type)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($items_id <= 0 || $type <= 0) {
@@ -275,7 +275,7 @@ class Alert extends CommonDBTM
      */
     public static function displayLastAlert($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($items_id) {

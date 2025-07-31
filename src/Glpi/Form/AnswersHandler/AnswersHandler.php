@@ -35,6 +35,8 @@
 
 namespace Glpi\Form\AnswersHandler;
 
+use DBmysql;
+use Exception;
 use Glpi\DBAL\QueryExpression;
 use Glpi\Form\Answer;
 use Glpi\Form\AnswersSet;
@@ -47,6 +49,9 @@ use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Form;
 use Glpi\Form\Section;
 use Glpi\Form\ValidationResult;
+use Throwable;
+
+use function Safe\json_encode;
 
 /**
  * Helper class to handle raw answers data
@@ -89,7 +94,7 @@ final class AnswersHandler
         Form|Section $questions_container,
         array $answers
     ): ValidationResult {
-        $form = ($questions_container instanceof Section) ? $questions_container->getItem() : $questions_container;
+        $form = ($questions_container instanceof Section) ? $questions_container->getForm() : $questions_container;
         $result = new ValidationResult();
         $engine = new Engine($form, new EngineInput($answers));
         $visibility = $engine->computeVisibility();
@@ -157,7 +162,7 @@ final class AnswersHandler
      *
      * @return AnswersSet The created AnswersSet object
      *
-     * @throws \Exception If the data can't be fully saved
+     * @throws Exception If the data can't be fully saved
      */
     public function saveAnswers(
         Form $form,
@@ -166,30 +171,22 @@ final class AnswersHandler
         array $files = [],
         DelegationData $delegation = new DelegationData(),
     ): AnswersSet {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        if ($DB->inTransaction()) {
-            return $this->doSaveAnswers($form, $answers, $users_id, $delegation, $files);
-        } else {
-            // We do not want to commit the answers unless everything was processed
-            // correctly
-            $DB->beginTransaction();
+        // We do not want to commit the answers unless everything was processed
+        // correctly
+        $DB->beginTransaction();
 
-            try {
-                $answers_set = $this->doSaveAnswers($form, $answers, $users_id, $delegation, $files);
-                $DB->commit();
-                return $answers_set;
-            } catch (\Throwable $e) {
-                $DB->rollback();
-                trigger_error(
-                    "Failed to save answers: " . $e->getMessage(),
-                    E_USER_WARNING
-                );
+        try {
+            $answers_set = $this->doSaveAnswers($form, $answers, $users_id, $delegation, $files);
+            $DB->commit();
+            return $answers_set;
+        } catch (Throwable $e) {
+            $DB->rollback();
 
-                // Propagate the exception
-                throw $e;
-            }
+            // Propagate the exception
+            throw $e;
         }
     }
 
@@ -206,7 +203,7 @@ final class AnswersHandler
      *
      * @return AnswersSet The created AnswersSet object
      *
-     * @throws \Exception If the data can't be saved
+     * @throws Exception If the data can't be saved
      */
     protected function doSaveAnswers(
         Form $form,
@@ -245,7 +242,7 @@ final class AnswersHandler
      */
     protected function incrementFormUsageCount(Form $form): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Note: Using direct DB update prevents race conditions
@@ -269,14 +266,14 @@ final class AnswersHandler
      *
      * @return AnswersSet The created AnswersSet object
      *
-     * @throws \Exception If the data can't be saved
+     * @throws Exception If the data can't be saved
      */
     protected function createAnswserSet(
         Form $form,
         array $answers,
         int $users_id
     ): AnswersSet {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Find next answer index for this form
@@ -329,7 +326,7 @@ final class AnswersHandler
         // If we can't save the answers, throw an exception as it make no sense
         // to keep going
         if (!$id) {
-            throw new \Exception(
+            throw new Exception(
                 "Failed to save answers: " . json_encode($input)
             );
         }
@@ -343,7 +340,7 @@ final class AnswersHandler
      * @param Form       $form
      * @param AnswersSet $answers_set
      *
-     * @throws \Exception If the data can't be saved
+     * @throws Exception If the data can't be saved
      *
      * @return void
      */
@@ -355,6 +352,9 @@ final class AnswersHandler
         // Init the contionnal creation engine
         $engine = new Engine($form, new EngineInput($answers_set->toArray()));
         $engine_output = $engine->computeItemsThatMustBeCreated();
+
+        // Store created items for post-creation processing
+        $created_items = [];
 
         /** @var FormDestination $destination */
         foreach ($destinations as $destination) {
@@ -386,12 +386,36 @@ final class AnswersHandler
                     'items_id'                       => $item->getID(),
                 ];
                 if (!$form_item->add($input)) {
-                    throw new \Exception(
+                    throw new Exception(
                         "Failed to create destination item: "
                         . json_encode($input)
                     );
                 }
             }
+
+            // Store created items for post-creation processing
+            $created_items[$destination->getID()] = $items;
+        }
+
+        foreach ($destinations as $destination) {
+            $concrete_destination = $destination->getConcreteDestinationItem();
+            if (!$concrete_destination) {
+                // The configured destination might belong to an inactive plugin
+                continue;
+            }
+
+            // Skip if the destination failed its required conditions.
+            if (!$engine_output->itemMustBeCreated($destination)) {
+                continue;
+            }
+
+            // Post creation processing for destination items
+            $concrete_destination->postCreateDestinationItems(
+                $form,
+                $answers_set,
+                $destination,
+                $created_items,
+            );
         }
     }
 }

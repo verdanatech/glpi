@@ -36,6 +36,9 @@
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryFunction;
 
+use function Safe\preg_match;
+use function Safe\preg_replace;
+
 /**
  * Virtual machine management
  */
@@ -73,6 +76,10 @@ class ItemVirtualMachine extends CommonDBChild
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
+
+        if (!$item instanceof CommonDBTM) {
+            throw new RuntimeException("Only CommonDBTM items are supported");
+        }
 
         if (
             !$withtemplate
@@ -139,21 +146,20 @@ class ItemVirtualMachine extends CommonDBChild
             return false;
         }
 
-
         if ($ID > 0) {
-            $asset = new $this->fields['itemtype']();
+            $asset = getItemForItemtype($this->fields['itemtype']);
             $this->check($ID, READ);
             $asset->getFromDB($this->fields['items_id']);
         } else {
             // Create item
-            $asset = new $options['itemtype']();
+            $asset = getItemForItemtype($options['itemtype']);
             $this->check(-1, CREATE, $options);
             $asset->getFromDB($options['items_id']);
         }
 
         $linked_asset = "";
         if ($link_asset = self::findVirtualMachine($this->fields)) {
-            $asset = new $this->fields['itemtype']();
+            $asset = getItemForItemtype($this->fields['itemtype']);
             if ($asset->getFromDB($link_asset)) {
                 $linked_asset = $asset->getLink(['comments' => true]);
             }
@@ -392,7 +398,7 @@ class ItemVirtualMachine extends CommonDBChild
      **/
     public static function findVirtualMachine($fields = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!isset($fields['uuid']) || empty($fields['uuid'])) {
@@ -400,7 +406,7 @@ class ItemVirtualMachine extends CommonDBChild
         }
 
         $itemtype = $fields['itemtype'];
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         if (!$item->isField('uuid')) {
             return false;
         }
@@ -420,13 +426,13 @@ class ItemVirtualMachine extends CommonDBChild
             $result = $iterator->current();
             return $result['id'];
         } elseif (count($iterator) > 1) {
-            trigger_error(
+            throw new RuntimeException(
                 sprintf(
-                    'findVirtualMachine expects to get one result, %1$s found in query "%2$s".',
+                    '`%1$s::findVirtualMachine()` expects to get one result, %2$s found in query "%3$s".',
+                    static::class,
                     count($iterator),
                     $iterator->getSql()
-                ),
-                E_USER_WARNING
+                )
             );
         }
 

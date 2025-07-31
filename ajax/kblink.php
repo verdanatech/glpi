@@ -32,13 +32,11 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
  * Retrieve the knowledgebase links associated to a category
  * @since   9.2
  */
-
-/** @var \DBmysql $DB */
+/** @var DBmysql $DB */
 global $DB;
 
 // Send UTF8 Headers
@@ -52,17 +50,18 @@ if (isset($_POST["table"], $_POST["value"])) {
     }
 
     if (isset($_POST['withlink'])) {
-        $itemtype = getItemTypeForTable($_POST["table"]);
+        $item = getItemForTable($_POST["table"]);
         if (
             !Session::validateIDOR([
-                'itemtype'    => $itemtype,
+                'itemtype'    => $item::class,
                 '_idor_token' => $_POST['_idor_token'] ?? "",
             ])
         ) {
             return;
         }
-        $item = new $itemtype();
         $item->getFromDB((int) $_POST["value"]);
-        echo '&nbsp;' . $item->getLinks();
+        if (method_exists($item, 'getLinks')) {
+            echo '&nbsp;' . $item->getLinks();
+        }
     }
 }

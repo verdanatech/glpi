@@ -96,7 +96,7 @@ class NetworkAlias extends FQDNLabel
         $this->displayRecursiveItems($recursiveItems, 'Type');
         echo "&nbsp;:</td><td>";
 
-        if (!($ID > 0)) {
+        if ($ID <= 0) {
             echo "<input type='hidden' name='networknames_id' value='" .
                $this->fields["networknames_id"] . "'>";
         }
@@ -142,7 +142,7 @@ class NetworkAlias extends FQDNLabel
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
@@ -173,7 +173,7 @@ class NetworkAlias extends FQDNLabel
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($item)) {
@@ -187,7 +187,7 @@ class NetworkAlias extends FQDNLabel
             return;
         }
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
@@ -235,7 +235,7 @@ class NetworkAlias extends FQDNLabel
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -262,7 +262,7 @@ class NetworkAlias extends FQDNLabel
             echo "<div class='firstbloc'>";
             echo "<script type='text/javascript' >";
             echo "function viewAddAlias$rand() {";
-            $params = ['type'            => __CLASS__,
+            $params = ['type'            => self::class,
                 'parenttype'      => 'NetworkName',
                 'networknames_id' => $ID,
                 'id'              => -1,
@@ -282,9 +282,9 @@ class NetworkAlias extends FQDNLabel
 
         echo "<div class='spaced'>";
         if ($canedit && $number) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+            Html::openMassiveActionsForm('mass' . self::class . $rand);
             $massiveactionparams = ['num_displayed' => min($_SESSION['glpilist_limit'], $number),
-                'container'     => 'mass' . __CLASS__ . $rand,
+                'container'     => 'mass' . self::class . $rand,
             ];
             Html::showMassiveActions($massiveactionparams);
         }
@@ -295,9 +295,9 @@ class NetworkAlias extends FQDNLabel
         $header_end    = '';
 
         if ($canedit && $number) {
-            $header_top    .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+            $header_top    .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
             $header_top    .= "</th>";
-            $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+            $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
             $header_bottom .= "</th>";
         }
         $header_end .= "<th>" . __s('Name') . "</th>";
@@ -313,7 +313,7 @@ class NetworkAlias extends FQDNLabel
             echo "<tr class='tab_bg_1'>";
             if ($canedit) {
                 echo "<td>";
-                Html::showMassiveActionCheckBox(__CLASS__, $data["id"]);
+                Html::showMassiveActionCheckBox(self::class, $data["id"]);
                 echo "</td>";
             }
             $name = $data["name"];
@@ -324,7 +324,7 @@ class NetworkAlias extends FQDNLabel
             if ($canedit) {
                 echo "<script type='text/javascript' >";
                 echo "function viewEditAlias" . $data["id"] . "$rand() {\n";
-                $params = ['type'             => __CLASS__,
+                $params = ['type'             => self::class,
                     'parenttype'       => 'NetworkName',
                     'networknames_id'  => $ID,
                     'id'               => $data["id"],
@@ -369,7 +369,7 @@ class NetworkAlias extends FQDNLabel
      **/
     public static function showForFQDN(FQDN $item, $withtemplate)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $alias   = new self();

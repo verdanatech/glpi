@@ -112,7 +112,8 @@ class Item_SoftwareVersion extends CommonDBRelation
             return $is_add ? false : $input;
         }
         $itemtype = $input['itemtype'];
-        $item = new $itemtype();
+        /** @var CommonDBTM $item */
+        $item = getItemForItemtype($itemtype);
         if (
             (!isset($input['is_template_item']) && $item->maybeTemplate())
             || (!isset($input['is_deleted_item']) && $item->maybeDeleted())
@@ -245,10 +246,10 @@ class Item_SoftwareVersion extends CommonDBRelation
 
     public function updateDatasForItem($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         if ($item->getFromDB($items_id)) {
             $result = $DB->update(
                 static::getTable(),
@@ -276,10 +277,10 @@ class Item_SoftwareVersion extends CommonDBRelation
      **/
     public static function countForVersion($softwareversions_id, $entity = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $item_version_table = self::getTable(__CLASS__);
+        $item_version_table = self::getTable(self::class);
         $iterator = $DB->request([
             'SELECT'    => ['itemtype'],
             'DISTINCT'  => true,
@@ -291,7 +292,9 @@ class Item_SoftwareVersion extends CommonDBRelation
 
         $target_types = [];
         foreach ($iterator as $data) {
-            $target_types[] = $data['itemtype'];
+            if (is_a($data['itemtype'], CommonDBTM::class, true)) {
+                $target_types[] = $data['itemtype'];
+            }
         }
 
         $count = 0;
@@ -338,7 +341,7 @@ class Item_SoftwareVersion extends CommonDBRelation
      **/
     public static function countForSoftware($softwares_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -360,7 +363,9 @@ class Item_SoftwareVersion extends CommonDBRelation
 
         $target_types = [];
         foreach ($iterator as $data) {
-            $target_types[] = $data['itemtype'];
+            if (is_a($data['itemtype'], CommonDBTM::class, true)) {
+                $target_types[] = $data['itemtype'];
+            }
         }
 
         $count = 0;
@@ -447,7 +452,7 @@ class Item_SoftwareVersion extends CommonDBRelation
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -457,7 +462,7 @@ class Item_SoftwareVersion extends CommonDBRelation
 
         $canedit       = Session::haveRightsOr("software", [CREATE, UPDATE, DELETE, PURGE]);
         $canshowitems  = [];
-        $item_version_table = self::getTable(__CLASS__);
+        $item_version_table = self::getTable(self::class);
 
         $refcolumns = [
             'version'           => _n('Version', 'Versions', Session::getPluralNumber()),
@@ -676,14 +681,14 @@ class Item_SoftwareVersion extends CommonDBRelation
 
             if ($canedit) {
                 $rand = mt_rand();
-                Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+                Html::openMassiveActionsForm('mass' . self::class . $rand);
                 $massiveactionparams
                  = ['num_displayed'
                         => min($_SESSION['glpilist_limit'], $number),
                      'container'
-                        => 'mass' . __CLASS__ . $rand,
+                        => 'mass' . self::class . $rand,
                      'specific_actions'
-                        => [__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_version'
+                        => [self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_version'
                                        => _x('button', 'Move'),
                             'purge' => _x('button', 'Delete permanently'),
                         ],
@@ -708,8 +713,8 @@ class Item_SoftwareVersion extends CommonDBRelation
             $header_end    = '';
             if ($canedit) {
                 $header_begin  .= "<th width='10'>";
-                $header_top    .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-                $header_bottom .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+                $header_top    .= Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
+                $header_bottom .= Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
                 $header_end    .= "</th>";
             }
             $columns = $refcolumns;
@@ -718,16 +723,11 @@ class Item_SoftwareVersion extends CommonDBRelation
             }
 
             foreach ($columns as $key => $val) {
-                // Non order column
-                if ($key[0] == '_') {
-                    $header_end .= "<th>$val</th>";
-                } else {
-                    $header_end .= "<th" . ($sort == "`$key`" ? " class='order_$order'" : '') . ">";
-                    $header_end .= $key !== 'lname'
-                        ? "<a href='javascript:reloadTab(\"sort=$key&amp;order=" . (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a>"
-                        : $val;
-                    $header_end .= "</th>";
-                }
+                $header_end .= "<th" . ($sort == "`$key`" ? " class='order_$order'" : '') . ">";
+                $header_end .= $key !== 'lname'
+                    ? "<a href='javascript:reloadTab(\"sort=$key&amp;order=" . (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a>"
+                    : $val;
+                $header_end .= "</th>";
             }
 
             $header_end .= "</tr>\n";
@@ -739,7 +739,7 @@ class Item_SoftwareVersion extends CommonDBRelation
                 echo "<tr class='tab_bg_2'>";
                 if ($canedit) {
                     echo "<td>";
-                    Html::showMassiveActionCheckBox(__CLASS__, $data["id"]);
+                    Html::showMassiveActionCheckBox(self::class, $data["id"]);
                     echo "</td>";
                 }
 
@@ -836,7 +836,7 @@ class Item_SoftwareVersion extends CommonDBRelation
      **/
     public static function showForVersionByEntity(SoftwareVersion $version)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $softwareversions_id = $version->getField('id');
@@ -890,10 +890,10 @@ class Item_SoftwareVersion extends CommonDBRelation
      */
     public static function getFromItem(CommonDBTM $item, $sort = null, $order = null, array $filters = []): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $selftable     = self::getTable(__CLASS__);
+        $selftable     = self::getTable(self::class);
 
         $select = [
             'glpi_softwares.softwarecategories_id',
@@ -973,7 +973,7 @@ class Item_SoftwareVersion extends CommonDBRelation
             $request['WHERE']["{$selftable}.is_deleted"] = 0;
         }
 
-        $crit = Session::getSavedOption(__CLASS__, 'criterion', -1);
+        $crit = Session::getSavedOption(self::class, 'criterion', -1);
         if ($crit > -1) {
             $request['WHERE']['glpi_softwares.softwarecategories_id'] = (int) $crit;
         }
@@ -991,7 +991,7 @@ class Item_SoftwareVersion extends CommonDBRelation
      **/
     public static function showForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!Software::canView()) {
@@ -1006,7 +1006,7 @@ class Item_SoftwareVersion extends CommonDBRelation
         $canedit       = Session::haveRightsOr("software", [CREATE, UPDATE, DELETE, PURGE]);
         $entities_id   = $item->fields["entities_id"];
 
-        $crit         = Session::getSavedOption(__CLASS__, 'criterion', -1);
+        $crit         = Session::getSavedOption(self::class, 'criterion', -1);
 
         $iterator = self::getFromItem($item, null, null, $filters);
 
@@ -1078,12 +1078,12 @@ class Item_SoftwareVersion extends CommonDBRelation
             echo "<div class='table-responsive'>";
             if ($canedit) {
                 $rand = mt_rand();
-                Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+                Html::openMassiveActionsForm('mass' . self::class . $rand);
                 $massiveactionparams
                 = ['num_displayed'
                          => min($_SESSION['glpilist_limit'], $number),
                     'container'
-                         => 'mass' . __CLASS__ . $rand,
+                         => 'mass' . self::class . $rand,
                     'specific_actions'
                          => ['purge' => _x('button', 'Delete permanently')],
                 ];
@@ -1098,8 +1098,8 @@ class Item_SoftwareVersion extends CommonDBRelation
             $header_end    = '';
             if ($canedit) {
                 $header_begin  .= "<th width='10'>";
-                $header_top    .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-                $header_bottom .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+                $header_top    .= Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
+                $header_bottom .= Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
                 $header_end    .= "</th>";
             }
             $header_end .= "<th>" . __s('Name') . "</th>";
@@ -1368,7 +1368,7 @@ class Item_SoftwareVersion extends CommonDBRelation
         $canedit,
         $display
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID    = $data["id"];
@@ -1378,7 +1378,7 @@ class Item_SoftwareVersion extends CommonDBRelation
             echo "<tr class='tab_bg_1'>";
             if ($canedit) {
                 echo "<td>";
-                Html::showMassiveActionCheckBox(__CLASS__, $ID);
+                Html::showMassiveActionCheckBox(self::class, $ID);
                 echo "</td>";
             }
             echo "<td>";
@@ -1633,7 +1633,7 @@ class Item_SoftwareVersion extends CommonDBRelation
 
     protected static function getListForItemParams(CommonDBTM $item, $noent = false)
     {
-        $table = self::getTable(__CLASS__);
+        $table = self::getTable(self::class);
 
         $params = parent::getListForItemParams($item);
         unset($params['SELECT'], $params['ORDER']);
@@ -1650,7 +1650,7 @@ class Item_SoftwareVersion extends CommonDBRelation
 
     public static function countForItem(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = self::getListForItemParams($item);

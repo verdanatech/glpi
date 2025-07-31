@@ -32,12 +32,21 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryParam;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\DBAL\QueryUnion;
+use Glpi\Debug\Profile;
 use Glpi\System\Requirement\DbTimezones;
+use Safe\DateTime;
+
+use function Safe\filesize;
+use function Safe\fopen;
+use function Safe\fread;
+use function Safe\ini_get;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\preg_split;
 
 /**
  *  Database class for Mysql
@@ -72,7 +81,6 @@ class DBmysql
 
     // Slave management
     public $slave              = false;
-    private $in_transaction;
 
     /**
      * Defines if connection must use SSL.
@@ -196,6 +204,8 @@ class DBmysql
      */
     private $field_cache = [];
 
+    private int $transaction_level = 0;
+
     /**
      * Constructor / Connect to the MySQL Database
      *
@@ -249,20 +259,20 @@ class DBmysql
         $hostport = explode(":", $host);
         if (count($hostport) < 2) {
             // Host
-            $this->dbh->real_connect($host, $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault);
+            @$this->dbh->real_connect($host, $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault);
         } elseif (intval($hostport[1]) > 0) {
             // Host:port
-            $this->dbh->real_connect($hostport[0], $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault, $hostport[1]);
+            @$this->dbh->real_connect($hostport[0], $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault, (int) $hostport[1]);
         } else {
             // :Socket
-            $this->dbh->real_connect($hostport[0], $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault, ini_get('mysqli.default_port'), $hostport[1]);
+            @$this->dbh->real_connect($hostport[0], $this->dbuser, rawurldecode($this->dbpassword), $this->dbdefault, (int) ini_get('mysqli.default_port'), $hostport[1]);
         }
 
         if (!$this->dbh->connect_error) {
             $this->setConnectionCharset();
 
             // force mysqlnd to return int and float types correctly (not as strings)
-            $this->dbh->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, true);
+            $this->dbh->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
 
             $this->dbh->query("SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
 
@@ -340,11 +350,13 @@ class DBmysql
      */
     public function query($query)
     {
-        throw new \Exception('Executing direct queries is not allowed!');
+        throw new Exception('Executing direct queries is not allowed!');
     }
 
     /**
      * Execute a MySQL query
+     *
+     * @phpstan-impure Results will depend on database content.
      *
      * @param string $query Query to execute
      *
@@ -366,7 +378,7 @@ class DBmysql
 
         $res = $this->dbh->query($query);
         if (!$res) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     'MySQL query error: %s (%d) in SQL query "%s".',
                     $this->dbh->error,
@@ -387,9 +399,7 @@ class DBmysql
             $warnings_string = implode(
                 "\n",
                 array_map(
-                    static function ($warning) {
-                        return sprintf('%s: %s', $warning['Code'], $warning['Message']);
-                    },
+                    static fn($warning) => sprintf('%s: %s', $warning['Code'], $warning['Message']),
                     $sql_warnings
                 )
             );
@@ -407,7 +417,7 @@ class DBmysql
         }
 
         if (isset($_SESSION['glpi_use_mode']) && ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE)) {
-            \Glpi\Debug\Profile::getCurrent()->addSQLQueryData(
+            Profile::getCurrent()->addSQLQueryData(
                 $debug_data['query'],
                 $debug_data['time'],
                 $debug_data['rows'],
@@ -437,7 +447,7 @@ class DBmysql
      */
     public function queryOrDie($query, $message = '')
     {
-        throw new \Exception('Executing direct queries is not allowed!');
+        throw new Exception('Executing direct queries is not allowed!');
     }
 
     /**
@@ -468,7 +478,7 @@ class DBmysql
     {
         $res = $this->dbh->prepare($query);
         if (!$res) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     'MySQL prepare error: %s (%d) in SQL query "%s".',
                     $this->dbh->error,
@@ -486,7 +496,7 @@ class DBmysql
      *
      * @param mysqli_result $result MySQL result handler
      * @param int           $i      Row offset to give
-     * @param string        $field  Field to give
+     * @param string|int    $field  Field to give
      *
      * @return mixed Value of the Row $i and the Field $field of the Mysql $result
      */
@@ -700,7 +710,7 @@ class DBmysql
                         [
                             'AND' => [
                                 'information_schema.tables.table_schema' => new QueryExpression(
-                                    $this->quoteName('information_schema.columns.table_schema')
+                                    static::quoteName('information_schema.columns.table_schema')
                                 ),
                             ],
                         ],
@@ -755,7 +765,7 @@ class DBmysql
                         [
                             'AND' => [
                                 'information_schema.tables.table_schema' => new QueryExpression(
-                                    $this->quoteName('information_schema.columns.table_schema')
+                                    static::quoteName('information_schema.columns.table_schema')
                                 ),
                             ],
                         ],
@@ -810,7 +820,7 @@ class DBmysql
                         [
                             'AND' => [
                                 'information_schema.tables.table_schema' => new QueryExpression(
-                                    $this->quoteName('information_schema.columns.table_schema')
+                                    static::quoteName('information_schema.columns.table_schema')
                                 ),
                             ],
                         ],
@@ -1135,7 +1145,7 @@ class DBmysql
 
         // Retrieve all tables if cache is empty but enabled, in order to fill cache
         // with all known tables
-        $retrieve_all = !$this->cache_disabled && empty($this->table_cache);
+        $retrieve_all = !$this->cache_disabled && $this->table_cache === [];
 
         $result = $this->listTables($retrieve_all ? 'glpi\_%' : $tablename);
         $found_tables = [];
@@ -1209,7 +1219,7 @@ class DBmysql
         //handle aliases
         $names = preg_split('/\s+AS\s+/i', $name);
         if (count($names) > 2) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Invalid field name ' . $name
             );
         }
@@ -1276,7 +1286,7 @@ class DBmysql
             $fields = [];
             $values = [];
             foreach ($params as $key => $value) {
-                $fields[] = $this->quoteName($key);
+                $fields[] = static::quoteName($key);
                 if ($value instanceof QueryExpression) {
                     $values[] = $value->getValue();
                     unset($params[$key]);
@@ -1356,7 +1366,7 @@ class DBmysql
             $known_clauses = ['WHERE', 'ORDER', 'LIMIT', 'START'];
             foreach (array_keys($clauses) as $key) {
                 if (!in_array($key, $known_clauses)) {
-                    throw new \RuntimeException(
+                    throw new RuntimeException(
                         str_replace(
                             '%clause',
                             $key,
@@ -1368,10 +1378,10 @@ class DBmysql
         }
 
         if (!count($clauses['WHERE'])) {
-            throw new \RuntimeException('Cannot run an UPDATE query without WHERE clause!');
+            throw new RuntimeException('Cannot run an UPDATE query without WHERE clause!');
         }
         if (!count($params)) {
-            throw new \RuntimeException('Cannot run an UPDATE query without parameters!');
+            throw new RuntimeException('Cannot run an UPDATE query without parameters!');
         }
 
         $query  = "UPDATE " . self::quoteName($table);
@@ -1501,7 +1511,7 @@ class DBmysql
     {
 
         if (!count($where)) {
-            throw new \RuntimeException('Cannot run an DELETE query without WHERE clause!');
+            throw new RuntimeException('Cannot run an DELETE query without WHERE clause!');
         }
 
         $query  = "DELETE " . self::quoteName($table) . " FROM " . self::quoteName($table);
@@ -1652,7 +1662,7 @@ class DBmysql
             'FIELD',
         ];
         if (!in_array($type, $known_types)) {
-            throw new \InvalidArgumentException('Unknown type to drop: ' . $type);
+            throw new InvalidArgumentException('Unknown type to drop: ' . $type);
         }
 
         $name = $this::quoteName($name);
@@ -1681,80 +1691,127 @@ class DBmysql
     }
 
     /**
-     * Starts a transaction
+     * Get database raw version and server name
      *
-     * @return boolean
+     * @return array<string, string>
      */
-    public function beginTransaction()
+    public function getVersionAndServer(): array
     {
-        if ($this->in_transaction === true) {
-            trigger_error('A database transaction has already been started!', E_USER_WARNING);
-        }
-        $this->in_transaction = true;
-        return $this->dbh->begin_transaction();
+        $version_string = $this->getVersion();
+        $server  = preg_match('/-MariaDB/', $version_string) ? 'MariaDB' : 'MySQL';
+        $version = preg_replace('/^((\d+\.?)+).*$/', '$1', $version_string);
+        return [
+            'version' => $version,
+            'server' => $server,
+        ];
     }
 
-    public function setSavepoint(string $name, $force = false)
+    private function isInTransaction(): bool
     {
-        if (!$this->in_transaction && $force) {
-            $this->beginTransaction();
-        }
-        if ($this->in_transaction) {
-            $this->dbh->savepoint($name);
+        return $this->transaction_level > 0;
+    }
+
+    private function isInNestedTransaction(): bool
+    {
+        return $this->transaction_level > 1;
+    }
+
+    private function formatSavePointName(int $level): string
+    {
+        // If we use a save point it means this is at least the second
+        // transaction, for example:
+        // 0 -> no transaction
+        // 1 -> start transaction
+        // 2 -> set save point
+        // We want the name of the first savepoint to be "savepoint_0", thus
+        // we need to remove 2 from the current transaction level.
+        $level -= 2;
+        return "savepoint_" . $level;
+    }
+
+    /**
+     * Use instead of `formatSavePointName` when running raw queries.
+     * This is needed because there are no methods in the mysqli object to
+     * rollback a savepoint so a raw query is needed.
+     */
+    private function formatAndQuoteSavePointName(int $level): string
+    {
+        return static::quoteName($this->formatSavePointName($level));
+    }
+
+    /**
+     * Starts a transaction
+     */
+    public function beginTransaction(): void
+    {
+        if (!$this->isInTransaction()) {
+            // No transaction underway, simply start a fresh one.
+            $success = $this->dbh->begin_transaction();
         } else {
-            // Not already in transaction or failed to start one now
-            trigger_error('Unable to set DB savepoint because no transaction was started', E_USER_WARNING);
+            // A transaction is already underway, create a new savepoint.
+            $savepoint = $this->formatSavePointName(
+                $this->transaction_level + 1
+            );
+            $success = $this->dbh->savepoint($savepoint);
+        }
+
+        if ($success) {
+            $this->transaction_level++;
+        } else {
+            throw new RuntimeException("Failed to start transaction.");
         }
     }
 
     /**
      * Commits a transaction
-     *
-     * @return boolean
      */
-    public function commit()
+    public function commit(): void
     {
-        $this->in_transaction = false;
-        return $this->dbh->commit();
-    }
+        if (!$this->isInTransaction()) {
+            throw new RuntimeException("Not in a transaction.");
+        }
 
-    /**
-     * Rollbacks a transaction completely or to a specified savepoint
-     *
-     * @return boolean
-     */
-    public function rollBack($savepoint = null)
-    {
-        if (!$savepoint) {
-            $this->in_transaction = false;
-            return $this->dbh->rollback();
+        if (!$this->isInNestedTransaction()) {
+            // A simple transaction is underway, commit its data.
+            $success = $this->dbh->commit();
         } else {
-            return $this->rollbackTo($savepoint);
+            // A nested transaction is already underway, release the current savepoint.
+            $savepoint = $this->formatSavePointName($this->transaction_level);
+            $success = $this->dbh->release_savepoint($savepoint);
+        }
+
+        if ($success) {
+            $this->transaction_level--;
+        } else {
+            throw new RuntimeException("Failed to commit transaction.");
         }
     }
 
     /**
-     * Rollbacks a transaction to a specified savepoint
-     *
-     * @param string $name
-     *
-     * @return boolean
+     * Rollbacks a transaction completely or to a specified savepoint
      */
-    protected function rollbackTo($name)
+    public function rollBack(): void
     {
-        // No proper rollback to savepoint support in mysqli extension?
-        $result = $this->doQuery('ROLLBACK TO ' . self::quoteName($name));
-        return $result !== false;
-    }
+        if (!$this->isInTransaction()) {
+            throw new RuntimeException("Not in a transaction.");
+        }
 
-    /**
-     * Are we in a transaction?
-     *
-     * @return boolean
-     */
-    public function inTransaction()
-    {
-        return $this->in_transaction;
+        if (!$this->isInNestedTransaction()) {
+            // A simple transaction is underway, roll it back.
+            $success = $this->dbh->rollback();
+        } else {
+            // A nested transaction is already underway, roolback to current savepoint.
+            $savepoint = $this->formatAndQuoteSavePointName(
+                $this->transaction_level
+            );
+            $success = $this->doQuery("ROLLBACK TO $savepoint");
+        }
+
+        if ($success) {
+            $this->transaction_level--;
+        } else {
+            throw new RuntimeException("Failed to rollback transaction.");
+        }
     }
 
     /**
@@ -1790,8 +1847,8 @@ class DBmysql
 
         $list = []; //default $tz is empty
 
-        $from_php = \DateTimeZone::listIdentifiers();
-        $now = new \DateTime();
+        $from_php = DateTimeZone::listIdentifiers();
+        $now = new DateTime();
 
         $iterator = $this->request([
             'SELECT' => 'Name',
@@ -1800,7 +1857,7 @@ class DBmysql
         ]);
 
         foreach ($iterator as $from_mysql) {
-            $now->setTimezone(new \DateTimeZone($from_mysql['Name']));
+            $now->setTimezone(new DateTimeZone($from_mysql['Name']));
             $list[$from_mysql['Name']] = $from_mysql['Name'] . $now->format(" (T P)");
         }
 
@@ -1920,7 +1977,7 @@ class DBmysql
         for ($i = 0; $i < $linecount; $i++) {
             if (($i != ($linecount - 1)) || (strlen($lines[$i]) > 0)) {
                 if (isset($lines[$i][0])) {
-                    if ($lines[$i][0] != "#" && substr($lines[$i], 0, 2) != "--") {
+                    if ($lines[$i][0] != "#" && !str_starts_with($lines[$i], "--")) {
                         $output .= $lines[$i] . "\n";
                     } else {
                         $output .= "\n";
@@ -1989,7 +2046,7 @@ class DBmysql
     public function executeStatement(mysqli_stmt $stmt): void
     {
         if (!$stmt->execute()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     'MySQL statement error: %s (%d) in SQL query "%s".',
                     $stmt->error,
@@ -2146,7 +2203,7 @@ class DBmysql
 
         $mapping = null;
         foreach (self::CHARS_MAPPING as $htmlentity) {
-            if (strpos($value, $htmlentity) !== false) {
+            if (str_contains($value, $htmlentity)) {
                 // Value was cleaned using new char mapping, so it must be uncleaned with same mapping
                 $mapping = self::CHARS_MAPPING;
                 break;
@@ -2206,7 +2263,7 @@ class DBmysql
     {
         $query = sprintf(
             'SHOW GLOBAL VARIABLES WHERE %s IN (%s)',
-            $this->quoteName('Variable_name'),
+            static::quoteName('Variable_name'),
             implode(', ', array_map([$this, 'quote'], $variables))
         );
         $result = $this->doQuery($query);
@@ -2215,5 +2272,73 @@ class DBmysql
             $values[$row['Variable_name']] = $row['Value'];
         }
         return $values;
+    }
+
+    /**
+     * Get binary log status query, in regard of the MySQL/MariaDB version.
+     *
+     * @return string
+     */
+    public function getBinaryLogStatusQuery(): string
+    {
+        $info = $this->getVersionAndServer();
+
+        if ($info['server'] === 'MySQL' && version_compare($info['version'], '8.4', '>=')) {
+            return "SHOW BINARY LOG STATUS";
+        }
+
+        if ($info['server'] === 'MariaDB') {
+            return "SHOW BINLOG STATUS";
+        }
+
+        return "SHOW MASTER STATUS";
+    }
+
+    /**
+     * Get replica status query, in regard of the MySQL/MariaDB version.
+     *
+     * @return string
+     */
+    public function getReplicaStatusQuery(): string
+    {
+        $info = $this->getVersionAndServer();
+
+        if ($info['server'] === 'MySQL' && version_compare($info['version'], '8.4', '>=')) {
+            return "SHOW REPLICA STATUS";
+        }
+
+        return "SHOW SLAVE STATUS";
+    }
+
+    /**
+     * Get replica status variables, in regard of the MySQL/MariaDB version.
+     *
+     * @return array<string, string>
+     */
+    public function getReplicaStatusVars(): array
+    {
+        $info = $this->getVersionAndServer();
+
+        if ($info['server'] === 'MySQL' && version_compare($info['version'], '8.4', '>=')) {
+            return [
+                'io_running'            => 'Replica_IO_Running',
+                'sql_running'           => 'Replica_SQL_Running',
+                'source_log_file'       => 'Source_Log_File',
+                'source_log_pos'        => 'Read_Source_Log_Pos',
+                'seconds_behind_source' => 'Seconds_Behind_Source',
+                'last_io_error'         => 'Last_IO_Error',
+                'last_sql_error'        => 'Last_SQL_Error',
+            ];
+        }
+
+        return [
+            'io_running'            => 'Slave_IO_Running',
+            'sql_running'           => 'Slave_SQL_Running',
+            'source_log_file'       => 'Master_Log_File',
+            'source_log_pos'        => 'Read_Master_Log_Pos',
+            'seconds_behind_source' => 'Seconds_Behind_Master',
+            'last_io_error'         => 'Last_IO_Error',
+            'last_sql_error'        => 'Last_SQL_Error',
+        ];
     }
 }

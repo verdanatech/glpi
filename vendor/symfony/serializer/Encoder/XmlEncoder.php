@@ -59,7 +59,6 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
     public const TYPE_CAST_ATTRIBUTES = 'xml_type_cast_attributes';
     public const VERSION = 'xml_version';
     public const CDATA_WRAPPING = 'cdata_wrapping';
-    public const CDATA_WRAPPING_PATTERN = 'cdata_wrapping_pattern';
 
     private array $defaultContext = [
         self::AS_COLLECTION => false,
@@ -71,7 +70,6 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
         self::ROOT_NODE_NAME => 'response',
         self::TYPE_CAST_ATTRIBUTES => true,
         self::CDATA_WRAPPING => true,
-        self::CDATA_WRAPPING_PATTERN => '/[<>&]/',
     ];
 
     public function __construct(array $defaultContext = [])
@@ -84,7 +82,7 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
         $encoderIgnoredNodeTypes = $context[self::ENCODER_IGNORED_NODE_TYPES] ?? $this->defaultContext[self::ENCODER_IGNORED_NODE_TYPES];
         $ignorePiNode = \in_array(\XML_PI_NODE, $encoderIgnoredNodeTypes, true);
         if ($data instanceof \DOMDocument) {
-            return $this->saveXml($data, $ignorePiNode ? $data->documentElement : null);
+            return $data->saveXML($ignorePiNode ? $data->documentElement : null);
         }
 
         $xmlRootNodeName = $context[self::ROOT_NODE_NAME] ?? $this->defaultContext[self::ROOT_NODE_NAME];
@@ -99,7 +97,7 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
             $this->appendNode($dom, $data, $format, $context, $xmlRootNodeName);
         }
 
-        return $this->saveXml($dom, $ignorePiNode ? $dom->documentElement : null, $context[self::SAVE_OPTIONS] ?? $this->defaultContext[self::SAVE_OPTIONS]);
+        return $dom->saveXML($ignorePiNode ? $dom->documentElement : null, $context[self::SAVE_OPTIONS] ?? $this->defaultContext[self::SAVE_OPTIONS]);
     }
 
     public function decode(string $data, string $format, array $context = []): mixed
@@ -198,9 +196,13 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
 
     final protected function appendDocumentFragment(\DOMNode $node, \DOMDocumentFragment $fragment): bool
     {
-        $node->appendChild($fragment);
+        if ($fragment instanceof \DOMDocumentFragment) {
+            $node->appendChild($fragment);
 
-        return true;
+            return true;
+        }
+
+        return false;
     }
 
     final protected function appendComment(\DOMNode $node, string $data): bool
@@ -435,7 +437,7 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
      */
     private function needsCdataWrapping(string $val, array $context): bool
     {
-        return ($context[self::CDATA_WRAPPING] ?? $this->defaultContext[self::CDATA_WRAPPING]) && preg_match($context[self::CDATA_WRAPPING_PATTERN] ?? $this->defaultContext[self::CDATA_WRAPPING_PATTERN], $val);
+        return ($context[self::CDATA_WRAPPING] ?? $this->defaultContext[self::CDATA_WRAPPING]) && preg_match('/[<>&]/', $val);
     }
 
     /**
@@ -499,24 +501,5 @@ class XmlEncoder implements EncoderInterface, DecoderInterface, NormalizationAwa
         }
 
         return $document;
-    }
-
-    /**
-     * @throws NotEncodableValueException
-     */
-    private function saveXml(\DOMDocument $document, ?\DOMNode $node = null, ?int $options = null): string
-    {
-        $prevErrorHandler = set_error_handler(static function ($type, $message, $file, $line, $context = []) use (&$prevErrorHandler) {
-            if (\E_ERROR === $type || \E_WARNING === $type) {
-                throw new NotEncodableValueException($message);
-            }
-
-            return $prevErrorHandler ? $prevErrorHandler($type, $message, $file, $line, $context) : false;
-        });
-        try {
-            return $document->saveXML($node, $options);
-        } finally {
-            restore_error_handler();
-        }
     }
 }

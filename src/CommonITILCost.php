@@ -64,7 +64,6 @@ abstract class CommonITILCost extends CommonDBChild
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-
         // can exists for template
         if (
             (get_class($item) == static::$itemtype)
@@ -83,14 +82,9 @@ abstract class CommonITILCost extends CommonDBChild
         return '';
     }
 
-    /**
-     * @param CommonGLPI $item object
-     * @param integer $tabnum          (default 1)
-     * @param integer $withtemplate    (default 0)
-     **/
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        self::showForObject($item, $withtemplate);
+        self::showForObject($item);
         return true;
     }
 
@@ -198,9 +192,9 @@ abstract class CommonITILCost extends CommonDBChild
         return $tab;
     }
 
-    public static function rawSearchOptionsToAdd()
+    public static function rawSearchOptionsToAdd(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tab = [];
@@ -315,16 +309,18 @@ abstract class CommonITILCost extends CommonDBChild
 
     /**
      * Init cost for creation based on previous cost
+     *
+     * @return void
      **/
-    public function initBasedOnPrevious()
+    public function initBasedOnPrevious(): void
     {
 
-        $item = new static::$itemtype();
+        $item = getItemForItemtype(static::$itemtype);
         if (
             !isset($this->fields[static::$items_id])
             || !$item->getFromDB($this->fields[static::$items_id])
         ) {
-            return false;
+            return;
         }
 
         // Set actiontime to
@@ -364,7 +360,7 @@ abstract class CommonITILCost extends CommonDBChild
      **/
     public function getTotalActionTimeForItem($items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -372,6 +368,7 @@ abstract class CommonITILCost extends CommonDBChild
             'FROM'   => static::getTable(),
             'WHERE'  => [static::$items_id => $items_id],
         ])->current();
+
         return $result['sumtime'];
     }
 
@@ -382,7 +379,7 @@ abstract class CommonITILCost extends CommonDBChild
      **/
     public function getLastCostForItem($items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -406,7 +403,7 @@ abstract class CommonITILCost extends CommonDBChild
      **/
     public function showForm($ID, array $options = [])
     {
-        if (!($ID > 0) && !isset($options['parent']) || !($options['parent'] instanceof CommonDBTM)) {
+        if ($ID <= 0 && !isset($options['parent']) || !($options['parent'] instanceof CommonDBTM)) {
             // parent is mandatory in new item form
             trigger_error('Parent item must be defined in `$options["parent"]`.', E_USER_WARNING);
             return false;
@@ -427,7 +424,7 @@ abstract class CommonITILCost extends CommonDBChild
             $items_id = $options['parent']->fields["id"];
         }
 
-        $item = new static::$itemtype();
+        $item = getItemForItemtype(static::$itemtype);
         if (!$item->getFromDB($items_id)) {
             return false;
         }
@@ -448,21 +445,17 @@ abstract class CommonITILCost extends CommonDBChild
     /**
      * Print the item costs
      *
-     * @param CommonITILObject $item object or Project
-     * @param boolean $withtemplate Template or basic item (default 0)
-     *
-     * @return false|integer total cost
+     * @return false|float total cost
      **/
-    public static function showForObject($item, $withtemplate = 0)
+    public static function showForObject(CommonITILObject|Project $item): false|float
     {
         /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
-        global $CFG_GLPI, $DB;
+        global $DB;
 
         $forproject = false;
-        if (is_a($item, 'Project', true)) {
+        if (is_a($item, Project::class, true)) {
             $forproject = true;
         }
 
@@ -477,7 +470,7 @@ abstract class CommonITILCost extends CommonDBChild
         }
         $canedit = false;
         if (!$forproject) {
-            $canedit = $item->canAddItem(__CLASS__);
+            $canedit = $item->canAddItem(self::class);
         }
 
         $items_ids = $ID;
@@ -543,7 +536,7 @@ abstract class CommonITILCost extends CommonDBChild
 TWIG, $twig_params);
         }
 
-        $total          = 0;
+        $total          = 0.;
         $total_time     = 0;
         $total_costtime = 0;
         $total_fixed    = 0;
@@ -689,7 +682,7 @@ JS);
      **/
     public static function getCostsSummary($type, $ID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request(

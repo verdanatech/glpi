@@ -48,12 +48,17 @@ use CommonDevice;
 use CommonITILObject;
 use Config;
 use Contract;
+use DBmysql;
 use Document;
 use Dropdown;
+use Glpi\Api\Deprecated\DeprecatedInterface;
 use Glpi\Api\HL\Router;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\Asset_PeripheralAsset;
 use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+use Glpi\Exception\ForgetPasswordException;
+use Glpi\Exception\PasswordTooWeakException;
 use Glpi\Search\Provider\SQLProvider;
 use Glpi\Search\SearchOption;
 use Glpi\Toolbox\MarkdownRenderer;
@@ -61,12 +66,13 @@ use Html;
 use Infocom;
 use Item_Devices;
 use Log;
+use LogicException;
 use MassiveAction;
 use NetworkEquipment;
 use NetworkPort;
 use Notepad;
 use Problem;
-use Glpi\DBAL\QueryFunction;
+use RuntimeException;
 use SavedSearch;
 use Search;
 use Session;
@@ -75,6 +81,15 @@ use Symfony\Component\DomCrawler\Crawler;
 use Ticket;
 use Toolbox;
 use User;
+
+use function Safe\file_get_contents;
+use function Safe\json_encode;
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
+use function Safe\preg_match;
+use function Safe\session_destroy;
+use function Safe\session_id;
+use function Safe\session_write_close;
 
 abstract class API
 {
@@ -113,11 +128,14 @@ abstract class API
     abstract public function call();
 
     /**
-     * Needed to transform params of called api in $this->parameters attribute
+     * Construct this->parameters from query string and http body
      *
-     * @return string endpoint called
+     * @param boolean $is_inline_doc Is the current request asks to display inline documentation
+     *  This will remove the default behavior who set content-type to application/json
+     *
+     * @return void
      */
-    abstract protected function parseIncomingParams();
+    abstract protected function parseIncomingParams($is_inline_doc = false);
 
     /**
      * Send response to client.
@@ -167,12 +185,12 @@ abstract class API
 
         // check if api is enabled
         if (!$CFG_GLPI['enable_api']) {
-            $this->returnError(__("API disabled"), "", "", false);
+            $this->returnError(__("API disabled"), docmessage: false);
         }
 
         // retrieve ip of client
         $this->iptxt = Toolbox::getRemoteIpAddress();
-        $this->ipnum = (strstr($this->iptxt, ':') === false ? ip2long($this->iptxt) : '');
+        $this->ipnum = (!str_contains($this->iptxt, ':') ? ip2long($this->iptxt) : '');
 
         // check ip access
         $apiclient = new APIClient();
@@ -198,11 +216,10 @@ abstract class API
         $found_clients = $apiclient->find(['is_active' => 1] + $where_ip);
         if (count($found_clients) <= 0) {
             $this->returnError(
-                __("There isn't an active API client matching your IP address in the configuration") .
-                            " (" . $this->iptxt . ")",
-                "",
-                "ERROR_NOT_ALLOWED_IP",
-                false
+                __("There isn't an active API client matching your IP address in the configuration")
+                . " (" . $this->iptxt . ")",
+                statuscode: "ERROR_NOT_ALLOWED_IP",
+                docmessage: false
             );
         }
         $app_tokens = array_column($found_clients, 'app_token');
@@ -234,7 +251,7 @@ abstract class API
                 header("Access-Control-Allow-Headers: " .
                    "origin, content-type, accept, session-token, authorization, app-token");
             }
-            exit(0);
+            exit(0); // @phpstan-ignore glpi.forbidExit (API response is streamed)
         }
     }
 
@@ -524,7 +541,7 @@ abstract class API
     /**
      * Return the current active profile
      *
-     * @return integer the profiles_id
+     * @return array the profiles_id
      */
     protected function getActiveProfile()
     {
@@ -587,7 +604,7 @@ abstract class API
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -614,8 +631,8 @@ abstract class API
         ];
         $params = array_merge($default, $params);
 
-        $item = new $itemtype();
-        if (!$item->getFromDB($id)) {
+        $item = \getItemForItemtype($itemtype);
+        if ($item === false || !$item->getFromDB($id)) {
             $this->messageNotfoundError();
         }
         if (!$item->can($id, READ)) {
@@ -751,8 +768,8 @@ abstract class API
         ) {
             $fields['_connections'] = [];
             foreach ($CFG_GLPI["directconnect_types"] as $connect_type) {
-                $connect_item = new $connect_type();
-                if ($connect_item->canView()) {
+                $connect_item = \getItemForItemtype($connect_type);
+                if ($connect_item !== false && $connect_item->canView()) {
                     $connect_table  = getTableForItemType($connect_type);
                     $relation_table = Asset_PeripheralAsset::getTable();
                     $iterator = $DB->request([
@@ -1085,7 +1102,7 @@ abstract class API
      */
     protected function getItems($itemtype, $params = [], &$totalcount = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $this->handleDepreciation($itemtype);
@@ -1104,12 +1121,16 @@ abstract class API
         ];
         $params = array_merge($default, $params);
 
+        $item = \getItemForItemtype($itemtype);
+        if ($item === false) {
+            $this->messageNotfoundError();
+        }
+
         if (!$itemtype::canView()) {
             $this->messageRightError();
         }
 
         $found = [];
-        $item = new $itemtype();
         $item->getEmpty();
         $table = getTableForItemType($itemtype);
 
@@ -1172,8 +1193,8 @@ abstract class API
             $fk_child = getForeignKeyFieldForItemType($itemtype);
 
             // check parent rights
-            $parent_item = new $this->parameters['parent_itemtype']();
-            if (!$parent_item->getFromDB($this->parameters['parent_id'])) {
+            $parent_item = \getItemForItemtype($this->parameters['parent_itemtype']);
+            if ($parent_item === false || !$parent_item->getFromDB($this->parameters['parent_id'])) {
                 $this->messageNotfoundError();
             }
             if (!$parent_item->can($this->parameters['parent_id'], READ)) {
@@ -1246,7 +1267,7 @@ abstract class API
                         "ERROR_FIELD_NOT_FOUND"
                     );
                 }
-                if (!empty($filter_value)) {
+                if ((string) $filter_value !== '') {
                     $criteria['WHERE']["$table.$filter_field"] = ['LIKE', SQLProvider::makeTextSearchValue($filter_value)];
                 }
             }
@@ -1346,9 +1367,7 @@ abstract class API
 
         // Map values for deprecated itemtypes
         if ($this->isDeprecated()) {
-            $found = array_map(function ($fields) {
-                return $this->deprecated_item->mapCurrentToDeprecatedFields($fields);
-            }, $found);
+            $found = array_map(fn($fields) => $this->deprecated_item->mapCurrentToDeprecatedFields($fields), $found);
         }
 
         return array_values($found);
@@ -1752,7 +1771,7 @@ abstract class API
                 $col_ref_itemtype = $col_ref_table !== '' && $col_ref_field !== ''
                     ? \getItemTypeForTable($col['searchopt']['table'] ?? '')
                     : null;
-                if ($col_ref_itemtype !== null && \is_a($col_ref_itemtype, CommonDBTM::class, true)) {
+                if ($col_ref_itemtype !== null) {
                     $tmp_fields = [$col_ref_field => $current_values];
                     if (array_key_exists('additionalfields', $col['searchopt'])) {
                         foreach ($col['searchopt']['additionalfields'] as $field_name) {
@@ -1848,9 +1867,7 @@ abstract class API
         }
 
         if ($this->isDeprecated()) {
-            $input = array_map(function ($item) {
-                return $this->deprecated_item->mapDeprecatedToCurrentFields($item);
-            }, $input);
+            $input = array_map(fn($item) => $this->deprecated_item->mapDeprecatedToCurrentFields($item), $input);
         }
 
         if (is_array($input)) {
@@ -1859,7 +1876,7 @@ abstract class API
             $index        = 0;
             foreach ($input as $object) {
                 // Use a new instance each time to avoid side effects with data from a previous item (See #14490)
-                $item     = new $itemtype();
+                $item        = \getItemForItemtype($itemtype);
                 $object      = $this->inputObjectToArray($object);
                 $current_res = [];
 
@@ -1880,13 +1897,21 @@ abstract class API
                     $object["_add"] = true;
 
                     //add current item
-                    $new_id = $item->add($object);
+                    $message = '';
+                    try {
+                        $new_id = $item->add($object);
+                        $message = $this->getGlpiLastMessage();
+                    } catch (RuntimeException $e) {
+                        $new_id = false;
+                        $message = $e->getMessage();
+                    }
+
                     if ($new_id === false) {
                         $failed++;
                     }
 
-                    $message = $this->getGlpiLastMessage();
-                    $current_res = ['id'      => $new_id,
+                    $current_res = [
+                        'id'      => $new_id,
                         'message' => $message,
                     ];
                 }
@@ -1972,9 +1997,7 @@ abstract class API
         }
 
         if ($this->isDeprecated()) {
-            $input = array_map(function ($item) {
-                return $this->deprecated_item->mapDeprecatedToCurrentFields($item);
-            }, $input);
+            $input = array_map(fn($item) => $this->deprecated_item->mapDeprecatedToCurrentFields($item), $input);
         }
 
         if (is_array($input)) {
@@ -1983,7 +2006,7 @@ abstract class API
             $index        = 0;
             foreach ($input as $object) {
                 // Use a new instance each time to avoid side effects with data from a previous item (See #14490)
-                $item     = new $itemtype();
+                $item        = \getItemForItemtype($itemtype);
                 $current_res = [];
                 if (isset($object->id)) {
                     if (!$item->getFromDB($object->id)) {
@@ -2015,13 +2038,22 @@ abstract class API
                         }
 
                         //update item
-                        $object = $this->inputObjectToArray($object);
-                        $update_return = $item->update($object);
+                        $message = '';
+                        try {
+                            $object = $this->inputObjectToArray($object);
+                            $update_return = $item->update($object);
+                            $message = $this->getGlpiLastMessage();
+                        } catch (RuntimeException $e) {
+                            $update_return = false;
+                            $message = $e->getMessage();
+                        }
+
                         if ($update_return === false) {
                             $failed++;
                         }
-                        $current_res = [$item->fields["id"] => $update_return,
-                            'message'           => $this->getGlpiLastMessage(),
+                        $current_res = [
+                            $item->fields["id"] => $update_return,
+                            'message'           => $message,
                         ];
                     }
                 }
@@ -2070,7 +2102,7 @@ abstract class API
      *    - 'history' : boolean, default true, false to disable saving of deletion in global history.
      *                  Optional.
      *
-     * @return boolean|boolean[]|void success status, or void when error response is send in case of error
+     * @return array|void success status, or void when error response is send in case of error
      */
     protected function deleteItems($itemtype, $params = [])
     {
@@ -2081,7 +2113,6 @@ abstract class API
         ];
         $params   = array_merge($default, $params);
         $input    = $params['input'];
-        $item     = new $itemtype();
 
         if (is_object($input)) {
             $input = [$input];
@@ -2091,9 +2122,7 @@ abstract class API
         }
 
         if ($this->isDeprecated()) {
-            $input = array_map(function ($item) {
-                return $this->deprecated_item->mapDeprecatedToCurrentFields($item);
-            }, $input);
+            $input = array_map(fn($item) => $this->deprecated_item->mapDeprecatedToCurrentFields($item), $input);
         }
 
         if (is_array($input)) {
@@ -2101,6 +2130,8 @@ abstract class API
             $failed = 0;
             foreach ($input as $object) {
                 if (isset($object->id)) {
+                    $item = \getItemForItemtype($itemtype);
+
                     if (!$item->getFromDB($object->id)) {
                         $failed++;
                         $idCollection[] = [$object->id => false, 'message' => __("Item not found")];
@@ -2136,15 +2167,26 @@ abstract class API
                         ];
                     } else {
                         //delete item
-                        $delete_return = $item->delete(
-                            (array) $object,
-                            $params['force_purge'],
-                            $params['history']
-                        );
+                        $message = '';
+                        try {
+                            $delete_return = $item->delete(
+                                (array) $object,
+                                $params['force_purge'],
+                                $params['history']
+                            );
+                            $message = $this->getGlpiLastMessage();
+                        } catch (RuntimeException $e) {
+                            $message = $e->getMessage();
+                            $delete_return = false;
+                        }
+
                         if ($delete_return === false) {
                             $failed++;
                         }
-                        $idCollection[] = [$object->id => $delete_return, 'message' => $this->getGlpiLastMessage()];
+                        $idCollection[] = [
+                            $object->id => $delete_return,
+                            'message'   => $message,
+                        ];
                     }
                 }
             }
@@ -2197,7 +2239,7 @@ abstract class API
         if (!isset($params['password_forget_token'])) {
             try {
                 $user->forgetPassword($params['email']);
-            } catch (\Glpi\Exception\ForgetPasswordException $e) {
+            } catch (ForgetPasswordException $e) {
                 $this->returnError($e->getMessage());
             }
             return [
@@ -2212,9 +2254,9 @@ abstract class API
             ];
             try {
                 $user->updateForgottenPassword($input);
-            } catch (\Glpi\Exception\ForgetPasswordException $e) {
+            } catch (ForgetPasswordException $e) {
                 $this->returnError($e->getMessage());
-            } catch (\Glpi\Exception\PasswordTooWeakException $e) {
+            } catch (PasswordTooWeakException $e) {
                 implode('\n', $e->getMessages());
                 $this->returnError(implode('\n', $e->getMessages()));
             }
@@ -2427,7 +2469,7 @@ abstract class API
 
         if ($html) {
             if (empty($title)) {
-                $title = $this->getTypeName();
+                $title = static::getTypeName();
             }
 
             Html::includeHeader($title);
@@ -2478,7 +2520,7 @@ abstract class API
 TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
 
         Html::nullFooter();
-        exit();
+        exit(); // @phpstan-ignore glpi.forbidExit (API response is streamed)
     }
 
 
@@ -2899,7 +2941,7 @@ TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
         int $id,
         string $itemtype
     ): array {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $_networkports = [];
@@ -3107,9 +3149,9 @@ TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
             Toolbox::getFileAsResponse($file, $user->fields['picture'])->send();
         } else {
             // No content
-            http_response_code(204);
+            http_response_code(204); // @phpstan-ignore glpi.forbidHttpResponseCode (API response is streamed)
         }
-        exit();
+        exit(); // @phpstan-ignore glpi.forbidExit (API response is streamed)
     }
 
     /**
@@ -3127,6 +3169,11 @@ TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
         if ($deprecated) {
             // Keep a reference to deprecated item
             $class = "Glpi\Api\Deprecated\\$itemtype";
+
+            if (!is_a($class, DeprecatedInterface::class, true)) {
+                throw new LogicException();
+            }
+
             $this->deprecated_item = new $class();
 
             // Get correct itemtype
@@ -3168,7 +3215,7 @@ TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
                 $is_deleted
             );
         } else {
-            $item = new $itemtype();
+            $item = \getItemForItemtype($itemtype);
             if (!$item->getFromDB($id)) {
                 // Id was supplied but item can't be loaded -> error
                 return $this->returnError(
@@ -3381,7 +3428,7 @@ TWIG, ['md' => (new MarkdownRenderer())->render($documentation)]);
 
         if ($results['ok'] == 0 && $results['noaction'] == 0 && $results['ko'] == 0 && $results['noright'] == 0) {
             // No items were processed, invalid action key -> 400
-            return $this->returnError(
+            $this->returnError(
                 "Invalid action key parameter, run 'getMassiveActions' endpoint to see available keys",
                 400,
                 "ERROR_MASSIVEACTION_KEY"

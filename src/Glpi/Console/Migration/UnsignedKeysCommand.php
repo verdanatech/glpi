@@ -38,9 +38,12 @@ namespace Glpi\Console\Migration;
 use DBConnection;
 use Glpi\Console\AbstractCommand;
 use Glpi\Console\Command\ConfigurationCommandInterface;
+use Glpi\Console\Exception\EarlyExitException;
 use Plugin;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+
+use function Safe\preg_match;
 
 class UnsignedKeysCommand extends AbstractCommand implements ConfigurationCommandInterface
 {
@@ -88,9 +91,7 @@ class UnsignedKeysCommand extends AbstractCommand implements ConfigurationComman
 
             $foreign_keys = $this->db->getForeignKeysContraints();
 
-            $progress_message = function (array $column) {
-                return sprintf(__('Migrating column "%s.%s"...'), $column['TABLE_NAME'], $column['COLUMN_NAME']);
-            };
+            $progress_message = (fn(array $column) => sprintf(__('Migrating column "%s.%s"...'), $column['TABLE_NAME'], $column['COLUMN_NAME']));
 
             foreach ($this->iterate($columns, $progress_message) as $column) {
                 $table_name  = $column['TABLE_NAME'];
@@ -160,7 +161,7 @@ class UnsignedKeysCommand extends AbstractCommand implements ConfigurationComman
                             __('Column "%s.%s" contains negative values. Updating them to "%s"...'),
                             $table_name,
                             $column_name,
-                            $forced_value === null ? 'NULL' : $forced_value
+                            $forced_value ?? 'NULL'
                         );
                         $this->outputMessage('<comment>' . $message . '</comment>');
 
@@ -236,7 +237,7 @@ class UnsignedKeysCommand extends AbstractCommand implements ConfigurationComman
         }
 
         if (!DBConnection::updateConfigProperty(DBConnection::PROPERTY_ALLOW_SIGNED_KEYS, false)) {
-            throw new \Glpi\Console\Exception\EarlyExitException(
+            throw new EarlyExitException(
                 '<error>' . __('Unable to update DB configuration file.') . '</error>',
                 self::ERROR_UNABLE_TO_UPDATE_CONFIG
             );
@@ -259,7 +260,7 @@ class UnsignedKeysCommand extends AbstractCommand implements ConfigurationComman
                 $message .= "\n";
                 $message .= '<comment>' . __('You should try to update these plugins to their latest version and run the command again.') . '</comment>';
             }
-            throw new \Glpi\Console\Exception\EarlyExitException(
+            throw new EarlyExitException(
                 $message,
                 self::ERROR_COLUMN_MIGRATION_FAILED
             );

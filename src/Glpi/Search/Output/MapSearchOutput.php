@@ -36,6 +36,7 @@
 namespace Glpi\Search\Output;
 
 use Glpi\Toolbox\URL;
+use Toolbox;
 
 /**
  *
@@ -93,21 +94,21 @@ final class MapSearchOutput extends HTMLSearchOutput
                 'searchtype'   => 'equals',
                 'value'        => 'CURLOCATION',
             ];
-            $globallinkto = \Toolbox::append_params(
+            $globallinkto = Toolbox::append_params(
                 [
                     'criteria'     => $criteria,
                     'metacriteria' => $data['search']['metacriteria'],
                 ],
                 '&amp;'
             );
-            $sort_params = \Toolbox::append_params([
+            $sort_params = Toolbox::append_params([
                 'sort'   => $data['search']['sort'],
                 'order'  => $data['search']['order'],
             ], '&amp;');
             $parameters = "as_map=0&amp;" . $sort_params . '&amp;' .
                 $globallinkto;
 
-            if (strpos($target, '?') == false) {
+            if (!str_contains($target, '?')) {
                 $fulltarget = $target . "?" . $parameters;
             } else {
                 $fulltarget = $target . "&" . $parameters;

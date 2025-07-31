@@ -35,8 +35,10 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryParam;
-use Glpi\Search\SearchOption;
 use Glpi\RichText\RichText;
+use Glpi\Search\SearchOption;
+
+use function Safe\preg_match;
 
 /**
  * Log Class
@@ -140,10 +142,7 @@ class Log extends CommonDBTM
         }
         // needed to have  $SEARCHOPTION
         [$real_type, $real_id] = $item->getLogTypeID();
-        $searchopt                 = SearchOption::getOptionsForItemtype($real_type);
-        if (!is_array($searchopt)) {
-            return false;
-        }
+        $searchopt = SearchOption::getOptionsForItemtype($real_type);
         $result = 0;
 
         foreach ($oldvalues as $key => $oldval) {
@@ -227,7 +226,7 @@ class Log extends CommonDBTM
      **/
     public static function history($items_id, $itemtype, $changes, $itemtype_link = '', $linked_action = '0')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $date_mod = $_SESSION["glpi_currenttime"];
@@ -243,8 +242,8 @@ class Log extends CommonDBTM
         $new_id           = $changes[4] ?? null;
 
         // Remove json values
-        $decoded_old_value = json_decode($old_value);
-        $decoded_new_value = json_decode($new_value);
+        $decoded_old_value = json_decode($old_value); //@phpstan-ignore theCodingMachineSafe.function
+        $decoded_new_value = json_decode($new_value); //@phpstan-ignore theCodingMachineSafe.function
         if (is_array($decoded_old_value) || is_object($decoded_old_value)) {
             $old_value = '';
         }
@@ -921,7 +920,7 @@ class Log extends CommonDBTM
      **/
     public static function getDistinctUserNamesValuesInItemLog(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item->getType();
@@ -963,7 +962,7 @@ class Log extends CommonDBTM
      **/
     public static function getDistinctAffectedFieldValuesInItemLog(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item->getType();
@@ -1138,7 +1137,7 @@ class Log extends CommonDBTM
      **/
     public static function getDistinctLinkedActionValuesInItemLog(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itemtype = $item->getType();
@@ -1426,7 +1425,7 @@ class Log extends CommonDBTM
 
     public static function handleQueue(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $queue = static::$queue;

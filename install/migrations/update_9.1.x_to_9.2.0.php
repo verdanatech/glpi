@@ -42,8 +42,8 @@ use Glpi\DBAL\QueryExpression;
 function update91xto920()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
@@ -238,9 +238,7 @@ function update91xto920()
                 ],
             ]
         ),
-        "9.2 update set users_id on glpi_documents_items",
-        [],
-        true
+        "9.2 update set users_id on glpi_documents_items"
     );
 
     //add product number
@@ -1119,6 +1117,7 @@ function update91xto920()
             'notifications_ajax_sound' => null,
             'notifications_ajax_icon_url'       => '/pics/glpi.png',
         ]);
+        $migration->removeConfig(['use_mailing']);
     }
 
     if (!$DB->tableExists('glpi_notifications_notificationtemplates')) {
@@ -1639,7 +1638,7 @@ Regards,',
         //give full rights to profiles having config right
         $prights = $DB->request(['FROM' => 'glpi_profilerights', 'WHERE' => ['name' => 'config']]);
         foreach ($prights as $profrights) {
-            if ($profrights['rights'] && (READ + UPDATE)) {
+            if ($profrights['rights'] === (READ | UPDATE)) {
                 $rightValue = CREATE | READ | UPDATE | DELETE  | PURGE | READNOTE | UPDATENOTE | UNLOCK;
             } else {
                 $rightValue = 0;
@@ -1952,7 +1951,7 @@ Regards,',
         //give full rights to profiles having config right
         $prights = $DB->request(['FROM' => 'glpi_profilerights', 'WHERE' => ['name' => 'config']]);
         foreach ($prights as $profrights) {
-            if ($profrights['rights'] && (READ + UPDATE)) {
+            if ($profrights['rights'] === (READ | UPDATE)) {
                 $rightValue = CREATE | READ | UPDATE | DELETE | PURGE | READNOTE | UPDATENOTE;
             } else {
                 $rightValue = 0;
@@ -1974,7 +1973,7 @@ Regards,',
         //give full rights to profiles having config right
         $prights = $DB->request(['FROM' => 'glpi_profilerights', 'WHERE' => ['name' => 'config']]);
         foreach ($prights as $profrights) {
-            if ($profrights['rights'] && (READ + UPDATE)) {
+            if ($profrights['rights'] === (READ | UPDATE)) {
                 $rightValue = CREATE | READ | UPDATE | DELETE | PURGE;
             } else {
                 $rightValue = 0;
@@ -1996,7 +1995,7 @@ Regards,',
         //give full rights to profiles having config right
         $prights = $DB->request(['FROM' => 'glpi_profilerights', 'WHERE' => ['name' => 'config']]);
         foreach ($prights as $profrights) {
-            if ($profrights['rights'] && (READ + UPDATE)) {
+            if ($profrights['rights'] === (READ | UPDATE)) {
                 $rightValue = READ | UPDATE;
             } else {
                 $rightValue = 0;

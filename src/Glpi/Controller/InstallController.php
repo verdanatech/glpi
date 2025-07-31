@@ -35,7 +35,9 @@
 namespace Glpi\Controller;
 
 use DB;
+use DBmysql;
 use Glpi\Cache\CacheManager;
+use Glpi\Controller\Traits\AsyncOperationProgressControllerTrait;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Http\Firewall;
 use Glpi\Progress\ProgressStorage;
@@ -45,20 +47,18 @@ use Glpi\System\RequirementsManager;
 use Glpi\Toolbox\VersionParser;
 use Migration;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Toolbox;
 use Update;
-use Glpi\Progress\StoredProgressIndicator;
 
-use function Safe\fastcgi_finish_request;
-use function Safe\ini_set;
-use function Safe\ob_end_clean;
-use function Safe\session_write_close;
+use function Safe\unlink;
 
 class InstallController extends AbstractController
 {
+    use AsyncOperationProgressControllerTrait;
+
     public function __construct(
         private readonly ProgressStorage $progress_storage,
         private readonly LoggerInterface $logger
@@ -74,17 +74,18 @@ class InstallController extends AbstractController
 
         $progress_indicator = $this->progress_storage->spawnProgressIndicator();
 
-        return $this->getProgressIndicatorResponse(
+        $this->progress_storage->registerFailureCallback(
+            $progress_indicator->getStorageKey(),
+            function () {
+                // Try to remove the config file, to be able to restart the process.
+                @unlink(GLPI_CONFIG_DIR . '/config_db.php');
+            }
+        );
+
+        return $this->getProgressInitResponse(
             $progress_indicator,
             function () use ($progress_indicator) {
-                try {
-                    Toolbox::createSchema($_SESSION["glpilanguage"], null, $progress_indicator);
-                } catch (\Throwable $exception) {
-                    // Try to remove the config file, to be able to restart the process.
-                    @unlink(GLPI_CONFIG_DIR . '/config_db.php');
-
-                    throw $exception; // Forward the exception
-                }
+                Toolbox::createSchema($_SESSION["glpilanguage"], null, $progress_indicator);
             }
         );
     }
@@ -98,21 +99,21 @@ class InstallController extends AbstractController
         }
 
         if (!file_exists(GLPI_CONFIG_DIR . '/config_db.php')) {
-            throw new \RuntimeException('Missing database configuration file.');
+            throw new RuntimeException('Missing database configuration file.');
         } else {
             include_once(GLPI_CONFIG_DIR . '/config_db.php');
             if (!\class_exists(DB::class)) {
-                throw new \RuntimeException('Invalid database configuration file.');
+                throw new RuntimeException('Invalid database configuration file.');
             }
         }
 
         $progress_indicator = $this->progress_storage->spawnProgressIndicator();
         $logger             = $this->logger;
 
-        return $this->getProgressIndicatorResponse(
+        return $this->getProgressInitResponse(
             $progress_indicator,
             function () use ($logger, $progress_indicator) {
-                /** @var \DBmysql $DB */
+                /** @var DBmysql $DB */
                 global $DB;
                 $DB = new DB();
                 $DB->disableTableCaching(); // Prevents issues on fieldExists upgrading from old versions
@@ -136,53 +137,6 @@ class InstallController extends AbstractController
         );
     }
 
-    private function getProgressIndicatorResponse(
-        StoredProgressIndicator $progress_indicator,
-        callable $inner_callable
-    ): Response {
-        ini_set('max_execution_time', '300'); // Allow up to 5 minutes to prevent unexpected timeout
-        session_write_close(); // Prevent the session file lock to block the progress check requests
-
-        // Be sure to disable the output buffering.
-        // It is necessary to make the `flush()` works as expected.
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-
-        return new StreamedResponse(
-            function () use ($progress_indicator, $inner_callable) {
-                echo $progress_indicator->getStorageKey();
-
-                // Send headers and content.
-                // The browser will consider that the response is complete due to the `Connection: close` header
-                // and will not have to wait for operation to finish to consider the request as ended.
-                flush();
-
-                if (\function_exists('fastcgi_finish_request')) {
-                    // In PHP-FPM context, it indicates to the client (Apache, Nginx, ...)
-                    // that the request is finished.
-                    fastcgi_finish_request();
-                }
-
-                // Prevent the request to be terminated by the client.
-                \ignore_user_abort(true);
-
-                try {
-                    $inner_callable();
-                } catch (\Throwable $e) {
-                    $progress_indicator->fail();
-                }
-            },
-            headers: [
-                'Content-Type'   => 'text/html',
-                'Content-Length' => \strlen($progress_indicator->getStorageKey()),
-                'Cache-Control'  => 'no-cache,no-store',
-                'Pragma'         => 'no-cache',
-                'Connection'     => 'close',
-            ]
-        );
-    }
-
     /**
      * Internal route that displays the "install required" page.
      */
@@ -200,7 +154,7 @@ class InstallController extends AbstractController
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql|null $DB
+         * @var DBmysql|null $DB
          */
         global $CFG_GLPI, $DB;
 

@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\strtotime;
+
 // Class NotificationTarget
 class NotificationTargetUser extends NotificationTarget
 {
@@ -42,6 +44,16 @@ class NotificationTargetUser extends NotificationTarget
             'passwordexpires' => __('Password expires'),
             'passwordforget'  => __('Forgotten password?'),
             'passwordinit'    => __('Password initialization'),
+        ];
+    }
+
+    #[Override()]
+    public function getEventsToSendImmediately(): array
+    {
+        return [
+            'passwordexpires',
+            'passwordforget',
+            'passwordinit',
         ];
     }
 

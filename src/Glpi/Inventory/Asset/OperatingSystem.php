@@ -36,6 +36,7 @@
 
 namespace Glpi\Inventory\Asset;
 
+use DBmysql;
 use Glpi\Inventory\Conf;
 use Item_OperatingSystem;
 use RuleDictionnaryOperatingSystemArchitectureCollection;
@@ -43,6 +44,8 @@ use RuleDictionnaryOperatingSystemCollection;
 use RuleDictionnaryOperatingSystemEditionCollection;
 use RuleDictionnaryOperatingSystemServicePackCollection;
 use RuleDictionnaryOperatingSystemVersionCollection;
+
+use function Safe\strtotime;
 
 class OperatingSystem extends InventoryAsset
 {
@@ -143,7 +146,7 @@ class OperatingSystem extends InventoryAsset
 
     public function handle()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ios = new Item_OperatingSystem();
@@ -218,6 +221,6 @@ class OperatingSystem extends InventoryAsset
 
     public function getItemtype(): string
     {
-        return \Item_OperatingSystem::class;
+        return Item_OperatingSystem::class;
     }
 }

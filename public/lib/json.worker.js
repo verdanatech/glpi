@@ -6729,7 +6729,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _base_common_network_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(10);
 /* harmony import */ var _languages_defaultDocumentColorsComputer_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(72);
 /* harmony import */ var _findSectionHeaders_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(74);
-/* harmony import */ var _textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(75);
+/* harmony import */ var _textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(76);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -7052,7 +7052,7 @@ class EditorSimpleWorker extends BaseEditorSimpleWorker {
             }
             else {
                 const url = _base_common_network_js__WEBPACK_IMPORTED_MODULE_10__.FileAccess.asBrowserUri(`${moduleId}.js`).toString(true);
-                __webpack_require__(80)(`${url}`).then(onModuleCallback).catch(reject);
+                __webpack_require__(75)(`${url}`).then(onModuleCallback).catch(reject);
             }
         });
     }
@@ -19116,6 +19116,242 @@ function getHeaderText(text) {
 
 /***/ }),
 /* 75 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var map = {
+	"./editorBaseApi": [
+		32
+	],
+	"./editorBaseApi.js": [
+		32
+	],
+	"./editorSimpleWorker": [
+		22
+	],
+	"./editorSimpleWorker.js": [
+		22
+	],
+	"./editorWorker": [
+		82,
+		0
+	],
+	"./editorWorker.js": [
+		82,
+		0
+	],
+	"./editorWorkerHost": [
+		43
+	],
+	"./editorWorkerHost.js": [
+		43
+	],
+	"./findSectionHeaders": [
+		74
+	],
+	"./findSectionHeaders.js": [
+		74
+	],
+	"./getIconClasses": [
+		84,
+		0
+	],
+	"./getIconClasses.js": [
+		84,
+		0
+	],
+	"./languageFeatureDebounce": [
+		95,
+		0
+	],
+	"./languageFeatureDebounce.js": [
+		95,
+		0
+	],
+	"./languageFeatures": [
+		103,
+		0
+	],
+	"./languageFeatures.js": [
+		103,
+		0
+	],
+	"./languageFeaturesService": [
+		104,
+		0
+	],
+	"./languageFeaturesService.js": [
+		104,
+		0
+	],
+	"./languageService": [
+		108,
+		0
+	],
+	"./languageService.js": [
+		108,
+		0
+	],
+	"./languagesAssociations": [
+		110,
+		0
+	],
+	"./languagesAssociations.js": [
+		110,
+		0
+	],
+	"./languagesRegistry": [
+		109,
+		0
+	],
+	"./languagesRegistry.js": [
+		109,
+		0
+	],
+	"./markerDecorations": [
+		122,
+		0
+	],
+	"./markerDecorations.js": [
+		122,
+		0
+	],
+	"./markerDecorationsService": [
+		123,
+		0
+	],
+	"./markerDecorationsService.js": [
+		123,
+		0
+	],
+	"./model": [
+		141,
+		0
+	],
+	"./model.js": [
+		141,
+		0
+	],
+	"./modelService": [
+		143,
+		0
+	],
+	"./modelService.js": [
+		143,
+		0
+	],
+	"./resolverService": [
+		204,
+		0
+	],
+	"./resolverService.js": [
+		204,
+		0
+	],
+	"./semanticTokensDto": [
+		205,
+		0
+	],
+	"./semanticTokensDto.js": [
+		205,
+		0
+	],
+	"./semanticTokensProviderStyling": [
+		206,
+		0
+	],
+	"./semanticTokensProviderStyling.js": [
+		206,
+		0
+	],
+	"./semanticTokensStyling": [
+		208,
+		0
+	],
+	"./semanticTokensStyling.js": [
+		208,
+		0
+	],
+	"./semanticTokensStylingService": [
+		209,
+		0
+	],
+	"./semanticTokensStylingService.js": [
+		209,
+		0
+	],
+	"./textModelSync/textModelSync.impl": [
+		76
+	],
+	"./textModelSync/textModelSync.impl.js": [
+		76
+	],
+	"./textModelSync/textModelSync.protocol": [
+		210,
+		0
+	],
+	"./textModelSync/textModelSync.protocol.js": [
+		210,
+		0
+	],
+	"./textResourceConfiguration": [
+		203,
+		0
+	],
+	"./textResourceConfiguration.js": [
+		203,
+		0
+	],
+	"./treeSitterParserService": [
+		197,
+		0
+	],
+	"./treeSitterParserService.js": [
+		197,
+		0
+	],
+	"./treeViewsDnd": [
+		211,
+		0
+	],
+	"./treeViewsDnd.js": [
+		211,
+		0
+	],
+	"./treeViewsDndService": [
+		212,
+		0
+	],
+	"./treeViewsDndService.js": [
+		212,
+		0
+	],
+	"./unicodeTextModelHighlighter": [
+		44
+	],
+	"./unicodeTextModelHighlighter.js": [
+		44
+	]
+};
+function webpackAsyncContext(req) {
+	if(!__webpack_require__.o(map, req)) {
+		return Promise.resolve().then(() => {
+			var e = new Error("Cannot find module '" + req + "'");
+			e.code = 'MODULE_NOT_FOUND';
+			throw e;
+		});
+	}
+
+	var ids = map[req], id = ids[0];
+	return Promise.all(ids.slice(1).map(__webpack_require__.e)).then(() => {
+		return __webpack_require__(id);
+	});
+}
+webpackAsyncContext.keys = () => (Object.keys(map));
+webpackAsyncContext.id = 75;
+module.exports = webpackAsyncContext;
+
+/***/ }),
+/* 76 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -19126,13 +19362,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   WorkerTextModelSyncClient: () => (/* binding */ WorkerTextModelSyncClient),
 /* harmony export */   WorkerTextModelSyncServer: () => (/* binding */ WorkerTextModelSyncServer)
 /* harmony export */ });
-/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(76);
+/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(77);
 /* harmony import */ var _base_common_lifecycle_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(6);
 /* harmony import */ var _base_common_uri_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(18);
 /* harmony import */ var _core_position_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(27);
 /* harmony import */ var _core_range_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(26);
 /* harmony import */ var _core_wordHelper_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(51);
-/* harmony import */ var _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(78);
+/* harmony import */ var _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(79);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -19440,7 +19676,7 @@ class MirrorModel extends _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__
 
 
 /***/ }),
-/* 76 */
+/* 77 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -19473,7 +19709,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _event_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(4);
 /* harmony import */ var _lifecycle_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(6);
 /* harmony import */ var _platform_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(11);
-/* harmony import */ var _symbols_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(77);
+/* harmony import */ var _symbols_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(78);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -20320,7 +20556,7 @@ function createCancelableAsyncIterable(callback) {
 
 
 /***/ }),
-/* 77 */
+/* 78 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -20339,7 +20575,7 @@ const MicrotaskDelay = Symbol('MicrotaskDelay');
 
 
 /***/ }),
-/* 78 */
+/* 79 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -20349,7 +20585,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _base_common_strings_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
 /* harmony import */ var _core_position_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(27);
-/* harmony import */ var _prefixSumComputer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(79);
+/* harmony import */ var _prefixSumComputer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(80);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -20467,7 +20703,7 @@ class MirrorTextModel {
 
 
 /***/ }),
-/* 79 */
+/* 80 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -20705,242 +20941,6 @@ class PrefixSumIndexOfResult {
 
 
 /***/ }),
-/* 80 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-var map = {
-	"./editorBaseApi": [
-		32
-	],
-	"./editorBaseApi.js": [
-		32
-	],
-	"./editorSimpleWorker": [
-		22
-	],
-	"./editorSimpleWorker.js": [
-		22
-	],
-	"./editorWorker": [
-		82,
-		0
-	],
-	"./editorWorker.js": [
-		82,
-		0
-	],
-	"./editorWorkerHost": [
-		43
-	],
-	"./editorWorkerHost.js": [
-		43
-	],
-	"./findSectionHeaders": [
-		74
-	],
-	"./findSectionHeaders.js": [
-		74
-	],
-	"./getIconClasses": [
-		84,
-		0
-	],
-	"./getIconClasses.js": [
-		84,
-		0
-	],
-	"./languageFeatureDebounce": [
-		95,
-		0
-	],
-	"./languageFeatureDebounce.js": [
-		95,
-		0
-	],
-	"./languageFeatures": [
-		103,
-		0
-	],
-	"./languageFeatures.js": [
-		103,
-		0
-	],
-	"./languageFeaturesService": [
-		104,
-		0
-	],
-	"./languageFeaturesService.js": [
-		104,
-		0
-	],
-	"./languageService": [
-		108,
-		0
-	],
-	"./languageService.js": [
-		108,
-		0
-	],
-	"./languagesAssociations": [
-		110,
-		0
-	],
-	"./languagesAssociations.js": [
-		110,
-		0
-	],
-	"./languagesRegistry": [
-		109,
-		0
-	],
-	"./languagesRegistry.js": [
-		109,
-		0
-	],
-	"./markerDecorations": [
-		122,
-		0
-	],
-	"./markerDecorations.js": [
-		122,
-		0
-	],
-	"./markerDecorationsService": [
-		123,
-		0
-	],
-	"./markerDecorationsService.js": [
-		123,
-		0
-	],
-	"./model": [
-		141,
-		0
-	],
-	"./model.js": [
-		141,
-		0
-	],
-	"./modelService": [
-		143,
-		0
-	],
-	"./modelService.js": [
-		143,
-		0
-	],
-	"./resolverService": [
-		204,
-		0
-	],
-	"./resolverService.js": [
-		204,
-		0
-	],
-	"./semanticTokensDto": [
-		205,
-		0
-	],
-	"./semanticTokensDto.js": [
-		205,
-		0
-	],
-	"./semanticTokensProviderStyling": [
-		206,
-		0
-	],
-	"./semanticTokensProviderStyling.js": [
-		206,
-		0
-	],
-	"./semanticTokensStyling": [
-		208,
-		0
-	],
-	"./semanticTokensStyling.js": [
-		208,
-		0
-	],
-	"./semanticTokensStylingService": [
-		209,
-		0
-	],
-	"./semanticTokensStylingService.js": [
-		209,
-		0
-	],
-	"./textModelSync/textModelSync.impl": [
-		75
-	],
-	"./textModelSync/textModelSync.impl.js": [
-		75
-	],
-	"./textModelSync/textModelSync.protocol": [
-		210,
-		0
-	],
-	"./textModelSync/textModelSync.protocol.js": [
-		210,
-		0
-	],
-	"./textResourceConfiguration": [
-		203,
-		0
-	],
-	"./textResourceConfiguration.js": [
-		203,
-		0
-	],
-	"./treeSitterParserService": [
-		197,
-		0
-	],
-	"./treeSitterParserService.js": [
-		197,
-		0
-	],
-	"./treeViewsDnd": [
-		211,
-		0
-	],
-	"./treeViewsDnd.js": [
-		211,
-		0
-	],
-	"./treeViewsDndService": [
-		212,
-		0
-	],
-	"./treeViewsDndService.js": [
-		212,
-		0
-	],
-	"./unicodeTextModelHighlighter": [
-		44
-	],
-	"./unicodeTextModelHighlighter.js": [
-		44
-	]
-};
-function webpackAsyncContext(req) {
-	if(!__webpack_require__.o(map, req)) {
-		return Promise.resolve().then(() => {
-			var e = new Error("Cannot find module '" + req + "'");
-			e.code = 'MODULE_NOT_FOUND';
-			throw e;
-		});
-	}
-
-	var ids = map[req], id = ids[0];
-	return Promise.all(ids.slice(1).map(__webpack_require__.e)).then(() => {
-		return __webpack_require__(id);
-	});
-}
-webpackAsyncContext.keys = () => (Object.keys(map));
-webpackAsyncContext.id = 80;
-module.exports = webpackAsyncContext;
-
-/***/ }),
 /* 81 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
@@ -20987,8 +20987,8 @@ var map = {
 	"./semanticTokensStyling.js": 208,
 	"./semanticTokensStylingService": 209,
 	"./semanticTokensStylingService.js": 209,
-	"./textModelSync/textModelSync.impl": 75,
-	"./textModelSync/textModelSync.impl.js": 75,
+	"./textModelSync/textModelSync.impl": 76,
+	"./textModelSync/textModelSync.impl.js": 76,
 	"./textModelSync/textModelSync.protocol": 210,
 	"./textModelSync/textModelSync.protocol.js": 210,
 	"./textResourceConfiguration": 203,
@@ -25225,7 +25225,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   parse: () => (/* binding */ parse),
 /* harmony export */   splitGlobAware: () => (/* binding */ splitGlobAware)
 /* harmony export */ });
-/* harmony import */ var _async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(76);
+/* harmony import */ var _async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(77);
 /* harmony import */ var _extpath_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(86);
 /* harmony import */ var _map_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(47);
 /* harmony import */ var _path_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(19);
@@ -29477,7 +29477,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   workbenchColorsSchemaId: () => (/* binding */ workbenchColorsSchemaId)
 /* harmony export */ });
 /* harmony import */ var _base_common_assert_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(50);
-/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(76);
+/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(77);
 /* harmony import */ var _base_common_color_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(73);
 /* harmony import */ var _base_common_event_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(4);
 /* harmony import */ var _jsonschemas_common_jsonContributionRegistry_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(92);
@@ -43517,7 +43517,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   TokenizerWithStateStoreAndTextModel: () => (/* binding */ TokenizerWithStateStoreAndTextModel),
 /* harmony export */   TrackingTokenizationStateStore: () => (/* binding */ TrackingTokenizationStateStore)
 /* harmony export */ });
-/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(76);
+/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(77);
 /* harmony import */ var _base_common_errors_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(3);
 /* harmony import */ var _base_common_platform_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(11);
 /* harmony import */ var _base_common_stopwatch_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(9);
@@ -44464,7 +44464,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   AttachedViews: () => (/* binding */ AttachedViews)
 /* harmony export */ });
 /* harmony import */ var _base_common_arrays_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(63);
-/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(76);
+/* harmony import */ var _base_common_async_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(77);
 /* harmony import */ var _base_common_event_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(4);
 /* harmony import */ var _base_common_lifecycle_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(6);
 /* harmony import */ var _core_lineRange_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(56);

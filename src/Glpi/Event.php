@@ -39,15 +39,23 @@ use Ajax;
 use CommonDBTM;
 use CommonGLPI;
 use CronTask;
+use DBmysql;
+use DbUtils;
 use Document;
+use Dropdown;
+use Entity;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\System\Log\LogViewer;
 use Html;
 use Infocom;
 use ITILSolution;
+use RuntimeException;
 use Session;
 use Toolbox;
+
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
 
 /**
  * Event Class
@@ -75,33 +83,24 @@ class Event extends CommonDBTM
         return $menu;
     }
 
-    public function prepareInputForAdd($input)
+    public function add(array $input, $options = [], $history = true)
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        if (isset($input['level']) && ($input['level'] <= $CFG_GLPI["event_loglevel"])) {
-            return $input;
-        }
-        return false;
+        throw new RuntimeException(
+            \sprintf(
+                'Events must be added by calling the `%s::log()` method.',
+                static::class,
+            )
+        );
     }
 
-    public function post_addItem()
+    public function update(array $input, $history = true, $options = [])
     {
-        //only log in file, important events (connections and critical events; TODO : we need to add a general option to filter this in 9.1)
-        if (isset($this->fields['level']) && $this->fields['level'] <= 3) {
-            $message_type = "";
-            if (isset($this->fields['type']) && $this->fields['type'] != 'system') {
-                $message_type = "[" . $this->fields['type'] . " " . $this->fields['id'] . "] ";
-            }
+        throw new RuntimeException('Events cannot be updated.');
+    }
 
-            $full_message = "[" . $this->fields['service'] . "] " .
-                         $message_type .
-                         $this->fields['level'] . ": " .
-                         $this->fields['message'] . "\n";
-
-            Toolbox::logInFile("event", $full_message);
-        }
+    public function delete(array $input, $force = false, $history = true)
+    {
+        throw new RuntimeException('Events cannot be deleted.');
     }
 
     /**
@@ -118,15 +117,43 @@ class Event extends CommonDBTM
      **/
     public static function log($items_id, $type, $level, $service, $event)
     {
-        $input = ['items_id' => intval($items_id),
+        /**
+         * @var array $CFG_GLPI
+         * @var DBmysql $DB
+         */
+        global $CFG_GLPI, $DB;
+
+        if ($level >= $CFG_GLPI["event_loglevel"]) {
+            return;
+        }
+
+        $input = [
+            'items_id' => intval($items_id),
             'type'     => $type,
             'date'     => $_SESSION["glpi_currenttime"],
             'service'  => $service,
             'level'    => intval($level),
             'message'  => $event,
         ];
-        $tmp = new self();
-        return $tmp->add($input);
+
+        $DB->insert(self::getTable(), $input);
+
+        $id = $DB->insertId();
+
+        //only log in file, important events (connections and critical events; TODO : we need to add a general option to filter this in 9.1)
+        if ($level <= 3) {
+            $message_type = "";
+            if ($type != 'system') {
+                $message_type = "[" . $type . " " . $id . "] ";
+            }
+
+            $full_message = "[" . $service . "] " .
+                         $message_type .
+                         $level . ": " .
+                         $event . "\n";
+
+            Toolbox::logInFile("event", $full_message);
+        }
     }
 
     /**
@@ -138,7 +165,7 @@ class Event extends CommonDBTM
      **/
     public static function cleanOld($day)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $secs = $day * DAY_TIMESTAMP;
@@ -206,7 +233,7 @@ class Event extends CommonDBTM
         global $CFG_GLPI;
 
         // If ID less than or equal to 0 (or Entity with ID less than 0 since Root Entity is 0)
-        if ($items_id < 0 || ($type !== \Entity::class && $items_id == 0)) {
+        if ($items_id < 0 || ($type !== Entity::class && $items_id == 0)) {
             echo "&nbsp;";//$item;
         } else {
             switch ($type) {
@@ -236,7 +263,7 @@ class Event extends CommonDBTM
 
                 default:
                     $url  = '';
-                    if (!is_a($type, \CommonDBTM::class, true)) {
+                    if (!is_a($type, CommonDBTM::class, true)) {
                         $type = getSingular($type);
                     }
                     if ($item = getItemForItemtype($type)) {
@@ -264,7 +291,7 @@ class Event extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -344,7 +371,7 @@ class Event extends CommonDBTM
             if (isset($logItemtype[$type])) {
                 $itemtype = $logItemtype[$type];
             } else {
-                if (!is_a($type, \CommonDBTM::class, true)) {
+                if (!is_a($type, CommonDBTM::class, true)) {
                     $type = getSingular($type);
                 }
                 if ($item = getItemForItemtype($type)) {
@@ -489,7 +516,7 @@ class Event extends CommonDBTM
      */
     private static function getUsedItemtypes(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // These values are not itemtypes
@@ -514,7 +541,7 @@ class Event extends CommonDBTM
             if (empty($value)) {
                 $value = 0;
             }
-            return \Dropdown::showFromArray($name, self::logArray()[1], [
+            return Dropdown::showFromArray($name, self::logArray()[1], [
                 'value' => $value,
                 'display' => false,
                 'display_emptychoice' => true,
@@ -524,7 +551,7 @@ class Event extends CommonDBTM
             if (empty($value)) {
                 $value = 0;
             }
-            return \Dropdown::showFromArray($name, self::getTypeValuesForDropdown(), [
+            return Dropdown::showFromArray($name, self::getTypeValuesForDropdown(), [
                 'value' => $value,
                 'display' => false,
                 'display_emptychoice' => true,
@@ -596,7 +623,7 @@ class Event extends CommonDBTM
             return $mapping[$type];
         }
 
-        $dbu = new \DbUtils();
+        $dbu = new DbUtils();
 
         // In many cases, `type` corresponds to a lowercase itemtype (e.g. `change`).
         $fallback_type = $dbu->fixItemtypeCase($type);

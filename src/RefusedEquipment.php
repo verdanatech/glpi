@@ -32,7 +32,7 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Features\Inventoriable;
 use Glpi\Inventory\Inventory;
 use Glpi\Inventory\Request;
 
@@ -41,7 +41,7 @@ use Glpi\Inventory\Request;
  */
 class RefusedEquipment extends CommonDBTM
 {
-    use Glpi\Features\Inventoriable;
+    use Inventoriable;
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -276,7 +276,7 @@ class RefusedEquipment extends CommonDBTM
             __s('Inventory is successful, refused entry log has been removed.')
         );
 
-        $item = new $status['itemtype']();
+        $item = getItemForItemtype($status['itemtype']);
         if (isset($status['items_id'])) {
             $item->getFromDB($status['items_id']);
             $redirect_url = $item->getLinkURL();

@@ -35,8 +35,11 @@
 
 namespace Glpi\Api\HL;
 
+use Glpi\Api\HL\Doc\Schema;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
+use Psr\Log\LoggerInterface;
+use Throwable;
 
 final class GraphQLGenerator
 {
@@ -64,7 +67,7 @@ final class GraphQLGenerator
 
         // Write Query
         $schema_str .= "type Query {\n";
-        foreach ($this->types as $type_name => $type) {
+        foreach (array_keys($this->types) as $type_name) {
             if (str_starts_with($type_name, '_')) {
                 continue;
             }
@@ -97,8 +100,13 @@ final class GraphQLGenerator
             }
             try {
                 $type_str .= "  $field_name: {$field->getType()}\n";
-            } catch (\Throwable $e) {
-                trigger_error("Error writing field $field_name for type $type_name: {$e->getMessage()}", E_USER_WARNING);
+            } catch (Throwable $e) {
+                /** @var LoggerInterface $PHPLOGGER */
+                global $PHPLOGGER;
+                $PHPLOGGER->error(
+                    "Error writing field $field_name for type $type_name: {$e->getMessage()}",
+                    ['exception' => $e]
+                );
             }
         }
         $type_str .= "}\n";
@@ -131,12 +139,12 @@ final class GraphQLGenerator
             if (isset($prop['x-full-schema'])) {
                 continue;
             }
-            if ($prop['type'] === Doc\Schema::TYPE_OBJECT) {
+            if ($prop['type'] === Schema::TYPE_OBJECT) {
                 $namespaced_type = "{$schema_name}_{$prop_name}";
                 $types['_' . $namespaced_type] = $this->convertRESTPropertyToGraphQLType($prop, $namespaced_type);
-            } elseif ($prop['type'] === Doc\Schema::TYPE_ARRAY) {
+            } elseif ($prop['type'] === Schema::TYPE_ARRAY) {
                 $items = $prop['items'];
-                if ($items['type'] === Doc\Schema::TYPE_OBJECT) {
+                if ($items['type'] === Schema::TYPE_OBJECT) {
                     $namespaced_type = "{$schema_name}_{$prop_name}";
                     $types['_' . $namespaced_type] = $this->convertRESTPropertyToGraphQLType($items, $namespaced_type);
                 }
@@ -151,9 +159,7 @@ final class GraphQLGenerator
         foreach ($schema['properties'] as $name => $property) {
             $fields[$name] = [
                 'type' => $this->convertRESTPropertyToGraphQLType($property, $name, $schema_name),
-                'resolve' => function () {
-                    return '';
-                },
+                'resolve' => fn() => '',
             ];
         }
         return new ObjectType([
@@ -166,10 +172,10 @@ final class GraphQLGenerator
     {
         $type = $property['type'] ?? 'string';
         $graphql_type = match ($type) {
-            Doc\Schema::TYPE_STRING => Type::string(),
-            Doc\Schema::TYPE_INTEGER => Type::int(),
-            Doc\Schema::TYPE_NUMBER => Type::float(),
-            Doc\Schema::TYPE_BOOLEAN => Type::boolean(),
+            Schema::TYPE_STRING => Type::string(),
+            Schema::TYPE_INTEGER => Type::int(),
+            Schema::TYPE_NUMBER => Type::float(),
+            Schema::TYPE_BOOLEAN => Type::boolean(),
             default => null,
         };
         if ($graphql_type !== null) {
@@ -177,27 +183,23 @@ final class GraphQLGenerator
         }
 
         // Handle array and object types
-        if ($type === Doc\Schema::TYPE_ARRAY) {
+        if ($type === Schema::TYPE_ARRAY) {
             $items = $property['items'];
             $graphql_type = $this->convertRESTPropertyToGraphQLType($items, $name, $prefix);
             return Type::listOf($graphql_type);
         }
 
-        if ($type === Doc\Schema::TYPE_OBJECT) {
+        if ($type === Schema::TYPE_OBJECT) {
             $properties = $property['properties'];
             $fields = [];
             foreach ($properties as $prop_name => $prop_value) {
                 $fields[$prop_name] = [
                     'type' => $this->convertRESTPropertyToGraphQLType($prop_value, $prop_name, $prefix),
-                    'resolve' => function () {
-                        return '';
-                    },
+                    'resolve' => fn() => '',
                 ];
             }
             if (isset($property['x-full-schema'])) {
-                return function () use ($property) {
-                    return $this->types[$property['x-full-schema']];
-                };
+                return fn() => $this->types[$property['x-full-schema']];
             }
             return new ObjectType([
                 'name' => "_{$prefix}_{$name}",

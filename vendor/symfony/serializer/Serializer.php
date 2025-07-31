@@ -23,6 +23,9 @@ use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
 use Symfony\Component\Serializer\Exception\PartialDenormalizationException;
 use Symfony\Component\Serializer\Exception\UnsupportedFormatException;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
+use Symfony\Component\Serializer\Normalizer\CacheableSupportsMethodInterface;
+use Symfony\Component\Serializer\Normalizer\ContextAwareDenormalizerInterface;
+use Symfony\Component\Serializer\Normalizer\ContextAwareNormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
@@ -43,7 +46,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  * @author Kévin Dunglas <dunglas@gmail.com>
  */
-class Serializer implements SerializerInterface, NormalizerInterface, DenormalizerInterface, ContextAwareEncoderInterface, ContextAwareDecoderInterface
+class Serializer implements SerializerInterface, ContextAwareNormalizerInterface, ContextAwareDenormalizerInterface, ContextAwareEncoderInterface, ContextAwareDecoderInterface
 {
     /**
      * Flag to control whether an empty array should be transformed to an
@@ -58,9 +61,15 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
         'string' => true,
     ];
 
-    protected ChainEncoder $encoder;
+    /**
+     * @var ChainEncoder
+     */
+    protected $encoder;
 
-    protected ChainDecoder $decoder;
+    /**
+     * @var ChainDecoder
+     */
+    protected $decoder;
 
     /**
      * @var array<string, array<string, array<bool>>>
@@ -75,10 +84,12 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
     /**
      * @param array<NormalizerInterface|DenormalizerInterface> $normalizers
      * @param array<EncoderInterface|DecoderInterface>         $encoders
+     * @param array<string, mixed>                             $defaultContext
      */
     public function __construct(
         private array $normalizers = [],
         array $encoders = [],
+        private array $defaultContext = [],
     ) {
         foreach ($normalizers as $normalizer) {
             if ($normalizer instanceof SerializerAwareInterface) {
@@ -154,12 +165,12 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
             return $data;
         }
 
-        if (\is_array($data) && !$data && ($context[self::EMPTY_ARRAY_AS_OBJECT] ?? false)) {
+        if (\is_array($data) && !$data && ($context[self::EMPTY_ARRAY_AS_OBJECT] ?? $this->defaultContext[self::EMPTY_ARRAY_AS_OBJECT] ?? false)) {
             return new \ArrayObject();
         }
 
         if (is_iterable($data)) {
-            if ($data instanceof \Countable && ($context[AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS] ?? false) && !\count($data)) {
+            if ($data instanceof \Countable && ($context[AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS] ?? $this->defaultContext[AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS] ?? false) && !\count($data)) {
                 return new \ArrayObject();
             }
 
@@ -211,7 +222,7 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
             throw new NotNormalizableValueException(sprintf('Could not denormalize object of type "%s", no supporting normalizer found.', $type));
         }
 
-        if (isset($context[DenormalizerInterface::COLLECT_DENORMALIZATION_ERRORS])) {
+        if ((isset($context[DenormalizerInterface::COLLECT_DENORMALIZATION_ERRORS]) || isset($this->defaultContext[DenormalizerInterface::COLLECT_DENORMALIZATION_ERRORS])) && !isset($context['not_normalizable_value_exceptions'])) {
             unset($context[DenormalizerInterface::COLLECT_DENORMALIZATION_ERRORS]);
             $context['not_normalizable_value_exceptions'] = [];
             $errors = &$context['not_normalizable_value_exceptions'];
@@ -278,6 +289,19 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
                     continue;
                 }
 
+                if (!method_exists($normalizer, 'getSupportedTypes')) {
+                    trigger_deprecation('symfony/serializer', '6.3', '"%s" should implement "NormalizerInterface::getSupportedTypes(?string $format): array".', $normalizer::class);
+
+                    if (!$normalizer instanceof CacheableSupportsMethodInterface || !$normalizer->hasCacheableSupportsMethod()) {
+                        $this->normalizerCache[$format][$type][$k] = false;
+                    } elseif ($normalizer->supportsNormalization($data, $format, $context)) {
+                        $this->normalizerCache[$format][$type][$k] = true;
+                        break;
+                    }
+
+                    continue;
+                }
+
                 $supportedTypes = $normalizer->getSupportedTypes($format);
 
                 foreach ($supportedTypes as $supportedType => $isCacheable) {
@@ -332,6 +356,19 @@ class Serializer implements SerializerInterface, NormalizerInterface, Denormaliz
 
             foreach ($this->normalizers as $k => $normalizer) {
                 if (!$normalizer instanceof DenormalizerInterface) {
+                    continue;
+                }
+
+                if (!method_exists($normalizer, 'getSupportedTypes')) {
+                    trigger_deprecation('symfony/serializer', '6.3', '"%s" should implement "DenormalizerInterface::getSupportedTypes(?string $format): array".', $normalizer::class);
+
+                    if (!$normalizer instanceof CacheableSupportsMethodInterface || !$normalizer->hasCacheableSupportsMethod()) {
+                        $this->denormalizerCache[$format][$class][$k] = false;
+                    } elseif ($normalizer->supportsDenormalization(null, $class, $format, $context)) {
+                        $this->denormalizerCache[$format][$class][$k] = true;
+                        break;
+                    }
+
                     continue;
                 }
 

@@ -35,15 +35,19 @@
 
 namespace Glpi\Api\HL\Controller;
 
+use Entity;
+use Glpi\Api\HL\Doc as Doc;
+use Glpi\Api\HL\Doc\Parameter;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\Middleware\ResultFormatterMiddleware;
+use Glpi\Api\HL\ResourceAccessor;
 use Glpi\Api\HL\Route;
 use Glpi\Api\HL\RouteVersion;
-use Glpi\Api\HL\Search;
 use Glpi\Http\Request;
 use Glpi\Http\Response;
 use Project;
-use Glpi\Api\HL\Doc as Doc;
 use ProjectTask;
+use Session;
 
 #[Route(path: '/Project', tags: ['Project'], requirements: [
     'project_id' => '\d+',
@@ -53,8 +57,8 @@ use ProjectTask;
         [
             'name' => 'project_id',
             'description' => 'Project ID',
-            'location' => Doc\Parameter::LOCATION_PATH,
-            'schema' => ['type' => Doc\Schema::TYPE_STRING],
+            'location' => Parameter::LOCATION_PATH,
+            'schema' => ['type' => Schema::TYPE_STRING],
         ],
     ]
 )]
@@ -66,11 +70,11 @@ final class ProjectController extends AbstractController
             'Project' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => Project::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-rights-conditions' => [ // Object-level extra permissions
                     'read' => static function () {
-                        if (!\Session::haveRight(Project::$rightname, Project::READALL)) {
-                            if (!\Session::haveRight(Project::$rightname, Project::READMY)) {
+                        if (!Session::haveRight(Project::$rightname, Project::READALL)) {
+                            if (!Session::haveRight(Project::$rightname, Project::READMY)) {
                                 return false; // Deny reading
                             }
                             $criteria = [
@@ -84,10 +88,10 @@ final class ProjectController extends AbstractController
                                 ],
                                 'WHERE' => [
                                     'OR' => [
-                                        '_.users_id' => \Session::getLoginUserID(),
+                                        '_.users_id' => Session::getLoginUserID(),
                                         [
                                             "glpi_projectteams.itemtype"   => 'User',
-                                            "glpi_projectteams.items_id"   => \Session::getLoginUserID(),
+                                            "glpi_projectteams.items_id"   => Session::getLoginUserID(),
                                         ],
                                     ],
                                 ],
@@ -108,16 +112,16 @@ final class ProjectController extends AbstractController
                 ],
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                    'content' => ['type' => Doc\Schema::TYPE_STRING],
-                    'code' => ['type' => Doc\Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'comment' => ['type' => Schema::TYPE_STRING],
+                    'content' => ['type' => Schema::TYPE_STRING],
+                    'code' => ['type' => Schema::TYPE_STRING],
                     'priority' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
+                        'type' => Schema::TYPE_INTEGER,
                         'enum' => [1, 2, 3, 4, 5, 6],
                         'description' => <<<EOT
                             - 1: Very Low
@@ -128,11 +132,11 @@ final class ProjectController extends AbstractController
                             - 6: Major
                             EOT,
                     ],
-                    'entity' => self::getDropdownTypeSchema(class: \Entity::class, full_schema: 'Entity'),
+                    'entity' => self::getDropdownTypeSchema(class: Entity::class, full_schema: 'Entity'),
                     'tasks' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'items' => [
-                            'type' => Doc\Schema::TYPE_OBJECT,
+                            'type' => Schema::TYPE_OBJECT,
                             'x-full-schema' => 'ProjectTask',
                             'x-join' => [
                                 'table' => 'glpi_projecttasks',
@@ -142,13 +146,13 @@ final class ProjectController extends AbstractController
                             ],
                             'properties' => [
                                 'id' => [
-                                    'type' => Doc\Schema::TYPE_INTEGER,
-                                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                    'type' => Schema::TYPE_INTEGER,
+                                    'format' => Schema::FORMAT_INTEGER_INT64,
                                     'x-readonly' => true,
                                 ],
-                                'name' => ['type' => Doc\Schema::TYPE_STRING],
-                                'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                                'content' => ['type' => Doc\Schema::TYPE_STRING],
+                                'name' => ['type' => Schema::TYPE_STRING],
+                                'comment' => ['type' => Schema::TYPE_STRING],
+                                'content' => ['type' => Schema::TYPE_STRING],
                             ],
                         ],
                     ],
@@ -157,11 +161,11 @@ final class ProjectController extends AbstractController
             'ProjectTask' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => ProjectTask::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-rights-conditions' => [ // Object-level extra permissions
                     'read' => static function () {
-                        if (!\Session::haveRight(Project::$rightname, Project::READALL)) {
-                            if (!\Session::haveRight(Project::$rightname, Project::READMY)) {
+                        if (!Session::haveRight(Project::$rightname, Project::READALL)) {
+                            if (!Session::haveRight(Project::$rightname, Project::READMY)) {
                                 return false; // Deny reading
                             }
                             $project_criteria = [
@@ -175,10 +179,10 @@ final class ProjectController extends AbstractController
                                 ],
                                 'WHERE' => [
                                     'OR' => [
-                                        '_.users_id' => \Session::getLoginUserID(),
+                                        '_.users_id' => Session::getLoginUserID(),
                                         [
                                             "glpi_projectteams.itemtype"   => 'User',
-                                            "glpi_projectteams.items_id"   => \Session::getLoginUserID(),
+                                            "glpi_projectteams.items_id"   => Session::getLoginUserID(),
                                         ],
                                     ],
                                 ],
@@ -204,10 +208,10 @@ final class ProjectController extends AbstractController
                                 ] + $project_criteria['LEFT JOIN'],
                                 'WHERE' => [
                                     'OR' => [
-                                        '_.users_id' => \Session::getLoginUserID(),
+                                        '_.users_id' => Session::getLoginUserID(),
                                         $project_criteria['WHERE'],
                                         [
-                                            'glpi_projecttaskteams.items_id' => \Session::getLoginUserID(),
+                                            'glpi_projecttaskteams.items_id' => Session::getLoginUserID(),
                                             'glpi_projecttaskteams.itemtype' => 'User',
                                         ],
                                     ],
@@ -226,13 +230,13 @@ final class ProjectController extends AbstractController
                 ],
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'x-readonly' => true,
                     ],
-                    'name' => ['type' => Doc\Schema::TYPE_STRING],
-                    'comment' => ['type' => Doc\Schema::TYPE_STRING],
-                    'content' => ['type' => Doc\Schema::TYPE_STRING],
+                    'name' => ['type' => Schema::TYPE_STRING],
+                    'comment' => ['type' => Schema::TYPE_STRING],
+                    'content' => ['type' => Schema::TYPE_STRING],
                     'project' => self::getDropdownTypeSchema(class: Project::class, full_schema: 'Project'),
                     'parent_task' => self::getDropdownTypeSchema(class: ProjectTask::class, full_schema: 'ProjectTask'),
                 ],
@@ -251,7 +255,7 @@ final class ProjectController extends AbstractController
     )]
     public function searchProjects(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -264,7 +268,7 @@ final class ProjectController extends AbstractController
     )]
     public function getProject(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/', methods: ['POST'])]
@@ -272,13 +276,13 @@ final class ProjectController extends AbstractController
     #[Doc\Route(description: 'Create a new project', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'Project',
         ],
     ])]
     public function createProject(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getProject']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getProject']);
     }
 
     #[Route(path: '/{id}', methods: ['PATCH'], requirements: ['id' => '\d+'])]
@@ -288,7 +292,7 @@ final class ProjectController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
                 'schema' => 'Project',
             ],
         ],
@@ -298,7 +302,7 @@ final class ProjectController extends AbstractController
     )]
     public function updateProject(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -306,7 +310,7 @@ final class ProjectController extends AbstractController
     #[Doc\Route(description: 'Delete a project by ID')]
     public function deleteProject(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('Project', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Task', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -320,7 +324,7 @@ final class ProjectController extends AbstractController
     )]
     public function searchTasks(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/Task/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -333,7 +337,7 @@ final class ProjectController extends AbstractController
     )]
     public function getTask(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Task', methods: ['POST'])]
@@ -341,13 +345,13 @@ final class ProjectController extends AbstractController
     #[Doc\Route(description: 'Create a new task', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'ProjectTask',
         ],
     ])]
     public function createTask(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getTask']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getTask']);
     }
 
     #[Route(path: '/Task/{id}', methods: ['PATCH'], requirements: ['id' => '\d+'])]
@@ -360,7 +364,7 @@ final class ProjectController extends AbstractController
     )]
     public function updateTask(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Task/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -368,7 +372,7 @@ final class ProjectController extends AbstractController
     #[Doc\Route(description: 'Delete a task by ID')]
     public function deleteTask(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/{project_id}/Task', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -382,12 +386,11 @@ final class ProjectController extends AbstractController
     )]
     public function searchLinkedTasks(Request $request): Response
     {
-        $params = $request->getParameters();
-        if (!isset($params['filter'])) {
-            $params['filter'] = [];
-        }
-        $params['filter']['project'] = $request->getAttributes()['project_id'];
-        return Search::searchBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $params);
+
+        $filter = $request->hasParameter('filter') ? $request->getParameter('filter') : '';
+        $filter .= ';project.id==' . $request->getAttributes()['project_id'];
+        $request->setParameter('filter', $filter);
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/{project_id}/Task', methods: ['POST'])]
@@ -395,7 +398,7 @@ final class ProjectController extends AbstractController
     #[Doc\Route(description: 'Create a new task', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'ProjectTask',
         ],
     ])]
@@ -403,6 +406,6 @@ final class ProjectController extends AbstractController
     {
         $params = $request->getParameters();
         $params['project'] = $request->getAttributes()['project_id'];
-        return Search::createBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $params, [self::class, 'getTask']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('ProjectTask', $this->getAPIVersion($request)), $params, [self::class, 'getTask']);
     }
 }

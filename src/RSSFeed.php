@@ -32,11 +32,14 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\RichText\RichText;
 use Glpi\Toolbox\URL;
+use Psr\SimpleCache\CacheInterface;
+use Safe\Exceptions\UrlException;
 use SimplePie\SimplePie;
+
+use function Safe\parse_url;
 
 /**
  * RSSFeed Class
@@ -450,7 +453,7 @@ class RSSFeed extends CommonDBVisible implements ExtraVisibilityCriteria
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
@@ -458,19 +461,19 @@ class RSSFeed extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch (get_class($item)) {
-            case RSSFeed::class:
-                switch ($tabnum) {
-                    case 1:
-                        $item->showFeedContent();
-                        return true;
-
-                    case 2:
-                        $item->showVisibility();
-                        return true;
-                }
+        if (!$item instanceof self) {
+            return false;
         }
-        return false;
+        switch ($tabnum) {
+            case 1:
+                return $item->showFeedContent();
+
+            case 2:
+                return $item->showVisibility();
+
+            default:
+                return false;
+        }
     }
 
     public function prepareInputForAdd($input)
@@ -539,7 +542,9 @@ class RSSFeed extends CommonDBVisible implements ExtraVisibilityCriteria
      */
     private function checkUrlInput(string $url): bool
     {
-        if (parse_url($url) === false) {
+        try {
+            parse_url($url);
+        } catch (UrlException $e) {
             Session::addMessageAfterRedirect(__s('Feed URL is invalid.'), false, ERROR);
             return false;
         }
@@ -628,7 +633,7 @@ TWIG, ['msg' => __('Check permissions to the directory: %s', GLPI_RSS_DIR)]);
     /**
      * Show the feed content
      **/
-    public function showFeedContent()
+    public function showFeedContent(): bool
     {
         if (!$this->canViewItem()) {
             return false;
@@ -657,6 +662,8 @@ TWIG, ['msg' => __('Check permissions to the directory: %s', GLPI_RSS_DIR)]);
         TemplateRenderer::getInstance()->display('components/rss_feed.html.twig', [
             'rss_feed'  => $rss_feed,
         ]);
+
+        return true;
     }
 
     /**
@@ -669,7 +676,7 @@ TWIG, ['msg' => __('Check permissions to the directory: %s', GLPI_RSS_DIR)]);
      **/
     public static function getRSSFeed($url, $cache_duration = DAY_TIMESTAMP)
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         // Fetch feed data, unless it is already cached
@@ -762,7 +769,7 @@ TWIG, ['msg' => __('Check permissions to the directory: %s', GLPI_RSS_DIR)]);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 

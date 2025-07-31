@@ -32,13 +32,16 @@
  *
  * ---------------------------------------------------------------------
  */
+use Glpi\Features\Clonable;
+
+use function Safe\strtotime;
 
 /**
  * Calendar Class
  **/
 class Calendar extends CommonDropdown
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -94,8 +97,8 @@ class Calendar extends CommonDropdown
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'duplicate'] = _sx('button', 'Duplicate');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'addholiday'] = __s('Add a close time');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'duplicate'] = _sx('button', 'Duplicate');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'addholiday'] = __s('Add a close time');
         }
         return $actions;
     }
@@ -130,7 +133,7 @@ class Calendar extends CommonDropdown
 
         switch ($ma->getAction()) {
             case 'duplicate': // For calendar duplicate in another entity
-                if (Toolbox::hasTrait($item, \Glpi\Features\Clonable::class)) {
+                if (Toolbox::hasTrait($item, Clonable::class)) {
                     $input = $ma->getInput();
                     $options = [];
                     if ($item->isEntityAssign()) {
@@ -259,13 +262,15 @@ class Calendar extends CommonDropdown
 
 
     /**
-     * Get active time between to date time for the active calendar
+     * Seconds elapsed between two dates
+     *
+     * Taking opening hours into account unless param $include_inactive_time is true
      *
      * @param string $start                 begin datetime
      * @param string $end                   end datetime
      * @param bool   $include_inactive_time true to just get the time passed between start time and end time
      *
-     * @return int timestamp of delay
+     * @return int seconds elapsed between the two dates, taking opening hours into account.
      *
      * @FIXME Remove `$include_inactive_time` parameter in GLPI 11.0. It does not seems to be used and makes no sense.
      */

@@ -16,8 +16,10 @@ use Symfony\Component\Serializer\SerializerAwareTrait;
 
 /**
  * @author Jordi Boggiano <j.boggiano@seld.be>
+ *
+ * @final since Symfony 6.3
  */
-final class CustomNormalizer implements NormalizerInterface, DenormalizerInterface, SerializerAwareInterface
+class CustomNormalizer implements NormalizerInterface, DenormalizerInterface, SerializerAwareInterface, CacheableSupportsMethodInterface
 {
     use ObjectToPopulateTrait;
     use SerializerAwareTrait;
@@ -25,8 +27,8 @@ final class CustomNormalizer implements NormalizerInterface, DenormalizerInterfa
     public function getSupportedTypes(?string $format): array
     {
         return [
-            NormalizableInterface::class => true,
-            DenormalizableInterface::class => true,
+            NormalizableInterface::class => __CLASS__ === static::class || $this->hasCacheableSupportsMethod(),
+            DenormalizableInterface::class => __CLASS__ === static::class || $this->hasCacheableSupportsMethod(),
         ];
     }
 
@@ -46,10 +48,11 @@ final class CustomNormalizer implements NormalizerInterface, DenormalizerInterfa
     /**
      * Checks if the given class implements the NormalizableInterface.
      *
-     * @param mixed       $data   Data to normalize
-     * @param string|null $format The format being (de-)serialized from or into
+     * @param mixed       $data    Data to normalize
+     * @param string|null $format  The format being (de-)serialized from or into
+     * @param array       $context
      */
-    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
+    public function supportsNormalization(mixed $data, ?string $format = null /* , array $context = [] */): bool
     {
         return $data instanceof NormalizableInterface;
     }
@@ -57,12 +60,23 @@ final class CustomNormalizer implements NormalizerInterface, DenormalizerInterfa
     /**
      * Checks if the given class implements the DenormalizableInterface.
      *
-     * @param mixed       $data   Data to denormalize from
-     * @param string      $type   The class to which the data should be denormalized
-     * @param string|null $format The format being deserialized from
+     * @param mixed       $data    Data to denormalize from
+     * @param string      $type    The class to which the data should be denormalized
+     * @param string|null $format  The format being deserialized from
+     * @param array       $context
      */
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null, array $context = []): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null /* , array $context = [] */): bool
     {
         return is_subclass_of($type, DenormalizableInterface::class);
+    }
+
+    /**
+     * @deprecated since Symfony 6.3, use "getSupportedTypes()" instead
+     */
+    public function hasCacheableSupportsMethod(): bool
+    {
+        trigger_deprecation('symfony/serializer', '6.3', 'The "%s()" method is deprecated, implement "%s::getSupportedTypes()" instead.', __METHOD__, get_debug_type($this));
+
+        return __CLASS__ === static::class;
     }
 }

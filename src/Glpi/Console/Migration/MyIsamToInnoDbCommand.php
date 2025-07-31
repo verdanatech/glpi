@@ -37,6 +37,7 @@ namespace Glpi\Console\Migration;
 
 use Glpi\Console\AbstractCommand;
 use Glpi\Console\Command\ConfigurationCommandInterface;
+use Glpi\Console\Exception\EarlyExitException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -92,9 +93,7 @@ class MyIsamToInnoDbCommand extends AbstractCommand implements ConfigurationComm
             }
             sort($tables);
 
-            $progress_message = function (string $table) {
-                return sprintf(__('Migrating table "%s"...'), $table);
-            };
+            $progress_message = (fn(string $table) => sprintf(__('Migrating table "%s"...'), $table));
 
             foreach ($this->iterate($tables, $progress_message) as $table) {
                 $result = $this->db->doQuery(sprintf('ALTER TABLE %s ENGINE = InnoDB', $this->db->quoteName($table)));
@@ -116,7 +115,7 @@ class MyIsamToInnoDbCommand extends AbstractCommand implements ConfigurationComm
         }
 
         if ($errors) {
-            throw new \Glpi\Console\Exception\EarlyExitException(
+            throw new EarlyExitException(
                 '<error>' . __('Errors occurred during migration.') . '</error>',
                 self::ERROR_TABLE_MIGRATION_FAILED
             );

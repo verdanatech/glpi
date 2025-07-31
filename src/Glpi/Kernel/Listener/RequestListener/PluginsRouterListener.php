@@ -40,12 +40,16 @@ use Glpi\DependencyInjection\PublicService;
 use Glpi\Kernel\KernelListenerTrait;
 use Glpi\Kernel\ListenersPriority;
 use Plugin;
+use RuntimeException;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Router;
+
+use function Safe\preg_match;
+use function Safe\preg_split;
 
 final readonly class PluginsRouterListener implements EventSubscriberInterface
 {
@@ -74,7 +78,7 @@ final readonly class PluginsRouterListener implements EventSubscriberInterface
         }
 
         $route_matches = [];
-        if (\preg_match('#^/plugins/(?<plugin_key>[^\/]+)(?<plugin_resource>/.+)$#', $request->getPathInfo(), $route_matches) !== 1) {
+        if (preg_match('#^/plugins/(?<plugin_key>[^\/]+)(?<plugin_resource>/.+)$#', $request->getPathInfo(), $route_matches) !== 1) {
             return;
         }
 
@@ -119,18 +123,18 @@ final readonly class PluginsRouterListener implements EventSubscriberInterface
         if (\is_array($controller)) {
             [$class, $method] = $controller;
         } elseif (\str_contains($controller, ':')) {
-            [$class, $method] = \preg_split('~:+~', $controller, 2);
+            [$class, $method] = preg_split('~:+~', $controller, 2);
         } else {
             $class = $controller;
             $method = null;
         }
 
         if (!$class || !\is_string($class)) {
-            throw new \RuntimeException('Wrongly formed controller array');
+            throw new RuntimeException('Wrongly formed controller array');
         }
 
         if (!$this->plugin_container->has($class)) {
-            throw new \RuntimeException(\sprintf(
+            throw new RuntimeException(\sprintf(
                 'Expected controller class `%s` to be a public service, but did not find it in the service container.'
                     . ' You should either implement the `%s` interface, or extend the `%s` abstract class.',
                 $class,
@@ -139,20 +143,7 @@ final readonly class PluginsRouterListener implements EventSubscriberInterface
             ));
         }
 
-        try {
-            // Try to instantiate without any parameters
-            $object = new $class();
-        } catch (\Error) {
-            // Try to load the service from the DI container
-            $object = $this->plugin_container->get($class);
-        }
-
-        if (!\is_callable($object)) {
-            return \sprintf(
-                'Controller class `%s` cannot be called without a method name. You need to implement the `__invoke()` method, or add your route parameters on a public method with the `Route` attribute.',
-                $class
-            );
-        }
+        $object = $this->plugin_container->get($class);
 
         return $method ? [$object, $method] : $object;
     }

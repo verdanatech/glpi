@@ -32,13 +32,16 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Debug\Profiler;
 use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Exception\Http\NotFoundHttpException;
 use Glpi\Plugin\Hooks;
+use Glpi\Search\CriteriaFilter;
 use Glpi\Search\FilterableInterface;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\parse_url;
 
 /**
  *  Common GLPI object
@@ -128,13 +131,13 @@ class CommonGLPI implements CommonGLPIInterface
     }
 
     /**
-     * Return the type of the object : class name
+     * Return the type of the object: class name
      *
      * @return string
      **/
     public static function getType()
     {
-        return get_called_class();
+        return static::class;
     }
 
     /**
@@ -296,7 +299,7 @@ class CommonGLPI implements CommonGLPIInterface
         $this->addImpactTab($ong, $options);
 
         if ($this instanceof FilterableInterface) {
-            $this->addStandardTab(Glpi\Search\CriteriaFilter::class, $ong, $options);
+            $this->addStandardTab(CriteriaFilter::class, $ong, $options);
         }
 
         return $ong;
@@ -327,7 +330,7 @@ class CommonGLPI implements CommonGLPIInterface
 
         // Object with class with 'addtabon' attribute
         if (!$this->isNewItem()) {
-            $othertabs = self::getOtherTabs($this->getType());
+            $othertabs = self::getOtherTabs(static::getType());
             foreach ($othertabs as $typetab) {
                 $this->addStandardTab($typetab, $onglets, $options);
             }
@@ -599,7 +602,7 @@ class CommonGLPI implements CommonGLPIInterface
     public static function getHeaderParameters(): array
     {
         return [
-            static::getTypeName(\Session::getPluralNumber()),
+            static::getTypeName(Session::getPluralNumber()),
             '',
             ...static::getSectorizedDetails(),
         ];
@@ -676,9 +679,9 @@ class CommonGLPI implements CommonGLPIInterface
                     $options['tabnum'] = $tabnum;
                     $options['itemtype'] = $itemtype;
                     Plugin::doHook(Hooks::PRE_SHOW_TAB, [ 'item' => $item, 'options' => &$options]);
-                    \Glpi\Debug\Profiler::getInstance()->start(get_class($obj) . '::displayTabContentForItem');
+                    Profiler::getInstance()->start(get_class($obj) . '::displayTabContentForItem');
                     $ret = $obj->displayTabContentForItem($item, $tabnum, $withtemplate);
-                    \Glpi\Debug\Profiler::getInstance()->stop(get_class($obj) . '::displayTabContentForItem');
+                    Profiler::getInstance()->stop(get_class($obj) . '::displayTabContentForItem');
 
                     Plugin::doHook(Hooks::POST_SHOW_TAB, ['item' => $item, 'options' => $options]);
                     return $ret;
@@ -725,10 +728,11 @@ class CommonGLPI implements CommonGLPIInterface
      * @param integer $nb   number of items (default 0)
      * @param class-string<CommonGLPI>|null $form_itemtype
      * @param string $icon
+     * @param ?integer $total_nb
      *
      *  @return string The tab text (including icon and counter if applicable)
      **/
-    public static function createTabEntry($text, $nb = 0, ?string $form_itemtype = null, string $icon = '')
+    public static function createTabEntry($text, $nb = 0, ?string $form_itemtype = null, string $icon = '', ?int $total_nb = null)
     {
         if ($icon === '') {
             $icon = static::getTabIconClass($form_itemtype);
@@ -738,7 +742,11 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
         $icon_html = $icon !== '' ? sprintf('<i class="%s me-2"></i>', htmlescape($icon)) : '';
-        $counter_html = $nb !== 0 ? sprintf(' <span class="badge glpi-badge">%d</span>', (int) $nb) : '';
+        $counter_html = '';
+        if ($nb > 0) {
+            $badge_content = $total_nb !== null ? "$nb/$total_nb" : "$nb";
+            $counter_html = sprintf(' <span class="badge glpi-badge">%s</span>', $badge_content);
+        }
 
         return sprintf(
             '<span class="d-flex align-items-center">%s%s%s</span>',
@@ -813,7 +821,7 @@ class CommonGLPI implements CommonGLPIInterface
      **/
     public static function getTabsURL($full = true)
     {
-        return Toolbox::getItemTypeTabsURL(get_called_class(), $full);
+        return Toolbox::getItemTypeTabsURL(static::class, $full);
     }
 
     /**
@@ -825,7 +833,7 @@ class CommonGLPI implements CommonGLPIInterface
      **/
     public static function getSearchURL($full = true)
     {
-        return Toolbox::getItemTypeSearchURL(get_called_class(), $full);
+        return Toolbox::getItemTypeSearchURL(static::class, $full);
     }
 
     /**
@@ -837,7 +845,7 @@ class CommonGLPI implements CommonGLPIInterface
      **/
     public static function getFormURL($full = true)
     {
-        return Toolbox::getItemTypeFormURL(get_called_class(), $full);
+        return Toolbox::getItemTypeFormURL(static::class, $full);
     }
 
     /**
@@ -916,7 +924,7 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
         if (count($onglets)) {
-            $tabs_url   = $this->getTabsURL();
+            $tabs_url   = static::getTabsURL();
             $parsed_url = parse_url($tabs_url);
             $tab_path   = $parsed_url['path'];
             $tab_params = [];
@@ -930,7 +938,7 @@ class CommonGLPI implements CommonGLPIInterface
                 $tab_params,
                 [
                     '_target' => $target,
-                    '_itemtype' => $this->getType(),
+                    '_itemtype' => static::getType(),
                     'id' => $ID,
                 ]
             );
@@ -943,7 +951,7 @@ class CommonGLPI implements CommonGLPIInterface
                 }
                 $tabs[$key] = ['title'  => $val,
                     'url'    => $tab_path,
-                    'params' => Toolbox::append_params(['_glpi_tab' => $key] + $tab_params, '&amp;'),
+                    'params' => Toolbox::append_params(['_glpi_tab' => $key] + $tab_params, '&'),
                 ];
             }
 
@@ -955,7 +963,7 @@ class CommonGLPI implements CommonGLPIInterface
             ) {
                 $tabs[-1] = ['title'  => static::createTabEntry(__('All'), 0, null, 'ti ti-layout-list'),
                     'url'    => $tab_path,
-                    'params' => Toolbox::append_params(['_glpi_tab' => '-1'] + $tab_params, '&amp;'),
+                    'params' => Toolbox::append_params(['_glpi_tab' => '-1'] + $tab_params, '&'),
                 ];
             }
 
@@ -963,7 +971,7 @@ class CommonGLPI implements CommonGLPIInterface
                 'tabspanel',
                 'tabcontent',
                 $tabs,
-                $this->getType(),
+                static::getType(),
                 $ID,
                 $this->taborientation,
                 $options
@@ -1014,18 +1022,18 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
         if (
-            !$this->isNewID($ID)
-            && $this->getType()
+            !static::isNewID($ID)
+            && static::getType()
             && $this->displaylist
         ) {
-            $glpilistitems = & $_SESSION['glpilistitems'][$this->getType()];
-            $glpilisttitle = & $_SESSION['glpilisttitle'][$this->getType()];
-            $glpilisturl   = & $_SESSION['glpilisturl'][$this->getType()];
+            $glpilistitems = & $_SESSION['glpilistitems'][static::getType()];
+            $glpilisttitle = & $_SESSION['glpilisttitle'][static::getType()];
+            $glpilisturl   = & $_SESSION['glpilisturl'][static::getType()];
             if ($this instanceof CommonDBChild && $parent = $this->getItem(true, false)) {
                 $glpilisturl = $parent::getFormURLWithID($parent->fields['id'], true);
             }
             if (empty($glpilisturl)) {
-                $glpilisturl = $this->getSearchURL();
+                $glpilisturl = static::getSearchURL();
             }
 
             $next = $prev = $first = $last = -1;
@@ -1206,7 +1214,7 @@ class CommonGLPI implements CommonGLPIInterface
             if (
                 $this instanceof CommonDBTM
                 && isset($options['id'])
-                && !$this->isNewID($options['id'])
+                && !static::isNewID($options['id'])
             ) {
                 if (!$this->getFromDB($options['id'])) {
                     throw new NotFoundHttpException();
@@ -1236,7 +1244,7 @@ class CommonGLPI implements CommonGLPIInterface
         echo "<div class='row'>";
         if ($this instanceof CommonDBTM) {
             TemplateRenderer::getInstance()->display('layout/parts/saved_searches.html.twig', [
-                'itemtype' => $this->getType(),
+                'itemtype' => static::getType(),
             ]);
         }
         echo "<div class='col'>";
@@ -1280,7 +1288,7 @@ class CommonGLPI implements CommonGLPIInterface
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1294,7 +1302,7 @@ class CommonGLPI implements CommonGLPIInterface
             'FROM'   => KnowbaseItem::getTable(),
             'WHERE'  => [
                 KnowbaseItem_Item::getTable() . '.items_id'  => $this->fields['id'],
-                KnowbaseItem_Item::getTable() . '.itemtype'  => $this->getType(),
+                KnowbaseItem_Item::getTable() . '.itemtype'  => static::getType(),
             ],
             'INNER JOIN'   => [
                 KnowbaseItem_Item::getTable() => [
@@ -1321,7 +1329,7 @@ class CommonGLPI implements CommonGLPIInterface
             $kbitem->getFromDB(reset($found_kbitem)['id']);
             $ret .= "<div class='faqadd_block'>";
             $ret .= "<label for='display_faq_chkbox$rand'>";
-            $ret .= "<i class='ti ti-zoom-question'></i>";
+            $ret .= "<i class='ti ti-zoom-question cursor-pointer'></i>";
             $ret .= "</label>";
             $ret .= "<input type='checkbox'  class='display_faq_chkbox' id='display_faq_chkbox$rand'>";
             $ret .= "<div class='faqadd_entries' style='position:relative;'>";

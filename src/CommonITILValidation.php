@@ -39,6 +39,8 @@ use Glpi\DBAL\QuerySubQuery;
 use Glpi\RichText\RichText;
 use Glpi\RichText\UserMention;
 
+use function Safe\json_encode;
+
 /**
  * CommonITILValidation Class
  *
@@ -72,8 +74,19 @@ abstract class CommonITILValidation extends CommonDBChild
         return str_replace('Validation', '', static::class);
     }
 
+    public static function getItilObjectItemInstance(): CommonITILObject
+    {
+        $class = static::getItilObjectItemType();
+
+        if (!is_a($class, CommonITILObject::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $class();
+    }
+
     /**
-     * @return class-string<\ITIL_ValidationStep>|null
+     * @return class-string<ITIL_ValidationStep>|null
      */
     public static function getValidationStepClassName(): ?string
     {
@@ -83,6 +96,13 @@ abstract class CommonITILValidation extends CommonDBChild
         }
 
         return null;
+    }
+
+    public static function getValidationStepInstance(): ?ITIL_ValidationStep
+    {
+        $class = self::getValidationStepClassName();
+
+        return $class ? getItemForItemtype($class) : null;
     }
 
     public static function getCreateRights()
@@ -209,7 +229,7 @@ abstract class CommonITILValidation extends CommonDBChild
      **/
     public static function canValidate($items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -230,7 +250,7 @@ abstract class CommonITILValidation extends CommonDBChild
      */
     final public function canAnswer(): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -349,7 +369,7 @@ abstract class CommonITILValidation extends CommonDBChild
 
         $itilobject = $this->getItem();
         if (!($itilobject instanceof CommonITILObject)) {
-            throw new \RuntimeException();
+            throw new RuntimeException();
         }
 
         // Handle rich-text images
@@ -428,22 +448,21 @@ abstract class CommonITILValidation extends CommonDBChild
         // Don't allow changing internal entity fields or change the item it is attached to
         $forbid_fields = ['entities_id', static::$items_id, 'is_recursive'];
         // The following fields shouldn't be changed by anyone after the approval is created
-        array_push(
-            $forbid_fields,
-            'itils_validationsteps_id',
-            'users_id',
-            'itemtype_target',
-            'items_id_target',
-            'submission_date'
-        );
+        $forbid_fields[] = 'itils_validationsteps_id';
+        $forbid_fields[] = 'users_id';
+        $forbid_fields[] = 'itemtype_target';
+        $forbid_fields[] = 'items_id_target';
+        $forbid_fields[] = 'submission_date';
 
         if (!$can_answer) {
-            array_push($forbid_fields, 'status', 'comment_validation', 'validation_date');
+            $forbid_fields[] = 'status';
+            $forbid_fields[] = 'comment_validation';
+            $forbid_fields[] = 'validation_date';
         }
 
         if ($this->fields["status"] !== self::WAITING) {
             // Cannot change the approval request comment after it has been answered
-            array_push($forbid_fields, 'comment_submission');
+            $forbid_fields[] = 'comment_submission';
         }
 
         foreach ($forbid_fields as $key) {
@@ -531,7 +550,7 @@ abstract class CommonITILValidation extends CommonDBChild
             ];
 
             if (!$item->update($input)) {
-                throw new \RuntimeException(sprintf('Failed to update related `%s` approval status.', $item::class));
+                throw new RuntimeException(sprintf('Failed to update related `%s` approval status.', $item::class));
             }
         }
     }
@@ -742,7 +761,7 @@ abstract class CommonITILValidation extends CommonDBChild
      **/
     public static function getNumberToValidate($users_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $itil_class = static::getItilObjectItemType();
@@ -990,7 +1009,7 @@ abstract class CommonITILValidation extends CommonDBChild
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1024,7 +1043,7 @@ abstract class CommonITILValidation extends CommonDBChild
         foreach ($validation_steps_iterator as $validation_step_data) {
             $validation_step_id = $validation_step_data['id'];
 
-            $validation_step = new $validation_steps_classname();
+            $validation_step = static::getValidationStepInstance();
             $validation_step->getFromDB($validation_step_id);
 
             $step_name          = Dropdown::getDropdownName(ValidationStep::getTable(), $validation_step_data['validationsteps_id']);
@@ -1111,7 +1130,7 @@ abstract class CommonITILValidation extends CommonDBChild
                     'waiting_percent'    => $step_achievements[self::WAITING],
                     'step_threshold'     => $step_threshold,
                     'edit_dialog_params' => $edit_dialog_params,
-                    'edit_button_label'  => __('Edit validation step'),
+                    'edit_button_label'  => __('Edit approval step'),
                     'progress_label'     => __('Progress: %1$s%% of %2$s%% required'),
                 ]
             );
@@ -1279,7 +1298,7 @@ HTML;
             $this->check(-1, CREATE, $options);
         }
 
-        /** @var \CommonITILObject $itil */
+        /** @var CommonITILObject $itil */
         $itil = $this->getItem();
 
         $ivs = $itil::getValidationStepInstance();
@@ -1822,6 +1841,7 @@ HTML;
             'rand'                => $params['rand'],
             'width'               => $params['width'],
             'required'            => $params['required'],
+            'aria_label'          => __('Approver type'),
         ]);
 
         if ($validatortype) {
@@ -2041,7 +2061,7 @@ HTML;
         if (!$itil_validationstep->getFromDBByCrit($relation_fields)) {
             $validationstep = new ValidationStep();
             if (!$validationstep->getFromDB($input['_validationsteps_id'])) {
-                throw new \RuntimeException();
+                throw new RuntimeException();
             };
 
             $step_input = $relation_fields + [
@@ -2049,7 +2069,7 @@ HTML;
             ];
 
             if (!$itil_validationstep->add($step_input)) {
-                throw new \RuntimeException();
+                throw new RuntimeException();
             }
         }
 
@@ -2077,7 +2097,7 @@ HTML;
 
         $itil_validationstep = static::getItilObjectItemType()::getValidationStepInstance();
         if (!$itil_validationstep->delete(['id' => $itils_validationsteps_id])) {
-            throw new \RuntimeException('Failed to delete unused approval step.');
+            throw new RuntimeException('Failed to delete unused approval step.');
         };
     }
 
@@ -2085,7 +2105,7 @@ HTML;
     {
         $itil_object = $this->getItem();
         if (!($itil_object instanceof CommonITILObject)) {
-            throw new \RuntimeException();
+            throw new RuntimeException();
         }
 
         $update = $itil_object->update([
@@ -2094,7 +2114,7 @@ HTML;
             '_from_itilvalidation' => true,
         ]);
         if (!$update) {
-            throw new \RuntimeException('Failed to update Itil global approval status.');
+            throw new RuntimeException('Failed to update Itil global approval status.');
         }
     }
 }

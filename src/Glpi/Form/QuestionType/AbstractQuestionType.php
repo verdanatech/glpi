@@ -36,11 +36,12 @@
 namespace Glpi\Form\QuestionType;
 
 use Glpi\DBAL\JsonFieldInterface;
-use Glpi\Form\Export\Context\DatabaseMapper;
-use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Condition\ConditionHandler\ConditionHandlerInterface;
 use Glpi\Form\Condition\ConditionHandler\VisibilityConditionHandler;
+use Glpi\Form\Export\Context\DatabaseMapper;
+use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Question;
+use InvalidArgumentException;
 use Override;
 
 abstract class AbstractQuestionType implements QuestionTypeInterface
@@ -62,7 +63,7 @@ abstract class AbstractQuestionType implements QuestionTypeInterface
     #[Override]
     public function validateExtraDataInput(array $input): bool
     {
-        return empty($input); // No extra data by default
+        return $input === []; // No extra data by default
     }
 
     #[Override]
@@ -91,11 +92,17 @@ abstract class AbstractQuestionType implements QuestionTypeInterface
     }
 
     #[Override]
+    public function renderAdvancedConfigurationTemplate(?Question $question): ?string
+    {
+        return null; // No advanced configuration by default
+    }
+
+    #[Override]
     public function formatRawAnswer(mixed $answer, Question $question): string
     {
         // By default only return the string answer
         if (!is_string($answer) && !is_numeric($answer)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Raw answer must be a string or a method must be implemented to format the answer'
             );
         }
@@ -137,7 +144,7 @@ abstract class AbstractQuestionType implements QuestionTypeInterface
     public function getExtraDataConfig(array $serialized_data): ?JsonFieldInterface
     {
         $config_class = $this->getExtraDataConfigClass();
-        if ($config_class === null || empty($serialized_data)) {
+        if ($config_class === null || $serialized_data === []) {
             return null;
         }
 
@@ -154,7 +161,7 @@ abstract class AbstractQuestionType implements QuestionTypeInterface
     public function getDefaultValueConfig(array $serialized_data): ?JsonFieldInterface
     {
         $config_class = $this->getDefaultValueConfigClass();
-        if ($config_class === null || empty($serialized_data)) {
+        if ($config_class === null || $serialized_data === []) {
             return null;
         }
 

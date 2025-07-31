@@ -53,27 +53,27 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
     /**
      * Data used during add/update process to handle CommonImplicitTreeDropdown ancestors/sons.
-     * @var array
+     * @var ?array
      */
     private $data_for_implicit_update;
 
     /**
      * Computed address.
      * Used for caching purpose.
-     * @var IPAddress
+     * @var ?IPAddress
      */
     private $address;
 
     /**
      * Computed netmask.
      * Used for caching purpose.
-     * @var IPNetmask
+     * @var ?IPNetmask
      */
     private $netmask;
     /**
      * Computed gateway.
      * Used for caching purpose.
-     * @var IPAddress
+     * @var ?IPAddress
      */
     private $gateway;
 
@@ -83,52 +83,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
      * @var bool
      */
     private $networkUpdate;
-
-    public function __get(string $property)
-    {
-        // TODO Deprecate read access to all variables in GLPI 11.0.
-        $value = null;
-        switch ($property) {
-            case 'address':
-            case 'data_for_implicit_update':
-            case 'gateway':
-            case 'netmask':
-            case 'networkUpdate':
-                $value = $this->$property;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-        return $value;
-    }
-
-    public function __set(string $property, $value)
-    {
-        switch ($property) {
-            case 'address':
-            case 'data_for_implicit_update':
-            case 'gateway':
-            case 'netmask':
-                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', __CLASS__, $property));
-                // no break is intentionnal
-            case 'networkUpdate':
-                // TODO Deprecate write access to variable in GLPI 11.0.
-                $this->$property = $value;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-    }
 
     public static function getTypeName($nb = 0)
     {
@@ -509,7 +463,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
         parent::post_addItem();
 
-        $this->networkUpdate = null;
+        $this->networkUpdate = false;
         $this->data_for_implicit_update = null;
     }
 
@@ -632,7 +586,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $recursive = true,
         $version = 0
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($relation)) {
@@ -814,7 +768,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
      **/
     public function getCriteriaForMatchingElement($tableName, $binaryFieldPrefix, $versionField)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $version = $this->fields["version"];
@@ -1057,14 +1011,14 @@ class IPNetwork extends CommonImplicitTreeDropdown
             return;
         }
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
         $content     = self::getTypeName();
         $this_header = $base->addHeader($column_name, $content, $super, $father);
-        $this_header->setItemType(__CLASS__);
+        $this_header->setItemType(self::class);
     }
 
 
@@ -1093,12 +1047,12 @@ class IPNetwork extends CommonImplicitTreeDropdown
             return;
         }
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
-        $header = $row->getGroup()->getHeaderByName('Internet', __CLASS__);
+        $header = $row->getGroup()->getHeaderByName('Internet', self::class);
         if (!$header) {
             return;
         }

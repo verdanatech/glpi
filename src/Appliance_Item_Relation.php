@@ -35,6 +35,8 @@
 
 use Glpi\DBAL\QueryExpression;
 
+use function Safe\json_encode;
+
 class Appliance_Item_Relation extends CommonDBRelation
 {
     public static $itemtype_1 = 'Appliance_Item';
@@ -178,7 +180,7 @@ class Appliance_Item_Relation extends CommonDBRelation
      */
     public static function getForApplianceItem(int $appliances_items_id = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -192,7 +194,7 @@ class Appliance_Item_Relation extends CommonDBRelation
         $relations = [];
         foreach ($iterator as $row) {
             $itemtype = $row['itemtype'];
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
             $item->getFromDB($row['items_id']);
             $relations[$row['id']] = "<i class='" . $item->getIcon() . "' title='" . htmlescape($item::getTypeName(1)) . "'></i>" .
                         "&nbsp;" . htmlescape($item::getTypeName(1)) .

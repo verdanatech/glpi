@@ -32,8 +32,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Features\Clonable;
+
+use function Safe\mktime;
 
 /**
  * Cartridge class.
@@ -43,7 +45,7 @@ use Glpi\Application\View\TemplateRenderer;
  **/
 class Cartridge extends CommonDBRelation
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     protected static $forward_entity_to = ['Infocom'];
@@ -235,7 +237,7 @@ class Cartridge extends CommonDBRelation
      */
     public function backToStock(array $input, $history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->update(
@@ -266,7 +268,7 @@ class Cartridge extends CommonDBRelation
      **/
     public function install($pID, $tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Get first unused cartridge
@@ -319,7 +321,7 @@ class Cartridge extends CommonDBRelation
      **/
     public function uninstall($ID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($this->getFromDB($ID)) {
@@ -516,7 +518,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getTotalNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $row = $DB->request([
@@ -538,7 +540,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getTotalNumberForPrinter($pID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $row = $DB->request([
@@ -558,7 +560,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getUsedNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $row = $DB->request([
@@ -587,7 +589,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getUsedNumberForPrinter($pID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -611,7 +613,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getOldNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -636,7 +638,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getOldNumberForPrinter($pID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -659,7 +661,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function getUnusedNumber($tID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -682,7 +684,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      */
     public static function getStockTarget(int $tID): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $it = $DB->request([
@@ -706,7 +708,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      */
     public static function getAlarmThreshold(int $tID): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $it = $DB->request([
@@ -748,7 +750,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
      **/
     public static function showForCartridgeItem(CartridgeItem $cartitem, $show_old = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $tID = $cartitem->getField('id');
@@ -821,7 +823,7 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
         }
         $massiveactionparams = ['num_displayed'    => min($_SESSION['glpilist_limit'], $number),
             'specific_actions' => $actions,
-            'container'        => 'mass' . __CLASS__ . $rand,
+            'container'        => 'mass' . self::class . $rand,
             'rand'             => $rand,
         ];
 
@@ -844,15 +846,15 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
                 }
                 $tmp_dbeg       = explode("-", $data["date_in"]);
                 $tmp_dend       = explode("-", $data["date_use"]);
-                $stock_time_tmp = mktime(0, 0, 0, $tmp_dend[1], $tmp_dend[2], $tmp_dend[0])
-                             - mktime(0, 0, 0, $tmp_dbeg[1], $tmp_dbeg[2], $tmp_dbeg[0]);
+                $stock_time_tmp = mktime(0, 0, 0, (int) $tmp_dend[1], (int) $tmp_dend[2], (int) $tmp_dend[0])
+                             - mktime(0, 0, 0, (int) $tmp_dbeg[1], (int) $tmp_dbeg[2], (int) $tmp_dbeg[0]);
                 $stock_time    += $stock_time_tmp;
             }
             if ($show_old) {
                 $tmp_dbeg      = explode("-", $data["date_use"]);
                 $tmp_dend      = explode("-", $data["date_out"]);
-                $use_time_tmp  = mktime(0, 0, 0, $tmp_dend[1], $tmp_dend[2], $tmp_dend[0])
-                             - mktime(0, 0, 0, $tmp_dbeg[1], $tmp_dbeg[2], $tmp_dbeg[0]);
+                $use_time_tmp  = mktime(0, 0, 0, (int) $tmp_dend[1], (int) $tmp_dend[2], (int) $tmp_dend[0])
+                             - mktime(0, 0, 0, (int) $tmp_dbeg[1], (int) $tmp_dbeg[2], (int) $tmp_dbeg[0]);
                 $use_time     += $use_time_tmp;
             }
 
@@ -889,10 +891,10 @@ TWIG, ['counts' => $counts, 'highlight' => $highlight]);
             if ($nb_pages_printed === 0) {
                 $nb_pages_printed = 1;
             }
-            $time_stock = round($stock_time / $number / 60 / 60 / 24 / 30.5, 1);
-            $avg_stock = __('Average time in stock') . "\n" . $time_stock . " " . _n('month', 'months', $time_stock);
-            $time_use = round($use_time / $number / 60 / 60 / 24 / 30.5, 1);
-            $avg_use = __('Average time in use') . "\n" . $time_use . " " . _n('month', 'months', $time_use);
+            $time_stock = round($stock_time / $number / 60 / 60 / 24 / 30.5);
+            $avg_stock = __('Average time in stock') . "\n" . $time_stock . " " . _n('month', 'months', (int) $time_stock);
+            $time_use = round($use_time / $number / 60 / 60 / 24 / 30.5);
+            $avg_use = __('Average time in use') . "\n" . $time_use . " " . _n('month', 'months', (int) $time_use);
             $avg_pages = __('Average number of printed pages') . "\n" . round($pages_printed / max($nb_pages_printed, 1));
             $footers = [['', '', '', $avg_stock, '', $avg_use, $avg_pages]];
         }
@@ -996,7 +998,7 @@ TWIG, $twig_params);
      **/
     public static function showForPrinter(Printer $printer, $old = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $instID = $printer->getField('id');
@@ -1115,12 +1117,12 @@ TWIG, ['printer_id' => $printer->getID()]);
         $pages = $printer->fields['init_pages_counter'];
         if (!$old) {
             $actions = [
-                __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall' => __('End of life'),
-                __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'backtostock' => __('Back to stock'),
+                self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall' => __('End of life'),
+                self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'backtostock' => __('Back to stock'),
             ];
         } else {
             $actions = [
-                __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'updatepages' => __('Update printer counter'),
+                self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'updatepages' => __('Update printer counter'),
                 'purge' => _x('button', 'Delete permanently'),
             ];
         }
@@ -1146,14 +1148,14 @@ TWIG, ['printer_id' => $printer->getID()]);
             $tmp_dbeg       = explode("-", $data["date_in"]);
             $tmp_dend       = explode("-", $data["date_use"]);
 
-            $stock_time_tmp = mktime(0, 0, 0, $tmp_dend[1], $tmp_dend[2], $tmp_dend[0])
-                           - mktime(0, 0, 0, $tmp_dbeg[1], $tmp_dbeg[2], $tmp_dbeg[0]);
+            $stock_time_tmp = mktime(0, 0, 0, (int) $tmp_dend[1], (int) $tmp_dend[2], (int) $tmp_dend[0])
+                           - mktime(0, 0, 0, (int) $tmp_dbeg[1], (int) $tmp_dbeg[2], (int) $tmp_dbeg[0]);
             $stock_time    += $stock_time_tmp;
             if ($old) {
                 $tmp_dbeg      = explode("-", $data["date_use"]);
                 $tmp_dend      = explode("-", $data["date_out"]);
-                $use_time_tmp  = mktime(0, 0, 0, $tmp_dend[1], $tmp_dend[2], $tmp_dend[0])
-                              - mktime(0, 0, 0, $tmp_dbeg[1], $tmp_dbeg[2], $tmp_dbeg[0]);
+                $use_time_tmp  = mktime(0, 0, 0, (int) $tmp_dend[1], (int) $tmp_dend[2], (int) $tmp_dend[0])
+                              - mktime(0, 0, 0, (int) $tmp_dbeg[1], (int) $tmp_dbeg[2], (int) $tmp_dbeg[0]);
                 $use_time     += $use_time_tmp;
 
                 if ($pages < $data['pages']) {
@@ -1192,10 +1194,10 @@ TWIG, ['printer_id' => $printer->getID()]);
             $columns['pages_printed'] = __('Printed pages');
 
             if ($number > 0) {
-                $time_stock = round($stock_time / $number / 60 / 60 / 24 / 30.5, 1);
-                $avg_stock = __('Average time in stock') . "\n" . $time_stock . " " . _n('month', 'months', $time_stock);
-                $time_use = round($use_time / $number / 60 / 60 / 24 / 30.5, 1);
-                $avg_use = __('Average time in use') . "\n" . $time_use . " " . _n('month', 'months', $time_use);
+                $time_stock = round($stock_time / $number / 60 / 60 / 24 / 30.5);
+                $avg_stock = __('Average time in stock') . "\n" . $time_stock . " " . _n('month', 'months', (int) $time_stock);
+                $time_use = round($use_time / $number / 60 / 60 / 24 / 30.5);
+                $avg_use = __('Average time in use') . "\n" . $time_use . " " . _n('month', 'months', (int) $time_use);
                 $avg_pages = __('Average number of printed pages') . "\n" . round($pages_printed / max($nb_pages_printed, 1));
                 $footers = [['', '', '', $avg_stock, $avg_use, '', '', $avg_pages]];
             }

@@ -40,6 +40,10 @@ use Glpi\Form\Form;
 use Glpi\Form\Question;
 use Glpi\Form\Section;
 use LogicException;
+use Safe\Exceptions\JsonException;
+use Session;
+
+use function Safe\json_decode;
 
 final class Engine
 {
@@ -156,6 +160,17 @@ final class Engine
                 $result = $strategy->mustBeVisible($conditions_result);
             }
 
+            if ($result === true && $item instanceof Question) {
+                // Questions can have a question type that does not allow its visibility to unauthenticated users.
+                // In this case we must consider that the question is not visible.
+                if (
+                    !$item->getQuestionType()->isAllowedForUnauthenticatedAccess()
+                    && !Session::isAuthenticated()
+                ) {
+                    $result = false;
+                }
+            }
+
             // Cache the result
             $this->visibility_cache[$item_uuid] = $result;
 
@@ -254,10 +269,13 @@ final class Engine
             case Type::QUESTION:
                 $question = Question::getByUuid($condition->getItemUuid());
                 $item = $question->getQuestionType();
-                $raw_config = json_decode($question->fields['extra_data'] ?? '', true);
-                $config = $raw_config ? $item->getExtraDataConfig($raw_config) : null;
+                try {
+                    $raw_config = json_decode($question->fields['extra_data'] ?? '', true);
+                    $config = $item->getExtraDataConfig($raw_config);
+                } catch (JsonException $e) {
+                    $config = null;
+                }
                 $answer = $this->input->getAnswers()[$question->getID()] ?? null;
-
                 break;
             case Type::SECTION:
                 $item = Section::getByUuid($condition->getItemUuid());

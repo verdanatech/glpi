@@ -35,11 +35,14 @@
 
 namespace Glpi\Console\Diagnostic;
 
+use DBmysql;
 use Document;
 use Glpi\Console\AbstractCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+
+use function Safe\sha1_file;
 
 final class CheckDocumentsIntegrityCommand extends AbstractCommand
 {
@@ -64,14 +67,12 @@ final class CheckDocumentsIntegrityCommand extends AbstractCommand
         $has_error = false;
 
         // Validate each documents
-        $progress_message = function (array $document_row) {
-            return sprintf(
-                __('Checking document #%s "%s" (%s)...'),
-                $document_row['id'],
-                $document_row['name'],
-                $document_row['filepath']
-            );
-        };
+        $progress_message = (fn(array $document_row) => sprintf(
+            __('Checking document #%s "%s" (%s)...'),
+            $document_row['id'],
+            $document_row['name'],
+            $document_row['filepath']
+        ));
 
         $count = $this->countDocuments();
         foreach ($this->iterate($data, $progress_message, $count) as $document_row) {
@@ -96,7 +97,7 @@ final class CheckDocumentsIntegrityCommand extends AbstractCommand
      */
     protected function getDocuments(): iterable
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $i = 0;

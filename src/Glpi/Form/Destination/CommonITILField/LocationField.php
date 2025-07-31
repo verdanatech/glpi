@@ -39,6 +39,7 @@ use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Destination\AbstractCommonITILFormDestination;
 use Glpi\Form\Destination\AbstractConfigField;
+use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Export\Specification\DataRequirementSpecification;
@@ -68,6 +69,7 @@ final class LocationField extends AbstractConfigField implements DestinationFiel
     #[Override]
     public function renderConfigForm(
         Form $form,
+        FormDestination $destination,
         JsonFieldInterface $config,
         string $input_name,
         array $display_options
@@ -195,7 +197,7 @@ final class LocationField extends AbstractConfigField implements DestinationFiel
                     );
 
                     if ($mapped_item === null) {
-                        throw new InvalidArgumentException("Question not found in a target form");
+                        throw new InvalidArgumentException("Question '{$rawData['location_question']}' not found in a target form");
                     }
 
                     return new LocationFieldConfig(

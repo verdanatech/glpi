@@ -82,7 +82,7 @@ class Group_User extends CommonDBRelation
      **/
     public static function getUserGroups($users_id, $condition = []): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -124,7 +124,7 @@ class Group_User extends CommonDBRelation
      **/
     public static function getGroupUsers($groups_id, $condition = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -247,7 +247,7 @@ class Group_User extends CommonDBRelation
      **/
     private static function showAddUserForm(Group $group, $used_ids, $entityrestrict)
     {
-        $res  = User::getSqlSearchResult(true, "all", $entityrestrict, 0, $used_ids, '', 0, -1, 0, 1);
+        $res  = User::getSqlSearchResult(true, "all", $entityrestrict, 0, $used_ids, '', 0, -1, false, 1);
         $nb = count($res);
         if ($nb) {
             $group_user = new self();
@@ -285,7 +285,7 @@ class Group_User extends CommonDBRelation
         $tree = 0,
         bool $check_entities = true
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Entity restriction for this group, according to user allowed entities
@@ -487,6 +487,7 @@ class Group_User extends CommonDBRelation
             'is_tab' => true,
             'use_pager' => true,
             'nosort' => true,
+            'items_id' => $ID,
             'filters' => $_GET['filters'] ?? [],
             'columns' => [
                 'user' => [
@@ -715,11 +716,11 @@ class Group_User extends CommonDBRelation
             self::getDataForGroup($item, $members, $ids, '', true, false);
 
             // We will also count implicits members from parents groups
-            $parents_members = self::getParentsMembers($item, '');
+            $members = array_merge(
+                $members,
+                self::getParentsMembers($item, '')
+            );
 
-            foreach ($parents_members as $parent) {
-                $members[] = $parent;
-            }
             //TODO The results from this don't seem correct
             //$members = self::clearDuplicatedGroupData($members);
 
@@ -767,7 +768,7 @@ class Group_User extends CommonDBRelation
 
     public function post_addItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::post_addItem();
@@ -793,10 +794,8 @@ class Group_User extends CommonDBRelation
             ]
         );
         $stmt = $DB->prepare($query);
-        $in_transaction = $DB->inTransaction();
-        if (!$in_transaction) {
-            $DB->beginTransaction();
-        }
+        $DB->beginTransaction();
+
         foreach ($users as $user) {
             $users_id  = $user['id'];
             $plannings = importArrayFromDB($user['plannings']);
@@ -820,9 +819,7 @@ class Group_User extends CommonDBRelation
             $DB->executeStatement($stmt);
         }
 
-        if (!$in_transaction) {
-            $DB->commit();
-        }
+        $DB->commit();
         $stmt->close();
 
         // Group cache must be invalidated when a user is added to a group
@@ -831,7 +828,7 @@ class Group_User extends CommonDBRelation
 
     public function post_purgeItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::post_purgeItem();
@@ -880,10 +877,7 @@ class Group_User extends CommonDBRelation
             ]
         );
         $stmt = $DB->prepare($query);
-        $in_transaction = $DB->inTransaction();
-        if (!$in_transaction) {
-            $DB->beginTransaction();
-        }
+        $DB->beginTransaction();
         foreach ($users as $user) {
             $users_id  = $user['id'];
             $plannings = importArrayFromDB($user['plannings']);
@@ -902,9 +896,7 @@ class Group_User extends CommonDBRelation
             $DB->executeStatement($stmt);
         }
 
-        if (!$in_transaction) {
-            $DB->commit();
-        }
+        $DB->commit();
         $stmt->close();
 
         // Group cache must be invalidated when a user is remove from a group

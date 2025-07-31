@@ -35,6 +35,15 @@
 
 namespace Glpi\Debug;
 
+use Session;
+use Throwable;
+use Toolbox;
+
+use function Safe\gzdecode;
+use function Safe\gzencode;
+use function Safe\json_decode;
+use function Safe\json_encode;
+
 final class Profile
 {
     private string $id;
@@ -113,7 +122,7 @@ final class Profile
             unset($_SESSION['debug_profiles'][$id]);
 
             return $profile;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return null;
         }
     }
@@ -168,9 +177,7 @@ final class Profile
 
         $execution_time = -1;
         if (isset($this->additional_info['profiler'])) {
-            $main_section = array_values(array_filter($this->additional_info['profiler'], static function (array $section) {
-                return $section['category'] === Profiler::CATEGORY_CORE && $section['name'] === 'php_request';
-            }));
+            $main_section = array_values(array_filter($this->additional_info['profiler'], static fn(array $section) => $section['category'] === Profiler::CATEGORY_CORE && $section['name'] === 'php_request'));
             if (count($main_section)) {
                 $execution_time = $main_section[0]['end'] - $main_section[0]['start'];
             }
@@ -186,7 +193,7 @@ final class Profile
                 'execution_time' => (float) $execution_time,
                 'memory_usage' => memory_get_usage(),
                 'memory_peak' => memory_get_peak_usage(),
-                'memory_limit' => \Toolbox::getMemoryLimit(),
+                'memory_limit' => Toolbox::getMemoryLimit(),
             ],
             'sql' => [
                 'queries' => [],
@@ -217,7 +224,7 @@ final class Profile
 
     public function save(): void
     {
-        if (($_SESSION['glpi_use_mode'] ?? null) !== \Session::DEBUG_MODE) {
+        if (($_SESSION['glpi_use_mode'] ?? null) !== Session::DEBUG_MODE) {
             // Don't save debug info for non-debug requests
             return;
         }
@@ -239,7 +246,7 @@ final class Profile
             $json = json_encode($info, JSON_THROW_ON_ERROR);
             $gz = gzencode($json, 9);
             $_SESSION['debug_profiles'][$this->id] = $gz;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Ignore
         }
     }

@@ -51,7 +51,7 @@ class ITILValidationTemplate extends AbstractITILChildTemplate
 
     public static function getTypeName($nb = 0)
     {
-        return _n('Validation template', 'Validation templates', $nb);
+        return _n('Approval template', 'Approval templates', $nb);
     }
 
     public function prepareInputForUpdate($input)
@@ -105,7 +105,7 @@ class ITILValidationTemplate extends AbstractITILChildTemplate
         ?int $id,
     ): string {
         $options = [
-            'users_id_requester' => \Session::getLoginUserID(),
+            'users_id_requester' => Session::getLoginUserID(),
             'itemtype_target'    => null,
             'groups_id'          => null,
             'items_id_target'    => null,
@@ -115,13 +115,15 @@ class ITILValidationTemplate extends AbstractITILChildTemplate
 
         if ($id > 0) {
             $targets   = ITILValidationTemplate_Target::getTargets($id);
-            $target    = current($targets);
-            $itemtype  = $target['itemtype'];
-            $items_ids = array_column($targets, 'items_id');
+            if (!empty($targets)) {
+                $target = current($targets);
+                $itemtype = $target['itemtype'];
+                $items_ids = array_column($targets, 'items_id');
 
-            $options['itemtype_target'] = $itemtype;
-            $options['groups_id']       = $target['groups_id'];
-            $options['items_id_target'] = $itemtype == 'Group' && count($items_ids) == 1 ? $items_ids[0] : $items_ids;
+                $options['itemtype_target'] = $itemtype;
+                $options['groups_id'] = $target['groups_id'];
+                $options['items_id_target'] = $itemtype == 'Group' && count($items_ids) == 1 ? $items_ids[0] : $items_ids;
+            }
         }
 
         return CommonITILValidation::dropdownValidator($options);
@@ -183,7 +185,7 @@ class ITILValidationTemplate extends AbstractITILChildTemplate
         $this->postTargets();
     }
 
-    public function post_updateItem($history = 1)
+    public function post_updateItem($history = true)
     {
         $this->postTargets();
     }

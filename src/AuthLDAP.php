@@ -32,11 +32,24 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Error\ErrorHandler;
 use Glpi\Toolbox\Filesystem;
 use LDAP\Connection;
+use Safe\Exceptions\DatetimeException;
+use Safe\Exceptions\LdapException;
+use Safe\Exceptions\NetworkException;
+
+use function Safe\fsockopen;
+use function Safe\gmmktime;
+use function Safe\ldap_bind;
+use function Safe\ldap_get_entries;
+use function Safe\ldap_set_option;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\strtotime;
+use function Safe\unpack;
 
 /**
  *  Class used to manage Auth LDAP config
@@ -171,12 +184,12 @@ class AuthLDAP extends CommonDBTM
      * Message of last error occurred during connection.
      * @var ?string
      */
-    private static ?string $last_error;
+    private static ?string $last_error = null;
     /**
      * Numero of last error occurred during connection.
      * @var ?int
      */
-    private static ?int $last_errno;
+    private static ?int $last_errno = null;
 
     public static function getTypeName($nb = 0)
     {
@@ -551,7 +564,7 @@ TWIG, $twig_params);
      */
     public function showFormReplicatesConfig()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID     = $this->getField('id');
@@ -817,7 +830,7 @@ TWIG, ['authldaps_id' => $ID]);
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addImpactTab($ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
 
@@ -1238,7 +1251,7 @@ TWIG, ['authldaps_id' => $ID]);
      * @param string  $ldapstamp        LDAP timestamp
      * @param integer $ldap_time_offset time offset (default 0)
      *
-     * @return integer unix timestamp
+     * @return integer|'' unix timestamp or an empty string if the LDAP timestamp is invalid
      */
     public static function ldapStamp2UnixStamp($ldapstamp, $ldap_time_offset = 0)
     {
@@ -1250,12 +1263,12 @@ TWIG, ['authldaps_id' => $ID]);
             return '';
         }
 
-        $year    = substr($ldapstamp, 0, 4);
-        $month   = substr($ldapstamp, 4, 2);
-        $day     = substr($ldapstamp, 6, 2);
-        $hour    = substr($ldapstamp, 8, 2);
-        $minute  = substr($ldapstamp, 10, 2);
-        $seconds = substr($ldapstamp, 12, 2);
+        $year    = (int) substr($ldapstamp, 0, 4);
+        $month   = (int) substr($ldapstamp, 4, 2);
+        $day     = (int) substr($ldapstamp, 6, 2);
+        $hour    = (int) substr($ldapstamp, 8, 2);
+        $minute  = (int) substr($ldapstamp, 10, 2);
+        $seconds = (int) substr($ldapstamp, 12, 2);
         $stamp   = gmmktime($hour, $minute, $seconds, $month, $day, $year);
         $stamp  += $CFG_GLPI["time_offset"] - $ldap_time_offset;
 
@@ -1271,7 +1284,12 @@ TWIG, ['authldaps_id' => $ID]);
      */
     public static function date2ldapTimeStamp($date)
     {
-        return date("YmdHis", strtotime($date)) . '.0Z';
+        try {
+            $strdate = strtotime($date);
+        } catch (DatetimeException $e) {
+            $strdate = 0;
+        }
+        return date("YmdHis", $strdate) . '.0Z';
     }
 
     /**
@@ -1406,12 +1424,13 @@ TWIG, ['authldaps_id' => $ID]);
             $errstr = __('No hostname provided');
         }
 
-        if (@fsockopen($host, $port_num, $errno, $errstr, 5)) {
+        try {
+            @fsockopen($host, $port_num, $errno, $errstr, 5);
             return [
                 'success' => true,
                 'message' => sprintf(__('Connection to %s on port %s succeeded'), $host, $port_num),
             ];
-        } else {
+        } catch (NetworkException $e) {
             return [
                 'success' => false,
                 'message' => sprintf(__('%s (ERR: %s) to %s on port %s'), $errstr, $errno, $host, $port_num),
@@ -1628,10 +1647,10 @@ TWIG, $twig_params);
 
         if ($values['mode']) {
             $textbutton  = _x('button', 'Synchronize');
-            $form_action = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'sync';
+            $form_action = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'sync';
         } else {
             $textbutton  = _x('button', 'Import');
-            $form_action = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'import';
+            $form_action = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'import';
         }
 
         $entries = [];
@@ -1704,7 +1723,7 @@ TWIG, $twig_params);
     /**
      * Search users
      *
-     * @param resource $ds            An LDAP link identifier
+     * @param Connection $ds An LDAP link identifier
      * @param array    $values        values to search
      * @param string   $filter        search filter
      * @param array    $attrs         An array of the required attributes
@@ -1745,7 +1764,7 @@ TWIG, $twig_params);
                 $sr = @ldap_search($ds, $values['basedn'], $filter, $attrs, 0, -1, -1, LDAP_DEREF_NEVER, $controls);
                 if (
                     $sr === false
-                    || @ldap_parse_result($ds, $sr, $errcode, $matcheddn, $errmsg, $referrals, $controls) === false
+                    || @ldap_parse_result($ds, $sr, $errcode, $matcheddn, $errmsg, $referrals, $controls) === false // @phpstan-ignore theCodingMachineSafe.function
                 ) {
                     // 32 = LDAP_NO_SUCH_OBJECT => This error can be silented as it just means that search produces no result.
                     if (ldap_errno($ds) !== 32) {
@@ -1849,7 +1868,7 @@ TWIG, $twig_params);
                     }
                 }
             }
-        } while (($cookie !== null) && ($cookie != ''));
+        } while ($cookie != '');
 
         return true;
     }
@@ -1873,7 +1892,7 @@ TWIG, $twig_params);
      */
     public static function getAllUsers(array $options, &$results, &$limitexceeded)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $config_ldap = new self();
@@ -2015,11 +2034,11 @@ TWIG, $twig_params);
                     // Only manage deleted user if ALL (because of entity visibility in delegated mode)
 
                     if ($user['auths_id'] === $options['authldaps_id']) {
-                        if (!$userfound && (int) $user['is_deleted_ldap'] === 0) {
+                        if ((int) $user['is_deleted_ldap'] === 0) {
                             // If user is marked as coming from LDAP, but is not present in it anymore
                             User::manageDeletedUserInLdap($user['id']);
                             $results[self::USER_DELETED_LDAP]++;
-                        } elseif ($userfound && (int) $user['is_deleted_ldap'] === 1) {
+                        } elseif ((int) $user['is_deleted_ldap'] === 1) {
                             // User is marked as coming from LDAP, but was previously deleted
                             User::manageRestoredUserInLdap($user['id']);
                             $results[self::USER_RESTORED_LDAP]++;
@@ -2202,7 +2221,7 @@ TWIG, $twig_params);
                 'num_displayed' => count($entries),
                 'container'     => 'mass' . self::class . mt_rand(),
                 'specific_actions' => [
-                    __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'import_group' => _sx('button', 'Import'),
+                    self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'import_group' => _sx('button', 'Import'),
                 ],
                 'extraparams' => [
                     'authldaps_id' => $_REQUEST['authldaps_id'],
@@ -2228,7 +2247,7 @@ TWIG, $twig_params);
      * @param integer $auths_id      ID of the server to use
      * @param string  $filter        ldap filter to use
      * @param string  $filter2       second ldap filter to use if needed
-     * @param string  $entity        entity to search
+     * @param int     $entity        entity to search
      * @param boolean $limitexceeded is limit exceeded
      *
      * @return array of the groups
@@ -2242,7 +2261,7 @@ TWIG, $twig_params);
         $entity,
         &$limitexceeded
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $config_ldap = new self();
@@ -2330,9 +2349,7 @@ TWIG, $twig_params);
 
             usort(
                 $groups,
-                static function ($a, $b) {
-                    return strcasecmp($a['cn'], $b['cn']);
-                }
+                static fn($a, $b) => strcasecmp($a['cn'], $b['cn'])
             );
         }
         return $groups;
@@ -2341,7 +2358,7 @@ TWIG, $twig_params);
     /**
      * Get the group's cn by giving his DN
      *
-     * @param resource $ldap_connection ldap connection to use
+     * @param Connection $ldap_connection ldap connection to use
      * @param string   $group_dn        the group's dn
      *
      * @return false|string the group cn
@@ -2377,7 +2394,7 @@ TWIG, $twig_params);
      *
      * @since 0.84 new parameter $limitexceeded
      *
-     * @param resource $ldap_connection  LDAP connection
+     * @param Connection $ldap_connection LDAP connection
      * @param object   $config_ldap      LDAP configuration
      * @param string   $filter           Filters
      * @param boolean  $limitexceeded    Is limit exceeded
@@ -2394,7 +2411,7 @@ TWIG, $twig_params);
         $search_in_groups = true,
         $groups = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         //First look for groups in group objects
@@ -2427,7 +2444,7 @@ TWIG, $twig_params);
                 $sr = @ldap_search($ldap_connection, $config_ldap->fields['basedn'], $filter, $attrs, 0, -1, -1, LDAP_DEREF_NEVER, $controls);
                 if (
                     $sr === false
-                    || @ldap_parse_result($ldap_connection, $sr, $errcode, $matcheddn, $errmsg, $referrals, $controls) === false
+                    || @ldap_parse_result($ldap_connection, $sr, $errcode, $matcheddn, $errmsg, $referrals, $controls) === false // @phpstan-ignore theCodingMachineSafe.function
                 ) {
                     // 32 = LDAP_NO_SUCH_OBJECT => This error can be silented as it just means that search produces no result.
                     if (ldap_errno($ldap_connection) !== 32) {
@@ -2542,7 +2559,7 @@ TWIG, $twig_params);
                     }
                 }
             }
-        } while (($cookie !== null) && ($cookie != ''));
+        } while ($cookie != '');
 
         return $groups;
     }
@@ -2584,7 +2601,7 @@ TWIG, $twig_params);
                     'identifier_field'   => $id_field,
                     'user_field'         => $user_field,
                 ],
-                true,
+                self::ACTION_SYNCHRONIZE,
                 $user->fields["auths_id"],
                 $display
             );
@@ -2596,7 +2613,7 @@ TWIG, $twig_params);
      * Import a user from a specific ldap server
      *
      * @param array $params of parameters: method (IDENTIFIER_LOGIN or IDENTIFIER_EMAIL) + value
-     * @param boolean $action synchoronize (true) or import (false)
+     * @param int $action synchronize (self::ACTION_SYNCHRONIZE) or import (self::ACTION_IMPORT)
      * @param integer $ldap_server ID of the LDAP server to use
      * @param boolean $display display message information on redirect (false by default)
      *
@@ -2609,7 +2626,7 @@ TWIG, $twig_params);
         $ldap_server,
         $display = false
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $config_ldap = new self();
@@ -2744,7 +2761,7 @@ TWIG, $twig_params);
                         'id'     => $users_id,
                     ];
                 }
-            } catch (\RuntimeException $e) {
+            } catch (RuntimeException $e) {
                 ErrorHandler::logCaughtException($e);
                 ErrorHandler::displayCaughtExceptionMessage($e);
                 return false;
@@ -2854,7 +2871,14 @@ TWIG, $twig_params);
         self::$last_errno = null;
         self::$last_error = null;
 
-        $ds = @ldap_connect($host, (int) $port);
+        //Use an LDAP connection string
+        $ldapuri = sprintf(
+            '%s://%s:%s',
+            parse_url($host, PHP_URL_SCHEME) ?: 'ldap',
+            preg_replace('@^ldaps?://@', '', $host),
+            (int) $port
+        );
+        $ds = @ldap_connect($ldapuri);
 
         if ($ds === false) {
             trigger_error(
@@ -2881,7 +2905,9 @@ TWIG, $twig_params);
         }
 
         foreach ($ldap_options as $option => $value) {
-            if (!@ldap_set_option($ds, $option, $value)) {
+            try {
+                @ldap_set_option($ds, $option, $value);
+            } catch (LdapException $e) {
                 trigger_error(
                     static::buildError(
                         $ds,
@@ -2901,8 +2927,12 @@ TWIG, $twig_params);
                 trigger_error("TLS certificate path is not safe.", E_USER_WARNING);
             } elseif (!file_exists($tls_certfile)) {
                 trigger_error("TLS certificate path is not valid.", E_USER_WARNING);
-            } elseif (!@ldap_set_option(null, LDAP_OPT_X_TLS_CERTFILE, $tls_certfile)) {
-                trigger_error("Unable to set LDAP option `LDAP_OPT_X_TLS_CERTFILE`", E_USER_WARNING);
+            } else {
+                try {
+                    @ldap_set_option(null, LDAP_OPT_X_TLS_CERTFILE, $tls_certfile);
+                } catch (LdapException $e) {
+                    trigger_error("Unable to set LDAP option `LDAP_OPT_X_TLS_CERTFILE`", E_USER_WARNING);
+                }
             }
         }
         if (!empty($tls_keyfile)) {
@@ -2910,8 +2940,12 @@ TWIG, $twig_params);
                 trigger_error("TLS key file path is not safe.", E_USER_WARNING);
             } elseif (!file_exists($tls_keyfile)) {
                 trigger_error("TLS key file path is not valid.", E_USER_WARNING);
-            } elseif (!@ldap_set_option(null, LDAP_OPT_X_TLS_KEYFILE, $tls_keyfile)) {
-                trigger_error("Unable to set LDAP option `LDAP_OPT_X_TLS_KEYFILE`", E_USER_WARNING);
+            } else {
+                try {
+                    @ldap_set_option(null, LDAP_OPT_X_TLS_KEYFILE, $tls_keyfile);
+                } catch (LdapException $e) {
+                    trigger_error("Unable to set LDAP option `LDAP_OPT_X_TLS_KEYFILE`", E_USER_WARNING);
+                }
             }
         }
         if (!empty($tls_version)) {
@@ -2919,7 +2953,9 @@ TWIG, $twig_params);
             foreach (self::TLS_VERSIONS as $tls_version_value) {
                 $cipher_suite .= ($tls_version_value == $tls_version ? ':+' : ':!') . 'VERS-TLS' . $tls_version_value;
             }
-            if (!@ldap_set_option(null, LDAP_OPT_X_TLS_CIPHER_SUITE, $cipher_suite)) {
+            try {
+                @ldap_set_option(null, LDAP_OPT_X_TLS_CIPHER_SUITE, $cipher_suite);
+            } catch (LdapException $e) {
                 trigger_error("Unable to set LDAP option `LDAP_OPT_X_TLS_CIPHER_SUITE`", E_USER_WARNING);
             }
         }
@@ -2948,14 +2984,15 @@ TWIG, $twig_params);
             return $ds;
         }
 
-        if ($login !== '') {
-            // Auth bind
-            $b = @ldap_bind($ds, $login, $password);
-        } else {
-            // Anonymous bind
-            $b = @ldap_bind($ds);
-        }
-        if ($b === false) {
+        try {
+            if ($login !== '') {
+                // Auth bind
+                @ldap_bind($ds, $login, $password);
+            } else {
+                // Anonymous bind
+                @ldap_bind($ds);
+            }
+        } catch (LdapException $e) {
             self::$last_errno = ldap_errno($ds);
             self::$last_error = ldap_error($ds);
 
@@ -3168,9 +3205,21 @@ TWIG, $twig_params);
         $auth->auth_succeded = false;
         $auth->extauth       = 1;
 
-        $infos  = $auth->connection_ldap($ldap_method, $login, $password, $error);
+        $infos = $auth->connection_ldap($ldap_method, $login, $password, $error);
 
         if ($infos === false) {
+            return $auth;
+        }
+
+        // Get another fresh connection using the root credentials.
+        // This connection may permit to retrieve more information (especially groups info)
+        // than a connection explicitely bound to the user DN.
+        // See https://github.com/glpi-project/glpi/issues/17492.
+        //
+        // Use an empty login to only try a connection with configured root credentials.
+        $root_ldap_connection = self::tryToConnectToServer($ldap_method, '', '');
+
+        if ($root_ldap_connection === false) {
             return $auth;
         }
 
@@ -3198,7 +3247,7 @@ TWIG, $twig_params);
                 $auth->user_present = false;
             }
             $auth->user->getFromLDAP(
-                $auth->ldap_connection,
+                $root_ldap_connection,
                 $ldap_method,
                 $user_dn,
                 $login,
@@ -3225,7 +3274,7 @@ TWIG, $twig_params);
      */
     public static function tryLdapAuth($auth, $login, $password, $auths_id = 0, $user_dn = false, $break = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         //If no specific source is given, test all ldap directories
@@ -3302,7 +3351,7 @@ TWIG, $twig_params);
     /**
      * Get dn for a user
      *
-     * @param resource $ds      LDAP link
+     * @param Connection $ds LDAP link
      * @param array    $options array of possible options:
      *          - basedn : base dn used to search
      *          - login_field : attribute to store login
@@ -3312,7 +3361,7 @@ TWIG, $twig_params);
      * @param bool|null $error  Boolean flag that will be set to `true` if a LDAP error occurs during operation
      *
      * @return array|boolean dn of the user, else false
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public static function searchUserDn($ds, $options = [], ?bool &$error = null)
     {
@@ -3411,7 +3460,7 @@ TWIG, $twig_params);
     /**
      * Get an object from LDAP by giving his DN
      *
-     * @param resource  $ds         the active connection to the directory
+     * @param Connection $ds the active connection to the directory
      * @param string    $condition  the LDAP filter to use for the search
      * @param string    $dn         DN of the object
      * @param array     $attrs      Array of the attributes to retrieve
@@ -3458,7 +3507,7 @@ TWIG, $twig_params);
     /**
      * Get user by domain name
      *
-     * @param resource  $ds         the active connection to the directory
+     * @param Connection $ds the active connection to the directory
      * @param string    $user_dn    domain name
      * @param array     $attrs      attributes
      * @param boolean   $clean      (true by default)
@@ -3478,7 +3527,7 @@ TWIG, $twig_params);
     /**
      * Get infos for groups
      *
-     * @param resource $ds       LDAP link
+     * @param Connection $ds LDAP link
      * @param string   $group_dn dn of the group
      *
      * @return array|boolean group infos if found, else false
@@ -3502,7 +3551,7 @@ TWIG, $twig_params);
                 $entity->getFromDB($_SESSION['glpiactive_entity']);
                 $_REQUEST['authldaps_id'] = $entity->getField('authldaps_id');
                 if ((int) $_REQUEST['authldaps_id'] <= 0) {
-                    $defaultAuth = \Auth::getDefaultAuth();
+                    $defaultAuth = Auth::getDefaultAuth();
                     if ($defaultAuth instanceof AuthLDAP) {
                         $_REQUEST['authldaps_id'] = $defaultAuth->getID();
                     }
@@ -3613,7 +3662,7 @@ TWIG, $twig_params);
                 $_REQUEST['authldaps_id'] === NOT_AVAILABLE
                 || !$_REQUEST['authldaps_id']
             ) {
-                $defaultAuth = \Auth::getDefaultAuth();
+                $defaultAuth = Auth::getDefaultAuth();
                 if ($defaultAuth instanceof AuthLDAP) {
                     $_REQUEST['authldaps_id'] = $defaultAuth->getID();
 
@@ -3884,7 +3933,7 @@ TWIG, $twig_params);
      */
     public static function getServersWithImportByEmailActive()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ldaps = [];
@@ -3969,7 +4018,7 @@ TWIG, $twig_params);
     /**
      * Get ldap query results and clean them at the same time
      *
-     * @param resource  $link   link to the directory connection
+     * @param Connection $link link to the directory connection
      * @param array     $result the query results
      * @param bool|null $error  Boolean flag that will be set to `true` if a LDAP error occurs during operation
      *
@@ -3977,8 +4026,10 @@ TWIG, $twig_params);
      */
     public static function get_entries_clean($link, $result, ?bool &$error = null)
     {
-        $entries = @ldap_get_entries($link, $result);
-        if ($entries === false) {
+        try {
+            $entries = @ldap_get_entries($link, $result);
+            return $entries;
+        } catch (LdapException $e) {
             $error = true;
             trigger_error(
                 static::buildError(
@@ -3988,7 +4039,7 @@ TWIG, $twig_params);
                 E_USER_WARNING
             );
         }
-        return $entries;
+        return [];
     }
 
     /**
@@ -4000,7 +4051,7 @@ TWIG, $twig_params);
      */
     public static function getAllReplicateForAMaster($master_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $replicates = [];
@@ -4032,8 +4083,13 @@ TWIG, $twig_params);
      */
     public static function isLdapPageSizeAvailable($config_ldap, $check_config_value = true)
     {
-        return (extension_loaded('ldap') && (!$check_config_value
-         || ($check_config_value && $config_ldap->fields['can_support_pagesize'])));
+        return (
+            extension_loaded('ldap')
+            && (
+                !$check_config_value
+                || $config_ldap->fields['can_support_pagesize']
+            )
+        );
     }
 
     /**
@@ -4047,7 +4103,7 @@ TWIG, $twig_params);
      */
     public function getLdapExistingUser($name, $authldaps_id, $sync = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $user = new User();
 
@@ -4110,10 +4166,10 @@ TWIG, $twig_params);
             if (!self::isValidGuid($value)) {
                 $value = self::guidToString($value);
                 if (!self::isValidGuid($value)) {
-                    throw new \RuntimeException('Not an objectguid!');
+                    throw new RuntimeException('Not an objectguid!');
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // well... this is not an objectguid apparently
             $value = $infos[$field];
         }
@@ -4344,8 +4400,8 @@ TWIG, $twig_params);
             $message,
             ldap_error($ds),
             ldap_errno($ds),
-            (ldap_get_option($ds, LDAP_OPT_DIAGNOSTIC_MESSAGE, $diag_message) ? "\nextended error: " . $diag_message : ''),
-            (ldap_get_option($ds, LDAP_OPT_ERROR_STRING, $err_message) ? "\nerr string: " . $err_message : '')
+            (ldap_get_option($ds, LDAP_OPT_DIAGNOSTIC_MESSAGE, $diag_message) ? "\nextended error: " . $diag_message : ''), // @phpstan-ignore theCodingMachineSafe.function
+            (ldap_get_option($ds, LDAP_OPT_ERROR_STRING, $err_message) ? "\nerr string: " . $err_message : '') // @phpstan-ignore theCodingMachineSafe.function
         );
         return $message;
     }

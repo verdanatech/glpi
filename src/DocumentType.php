@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\preg_match;
+
 /**
  * DocumentType Class
  **/
@@ -206,7 +208,7 @@ class DocumentType extends CommonDropdown
      */
     public static function getUploadableFilePattern(): string
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $valid_type_iterator = $DB->request([

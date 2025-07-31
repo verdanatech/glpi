@@ -178559,7 +178559,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _common_core_lineRange_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(197);
 /* harmony import */ var _base_browser_window_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(55);
 /* harmony import */ var _base_browser_dom_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(53);
-/* harmony import */ var _common_services_textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(857);
+/* harmony import */ var _common_services_textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(858);
 /* harmony import */ var _common_services_editorWorkerHost_js__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(852);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
@@ -179669,7 +179669,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _base_common_network_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(76);
 /* harmony import */ var _languages_defaultDocumentColorsComputer_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(855);
 /* harmony import */ var _findSectionHeaders_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(856);
-/* harmony import */ var _textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(857);
+/* harmony import */ var _textModelSync_textModelSync_impl_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(858);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -179992,7 +179992,7 @@ class EditorSimpleWorker extends BaseEditorSimpleWorker {
             }
             else {
                 const url = _base_common_network_js__WEBPACK_IMPORTED_MODULE_10__.FileAccess.asBrowserUri(`${moduleId}.js`).toString(true);
-                __webpack_require__(859)(`${url}`).then(onModuleCallback).catch(reject);
+                __webpack_require__(857)(`${url}`).then(onModuleCallback).catch(reject);
             }
         });
     }
@@ -181175,6 +181175,200 @@ function getHeaderText(text) {
 
 /***/ }),
 /* 857 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var map = {
+	"./editorBaseApi": [
+		840
+	],
+	"./editorBaseApi.js": [
+		840
+	],
+	"./editorSimpleWorker": [
+		849
+	],
+	"./editorSimpleWorker.js": [
+		849
+	],
+	"./editorWorker": [
+		480
+	],
+	"./editorWorker.js": [
+		480
+	],
+	"./editorWorkerHost": [
+		852
+	],
+	"./editorWorkerHost.js": [
+		852
+	],
+	"./findSectionHeaders": [
+		856
+	],
+	"./findSectionHeaders.js": [
+		856
+	],
+	"./getIconClasses": [
+		728
+	],
+	"./getIconClasses.js": [
+		728
+	],
+	"./languageFeatureDebounce": [
+		473
+	],
+	"./languageFeatureDebounce.js": [
+		473
+	],
+	"./languageFeatures": [
+		248
+	],
+	"./languageFeatures.js": [
+		248
+	],
+	"./languageFeaturesService": [
+		867
+	],
+	"./languageFeaturesService.js": [
+		867
+	],
+	"./languageService": [
+		882
+	],
+	"./languageService.js": [
+		882
+	],
+	"./languagesAssociations": [
+		884
+	],
+	"./languagesAssociations.js": [
+		884
+	],
+	"./languagesRegistry": [
+		883
+	],
+	"./languagesRegistry.js": [
+		883
+	],
+	"./markerDecorations": [
+		357
+	],
+	"./markerDecorations.js": [
+		357
+	],
+	"./markerDecorationsService": [
+		890
+	],
+	"./markerDecorationsService.js": [
+		890
+	],
+	"./model": [
+		102
+	],
+	"./model.js": [
+		102
+	],
+	"./modelService": [
+		891
+	],
+	"./modelService.js": [
+		891
+	],
+	"./resolverService": [
+		103
+	],
+	"./resolverService.js": [
+		103
+	],
+	"./semanticTokensDto": [
+		798
+	],
+	"./semanticTokensDto.js": [
+		798
+	],
+	"./semanticTokensProviderStyling": [
+		795
+	],
+	"./semanticTokensProviderStyling.js": [
+		795
+	],
+	"./semanticTokensStyling": [
+		799
+	],
+	"./semanticTokensStyling.js": [
+		799
+	],
+	"./semanticTokensStylingService": [
+		866
+	],
+	"./semanticTokensStylingService.js": [
+		866
+	],
+	"./textModelSync/textModelSync.impl": [
+		858
+	],
+	"./textModelSync/textModelSync.impl.js": [
+		858
+	],
+	"./textModelSync/textModelSync.protocol": [
+		1465,
+		13
+	],
+	"./textModelSync/textModelSync.protocol.js": [
+		1465,
+		13
+	],
+	"./textResourceConfiguration": [
+		790
+	],
+	"./textResourceConfiguration.js": [
+		790
+	],
+	"./treeSitterParserService": [
+		209
+	],
+	"./treeSitterParserService.js": [
+		209
+	],
+	"./treeViewsDnd": [
+		633
+	],
+	"./treeViewsDnd.js": [
+		633
+	],
+	"./treeViewsDndService": [
+		634
+	],
+	"./treeViewsDndService.js": [
+		634
+	],
+	"./unicodeTextModelHighlighter": [
+		823
+	],
+	"./unicodeTextModelHighlighter.js": [
+		823
+	]
+};
+function webpackAsyncContext(req) {
+	if(!__webpack_require__.o(map, req)) {
+		return Promise.resolve().then(() => {
+			var e = new Error("Cannot find module '" + req + "'");
+			e.code = 'MODULE_NOT_FOUND';
+			throw e;
+		});
+	}
+
+	var ids = map[req], id = ids[0];
+	return Promise.all(ids.slice(1).map(__webpack_require__.e)).then(() => {
+		return __webpack_require__(id);
+	});
+}
+webpackAsyncContext.keys = () => (Object.keys(map));
+webpackAsyncContext.id = 857;
+module.exports = webpackAsyncContext;
+
+/***/ }),
+/* 858 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -181191,7 +181385,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _core_position_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(101);
 /* harmony import */ var _core_range_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(115);
 /* harmony import */ var _core_wordHelper_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(130);
-/* harmony import */ var _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(858);
+/* harmony import */ var _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(859);
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -181499,7 +181693,7 @@ class MirrorModel extends _model_mirrorTextModel_js__WEBPACK_IMPORTED_MODULE_6__
 
 
 /***/ }),
-/* 858 */
+/* 859 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -181625,200 +181819,6 @@ class MirrorTextModel {
     }
 }
 
-
-/***/ }),
-/* 859 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-var map = {
-	"./editorBaseApi": [
-		840
-	],
-	"./editorBaseApi.js": [
-		840
-	],
-	"./editorSimpleWorker": [
-		849
-	],
-	"./editorSimpleWorker.js": [
-		849
-	],
-	"./editorWorker": [
-		480
-	],
-	"./editorWorker.js": [
-		480
-	],
-	"./editorWorkerHost": [
-		852
-	],
-	"./editorWorkerHost.js": [
-		852
-	],
-	"./findSectionHeaders": [
-		856
-	],
-	"./findSectionHeaders.js": [
-		856
-	],
-	"./getIconClasses": [
-		728
-	],
-	"./getIconClasses.js": [
-		728
-	],
-	"./languageFeatureDebounce": [
-		473
-	],
-	"./languageFeatureDebounce.js": [
-		473
-	],
-	"./languageFeatures": [
-		248
-	],
-	"./languageFeatures.js": [
-		248
-	],
-	"./languageFeaturesService": [
-		867
-	],
-	"./languageFeaturesService.js": [
-		867
-	],
-	"./languageService": [
-		882
-	],
-	"./languageService.js": [
-		882
-	],
-	"./languagesAssociations": [
-		884
-	],
-	"./languagesAssociations.js": [
-		884
-	],
-	"./languagesRegistry": [
-		883
-	],
-	"./languagesRegistry.js": [
-		883
-	],
-	"./markerDecorations": [
-		357
-	],
-	"./markerDecorations.js": [
-		357
-	],
-	"./markerDecorationsService": [
-		890
-	],
-	"./markerDecorationsService.js": [
-		890
-	],
-	"./model": [
-		102
-	],
-	"./model.js": [
-		102
-	],
-	"./modelService": [
-		891
-	],
-	"./modelService.js": [
-		891
-	],
-	"./resolverService": [
-		103
-	],
-	"./resolverService.js": [
-		103
-	],
-	"./semanticTokensDto": [
-		798
-	],
-	"./semanticTokensDto.js": [
-		798
-	],
-	"./semanticTokensProviderStyling": [
-		795
-	],
-	"./semanticTokensProviderStyling.js": [
-		795
-	],
-	"./semanticTokensStyling": [
-		799
-	],
-	"./semanticTokensStyling.js": [
-		799
-	],
-	"./semanticTokensStylingService": [
-		866
-	],
-	"./semanticTokensStylingService.js": [
-		866
-	],
-	"./textModelSync/textModelSync.impl": [
-		857
-	],
-	"./textModelSync/textModelSync.impl.js": [
-		857
-	],
-	"./textModelSync/textModelSync.protocol": [
-		1465,
-		13
-	],
-	"./textModelSync/textModelSync.protocol.js": [
-		1465,
-		13
-	],
-	"./textResourceConfiguration": [
-		790
-	],
-	"./textResourceConfiguration.js": [
-		790
-	],
-	"./treeSitterParserService": [
-		209
-	],
-	"./treeSitterParserService.js": [
-		209
-	],
-	"./treeViewsDnd": [
-		633
-	],
-	"./treeViewsDnd.js": [
-		633
-	],
-	"./treeViewsDndService": [
-		634
-	],
-	"./treeViewsDndService.js": [
-		634
-	],
-	"./unicodeTextModelHighlighter": [
-		823
-	],
-	"./unicodeTextModelHighlighter.js": [
-		823
-	]
-};
-function webpackAsyncContext(req) {
-	if(!__webpack_require__.o(map, req)) {
-		return Promise.resolve().then(() => {
-			var e = new Error("Cannot find module '" + req + "'");
-			e.code = 'MODULE_NOT_FOUND';
-			throw e;
-		});
-	}
-
-	var ids = map[req], id = ids[0];
-	return Promise.all(ids.slice(1).map(__webpack_require__.e)).then(() => {
-		return __webpack_require__(id);
-	});
-}
-webpackAsyncContext.keys = () => (Object.keys(map));
-webpackAsyncContext.id = 859;
-module.exports = webpackAsyncContext;
 
 /***/ }),
 /* 860 */
@@ -204064,8 +204064,8 @@ var map = {
 	"./semanticTokensStyling.js": 799,
 	"./semanticTokensStylingService": 866,
 	"./semanticTokensStylingService.js": 866,
-	"./textModelSync/textModelSync.impl": 857,
-	"./textModelSync/textModelSync.impl.js": 857,
+	"./textModelSync/textModelSync.impl": 858,
+	"./textModelSync/textModelSync.impl.js": 858,
 	"./textModelSync/textModelSync.protocol": 1465,
 	"./textModelSync/textModelSync.protocol.js": 1465,
 	"./textResourceConfiguration": 790,

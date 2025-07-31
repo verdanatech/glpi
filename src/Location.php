@@ -399,7 +399,7 @@ class Location extends CommonTreeDropdown
         $this->addImpactTab($ong, $options);
         $this->addStandardTab(Socket::class, $ong, $options);
         $this->addStandardTab(Document_Item::class, $ong, $options);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
 
         return $ong;
     }
@@ -426,17 +426,18 @@ class Location extends CommonTreeDropdown
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if ($item::class === self::class) {
-            switch ($tabnum) {
-                case 1:
-                    $item->showChildren();
-                    break;
-                case 2:
-                    $item->showItems();
-                    break;
-            }
+        if (!$item instanceof self) {
+            return false;
         }
-        return true;
+
+        switch ($tabnum) {
+            case 1:
+                return $item->showChildren();
+            case 2:
+                return $item->showItems();
+            default:
+                return false;
+        }
     }
 
     /**
@@ -462,13 +463,13 @@ class Location extends CommonTreeDropdown
      *
      * @since 0.85
      *
-     * @return void
+     * @return bool
      **/
-    public function showItems()
+    public function showItems(): bool
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -485,7 +486,7 @@ class Location extends CommonTreeDropdown
         $queries = [];
         $itemtypes = (!isset($filters['type']) || in_array('', $filters['type'], true)) ? array_keys($location_types) : $filters['type'];
         foreach ($itemtypes as $itemtype) {
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
             if (!$item->maybeLocated()) {
                 continue;
             }
@@ -583,6 +584,8 @@ class Location extends CommonTreeDropdown
             'filtered_number' => $number,
             'showmassiveactions' => false,
         ]);
+
+        return true;
     }
 
     public function displaySpecificTypeField($ID, $field = [], array $options = [])
@@ -592,7 +595,7 @@ class Location extends CommonTreeDropdown
                 $this->showMap();
                 break;
             default:
-                throw new \RuntimeException("Unknown {$field['type']}");
+                throw new RuntimeException("Unknown {$field['type']}");
         }
     }
 

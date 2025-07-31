@@ -35,6 +35,10 @@
 
 namespace Glpi\Search\Output;
 
+use GLPIPDF;
+
+use function Safe\preg_replace;
+
 class Tcpdf extends \PhpOffice\PhpSpreadsheet\Writer\Pdf\Tcpdf
 {
     protected function createExternalWriterInstance($orientation, $unit, $paperSize): \TCPDF
@@ -51,7 +55,7 @@ class Tcpdf extends \PhpOffice\PhpSpreadsheet\Writer\Pdf\Tcpdf
             $this->spreadsheet->getProperties()->getCustomPropertyValue('items count'),
             null,
             false
-        ) extends \GLPIPDF {
+        ) extends GLPIPDF {
             public function setPrintFooter($val = true)
             {
                 //override because \PhpOffice\PhpSpreadsheet\Writer\Pdf\Tcpdf::save() explicitly calls setPrintFooter(false) -_-
@@ -60,21 +64,19 @@ class Tcpdf extends \PhpOffice\PhpSpreadsheet\Writer\Pdf\Tcpdf
         };
 
         //remove size considerations so TCPDF do its work.
-        $callback = function ($html) {
-            return preg_replace(
-                [
-                    '|</style>|',
-                    '|width:\d+pt"|',
-                    '|padding-left:\dpx;|',
-                ],
-                [
-                    'table { width: 100%; };</style>',
-                    '"',
-                    '',
-                ],
-                $html
-            );
-        };
+        $callback = (fn($html) => preg_replace(
+            [
+                '|</style>|',
+                '|width:\d+pt"|',
+                '|padding-left:\dpx;|',
+            ],
+            [
+                'table { width: 100%; };</style>',
+                '"',
+                '',
+            ],
+            $html
+        ));
         $this->setEditHtmlCallback($callback);
 
         return $instance;

@@ -20,7 +20,7 @@ use Symfony\Component\Serializer\Exception\MappingException;
  */
 abstract class FileLoader implements LoaderInterface
 {
-    protected string $file;
+    protected $file;
 
     /**
      * @param string $file The mapping file to load

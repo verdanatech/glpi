@@ -32,20 +32,25 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Asset\Asset_PeripheralAsset;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\DCBreadcrumb;
+use Glpi\Features\DCBreadcrumbInterface;
+use Glpi\Features\Inventoriable;
 use Glpi\Socket;
 
 /**
  *  Computer class
  **/
-class Computer extends CommonDBTM
+class Computer extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface
 {
-    use Glpi\Features\DCBreadcrumb;
-    use Glpi\Features\Clonable;
-    use Glpi\Features\Inventoriable;
+    use DCBreadcrumb;
+    use Clonable;
+    use Inventoriable;
     use Glpi\Features\State;
-    use Glpi\Features\AssignableItem {
+    use AssignableItem {
         prepareInputForAdd as prepareInputForAddAssignableItem;
         post_updateItem as post_updateItemAssignableItem;
     }
@@ -185,14 +190,14 @@ class Computer extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         $this->post_updateItemAssignableItem($history);
 
         $changes = [];
-        $update_count = count($this->updates ?? []);
+        $update_count = count($this->updates);
         $input = $this->fields;
         for ($i = 0; $i < $update_count; $i++) {
             // Update contact of attached items
@@ -248,7 +253,7 @@ class Computer extends CommonDBTM
                         ],
                     ]
                 );
-                $item      = new $type();
+                $item = getItemForItemtype($type);
                 foreach ($items_result as $data) {
                     $tID = $data['items_id_peripheral'];
                     $item->getFromDB($tID);
@@ -266,6 +271,9 @@ class Computer extends CommonDBTM
                 }
             }
 
+            $alternate_username_updated = isset($changes['contact']) || isset($changes['contact_num']);
+            $user_or_group_updated = isset($changes['groups_id']) || isset($changes['users_id']);
+
             //fields that are not present for devices
             unset($changes['groups_id']);
             unset($changes['users_id']);
@@ -275,7 +283,7 @@ class Computer extends CommonDBTM
             if (count($changes) > 0) {
                 // Propagates the changes to linked devices
                 foreach (Item_Devices::getDeviceTypes() as $device) {
-                    $item = new $device();
+                    $item = getItemForItemtype($device);
                     $devices_result = $DB->request(
                         [
                             'SELECT' => ['id'],
@@ -304,13 +312,13 @@ class Computer extends CommonDBTM
             }
 
             if ($update_done) {
-                if (isset($changes['contact']) || isset($changes['contact_num'])) {
+                if ($alternate_username_updated) {
                     Session::addMessageAfterRedirect(
                         __s('Alternate username updated. The connected items have been updated using this alternate username.'),
                         true
                     );
                 }
-                if (isset($changes['groups_id']) || isset($changes['users_id'])) {
+                if ($user_or_group_updated) {
                     Session::addMessageAfterRedirect(
                         __s('User or group updated. The connected items have been moved in the same values.'),
                         true
@@ -362,7 +370,7 @@ class Computer extends CommonDBTM
 
     public function getLinkedItems()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -411,7 +419,7 @@ class Computer extends CommonDBTM
                     _sx('button', 'Remove a domain'),
             ];
 
-            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, __CLASS__, 0, $checkitem);
+            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, self::class, false, $checkitem);
         }
 
         return $actions;

@@ -32,20 +32,23 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Asset\AssetDefinitionManager;
 use Glpi\DBAL\QueryExpression;
+use Glpi\Features\Clonable;
 use Glpi\Plugin\Hooks;
 
+use function Safe\simplexml_load_file;
+
 /**
- * Rule Class store all information about a GLPI rule :
+ * Rule Class store all information about a GLPI rule:
  *   - description
- *   - criterias
+ *   - criteria
  *   - actions
  **/
 class Rule extends CommonDBTM
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     public $dohistory             = true;
 
@@ -58,12 +61,12 @@ class Rule extends CommonDBTM
     // preview context ?
     protected $is_preview = false;
 
-    /// restrict matching to self::AND_MATCHING or self::OR_MATCHING : specify value to activate
+    /// restrict matching to self::AND_MATCHING or self::OR_MATCHING: specify value to activate
     public $restrict_matching     = false;
 
     protected $rules_id_field     = 'rules_id';
-    protected $ruleactionclass    = 'RuleAction';
-    protected $rulecriteriaclass  = 'RuleCriteria';
+    protected $ruleactionclass    = RuleAction::class;
+    protected $rulecriteriaclass  = RuleCriteria::class;
 
     public $specific_parameters   = false;
 
@@ -112,7 +115,7 @@ class Rule extends CommonDBTM
 
     public static function getTable($classname = null)
     {
-        return parent::getTable(__CLASS__);
+        return parent::getTable(self::class);
     }
 
     public static function getTypeName($nb = 0)
@@ -131,7 +134,7 @@ class Rule extends CommonDBTM
     {
         $rule = new self();
         if ($rule->getFromDB($rules_id)) {
-            if (class_exists($rule->fields['sub_type'])) {
+            if (class_exists($rule->fields['sub_type']) && is_a($rule->fields['sub_type'], Rule::class, true)) {
                 $realrule = new $rule->fields['sub_type']();
                 return $realrule;
             }
@@ -223,6 +226,9 @@ class Rule extends CommonDBTM
             $menu['rule']['icon']  = static::getIcon();
 
             foreach ($CFG_GLPI["rulecollections_types"] as $rulecollectionclass) {
+                if (!is_a($rulecollectionclass, RuleCollection::class, true)) {
+                    continue;
+                }
                 $rulecollection = new $rulecollectionclass();
                 if ($rulecollection->canList()) {
                     $ruleclassname = $rulecollection->getRuleClassName();
@@ -508,7 +514,7 @@ class Rule extends CommonDBTM
             }
         }
 
-        $asset_definitions = \Glpi\Asset\AssetDefinitionManager::getInstance()->getDefinitions(true);
+        $asset_definitions = AssetDefinitionManager::getInstance()->getDefinitions(true);
         foreach ($asset_definitions as $definition) {
             $model_dictionary_collection = $definition->getAssetModelDictionaryCollectionClassName();
             $model_dictionary = $model_dictionary_collection::getRuleClassName();
@@ -588,22 +594,19 @@ class Rule extends CommonDBTM
         return __('Rules management');
     }
 
-    /**
-     * @since 0.84
-     *
-     * @return class-string<RuleCollection>
-     **/
-    public function getCollectionClassName()
+    public function getCollectionClassInstance(): RuleCollection
     {
         $parent = static::class;
         do {
             $collection_class = $parent . 'Collection';
             $parent = get_parent_class($parent);
-        } while ($parent !== 'CommonDBTM' && $parent !== false && !class_exists($collection_class));
-        if ($collection_class === null) {
-            throw new \LogicException(sprintf('Unable to find collection class for `%s`.', static::getType()));
+        } while ($parent !== CommonDBTM::class && $parent !== false && !class_exists($collection_class));
+
+        if (!is_a($collection_class, RuleCollection::class, true)) {
+            throw new LogicException(sprintf('Unable to find collection class for `%s`.', static::class));
         }
-        return $collection_class;
+
+        return new $collection_class();
     }
 
     public function getSpecificMassiveActions($checkitem = null)
@@ -615,10 +618,10 @@ class Rule extends CommonDBTM
             unset($actions[MassiveAction::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_transfer_list']);
         }
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_rule'] = "<i class='ti ti-arrows-vertical'></i>"
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_rule'] = "<i class='ti ti-arrows-vertical'></i>"
                 . __s('Move');
         }
-        $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'export'] = "<i class='ti ti-file-download'></i>"
+        $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'export'] = "<i class='ti ti-file-download'></i>"
             . _sx('button', 'Export');
 
         return $actions;
@@ -671,7 +674,7 @@ class Rule extends CommonDBTM
             case 'move_rule':
                 $input          = $ma->getInput();
                 $collectionname = $input['rule_class_name'] . 'Collection';
-                $rulecollection = new $collectionname();
+                $rulecollection = getItemForItemtype($collectionname);
                 if ($rulecollection->canUpdate()) {
                     foreach ($ids as $id) {
                         if ($item->getFromDB($id)) {
@@ -698,7 +701,7 @@ class Rule extends CommonDBTM
     public function getForbiddenSingleMassiveActions()
     {
         $excluded = parent::getForbiddenSingleMassiveActions();
-        $excluded[] = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_rule';
+        $excluded[] = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_rule';
         return $excluded;
     }
 
@@ -827,7 +830,7 @@ class Rule extends CommonDBTM
         }
 
         if (isset($options['searchopt']['real_type'])) {
-            $ruleclass = new $options['searchopt']['real_type']();
+            $ruleclass = getItemForItemtype($options['searchopt']['real_type']);
             return $ruleclass->getSpecificValueToDisplay($field, $values, $options);
         }
 
@@ -858,7 +861,7 @@ class Rule extends CommonDBTM
         $options['display'] = false;
 
         if (isset($options['searchopt']['real_type'])) {
-            $ruleclass = new $options['searchopt']['real_type']();
+            $ruleclass = getItemForItemtype($options['searchopt']['real_type']);
             return $ruleclass->getSpecificValueToSelect($field, $name, $values, $options);
         }
 
@@ -875,16 +878,6 @@ class Rule extends CommonDBTM
         return parent::getSpecificValueToSelect($field, $name, $values, $options);
     }
 
-    /**
-     * Show the rule
-     *
-     * @param integer $ID    ID of the rule
-     * @param array $options array of possible options:
-     *     - target filename : where to go when done.
-     *     - withtemplate boolean : template or basic item
-     *
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         /** @var array $CFG_GLPI */
@@ -898,7 +891,7 @@ class Rule extends CommonDBTM
             $this->checkGlobal(UPDATE);
         }
 
-        $canedit = $this->canEdit(static::$rightname);
+        $canedit = $this->canEdit($ID);
         $rand = mt_rand();
 
         $plugin = isPluginItemType(static::class);
@@ -927,6 +920,8 @@ class Rule extends CommonDBTM
             ],
         ], $options);
         TemplateRenderer::getInstance()->display('pages/admin/rules/form.html.twig', $twig_params);
+
+        return true;
     }
 
     /**
@@ -1384,7 +1379,7 @@ JS
     /**
      * Get a criteria description by his ID
      *
-     * @param integer $ID the criteria's ID
+     * @param string $ID the criteria's ID
      *
      * @return array the criteria array
      **/
@@ -1397,7 +1392,7 @@ JS
     /**
      * Get action description by its ID
      *
-     * @param integer $ID the action's ID
+     * @param string $ID the action's ID
      *
      * @return array the action array
      **/
@@ -1410,7 +1405,7 @@ JS
     /**
      * Get a criteria description by his ID
      *
-     * @param integer $ID the criteria's ID
+     * @param string $ID the criteria's ID
      *
      * @return string the criteria's description
      **/
@@ -1423,7 +1418,7 @@ JS
     /**
      * Get action description by his ID
      *
-     * @param integer $ID the action's ID
+     * @param string $ID the action's ID
      *
      * @return string the action's description
      **/
@@ -1885,13 +1880,13 @@ JS
         // Delete a rule and all associated criteria and actions
         if (!empty($this->ruleactionclass)) {
             $ruleactionclass = $this->ruleactionclass;
-            $ra = new $ruleactionclass();
+            $ra = getItemForItemtype($ruleactionclass);
             $ra->deleteByCriteria([$this->rules_id_field => $this->fields['id']]);
         }
 
         if (!empty($this->rulecriteriaclass)) {
             $rulecriteriaclass = $this->rulecriteriaclass;
-            $rc = new $rulecriteriaclass();
+            $rc = getItemForItemtype($rulecriteriaclass);
             $rc->deleteByCriteria([$this->rules_id_field => $this->fields['id']]);
         }
     }
@@ -2050,9 +2045,11 @@ JS
             }
             // Ensure we always use the right rule class in case the original object was instantiated as the base class 'Rule'.
             $rule_class = $this->fields['sub_type'] ?? static::class;
+            if (!is_a($rule_class, Rule::class, true)) {
+                return;
+            }
             $rule = new $rule_class();
-            $collection_class = $rule->getCollectionClassName();
-            $collection = new $collection_class();
+            $collection = $rule->getCollectionClassInstance();
             $collection->moveRule($this->fields['id'], 0, $this->input['_ranking'], $new_rule);
             $this->getFromDB($this->fields['id']);
         }
@@ -2066,7 +2063,7 @@ JS
      **/
     public function getNextRanking(?string $sub_type = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -2144,9 +2141,7 @@ JS
         $output = $this->preProcessPreviewResults($output);
 
         foreach ($output as $criteria => $value) {
-            $action_def = array_filter($actions, static function ($def, $key) use ($criteria) {
-                return $key === $criteria || (array_key_exists('appendto', $def) && $def['appendto'] === $criteria);
-            }, ARRAY_FILTER_USE_BOTH);
+            $action_def = array_filter($actions, static fn($def, $key) => $key === $criteria || (array_key_exists('appendto', $def) && $def['appendto'] === $criteria), ARRAY_FILTER_USE_BOTH);
             $action_def_key = key($action_def);
             if (count($action_def)) {
                 $action_def = reset($action_def);
@@ -2271,9 +2266,9 @@ JS
     /**
      * Return a value associated with a pattern associated to a criteria to display it
      *
-     * @param integer  $ID        the given criteria
-     * @param integer  $condition condition used
-     * @param ?string  $pattern   the pattern
+     * @param string           $ID        the given criteria
+     * @param integer          $condition condition used
+     * @param string|int|null  $pattern   the pattern
      *
      * @return ?string
      **/
@@ -2312,7 +2307,7 @@ JS
                         );
 
                     case "dropdown":
-                        $addentity = Dropdown::getDropdownName($crit["table"], $pattern);
+                        $addentity = Dropdown::getDropdownName($crit["table"], (int) $pattern);
                         if ($this->isEntityAssign()) {
                             $itemtype = getItemTypeForTable($crit["table"]);
                             $item     = getItemForItemtype($itemtype);
@@ -2350,26 +2345,26 @@ JS
                     case "dropdown_status":
                         if ($this instanceof RuleCommonITILObject) {
                             $itil = $this::getItemtype();
-                            return $itil::getStatus($pattern);
+                            return $itil::getStatus((int) $pattern);
                         } else {
-                            return Ticket::getStatus($pattern);
+                            return Ticket::getStatus((int) $pattern);
                         }
 
                         // no break
                     case "dropdown_priority":
-                        return CommonITILObject::getPriorityName($pattern);
+                        return CommonITILObject::getPriorityName((int) $pattern);
 
                     case "dropdown_urgency":
-                        return CommonITILObject::getUrgencyName($pattern);
+                        return CommonITILObject::getUrgencyName((int) $pattern);
 
                     case "dropdown_impact":
-                        return CommonITILObject::getImpactName($pattern);
+                        return CommonITILObject::getImpactName((int) $pattern);
 
                     case "dropdown_tickettype":
-                        return Ticket::getTicketTypeName($pattern);
+                        return Ticket::getTicketTypeName((int) $pattern);
 
                     case "dropdown_validation_status":
-                        return CommonITILValidation::getStatus($pattern);
+                        return CommonITILValidation::getStatus((int) $pattern);
                 }
             }
         }
@@ -2382,7 +2377,7 @@ JS
     /**
      * Used to get specific criteria patterns
      *
-     * @param integer $ID        the given criteria
+     * @param string  $ID        the given criteria
      * @param integer $condition condition used
      * @param string  $pattern   the pattern
      *
@@ -2397,7 +2392,7 @@ JS
      * Display item used to select a pattern for a criteria
      *
      * @param string  $name      criteria name
-     * @param integer $ID        the given criteria
+     * @param string  $ID        the given criteria
      * @param integer $condition condition used
      * @param string  $value     the pattern (default '')
      * @param boolean $test      Is to test rule ? (false by default)
@@ -2572,11 +2567,11 @@ JS
     /**
      * Return a "display" value associated with a pattern associated to a criteria
      *
-     * @param integer $ID     the given action
+     * @param string $ID     the given action
      * @param string  $type   the type of action
-     * @param string  $value  the value
+     * @param int|string $value  the value
      *
-     * @return string
+     * @return string|int
      **/
     public function getActionValue($ID, $type, $value)
     {
@@ -2664,7 +2659,7 @@ JS
     /**
      * Return a value associated with a pattern associated to a criteria to display it
      *
-     * @param integer $ID        the given criteria
+     * @param string $ID        the given criteria
      * @param integer $condition condition used
      * @param string  $value     the pattern
      *
@@ -2681,13 +2676,13 @@ JS
             $crit = $this->getCriteria($ID);
             if (isset($crit['type'])) {
                 return match ($crit['type']) {
-                    'dropdown' => Dropdown::getDropdownName($crit["table"], $value, translate: false),
+                    'dropdown' => Dropdown::getDropdownName($crit["table"], (int) $value, translate: false),
                     'dropdown_assign', 'dropdown_users' => getUserName($value),
-                    'yesonly', 'yesno' => Dropdown::getYesNo($value),
-                    'dropdown_impact' => CommonITILObject::getImpactName($value),
-                    'dropdown_urgency' => CommonITILObject::getUrgencyName($value),
-                    'dropdown_priority' => CommonITILObject::getPriorityName($value),
-                    'dropdown_validation_status' => CommonITILValidation::getStatus($value),
+                    'yesonly', 'yesno' => Dropdown::getYesNo((int) $value),
+                    'dropdown_impact' => CommonITILObject::getImpactName((int) $value),
+                    'dropdown_urgency' => CommonITILObject::getUrgencyName((int) $value),
+                    'dropdown_priority' => CommonITILObject::getPriorityName((int) $value),
+                    'dropdown_validation_status' => CommonITILValidation::getStatus((int) $value),
                     default => $value,
                 };
             }
@@ -2725,7 +2720,7 @@ JS
     public function showRulePreviewCriteriasForm($rules_id)
     {
         $criteria = $this->getAllCriteria();
-        if (!$this->getRuleWithCriteriasAndActions($rules_id, 1, 0)) {
+        if (!$this->getRuleWithCriteriasAndActions($rules_id, true, false)) {
             return;
         }
         $criteria_names = [];
@@ -2847,9 +2842,7 @@ JS
     public function getActions()
     {
         $actions = [];
-        $collection_class = $this->getCollectionClassName();
-        /** @var RuleCollection $collection */
-        $collection = new $collection_class();
+        $collection = $this->getCollectionClassInstance();
         if (!$collection->stop_on_first_match) {
             $actions['_stop_rules_processing'] = [
                 'name' => __('Skip remaining rules'),
@@ -2923,7 +2916,7 @@ JS
      **/
     public function getRulesForCriteria($crit)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $rules = [];
@@ -2952,7 +2945,7 @@ JS
 
         foreach ($iterator as $rule) {
             $affect_rule = new Rule();
-            $affect_rule->getRuleWithCriteriasAndActions($rule["id"], 0, 1);
+            $affect_rule->getRuleWithCriteriasAndActions($rule["id"], false, true);
             $rules[]     = $affect_rule;
         }
         return $rules;
@@ -3036,7 +3029,7 @@ JS
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
@@ -3055,9 +3048,9 @@ JS
     /**
      * Add more actions specific to this type of rule
      *
-     * @param string $value
+     * @param int|string $value
      *
-     * @return string
+     * @return int|string
      **/
     public function displayAdditionRuleActionValue($value)
     {
@@ -3106,7 +3099,7 @@ JS
         $valfield,
         $fieldfield
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $fieldid = getForeignKeyFieldForTable($ruleitem->getTable());
@@ -3314,7 +3307,7 @@ JS
         } elseif ($item instanceof LevelAgreement) {
             $item->showRulesList();
         } elseif ($item instanceof self) {
-            $item->getRuleWithCriteriasAndActions($item->getID(), 1, 1);
+            $item->getRuleWithCriteriasAndActions($item->getID(), true, true);
             switch ($tabnum) {
                 case 1:
                     $item->showCriteriasList($item->getID());
@@ -3459,7 +3452,7 @@ JS
 
         $ranking_increment = 0;
         if ($reset === false) {
-            /** @var \DBmysql $DB */
+            /** @var DBmysql $DB */
             global $DB;
             $ranking_increment = $DB->request([
                 'SELECT' => ['MAX' => 'ranking AS rank'],

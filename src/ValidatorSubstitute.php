@@ -42,25 +42,32 @@ final class ValidatorSubstitute extends CommonDBTM
         return _n('Authorized substitute', 'Authorized substitutes', $nb);
     }
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
-        switch ($item->getType()) {
-            case Preference::class:
-                $user = User::getById(Session::getLoginUserID());
+        if ($item instanceof Preference) {
+            $user = User::getById(Session::getLoginUserID());
+            if ($user instanceof User) {
                 $nb = $_SESSION['glpishow_count_on_tabs'] ? count($user->getSubstitutes()) : 0;
-                return self::createTabEntry(self::getTypeName($nb), $nb, $item::getType());
+                return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb, $item::getType());
+            }
         }
 
         return '';
     }
 
+    public static function getIcon()
+    {
+        return 'ti ti-replace-user';
+    }
+
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch ($item->getType()) {
-            case Preference::class:
-                $user = User::getById(Session::getLoginUserID());
+        if ($item instanceof Preference) {
+            $user = User::getById(Session::getLoginUserID());
+            if ($user instanceof User) {
                 $substitute = new ValidatorSubstitute();
                 return $substitute->showForUser($user);
+            }
         }
 
         return false;
@@ -149,11 +156,11 @@ final class ValidatorSubstitute extends CommonDBTM
         return true;
     }
 
-    public function prepareInputForUpdate($input)
+    public function prepareInputForUpdate($input): array
     {
         if (isset($input['users_id']) && $input['users_id'] != $this->fields['users_id']) {
             // Do not change the user.
-            Session::addMessageAfterRedirect(__s('Cannot change the validation delegator'));
+            Session::addMessageAfterRedirect(__s('Cannot change the approval delegator'));
             return [];
         }
 
@@ -187,6 +194,9 @@ final class ValidatorSubstitute extends CommonDBTM
         $success = true;
 
         if (isset($input['substitutes'])) {
+            if (empty($input['substitutes'])) {
+                $input['substitutes'] = [];
+            }
             if (in_array($input['users_id'], $input['substitutes'])) {
                 Session::addMessageAfterRedirect(__s('A user cannot be their own substitute.'), true, ERROR);
                 return false;
@@ -198,7 +208,7 @@ final class ValidatorSubstitute extends CommonDBTM
                 $success = $validator_substitute->deleteByCriteria([
                     'users_id' => $user->fields['id'],
                     'users_id_substitute' => $substitutes_to_delete,
-                ]) && $success;
+                ]);
             }
 
             // Add the new substitutes which are not in the old substitutes list
@@ -212,10 +222,10 @@ final class ValidatorSubstitute extends CommonDBTM
         }
 
         $start_date = $input['substitution_start_date'] ?? $user->fields['substitution_start_date'];
-        $input['substitution_start_date'] = is_string($start_date) && strtotime($start_date) !== false ? $start_date : null;
+        $input['substitution_start_date'] = is_string($start_date) && strtotime($start_date) !== false ? $start_date : null; //@phpstan-ignore theCodingMachineSafe.function (false is explicitly tested)
 
         $end_date = $input['substitution_end_date'] ?? $user->fields['substitution_end_date'];
-        $input['substitution_end_date'] = is_string($end_date) && strtotime($end_date) !== false ? $end_date : null;
+        $input['substitution_end_date'] = is_string($end_date) && strtotime($end_date) !== false ? $end_date : null; //@phpstan-ignore theCodingMachineSafe.function (false is explicitly tested)
 
         // Check sanity of substitution date range
         if ($input['substitution_start_date'] !== null && $input['substitution_end_date'] !== null) {

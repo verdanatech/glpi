@@ -95,14 +95,12 @@ class Notification_NotificationTemplate extends CommonDBRelation
     {
         switch (get_class($item)) {
             case Notification::class:
-                self::showForNotification($item, $withtemplate);
-                break;
+                return self::showForNotification($item, $withtemplate);
             case NotificationTemplate::class:
-                self::showForNotificationTemplate($item, $withtemplate);
-                break;
+                return self::showForNotificationTemplate($item, $withtemplate);
         }
 
-        return true;
+        return false;
     }
 
     /**
@@ -111,11 +109,11 @@ class Notification_NotificationTemplate extends CommonDBRelation
      * @param Notification $notif        Notification object
      * @param integer      $withtemplate Template or basic item (default '')
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForNotification(Notification $notif, $withtemplate = 0)
+    public static function showForNotification(Notification $notif, $withtemplate = 0): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $notif->getID();
@@ -206,6 +204,8 @@ TWIG, $twig_params);
                 'specific_actions' => ['purge' => _x('button', 'Delete permanently')],
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -214,11 +214,11 @@ TWIG, $twig_params);
      * @param NotificationTemplate $template     Notification template object
      * @param integer              $withtemplate Template or basic item (default '')
      *
-     * @return void
+     * @return bool
      */
-    public static function showForNotificationTemplate(NotificationTemplate $template, $withtemplate = 0)
+    public static function showForNotificationTemplate(NotificationTemplate $template, $withtemplate = 0): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $template->getID();
@@ -282,6 +282,8 @@ TWIG, $twig_params);
                 'specific_actions' => ['purge' => _x('button', 'Delete permanently')],
             ],
         ]);
+
+        return true;
     }
 
     /**
@@ -306,7 +308,7 @@ TWIG, $twig_params);
 
     public function getName($options = [])
     {
-        return $this->getID();
+        return (string) $this->getID();
     }
 
     /**
@@ -498,9 +500,8 @@ TWIG, $twig_params);
         } elseif ($extratype === 'setting') {
             $classname = 'Notification' . ucfirst($mode) . 'Setting';
         } else {
-            // @phpstan-ignore notIdentical.alwaysFalse (defensive programming)
             if ($extratype !== '') {
-                throw new \LogicException(sprintf('Unknown type `%s`.', $extratype));
+                throw new LogicException(sprintf('Unknown type `%s`.', $extratype));
             }
             $classname = 'Notification' . ucfirst($mode);
         }

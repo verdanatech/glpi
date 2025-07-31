@@ -48,12 +48,16 @@ use Glpi\Form\QuestionType\QuestionTypeInterface;
 use Glpi\Form\QuestionType\QuestionTypesManager;
 use Glpi\Form\QuestionType\TranslationAwareQuestionType;
 use Glpi\ItemTranslation\Context\TranslationHandler;
+use InvalidArgumentException;
 use JsonException;
 use Log;
 use Override;
 use Ramsey\Uuid\Uuid;
 use ReflectionClass;
 use RuntimeException;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 /**
  * Question of a given helpdesk form's section
@@ -131,6 +135,7 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
                 key: self::TRANSLATION_KEY_DESCRIPTION,
                 name: __('Question description'),
                 value: $this->fields['description'],
+                is_rich_text: true,
             );
         }
 
@@ -196,12 +201,7 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
             throw new RuntimeException("Can't load parent section");
         }
 
-        $form = $section->getItem();
-        if (!($form instanceof Form)) {
-            throw new RuntimeException("Can't load parent form");
-        }
-
-        return $form;
+        return $section->getForm();
     }
 
     public function getEndUserInputName(): string
@@ -320,7 +320,7 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
         // We need to instantiate the question type to format and validate attributes
         if (
             isset($input['type'])
-            && class_exists($input['type'])
+            && is_a($input['type'], QuestionTypeInterface::class, true)
         ) {
             $question_type = new $input['type']();
         }
@@ -344,14 +344,14 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
                 $is_extra_data_valid = $question_type->validateExtraDataInput($extra_data);
 
                 if (!$is_extra_data_valid) {
-                    throw new \InvalidArgumentException("Invalid extra data for question");
+                    throw new InvalidArgumentException("Invalid extra data for question");
                 }
 
                 // Prepare extra data
                 $extra_data = $question_type->prepareExtraData($extra_data);
 
                 // Save extra data as JSON
-                if (!empty($extra_data)) {
+                if ($extra_data !== []) {
                     $input['extra_data'] = json_encode($extra_data);
                 }
             }

@@ -1110,3 +1110,7 @@
 .theme-dark .dashboard .filters_toolbar .filters fieldset.filter:not(.filled) {
   border: 2px solid var(--glpi-dashboard-soft-border);
 }
+
+html[data-glpi-theme-dark="1"] .widgettype_field img {
+  filter: invert(1);
+}

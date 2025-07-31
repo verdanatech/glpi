@@ -37,7 +37,7 @@
  * Only an HTMLTableMain can create an HTMLTableSuperHeader.
  * @since 0.84
  **/
-class HTMLTableSuperHeader extends HTMLTableHeader
+class HTMLTableSuperHeader extends HTMLTableHeader implements HTMLCompositeTableInterface
 {
     /// The headers of each column
     private $headerSets = [];
@@ -45,12 +45,12 @@ class HTMLTableSuperHeader extends HTMLTableHeader
     private $table;
 
     /**
-     * @param HTMLTableMain         $table    HTMLTableMain object: table owning the current header
+     * @param HTMLTableBase         $table    HTMLTableBase object: table owning the current header
      * @param string                $name     the name of the header
      * @param string                $content  see inc/HTMLTableEntity#__construct()
-     * @param ?HTMLTableSuperHeader $father   HTMLTableSuperHeader objet (default NULL)
+     * @param ?HTMLTableHeader      $father   HTMLTableHeader objet (default NULL)
      **/
-    public function __construct(HTMLTableMain $table, $name, $content, ?HTMLTableSuperHeader $father = null)
+    public function __construct(HTMLTableBase $table, $name, $content, ?HTMLTableHeader $father = null)
     {
         $this->table = $table;
         parent::__construct($name, $content, $father);
@@ -70,7 +70,7 @@ class HTMLTableSuperHeader extends HTMLTableHeader
         while ($first > 1) {
             $reste = $first % $second;
             if ($reste === 0) {
-                $result = $result / $second;
+                $result /= $second;
                 break;  // leave when LCM is found
             }
             $first = $second;
@@ -91,7 +91,8 @@ class HTMLTableSuperHeader extends HTMLTableHeader
         $subheader_name = '';
     }
 
-    public function getCompositeName()
+    #[Override]
+    public function getCompositeName(): string
     {
         return $this->getName() . ':';
     }

@@ -32,6 +32,9 @@
  *
  * ---------------------------------------------------------------------
  */
+use Glpi\Features\Clonable;
+
+use function Safe\preg_match;
 
 /**
  * Common DataBase Connexity Table Manager Class
@@ -68,7 +71,7 @@
  **/
 abstract class CommonDBConnexity extends CommonDBTM
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     public const DONT_CHECK_ITEM_RIGHTS  = 1; // Don't check the parent => always can*Child
     public const HAVE_VIEW_RIGHT_ON_ITEM = 2; // canXXXChild = true if parent::canView == true
@@ -112,7 +115,7 @@ abstract class CommonDBConnexity extends CommonDBTM
      **/
     public function cleanDBonItemDelete($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $criteria = static::getSQLCriteriaToSearchForItem($itemtype, $items_id);
@@ -125,7 +128,7 @@ abstract class CommonDBConnexity extends CommonDBTM
             $iterator = $DB->request($criteria);
             foreach ($iterator as $data) {
                 $input[$this->getIndexName()] = $data[$this->getIndexName()];
-                $this->delete($input, 1);
+                $this->delete($input, true);
             }
         }
     }
@@ -169,7 +172,7 @@ abstract class CommonDBConnexity extends CommonDBTM
      * @since 9.5
      *
      * @param string  $itemtype          Itemtype for which we want data
-     * @param string  $items_id          the name of the item we want the resulting items to be associated to
+     * @param int     $items_id          the id of the item we want the resulting items to be associated to
      *
      * @return array the items associated to the given one (empty if none was found)
      **/
@@ -193,13 +196,13 @@ abstract class CommonDBConnexity extends CommonDBTM
      * @since 9.5
      *
      * @param string  $itemtype          the type of the item we want the resulting items to be associated to
-     * @param string  $items_id          the name of the item we want the resulting items to be associated to
+     * @param int     $items_id          the id of the item we want the resulting items to be associated to
      *
      * @return DBmysqlIterator the items associated to the given one (empty if none was found)
      */
     public static function getItemsAssociationRequest($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return $DB->request(static::getSQLCriteriaToSearchForItem($itemtype, $items_id));
     }
@@ -324,8 +327,8 @@ abstract class CommonDBConnexity extends CommonDBTM
                     $new_item->getTypeName(),
                     $new_item->getID()
                 )),
-                INFO,
-                true
+                false,
+                INFO
             );
             return false;
 
@@ -524,8 +527,8 @@ abstract class CommonDBConnexity extends CommonDBTM
                 'unaffect' => ['unaffect'],
             ],
             'action_name'   => [
-                'affect'   => _sx('button', 'Associate'),
-                'unaffect' => _sx('button', 'Dissociate'),
+                'affect'   => "<i class='ti ti-link'></i>" . _sx('button', 'Associate'),
+                'unaffect' => "<i class='ti ti-link-off'></i>" . _sx('button', 'Dissociate'),
             ],
         ];
     }
@@ -559,7 +562,7 @@ abstract class CommonDBConnexity extends CommonDBTM
             return;
         }
 
-        $prefix = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR;
+        $prefix = self::class . MassiveAction::CLASS_ACTION_SEPARATOR;
 
         if ($unaffect) {
             $actions[$prefix . 'unaffect'] = $specificities['action_name']['unaffect'];
@@ -587,7 +590,7 @@ abstract class CommonDBConnexity extends CommonDBTM
         $itemtypes_affect   = [];
         $itemtypes_unaffect = [];
         foreach (array_keys($items) as $itemtype) {
-            if (!is_a($itemtype, __CLASS__, true)) {
+            if (!is_a($itemtype, self::class, true)) {
                 continue;
             }
             $specificities = $itemtype::getConnexityMassiveActionsSpecificities();
@@ -613,7 +616,7 @@ abstract class CommonDBConnexity extends CommonDBTM
 
         switch ($normalized_action) {
             case 'unaffect':
-                foreach ($itemtypes as $itemtype => $specificities) {
+                foreach (array_keys($itemtypes) as $itemtype) {
                     if (is_a($itemtype, 'CommonDBRelation', true)) {
                         $peer_field = "peer[$itemtype]";
                         if ((!$itemtype::$mustBeAttached_1) && (!$itemtype::$mustBeAttached_2)) {
@@ -735,7 +738,7 @@ abstract class CommonDBConnexity extends CommonDBTM
         array $ids
     ) {
 
-        if (!is_a($item, __CLASS__, true)) {
+        if (!$item instanceof \CommonDBConnexity) {
             parent::processMassiveActionsForOneItemtype($ma, $item, $ids);
             return;
         }

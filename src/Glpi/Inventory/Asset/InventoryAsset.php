@@ -40,6 +40,7 @@ use Agent;
 use Blacklist;
 use CommonDBTM;
 use CommonDropdown;
+use Computer;
 use Dropdown;
 use Glpi\Asset\Asset_PeripheralAsset;
 use Glpi\Inventory\Conf;
@@ -48,6 +49,10 @@ use Glpi\Inventory\Request;
 use Lockedfield;
 use Manufacturer;
 use OperatingSystemKernelVersion;
+use stdClass;
+
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 abstract class InventoryAsset
 {
@@ -55,11 +60,11 @@ abstract class InventoryAsset
     protected $data = [];
     /** @var CommonDBTM */
     protected CommonDBTM $item;
-    /** @var string */
+    /** @var ?string */
     protected $itemtype;
     /** @var array */
     protected $extra_data = [];
-    /** @var \Agent */
+    /** @var Agent */
     protected Agent $agent;
     /** @var integer */
     protected $entities_id = 0;
@@ -75,9 +80,9 @@ abstract class InventoryAsset
     protected $links_handled = false;
     /** @var boolean */
     protected $with_history = true;
-    /** @var MainAsset */
+    /** @var ?MainAsset */
     protected $main_asset;
-    /** @var string */
+    /** @var ?string */
     protected $request_query;
     /** @var bool */
     private bool $is_new = false;
@@ -228,7 +233,7 @@ abstract class InventoryAsset
             }
 
             foreach ($value as $key => &$val) {
-                if ($val instanceof \stdClass || is_array($val)) {
+                if ($val instanceof stdClass || is_array($val)) {
                     continue;
                 }
 
@@ -437,7 +442,7 @@ abstract class InventoryAsset
     protected function addOrMoveItem(array $input): void
     {
         $itemtype = $input['itemtype_peripheral'];
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         $item->getFromDB($input['items_id_peripheral']);
 
         if (!$item->isGlobal()) {
@@ -445,7 +450,7 @@ abstract class InventoryAsset
             $relation = new Asset_PeripheralAsset();
             $relation->deleteByCriteria(
                 [
-                    'itemtype_asset' => \Computer::getType(),
+                    'itemtype_asset' => Computer::getType(),
                     'itemtype_peripheral' => $input['itemtype_peripheral'],
                     'items_id_peripheral' => $input['items_id_peripheral'],
                 ],
@@ -470,7 +475,7 @@ abstract class InventoryAsset
         return $this->is_new;
     }
 
-    protected function handleInput(\stdClass $value, ?CommonDBTM $item = null): array
+    protected function handleInput(stdClass $value, ?CommonDBTM $item = null): array
     {
         $input = ['_auto' => 1];
         if (property_exists($value, '_inventory_users')) {
@@ -480,11 +485,11 @@ abstract class InventoryAsset
         $locks = [];
 
         if ($item !== null) {
-            $lockeds = new \Lockedfield();
+            $lockeds = new Lockedfield();
             $locks = $lockeds->getLockedNames($item->getType(), $item->isNewItem() ? 0 : $item->fields['id']);
         }
 
-        foreach ($value as $key => $val) {
+        foreach ($value as $key => $val) { // @phpstan-ignore foreach.nonIterable
             if (is_object($val) || is_array($val)) {
                 continue;
             }
@@ -494,7 +499,10 @@ abstract class InventoryAsset
                     if (isset($this->known_links[$known_key])) {
                         $input[$key] = $this->known_links[$known_key];
                         $input['_raw' . $key] = $this->raw_links[$known_key];
-                    } else {
+                    } elseif (!$item->isNewItem()) {
+                        // If $item is new and the input key is locked, we do not want to set it using the raw value.
+                        // This is because locked fields are no longer processed or sanitized during the addition process.
+                        // For more details, see: https://github.com/glpi-project/glpi/pull/19426
                         $input[$key] = $this->raw_links[$known_key];
                     }
                 }

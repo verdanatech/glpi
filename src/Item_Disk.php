@@ -103,8 +103,10 @@ class Item_Disk extends CommonDBChild
      */
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        self::showForItem($item, $withtemplate);
-        return true;
+        if ($item instanceof CommonDBTM) {
+            return self::showForItem($item, $withtemplate);
+        }
+        return false;
     }
 
     public function defineTabs($options = [])
@@ -136,7 +138,14 @@ class Item_Disk extends CommonDBChild
         } elseif (isset($this->fields['itemtype']) && !empty($this->fields['itemtype'])) {
             $itemtype = $this->fields['itemtype'];
         } else {
-            throw new \RuntimeException('Unable to retrieve itemtype');
+            throw new RuntimeException('Unable to retrieve itemtype');
+        }
+
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            throw new RuntimeException(sprintf(
+                'Item type %s is not a valid item type',
+                $itemtype
+            ));
         }
 
         if (!Session::haveRight($itemtype::$rightname, READ)) {
@@ -177,7 +186,7 @@ class Item_Disk extends CommonDBChild
      */
     public static function getFromItem(CommonDBTM $item, $sort = null, $order = null): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -208,9 +217,9 @@ class Item_Disk extends CommonDBChild
      * @param CommonDBTM $item          Item object
      * @param integer    $withtemplate  Template or basic item (default 0)
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForItem(CommonDBTM $item, $withtemplate = 0)
+    public static function showForItem(CommonDBTM $item, $withtemplate = 0): bool
     {
         $ID = $item->getID();
         $rand = mt_rand();
@@ -288,6 +297,7 @@ TWIG, $twig_params);
         TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
             'is_tab' => true,
             'nofilter' => true,
+            'nosort' => true,
             'columns' => [
                 'name' => __('Name'),
                 'is_dynamic' => __('Automatic inventory'),
@@ -315,6 +325,8 @@ TWIG, $twig_params);
                 'container'     => 'mass' . static::class . $rand,
             ],
         ]);
+
+        return true;
     }
 
     public function rawSearchOptions()
@@ -381,7 +393,7 @@ TWIG, $twig_params);
 
     public static function rawSearchOptionsToAdd($itemtype)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $tab = [];
 

@@ -16,7 +16,7 @@ use Symfony\Component\Form\FormInterface;
 /**
  * Normalizes invalid Form instances.
  */
-final class FormErrorNormalizer implements NormalizerInterface
+final class FormErrorNormalizer implements NormalizerInterface, CacheableSupportsMethodInterface
 {
     public const TITLE = 'title';
     public const TYPE = 'type';
@@ -81,5 +81,15 @@ final class FormErrorNormalizer implements NormalizerInterface
         }
 
         return $children;
+    }
+
+    /**
+     * @deprecated since Symfony 6.3, use "getSupportedTypes()" instead
+     */
+    public function hasCacheableSupportsMethod(): bool
+    {
+        trigger_deprecation('symfony/serializer', '6.3', 'The "%s()" method is deprecated, use "getSupportedTypes()" instead.', __METHOD__);
+
+        return true;
     }
 }

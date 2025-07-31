@@ -35,18 +35,25 @@
 
 namespace Glpi\Api\HL\Controller;
 
+use CommonDBTM;
+use DBmysql;
 use Entity;
 use Glpi\Api\HL\Doc as Doc;
+use Glpi\Api\HL\Doc\Parameter;
+use Glpi\Api\HL\Doc\Schema;
 use Glpi\Api\HL\Middleware\ResultFormatterMiddleware;
+use Glpi\Api\HL\ResourceAccessor;
 use Glpi\Api\HL\Route;
 use Glpi\Api\HL\RouteVersion;
-use Glpi\Api\HL\Search;
 use Glpi\Http\JSONResponse;
 use Glpi\Http\Request;
 use Glpi\Http\Response;
 use Group;
 use Profile;
+use Session;
+use Toolbox;
 use User;
+use UserEmail;
 
 /**
  * @phpstan-type EmailData = array{id: int, email: string, is_default: int, _links: array{'self': array{href: non-empty-string}}}
@@ -62,10 +69,10 @@ final class AdministrationController extends AbstractController
             'User' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => User::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'x-rights-conditions' => [ // Object-level extra permissions
                     'read' => static function () {
-                        if (!\Session::canViewAllEntities()) {
+                        if (!Session::canViewAllEntities()) {
                             return [
                                 'LEFT JOIN' => [
                                     'glpi_profiles_users' => [
@@ -85,41 +92,41 @@ final class AdministrationController extends AbstractController
                 ],
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'description' => 'ID',
                         'x-readonly' => true,
                     ],
                     'username' => [
                         'x-field' => 'name',
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Username',
                     ],
                     'realname' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Real name',
                     ],
                     'firstname' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'First name',
                     ],
                     'phone' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Phone number',
                     ],
                     'phone2' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Phone number 2',
                     ],
                     'mobile' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Mobile phone number',
                     ],
                     'emails' => [
-                        'type' => Doc\Schema::TYPE_ARRAY,
+                        'type' => Schema::TYPE_ARRAY,
                         'description' => 'Email addresses',
                         'items' => [
-                            'type' => Doc\Schema::TYPE_OBJECT,
+                            'type' => Schema::TYPE_OBJECT,
                             'x-full-schema' => 'EmailAddress',
                             'x-join' => [
                                 'table' => 'glpi_useremails',
@@ -129,56 +136,56 @@ final class AdministrationController extends AbstractController
                             ],
                             'properties' => [
                                 'id' => [
-                                    'type' => Doc\Schema::TYPE_INTEGER,
-                                    'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                    'type' => Schema::TYPE_INTEGER,
+                                    'format' => Schema::FORMAT_INTEGER_INT64,
                                     'description' => 'ID',
                                 ],
                                 'email' => [
-                                    'type' => Doc\Schema::TYPE_STRING,
+                                    'type' => Schema::TYPE_STRING,
                                     'description' => 'Email address',
                                 ],
                                 'is_default' => [
-                                    'type' => Doc\Schema::TYPE_BOOLEAN,
+                                    'type' => Schema::TYPE_BOOLEAN,
                                     'description' => 'Is default',
                                 ],
                                 'is_dynamic' => [
-                                    'type' => Doc\Schema::TYPE_BOOLEAN,
+                                    'type' => Schema::TYPE_BOOLEAN,
                                     'description' => 'Is dynamic',
                                 ],
                             ],
                         ],
                     ],
                     'comment' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Comment',
                     ],
                     'is_active' => [
-                        'type' => Doc\Schema::TYPE_BOOLEAN,
+                        'type' => Schema::TYPE_BOOLEAN,
                         'description' => 'Is active',
                     ],
                     'is_deleted' => [
-                        'type' => Doc\Schema::TYPE_BOOLEAN,
+                        'type' => Schema::TYPE_BOOLEAN,
                         'description' => 'Is deleted',
                     ],
                     'password' => [
-                        'type' => Doc\Schema::TYPE_STRING,
-                        'format' => Doc\Schema::FORMAT_STRING_PASSWORD,
+                        'type' => Schema::TYPE_STRING,
+                        'format' => Schema::FORMAT_STRING_PASSWORD,
                         'description' => 'Password',
                         'x-writeonly' => true,
                     ],
                     'password2' => [
-                        'type' => Doc\Schema::TYPE_STRING,
-                        'format' => Doc\Schema::FORMAT_STRING_PASSWORD,
+                        'type' => Schema::TYPE_STRING,
+                        'format' => Schema::FORMAT_STRING_PASSWORD,
                         'description' => 'Password confirmation',
                         'x-writeonly' => true,
                     ],
                     'picture' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'x-mapped-from' => 'picture',
                         'x-mapper' => static function ($v) {
                             /** @var array $CFG_GLPI */
                             global $CFG_GLPI;
-                            $path = \Toolbox::getPictureUrl($v, false);
+                            $path = Toolbox::getPictureUrl($v, false);
                             if (!empty($path)) {
                                 return $path;
                             }
@@ -190,28 +197,28 @@ final class AdministrationController extends AbstractController
             'Group' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => Group::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'description' => 'ID',
                         'x-readonly' => true,
                     ],
                     'name' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Name',
                     ],
                     'comment' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Comment',
                     ],
                     'completename' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Complete name',
                     ],
                     'parent' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'x-itemtype' => Group::class,
                         'x-full-schema' => 'Group',
                         'x-join' => [
@@ -222,18 +229,18 @@ final class AdministrationController extends AbstractController
                         'description' => 'Parent group',
                         'properties' => [
                             'id' => [
-                                'type' => Doc\Schema::TYPE_INTEGER,
-                                'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                'type' => Schema::TYPE_INTEGER,
+                                'format' => Schema::FORMAT_INTEGER_INT64,
                                 'description' => 'ID',
                             ],
                             'name' => [
-                                'type' => Doc\Schema::TYPE_STRING,
+                                'type' => Schema::TYPE_STRING,
                                 'description' => 'Name',
                             ],
                         ],
                     ],
                     'level' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
+                        'type' => Schema::TYPE_INTEGER,
                         'description' => 'Level',
                     ],
                     'entity' => self::getDropdownTypeSchema(class: Entity::class, full_schema: 'Entity'),
@@ -242,28 +249,28 @@ final class AdministrationController extends AbstractController
             'Entity' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => Entity::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'description' => 'ID',
                         'x-readonly' => true,
                     ],
                     'name' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Name',
                     ],
                     'comment' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Comment',
                     ],
                     'completename' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Complete name',
                     ],
                     'parent' => [
-                        'type' => Doc\Schema::TYPE_OBJECT,
+                        'type' => Schema::TYPE_OBJECT,
                         'x-itemtype' => Entity::class,
                         'x-full-schema' => 'Entity',
                         'x-join' => [
@@ -274,18 +281,18 @@ final class AdministrationController extends AbstractController
                         'description' => 'Parent entity',
                         'properties' => [
                             'id' => [
-                                'type' => Doc\Schema::TYPE_INTEGER,
-                                'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                                'type' => Schema::TYPE_INTEGER,
+                                'format' => Schema::FORMAT_INTEGER_INT64,
                                 'description' => 'ID',
                             ],
                             'name' => [
-                                'type' => Doc\Schema::TYPE_STRING,
+                                'type' => Schema::TYPE_STRING,
                                 'description' => 'Name',
                             ],
                         ],
                     ],
                     'level' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
+                        'type' => Schema::TYPE_INTEGER,
                         'description' => 'Level',
                     ],
                 ],
@@ -293,44 +300,44 @@ final class AdministrationController extends AbstractController
             'Profile' => [
                 'x-version-introduced' => '2.0',
                 'x-itemtype' => Profile::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'description' => 'ID',
                         'x-readonly' => true,
                     ],
                     'name' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Name',
                     ],
                     'comment' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Comment',
                     ],
                 ],
             ],
             'EmailAddress' => [
                 'x-version-introduced' => '2.0',
-                'x-itemtype' => \UserEmail::class,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'x-itemtype' => UserEmail::class,
+                'type' => Schema::TYPE_OBJECT,
                 'properties' => [
                     'id' => [
-                        'type' => Doc\Schema::TYPE_INTEGER,
-                        'format' => Doc\Schema::FORMAT_INTEGER_INT64,
+                        'type' => Schema::TYPE_INTEGER,
+                        'format' => Schema::FORMAT_INTEGER_INT64,
                         'description' => 'ID',
                     ],
                     'email' => [
-                        'type' => Doc\Schema::TYPE_STRING,
+                        'type' => Schema::TYPE_STRING,
                         'description' => 'Email address',
                     ],
                     'is_default' => [
-                        'type' => Doc\Schema::TYPE_BOOLEAN,
+                        'type' => Schema::TYPE_BOOLEAN,
                         'description' => 'Is default',
                     ],
                     'is_dynamic' => [
-                        'type' => Doc\Schema::TYPE_BOOLEAN,
+                        'type' => Schema::TYPE_BOOLEAN,
                         'description' => 'Is dynamic',
                     ],
                 ],
@@ -349,7 +356,7 @@ final class AdministrationController extends AbstractController
     )]
     public function searchUsers(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/Group', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -363,7 +370,7 @@ final class AdministrationController extends AbstractController
     )]
     public function searchGroups(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/Entity', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -377,7 +384,7 @@ final class AdministrationController extends AbstractController
     )]
     public function searchEntities(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     #[Route(path: '/Profile', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -391,7 +398,7 @@ final class AdministrationController extends AbstractController
     )]
     public function searchProfiles(Request $request): Response
     {
-        return Search::searchBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getParameters());
+        return ResourceAccessor::searchBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getParameters());
     }
 
     /**
@@ -400,11 +407,11 @@ final class AdministrationController extends AbstractController
      */
     private function getEmailDataForUser(int $users_id): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
-            'FROM' => \UserEmail::getTable(),
+            'FROM' => UserEmail::getTable(),
             'WHERE' => [
                 'users_id' => $users_id,
             ],
@@ -436,7 +443,7 @@ final class AdministrationController extends AbstractController
     public function me(Request $request): Response
     {
         $my_user_id = $this->getMyUserID();
-        return Search::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), ['id' => $my_user_id], $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), ['id' => $my_user_id], $request->getParameters());
     }
 
     #[Route(path: '/User/Me/Email', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -462,14 +469,14 @@ final class AdministrationController extends AbstractController
                 'type' => 'string',
                 'description' => 'The email address to add',
                 'required' => true,
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
             ],
             [
                 'name' => 'is_default',
                 'type' => 'boolean',
                 'description' => 'Whether this email address should be the default one',
                 'required' => false,
-                'location' => Doc\Parameter::LOCATION_BODY,
+                'location' => Parameter::LOCATION_BODY,
             ],
         ],
     )]
@@ -503,7 +510,7 @@ final class AdministrationController extends AbstractController
         }
 
         // Create the new email address
-        $email = new \UserEmail();
+        $email = new UserEmail();
         $emails_id = $email->add([
             'users_id' => $this->getMyUserID(),
             'email' => $new_email,
@@ -563,7 +570,7 @@ final class AdministrationController extends AbstractController
         } else {
             $picture_path = 'public/pics/picture.png';
         }
-        $symfony_response = \Toolbox::getFileAsResponse($picture_path, $username);
+        $symfony_response = Toolbox::getFileAsResponse($picture_path, $username);
 
         return new Response($symfony_response->getStatusCode(), $symfony_response->headers->all(), $symfony_response->getContent());
     }
@@ -575,7 +582,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getMyPicture(Request $request): Response
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $it = $DB->request([
             'SELECT' => ['name', 'picture'],
@@ -593,13 +600,13 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Create a new user', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'User',
         ],
     ])]
     public function createUser(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getUserByID']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getUserByID']);
     }
 
     #[Route(path: '/User/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -612,7 +619,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserByID(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/User/username/{username}', methods: ['GET'], requirements: ['username' => '[a-zA-Z0-9_]+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -625,7 +632,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserByUsername(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
     }
 
     #[Route(path: '/User/{id}/Picture', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -635,7 +642,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserPictureByID(Request $request): Response
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $it = $DB->request([
             'SELECT' => ['name', 'picture'],
@@ -655,7 +662,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserPictureByUsername(Request $request): Response
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $it = $DB->request([
             'SELECT' => ['name', 'picture'],
@@ -675,8 +682,8 @@ final class AdministrationController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'location' => Parameter::LOCATION_BODY,
+                'type' => Schema::TYPE_OBJECT,
                 'schema' => 'User',
             ],
         ],
@@ -686,7 +693,7 @@ final class AdministrationController extends AbstractController
     )]
     public function updateUserByID(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/User/username/{username}', methods: ['PATCH'], requirements: ['username' => '[a-zA-Z0-9_]+'])]
@@ -696,8 +703,8 @@ final class AdministrationController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'location' => Parameter::LOCATION_BODY,
+                'type' => Schema::TYPE_OBJECT,
                 'schema' => 'User',
             ],
         ],
@@ -707,7 +714,7 @@ final class AdministrationController extends AbstractController
     )]
     public function updateUserByUsername(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
     }
 
     #[Route(path: '/User/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -715,7 +722,7 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Delete a user by ID')]
     public function deleteUserByID(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/User/username/{username}', methods: ['DELETE'], requirements: ['username' => '[a-zA-Z0-9_]+'])]
@@ -723,7 +730,7 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Delete a user by username')]
     public function deleteUserByUsername(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters(), 'username');
     }
 
     private function getUsedOrManagedItems(int $users_id, bool $is_managed, array $request_params, string $api_version): Response
@@ -732,8 +739,11 @@ final class AdministrationController extends AbstractController
         global $CFG_GLPI;
 
         // Create a union schema with all relevant item types
-        $schema = Doc\Schema::getUnionSchemaForItemtypes(
+        $schema = Schema::getUnionSchemaForItemtypes(
             itemtypes: array_filter($CFG_GLPI['assignable_types'], static function ($t) use ($is_managed) {
+                if (!\is_a($t, CommonDBTM::class, true)) {
+                    return false; // Ignore invalid classes
+                }
                 return (new $t())->isField($is_managed ? 'users_id_tech' : 'users_id');
             }),
             api_version: $api_version
@@ -745,7 +755,7 @@ final class AdministrationController extends AbstractController
         $user_field = $is_managed ? 'user_tech.id' : 'user.id';
         $rsql_filter .= "$user_field==$users_id";
         $request_params['filter'] = $rsql_filter;
-        return Search::searchBySchema($schema, $request_params);
+        return ResourceAccessor::searchBySchema($schema, $request_params);
     }
 
     #[Route(path: '/User/Me/UsedItem', methods: ['GET'], middlewares: [ResultFormatterMiddleware::class])]
@@ -778,7 +788,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserUsedItemsByUsername(Request $request): Response
     {
-        $users_id = Search::getIDForOtherUniqueFieldBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), 'username', $request->getAttribute('username'));
+        $users_id = ResourceAccessor::getIDForOtherUniqueFieldBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), 'username', $request->getAttribute('username'));
         return $this->getUsedOrManagedItems($users_id, false, $request->getParameters(), $this->getAPIVersion($request));
     }
 
@@ -812,7 +822,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getUserManagedItemsByUsername(Request $request): Response
     {
-        $users_id = Search::getIDForOtherUniqueFieldBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), 'username', $request->getAttribute('username'));
+        $users_id = ResourceAccessor::getIDForOtherUniqueFieldBySchema($this->getKnownSchema('User', $this->getAPIVersion($request)), 'username', $request->getAttribute('username'));
         return $this->getUsedOrManagedItems($users_id, true, $request->getParameters(), $this->getAPIVersion($request));
     }
 
@@ -821,13 +831,13 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Create a new group', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'Group',
         ],
     ])]
     public function createGroup(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getGroupByID']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getGroupByID']);
     }
 
     #[Route(path: '/Group/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -840,7 +850,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getGroupByID(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Group/{id}', methods: ['PATCH'], requirements: ['id' => '\d+'])]
@@ -850,8 +860,8 @@ final class AdministrationController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'location' => Parameter::LOCATION_BODY,
+                'type' => Schema::TYPE_OBJECT,
                 'schema' => 'Group',
             ],
         ],
@@ -861,7 +871,7 @@ final class AdministrationController extends AbstractController
     )]
     public function updateGroupByID(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Group/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -869,7 +879,7 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Delete a group by ID')]
     public function deleteGroupByID(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('Group', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Entity', methods: ['POST'])]
@@ -877,13 +887,13 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Create a new entity', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'Entity',
         ],
     ])]
     public function createEntity(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getEntityByID']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getEntityByID']);
     }
 
     #[Route(path: '/Entity/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -896,7 +906,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getEntityByID(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Entity/{id}', methods: ['PATCH'], requirements: ['id' => '\d+'])]
@@ -906,8 +916,8 @@ final class AdministrationController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'location' => Parameter::LOCATION_BODY,
+                'type' => Schema::TYPE_OBJECT,
                 'schema' => 'Entity',
             ],
         ],
@@ -917,7 +927,7 @@ final class AdministrationController extends AbstractController
     )]
     public function updateEntityByID(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Entity/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -925,7 +935,7 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Delete an entity by ID')]
     public function deleteEntityByID(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('Entity', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Profile', methods: ['POST'])]
@@ -933,13 +943,13 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Create a new profile', parameters: [
         [
             'name' => '_',
-            'location' => Doc\Parameter::LOCATION_BODY,
+            'location' => Parameter::LOCATION_BODY,
             'schema' => 'Profile',
         ],
     ])]
     public function createProfile(Request $request): Response
     {
-        return Search::createBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getProfileByID']);
+        return ResourceAccessor::createBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getParameters(), [self::class, 'getProfileByID']);
     }
 
     #[Route(path: '/Profile/{id}', methods: ['GET'], requirements: ['id' => '\d+'], middlewares: [ResultFormatterMiddleware::class])]
@@ -952,7 +962,7 @@ final class AdministrationController extends AbstractController
     )]
     public function getProfileByID(Request $request): Response
     {
-        return Search::getOneBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::getOneBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Profile/{id}', methods: ['PATCH'], requirements: ['id' => '\d+'])]
@@ -962,8 +972,8 @@ final class AdministrationController extends AbstractController
         parameters: [
             [
                 'name' => '_',
-                'location' => Doc\Parameter::LOCATION_BODY,
-                'type' => Doc\Schema::TYPE_OBJECT,
+                'location' => Parameter::LOCATION_BODY,
+                'type' => Schema::TYPE_OBJECT,
                 'schema' => 'Profile',
             ],
         ],
@@ -973,7 +983,7 @@ final class AdministrationController extends AbstractController
     )]
     public function updateProfileByID(Request $request): Response
     {
-        return Search::updateBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::updateBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 
     #[Route(path: '/Profile/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -981,6 +991,6 @@ final class AdministrationController extends AbstractController
     #[Doc\Route(description: 'Delete a profile by ID')]
     public function deleteProfileByID(Request $request): Response
     {
-        return Search::deleteBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
+        return ResourceAccessor::deleteBySchema($this->getKnownSchema('Profile', $this->getAPIVersion($request)), $request->getAttributes(), $request->getParameters());
     }
 }

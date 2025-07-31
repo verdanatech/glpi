@@ -36,11 +36,13 @@
 namespace Glpi\Form\Export\Context;
 
 use CommonDBTM;
+use DBmysql;
 use Glpi\Form\Comment;
 use Glpi\Form\Export\Specification\DataRequirementSpecification;
 use Glpi\Form\Question;
 use Glpi\Form\Section;
 use InvalidArgumentException;
+use LogicException;
 
 final class DatabaseMapper
 {
@@ -53,14 +55,14 @@ final class DatabaseMapper
 
     public function __construct(array $entities_restrictions)
     {
-        if (empty($entities_restrictions)) {
+        if ($entities_restrictions === []) {
             throw new InvalidArgumentException("Must specify at least one entity");
         }
 
         $this->entities_restrictions = $entities_restrictions;
     }
 
-    public function addMappedItem(string $itemtype, string $name, int $id): void
+    public function addMappedItem(string $itemtype, string|int $key, int $id): void
     {
         if (!$this->isValidItemtype($itemtype)) {
             return;
@@ -70,19 +72,19 @@ final class DatabaseMapper
             $this->values[$itemtype] = [];
         }
 
-        $this->values[$itemtype][$name] = $id;
+        $this->values[$itemtype][$key] = $id;
     }
 
-    public function getItemId(string $itemtype, string $name): int
+    public function getItemId(string $itemtype, string|int $key): int
     {
-        if (!$this->contextExist($itemtype, $name)) {
+        if (!$this->contextExist($itemtype, $key)) {
             // Can't recover from this point, it is the serializer
             // responsability to validate that all requirements are found in the
             // context before attempting to import the forms.
-            throw new \LogicException("Unknown item: {$itemtype}::{$name}");
+            throw new LogicException("Unknown item: {$itemtype}::{$key}");
         }
 
-        return $this->values[$itemtype][$name];
+        return $this->values[$itemtype][$key];
     }
 
     /** @param DataRequirementSpecification[] $data_requirements */
@@ -150,15 +152,14 @@ final class DatabaseMapper
 
     private function tryTofindOneRowByName(string $itemtype, string $name): ?array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!$this->isValidItemtype($itemtype)) {
             throw new InvalidArgumentException();
         }
 
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         $query = [
             'FROM' => $item::getTable(),
         ];

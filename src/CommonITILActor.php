@@ -81,7 +81,7 @@ abstract class CommonITILActor extends CommonDBRelation
      **/
     public function getActors(int $items_id): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($items_id <= 0) {
@@ -107,7 +107,7 @@ abstract class CommonITILActor extends CommonDBRelation
      */
     public function isAlternateEmailForITILObject($items_id, $email)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -186,8 +186,7 @@ abstract class CommonITILActor extends CommonDBRelation
             $actor_id        = $input[$fk_field];
 
             // check if the actor exists in database
-            $itemtype = getItemtypeForForeignKeyField($fk_field);
-            $actor = new $itemtype();
+            $actor = getItemForForeignKeyField($fk_field);
             if (!$actor->getFromDB($actor_id)) {
                 return false;
             }
@@ -252,7 +251,7 @@ abstract class CommonITILActor extends CommonDBRelation
 
     public function post_addItem()
     {
-        $item = new static::$itemtype_1();
+        $item = getItemForItemtype(static::$itemtype_1);
 
         $no_stat_computation = true;
         if ($this->input['type'] == CommonITILActor::ASSIGN) {

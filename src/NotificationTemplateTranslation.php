@@ -126,7 +126,7 @@ class NotificationTemplateTranslation extends CommonDBChild
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -297,7 +297,7 @@ TWIG, $twig_params);
     public static function getAllUsedLanguages($language_id)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $DB;
 
@@ -444,8 +444,8 @@ TWIG, $twig_params);
 
         // Criteria Form
         $key   = getForeignKeyFieldForItemType($item::class);
-        $id    = Session::getSavedOption(__CLASS__, $key, 0);
-        $event = Session::getSavedOption(__CLASS__, $key . '_event', '');
+        $id    = Session::getSavedOption(self::class, $key, 0);
+        $event = Session::getSavedOption(self::class, $key . '_event', '');
 
         $data = null;
 

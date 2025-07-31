@@ -32,19 +32,29 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
  * Based on cacti plugin system
  */
-
+use Composer\Autoload\ClassLoader;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Cache\CacheManager;
 use Glpi\Dashboard\Grid;
+use Glpi\Debug\Profiler;
+use Glpi\Event;
 use Glpi\Marketplace\Controller as MarketplaceController;
 use Glpi\Marketplace\View as MarketplaceView;
 use Glpi\Plugin\Hooks;
 use Glpi\Toolbox\VersionParser;
-use Glpi\Event;
+use Laminas\I18n\Translator\Translator;
+use Psr\Log\LoggerInterface;
+use Psr\SimpleCache\CacheInterface;
+
+use function Safe\ini_get;
+use function Safe\ob_end_clean;
+use function Safe\ob_start;
+use function Safe\preg_grep;
+use function Safe\preg_match;
+use function Safe\scandir;
 
 class Plugin extends CommonDBTM
 {
@@ -77,9 +87,7 @@ class Plugin extends CommonDBTM
     public const TOBECONFIGURED = 3;
 
     /**
-     * @var int Plugin is installed but has not been activated yet, or has been deactivated either by the user or
-     *          by the GLPI update process.
-     * @TODO Do not set plugins to this state during the GLPI update process.
+     * @var int Plugin is installed but has not been activated yet, or has been deactivated by the user.
      */
     public const NOTACTIVATED   = 4;
 
@@ -99,16 +107,26 @@ class Plugin extends CommonDBTM
     public const REPLACED       = 7;
 
     /**
-     * @var int Plugin is installed and enabled, but its execution has suspended by the plugin update process.
-     */
-    public const SUSPENDED      = 8;
-
-    /**
      * Option used to indicates that auto installation of plugin should be disabled (bool value expected).
      *
      * @var string
      */
     public const OPTION_AUTOINSTALL_DISABLED = 'autoinstall_disabled';
+
+    /**
+     * Plugins execution is active.
+     */
+    public const EXECUTION_MODE_ON = 'on';
+
+    /**
+     * Plugins execution has been suspended by a GLPI codebase update.
+     */
+    public const EXECUTION_MODE_SUSPENDED_BY_UPDATE = 'suspended_by_update';
+
+    /**
+     * Plugins execution has been suspended manually by the administrator.
+     */
+    public const EXECUTION_MODE_SUSPENDED_MANUALLY = 'suspended_manually';
 
     /**
      * Plugin key validation pattern.
@@ -118,11 +136,18 @@ class Plugin extends CommonDBTM
     public static $rightname = 'config';
 
     /**
-     * Indicates whether plugin states have been checked.
+     * Indicates whether plugins have been initialized.
      *
      * @var boolean
      */
-    private static $plugins_state_checked = false;
+    private static $plugins_initialized = false;
+
+    /**
+     * Booted plugin list
+     *
+     * @var string[]
+     */
+    private static $booted_plugins = [];
 
     /**
      * Activated plugin list
@@ -130,6 +155,14 @@ class Plugin extends CommonDBTM
      * @var string[]
      */
     private static $activated_plugins = [];
+
+
+    /**
+     * List of plugins having their autoloader already registered.
+     *
+     * @var string[]
+     */
+    private static $autoloaded_plugins = [];
 
     /**
      * Loaded plugin list
@@ -268,52 +301,110 @@ class Plugin extends CommonDBTM
         return $this->getFromDBByCrit([$this->getTable() . '.directory' => $dir]);
     }
 
-
     /**
-     * Init plugins list.
-     *
-     * @param boolean $load_plugins     Whether to load active/configurable plugins or not.
-     *
-     * @return void
-     **/
-    public function init(bool $load_plugins = false)
+     * Boot active plugins.
+     */
+    public function bootPlugins(): void
     {
-        /** @var \DBmysql|null $DB */
+        /** @var DBmysql|null $DB */
         global $DB;
 
-        self::$plugins_state_checked = false;
-        self::$activated_plugins = [];
-        self::$loaded_plugins = [];
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Booting plugins is forbidden when plugins execution is suspended.');
+        }
 
-        $this->checkStates(false);
+        self::$booted_plugins = [];
+        self::$activated_plugins = [];
+        self::$autoloaded_plugins = [];
+        self::$loaded_plugins = [];
 
         $plugins = $this->find(['state' => [self::ACTIVATED, self::TOBECONFIGURED]]);
 
-        // Store plugins that are loadable and still marked as active in DB after call to `self::checkStates()`,
-        // but before actually calling plugins init functions,
-        // in order to not have to do a DB query on `self::isActivated()` calls which are commonly use in plugins init functions.
-        $directories_to_load = [];
         foreach ($plugins as $plugin) {
-            if (!$this->isLoadable($plugin['directory'])) {
+            $plugin_key = $plugin['directory'];
+
+            if (!$this->isLoadable($plugin_key)) {
                 continue;
             }
 
-            $directories_to_load[] = $plugin['directory'];
+            foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
+                $plugin_directory = "$base_dir/$plugin_key";
 
-            if ((int) $plugin['state'] === self::ACTIVATED) {
-                self::$activated_plugins[] = $plugin['directory'];
+                if (!is_dir($plugin_directory)) {
+                    continue; // try with next base dir
+                }
+
+                $this->registerPluginAutoloader($plugin_key, $plugin_directory);
+
+                $boot_function = sprintf('plugin_%s_boot', $plugin_key);
+                if (function_exists($boot_function)) {
+                    try {
+                        $boot_function();
+                    } catch (Throwable $e) {
+                        // Log error
+                        /** @var LoggerInterface $PHPLOGGER */
+                        global $PHPLOGGER;
+                        $PHPLOGGER->error(
+                            sprintf('An error occurred during the `%s` plugin boot: %s', $plugin_key, $e->getMessage()),
+                            ['exception' => $e]
+                        );
+                        continue 2; // ignore this plugin
+                    }
+                }
+
+                self::$booted_plugins[] = $plugin_key;
+
+                if ((int) $plugin['state'] === self::ACTIVATED) {
+                    self::$activated_plugins[] = $plugin_key;
+                }
+
             }
         }
+    }
 
-        if ($load_plugins) {
-            foreach ($directories_to_load as $directory) {
-                \Glpi\Debug\Profiler::getInstance()->start("{$directory}:init", \Glpi\Debug\Profiler::CATEGORY_PLUGINS);
-                Plugin::load($directory);
-                \Glpi\Debug\Profiler::getInstance()->stop("{$directory}:init");
-            }
-            // For plugins which require action after all plugin init
-            Plugin::doHook(Hooks::POST_INIT);
+    /**
+     * Register the given plugin autoloader.
+     */
+    private function registerPluginAutoloader(string $plugin_key, string $plugin_directory): void
+    {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Registering plugin autoloader is forbidden when plugins execution is suspended.');
         }
+
+        if (in_array($plugin_key, self::$autoloaded_plugins)) {
+            return;
+        }
+
+        $psr4_dir = $plugin_directory . '/src/';
+        if (is_dir($psr4_dir)) {
+            $psr4_autoloader = new ClassLoader();
+            $psr4_autoloader->addPsr4(NS_PLUG . ucfirst($plugin_key) . '\\', $psr4_dir);
+            $psr4_autoloader->register();
+
+            self::$autoloaded_plugins[] = $plugin_key;
+        }
+    }
+
+    /**
+     * Initialize active plugins.
+     */
+    public function init()
+    {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Initializing plugins is forbidden when plugins execution is suspended.');
+        }
+
+        self::$plugins_initialized = false;
+
+        foreach (self::$booted_plugins as $plugin_key) {
+            Profiler::getInstance()->start("{$plugin_key}:init", Profiler::CATEGORY_PLUGINS);
+            Plugin::load($plugin_key);
+            Profiler::getInstance()->stop("{$plugin_key}:init");
+        }
+        // For plugins which require action after all plugin init
+        Plugin::doHook(Hooks::POST_INIT);
+
+        self::$plugins_initialized = true;
     }
 
 
@@ -328,6 +419,10 @@ class Plugin extends CommonDBTM
      **/
     public static function load($plugin_key, $withhook = false)
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Loading plugin files is forbidden when plugins execution is suspended.');
+        }
+
         $loaded = false;
         foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (!is_dir($base_dir)) {
@@ -343,13 +438,7 @@ class Plugin extends CommonDBTM
             if ((new self())->loadPluginSetupFile($plugin_key)) {
                 $loaded = true;
                 if (!in_array($plugin_key, self::$loaded_plugins)) {
-                    // Register PSR-4 autoloader
-                    $psr4_dir = $plugin_directory . '/src/';
-                    if (is_dir($psr4_dir)) {
-                        $psr4_autoloader = new \Composer\Autoload\ClassLoader();
-                        $psr4_autoloader->addPsr4(NS_PLUG . ucfirst($plugin_key) . '\\', $psr4_dir);
-                        $psr4_autoloader->register();
-                    }
+                    (new self())->registerPluginAutoloader($plugin_key, $plugin_directory);
 
                     // Init plugin
                     self::$loaded_plugins[] = $plugin_key;
@@ -357,15 +446,18 @@ class Plugin extends CommonDBTM
                     if (function_exists($init_function)) {
                         try {
                             $init_function();
-                        } catch (\Throwable $e) {
-                            trigger_error(
+                        } catch (Throwable $e) {
+                            /** @var LoggerInterface $PHPLOGGER */
+                            global $PHPLOGGER;
+                            $PHPLOGGER->error(
                                 sprintf(
                                     'Error while loading plugin %s: %s',
                                     $plugin_key,
                                     $e->getMessage()
                                 ),
-                                E_USER_WARNING
+                                ['exception' => $e]
                             );
+
                             // Plugin has errored, so it should be disabled if it isn't already
                             $plugin = new self();
                             if ($plugin->isActivated($plugin_key)) {
@@ -405,6 +497,13 @@ class Plugin extends CommonDBTM
         if (($key = array_search($plugin_key, self::$loaded_plugins)) !== false) {
             unset(self::$loaded_plugins[$key]);
         }
+
+        // reset menu
+        if (isset($_SESSION['glpimenu'])) {
+            unset($_SESSION['glpimenu']);
+        }
+
+        $this->resetHookableCacheEntries($plugin_key);
     }
 
 
@@ -421,9 +520,13 @@ class Plugin extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \Laminas\I18n\Translator\Translator $TRANSLATE
+         * @var Translator $TRANSLATE
          */
         global $CFG_GLPI, $TRANSLATE;
+
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Loading plugin locales is forbidden when plugins execution is suspended.');
+        }
 
         $trytoload = 'en_GB';
         if (isset($_SESSION['glpilanguage'])) {
@@ -518,6 +621,44 @@ class Plugin extends CommonDBTM
      */
     public function checkStates($scan_inactive_and_new_plugins = false)
     {
+        /**
+         * @var array $CFG_GLPI
+         * @var DBmysql $DB
+         */
+        global $CFG_GLPI, $DB;
+
+        if ($this->isPluginsExecutionSuspended()) {
+            // Do not check plugins states when their execution is suspended.
+            // Checking their state requires their `setup.php` file to be loaded, we do not want this to happen.
+            return;
+        }
+
+        if (Update::isUpdateMandatory() && countElementsInTable(self::getTable()) > 0) {
+            // Suspend all plugins once a new mandatory update is detected.
+            // This prevents incompatible plugins to be loaded.
+            // Use a direct DB query to prevent trigerring `CommonDBTM` hooks.
+            $DB->updateOrInsert(
+                Config::getTable(),
+                [
+                    'value'   => self::EXECUTION_MODE_SUSPENDED_BY_UPDATE,
+                ],
+                [
+                    'context' => 'core',
+                    'name'    => 'plugins_execution_mode',
+                ],
+            );
+
+            Event::log(
+                '',
+                Plugin::class,
+                3,
+                "setup",
+                __('Execution of all the plugins has been suspended since a database update is required.')
+            );
+
+            return; // Do not check individual plugins states.
+        }
+
         $directories = [];
 
         // Add known plugins to the check list
@@ -538,8 +679,6 @@ class Plugin extends CommonDBTM
         foreach ($directories as $directory) {
             $this->checkPluginState($directory, $scan_inactive_and_new_plugins);
         }
-
-        self::$plugins_state_checked = true;
     }
 
     /**
@@ -548,7 +687,7 @@ class Plugin extends CommonDBTM
     private function getPluginInformation(string $plugin_key): ?array
     {
         if (!array_key_exists($plugin_key, $this->plugins_information)) {
-            $information = $this->getInformationsFromDirectory($plugin_key);
+            $information = $this->getInformationsFromDirectory($plugin_key, with_lang: false);
             $this->plugins_information[$plugin_key] = !empty($information) ? $information : null;
         }
 
@@ -595,12 +734,18 @@ class Plugin extends CommonDBTM
      */
     public function checkPluginState($plugin_key, bool $check_for_replacement = false)
     {
+        /** @var DBmysql $DB */
+        global $DB;
+
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Checking a plugin state is forbidden when plugins execution is suspended.');
+        }
+
         $plugin = new self();
 
         $information      = $this->getPluginInformation($plugin_key) ?? [];
+        $is_loadable      = $information !== [];
         $is_already_known = $plugin->getFromDBByCrit(['directory' => $plugin_key]);
-        $is_loadable      = !empty($information);
-
         $new_specs        = $check_for_replacement ? $this->getNewInfoAndDirBasedOnOldName($plugin_key) : null;
         $is_replaced      = $new_specs !== null;
 
@@ -608,6 +753,17 @@ class Plugin extends CommonDBTM
             // Plugin is not known and we are unable to load information, we ignore it.
             return;
         }
+
+        // Filter information to keep only fields expected to be inserted/updated into the DB.
+        $information = array_filter(
+            $information,
+            fn($key) => in_array(
+                $key,
+                ['name', 'version', 'author', 'homepage', 'license'],
+                true
+            ),
+            ARRAY_FILTER_USE_KEY
+        );
 
         if ($is_already_known && $is_replaced) {
             // Filesystem contains both the checked plugin and the plugin that is supposed to replace it.
@@ -621,19 +777,17 @@ class Plugin extends CommonDBTM
                     ),
                     E_USER_WARNING
                 );
-                $this->update(
+                $DB->update(
+                    self::getTable(),
                     [
-                        'id'    => $plugin->fields['id'],
                         'state' => self::REPLACED,
-                    ] + $information
+                    ] + $information,
+                    [
+                        'id' => $plugin->fields['id'],
+                    ]
                 );
 
                 $this->unload($plugin_key);
-
-                // reset menu
-                if (isset($_SESSION['glpimenu'])) {
-                    unset($_SESSION['glpimenu']);
-                }
 
                 Event::log(
                     '',
@@ -665,14 +819,12 @@ class Plugin extends CommonDBTM
 
         if (!$is_already_known) {
             // Plugin not known, add it in DB
-            $this->add(
-                array_merge(
-                    $information,
-                    [
-                        'state'     => $is_replaced ? self::REPLACED : self::NOTINSTALLED,
-                        'directory' => $plugin_key,
-                    ]
-                )
+            $DB->insert(
+                self::getTable(),
+                [
+                    'state'     => $is_replaced ? self::REPLACED : self::NOTINSTALLED,
+                    'directory' => $plugin_key,
+                ] + $information
             );
             return;
         }
@@ -684,7 +836,6 @@ class Plugin extends CommonDBTM
             // Plugin known version differs from information or plugin has been renamed,
             // update information in database
             $input              = $information;
-            $input['id']        = $plugin->fields['id'];
             $input['directory'] = $plugin_key;
             if (!in_array($plugin->fields['state'], [self::ANEW, self::NOTINSTALLED, self::NOTUPDATED])) {
                 // mark it as 'updatable' unless it was not installed
@@ -710,13 +861,15 @@ class Plugin extends CommonDBTM
                 );
             }
 
-            $this->update($input);
+            $DB->update(
+                self::getTable(),
+                $input,
+                [
+                    'id' => $plugin->fields['id'],
+                ]
+            );
 
             $this->unload($plugin_key);
-            // reset menu
-            if (isset($_SESSION['glpimenu'])) {
-                unset($_SESSION['glpimenu']);
-            }
 
             return;
         }
@@ -724,26 +877,32 @@ class Plugin extends CommonDBTM
         // Check if replacement state changed
         if ((int) $plugin->fields['state'] === self::REPLACED && !$is_replaced) {
             // Reset plugin state as replacement plugin is not present anymore on filesystem
-            $this->update(
+            $DB->update(
+                self::getTable(),
                 [
-                    'id'    => $plugin->fields['id'],
                     'state' => self::NOTINSTALLED,
+                ],
+                [
+                    'id' => $plugin->fields['id'],
                 ]
             );
             return;
         }
 
         // Check if configuration state changed
-        if (in_array((int) $plugin->fields['state'], [self::ACTIVATED, self::TOBECONFIGURED, self::NOTACTIVATED, self::SUSPENDED], true)) {
+        if (in_array((int) $plugin->fields['state'], [self::ACTIVATED, self::TOBECONFIGURED, self::NOTACTIVATED], true)) {
             $function = 'plugin_' . $plugin_key . '_check_config';
             $is_config_ok = !function_exists($function) || $function();
 
             if ((int) $plugin->fields['state'] === self::TOBECONFIGURED && $is_config_ok) {
                 // Remove TOBECONFIGURED state if configuration is OK now
-                $this->update(
+                $DB->update(
+                    self::getTable(),
                     [
-                        'id'    => $plugin->fields['id'],
                         'state' => self::NOTACTIVATED,
+                    ],
+                    [
+                        'id' => $plugin->fields['id'],
                     ]
                 );
                 return;
@@ -756,10 +915,13 @@ class Plugin extends CommonDBTM
                     ),
                     E_USER_WARNING
                 );
-                $this->update(
+                $DB->update(
+                    self::getTable(),
                     [
-                        'id'    => $plugin->fields['id'],
                         'state' => self::TOBECONFIGURED,
+                    ],
+                    [
+                        'id' => $plugin->fields['id'],
                     ]
                 );
                 return;
@@ -802,7 +964,29 @@ class Plugin extends CommonDBTM
                 ),
                 E_USER_WARNING
             );
-            $this->unactivate($plugin->fields['id']);
+
+            $DB->update(
+                self::getTable(),
+                [
+                    'state' => self::NOTACTIVATED,
+                ],
+                [
+                    'id' => $plugin->fields['id'],
+                ]
+            );
+
+            $this->unload($plugin_key);
+
+            Event::log(
+                '',
+                Plugin::class,
+                3,
+                "setup",
+                sprintf(
+                    'Plugin "%s" prerequisites are not matched. It has been deactivated.',
+                    $plugin_key
+                )
+            );
         }
     }
 
@@ -841,7 +1025,7 @@ class Plugin extends CommonDBTM
      */
     public function getList(array $fields = [], array $order = ['name', 'directory'])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $query = [
@@ -868,6 +1052,10 @@ class Plugin extends CommonDBTM
      **/
     public function uninstall($ID)
     {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Executing a plugin maintenance method is forbidden when plugins execution is suspended.');
+        }
+
         $message = '';
         $type = ERROR;
 
@@ -894,8 +1082,6 @@ class Plugin extends CommonDBTM
                 'state'   => self::NOTINSTALLED,
             ]);
             $this->unload($this->fields['directory']);
-
-            $this->resetHookableCacheEntries($this->fields['directory']);
 
             self::doHook(Hooks::POST_PLUGIN_UNINSTALL, $this->fields['directory']);
 
@@ -937,9 +1123,12 @@ class Plugin extends CommonDBTM
      **/
     public function install($ID, array $params = [])
     {
-
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
+
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Executing a plugin maintenance method is forbidden when plugins execution is suspended.');
+        }
 
         $message = '';
         $type = ERROR;
@@ -1024,6 +1213,10 @@ class Plugin extends CommonDBTM
     {
         /** @var array $PLUGIN_HOOKS */
         global $PLUGIN_HOOKS;
+
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Executing a plugin maintenance method is forbidden when plugins execution is suspended.');
+        }
 
         if ($this->getFromDB($ID)) {
             // Enable autoloader and load plugin hooks
@@ -1126,22 +1319,23 @@ class Plugin extends CommonDBTM
     }
 
     /**
-     * Suspend a plugin. This can be used to disable the execution of a plugin during its update process.
-     *
-     * @return boolean
-     **/
-    public function suspend(): bool
+     * Suspend execution of all active plugins.
+     */
+    final public function suspendAllPluginsExecution(): bool
     {
-        $success = $this->update([
-            'id'    => $this->getID(),
-            'state' => self::SUSPENDED,
-        ]);
+        Config::setConfigurationValues('core', ['plugins_execution_mode' => Plugin::EXECUTION_MODE_SUSPENDED_MANUALLY]);
 
-        if ($success) {
-            $this->unload($this->fields['directory']);
-        }
+        return true; // TODO Make the Config::setConfigurationValues() return a success boolean
+    }
 
-        return $success;
+    /**
+     * Resume execution of all suspended plugins.
+     */
+    final public function resumeAllPluginsExecution(): bool
+    {
+        Config::setConfigurationValues('core', ['plugins_execution_mode' => Plugin::EXECUTION_MODE_ON]);
+
+        return true; // TODO Make the Config::setConfigurationValues() return a success boolean
     }
 
     /**
@@ -1153,6 +1347,9 @@ class Plugin extends CommonDBTM
      **/
     public function unactivate($ID)
     {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Executing a plugin maintenance method is forbidden when plugins execution is suspended.');
+        }
 
         if ($this->getFromDB($ID)) {
             // Load plugin hooks
@@ -1169,14 +1366,7 @@ class Plugin extends CommonDBTM
             ]);
             $this->unload($this->fields['directory']);
 
-            $this->resetHookableCacheEntries($this->fields['directory']);
-
             self::doHook(Hooks::POST_PLUGIN_DISABLE, $this->fields['directory']);
-
-            // reset menu
-            if (isset($_SESSION['glpimenu'])) {
-                unset($_SESSION['glpimenu']);
-            }
 
             Session::addMessageAfterRedirect(
                 sprintf(__('Plugin %1$s has been deactivated!'), $this->fields['name']),
@@ -1208,60 +1398,16 @@ class Plugin extends CommonDBTM
         return false;
     }
 
-
-    /**
-     * Unactivate all activated plugins for update process.
-     * This will prevent any plugin class to be available through autoloader.
-     **/
-    public function unactivateAll()
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if (countElementsInTable(static::getTable(), ['state' => self::ACTIVATED]) === 0) {
-            return;
-        }
-
-        $DB->update(
-            $this->getTable(),
-            [
-                'state' => self::NOTACTIVATED,
-            ],
-            [
-                'state' => self::ACTIVATED,
-            ]
-        );
-
-        $dirs = array_keys(self::$activated_plugins);
-        foreach ($dirs as $dir) {
-            self::doHook(Hooks::POST_PLUGIN_DISABLE, $dir);
-        }
-
-        self::$activated_plugins = [];
-        self::$loaded_plugins = [];
-
-        // reset menu
-        if (isset($_SESSION['glpimenu'])) {
-            unset($_SESSION['glpimenu']);
-        }
-
-        Event::log(
-            '',
-            Plugin::class,
-            3,
-            "setup",
-            __('All plugins have been disabled.')
-        );
-    }
-
-
     /**
      * clean a plugin
      *
-     * @param $ID ID of the plugin
+     * @param int $ID ID of the plugin
      **/
     public function clean($ID)
     {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Executing a plugin maintenance method is forbidden when plugins execution is suspended.');
+        }
 
         if ($this->getFromDB($ID)) {
             $this->unload($this->fields['directory']);
@@ -1283,15 +1429,16 @@ class Plugin extends CommonDBTM
     /**
      * Is a plugin activated ?
      *
+     * @phpstan-impure
+     *
      * @param string $directory  Plugin directory
      *
      * @return boolean
      */
     public function isActivated($directory)
     {
-        if (!self::$plugins_state_checked) {
-            // Plugins are not actually loaded/activated before plugins state checks,
-            // and so $activated_plugins will be empty.
+        if (!self::$plugins_initialized) {
+            // `$activated_plugins` content will not be reliable until plugins have been initialized.
             // In this case, plugins states have to be fetched from DB.
             $self = new self();
             return $self->getFromDBbyDir($directory)
@@ -1343,12 +1490,22 @@ class Plugin extends CommonDBTM
      */
     public function isLoadable($directory)
     {
-        return !empty($this->getInformationsFromDirectory($directory, false));
+        $plugin_dir = Plugin::getPhpDir($directory);
+
+        if ($plugin_dir === false) {
+            return false;
+        }
+
+        $setup_file_path = $plugin_dir . '/setup.php';
+
+        return file_exists($setup_file_path) && is_readable($setup_file_path);
     }
 
 
     /**
      * Is a plugin installed ?
+     *
+     * @phpstan-impure
      *
      * @param string $directory  Plugin directory
      *
@@ -1526,6 +1683,10 @@ class Plugin extends CommonDBTM
             $data = $param;
         }
 
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return $data;
+        }
+
         // Apply hook only for the item
         if (($param != null) && is_object($param)) {
             $itemtype = get_class($param);
@@ -1540,12 +1701,12 @@ class Plugin extends CommonDBTM
                     }
 
                     if (isset($tab[$itemtype])) {
-                        \Glpi\Debug\Profiler::getInstance()->start("{$plugin_key}:{$name}", \Glpi\Debug\Profiler::CATEGORY_PLUGINS);
+                        Profiler::getInstance()->start("{$plugin_key}:{$name}", Profiler::CATEGORY_PLUGINS);
                         self::includeHook($plugin_key);
                         if (is_callable($tab[$itemtype])) {
                             call_user_func($tab[$itemtype], $data);
                         }
-                        \Glpi\Debug\Profiler::getInstance()->stop("{$plugin_key}:{$name}");
+                        Profiler::getInstance()->stop("{$plugin_key}:{$name}");
                     }
                 }
             }
@@ -1556,12 +1717,12 @@ class Plugin extends CommonDBTM
                         continue;
                     }
 
-                    \Glpi\Debug\Profiler::getInstance()->start("{$plugin_key}:{$name}", \Glpi\Debug\Profiler::CATEGORY_PLUGINS);
+                    Profiler::getInstance()->start("{$plugin_key}:{$name}", Profiler::CATEGORY_PLUGINS);
                     self::includeHook($plugin_key);
                     if (is_callable($function)) {
                         call_user_func($function, $data);
                     }
-                    \Glpi\Debug\Profiler::getInstance()->stop("{$plugin_key}:{$name}");
+                    Profiler::getInstance()->stop("{$plugin_key}:{$name}");
                 }
             }
         }
@@ -1583,6 +1744,10 @@ class Plugin extends CommonDBTM
     {
         /** @var array $PLUGIN_HOOKS */
         global $PLUGIN_HOOKS;
+
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return $parm;
+        }
 
         $ret = $parm;
         if (isset($PLUGIN_HOOKS[$name]) && is_array($PLUGIN_HOOKS[$name])) {
@@ -1615,6 +1780,9 @@ class Plugin extends CommonDBTM
      **/
     public static function doOneHook($plugin_key, $hook, ...$args)
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return;
+        }
 
         $plugin_key = strtolower($plugin_key);
 
@@ -1641,6 +1809,9 @@ class Plugin extends CommonDBTM
      **/
     public static function getDropdowns()
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return [];
+        }
 
         $dps = [];
         foreach (self::getPlugins() as $plug) {
@@ -1770,6 +1941,10 @@ class Plugin extends CommonDBTM
      */
     private function loadPluginSetupFile(string $plugin_key): bool
     {
+        if ($this->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Fetching plugin information from its setup file is forbidden when plugins execution is suspended.');
+        }
+
         if (preg_match(self::PLUGIN_KEY_PATTERN, $plugin_key) !== 1) {
             // Prevent issues with illegal chars
             return false;
@@ -1803,6 +1978,9 @@ class Plugin extends CommonDBTM
      **/
     public static function getDatabaseRelations()
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return [];
+        }
 
         $dps = [];
         foreach (self::getPlugins() as $plugin_key) {
@@ -1825,6 +2003,9 @@ class Plugin extends CommonDBTM
      **/
     public static function getAddSearchOptions($itemtype)
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return [];
+        }
 
         $sopt = [];
         foreach (self::getPlugins() as $plugin_key) {
@@ -1848,6 +2029,10 @@ class Plugin extends CommonDBTM
      */
     public static function includeHook(string $plugin_key = "")
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            throw new RuntimeException('Including plugin hook files is forbidden when plugins execution is suspended.');
+        }
+
         foreach (GLPI_PLUGINS_DIRECTORIES as $base_dir) {
             if (file_exists("$base_dir/$plugin_key/hook.php")) {
                 include_once("$base_dir/$plugin_key/hook.php");
@@ -1870,6 +2055,10 @@ class Plugin extends CommonDBTM
      **/
     public static function getAddSearchOptionsNew($itemtype)
     {
+        if ((new Plugin())->isPluginsExecutionSuspended()) {
+            return [];
+        }
+
         $options = [];
 
         foreach (self::getPlugins() as $plugin_key) {
@@ -1879,7 +2068,7 @@ class Plugin extends CommonDBTM
                 $tmp = $function($itemtype);
                 foreach ($tmp as $opt) {
                     if (!isset($opt['id'])) {
-                        throw new \Exception($itemtype . ': invalid search option! ' . print_r($opt, true));
+                        throw new Exception($itemtype . ': invalid search option! ' . print_r($opt, true));
                     }
                     $optid = $opt['id'];
                     unset($opt['id']);
@@ -1979,7 +2168,7 @@ class Plugin extends CommonDBTM
                     $name
                 );
             default:
-                throw new \RuntimeException("messageMissing type $type is unknown!");
+                throw new RuntimeException("messageMissing type $type is unknown!");
         }
     }
 
@@ -2000,7 +2189,7 @@ class Plugin extends CommonDBTM
             if (isset($infos['requirements']['glpi'])) {
                 $glpi = $infos['requirements']['glpi'];
                 if (isset($glpi['min']) || isset($glpi['max'])) {
-                    $ret = $ret && $this->checkGlpiVersion($infos['requirements']['glpi']);
+                    $ret = $this->checkGlpiVersion($infos['requirements']['glpi']);
                 }
                 if (isset($glpi['params'])) {
                     $ret = $ret && $this->checkGlpiParameters($glpi['params']);
@@ -2041,7 +2230,7 @@ class Plugin extends CommonDBTM
     public function checkGlpiVersion($infos)
     {
         if (!isset($infos['min']) && !isset($infos['max'])) {
-            throw new \LogicException('Either "min" or "max" is required for GLPI requirements!');
+            throw new LogicException('Either "min" or "max" is required for GLPI requirements!');
         }
 
         $glpiVersion = $this->getGlpiVersion();
@@ -2088,7 +2277,7 @@ class Plugin extends CommonDBTM
         } elseif (isset($infos['max'])) {
             $compat = !(version_compare($this->getPhpVersion(), $infos['max'], 'ge'));
         } else {
-            throw new \LogicException('Either "min" or "max" is required for PHP requirements!');
+            throw new LogicException('Either "min" or "max" is required for PHP requirements!');
         }
 
         if (!$compat) {
@@ -2254,9 +2443,6 @@ class Plugin extends CommonDBTM
 
             case self::REPLACED:
                 return _x('plugin', 'Replaced');
-
-            case self::SUSPENDED:
-                return _x('plugin', 'Execution suspended');
         }
 
         return __('Error / to clean');
@@ -2292,9 +2478,6 @@ class Plugin extends CommonDBTM
 
             case self::NOTACTIVATED:
                 return "notactived";
-
-            case self::SUSPENDED:
-                return "suspended";
         }
 
         return "";
@@ -2447,6 +2630,15 @@ class Plugin extends CommonDBTM
 
         switch ($field) {
             case 'id':
+                if ((new Plugin())->isPluginsExecutionSuspended()) {
+                    // Do not show actions if the plugins execution is suspended.
+                    // These actions would require to load the plugin, we do not want this to happen.
+                    return \sprintf(
+                        '<span class="text-info" data-bs-toggle="tooltip" title="%s"><i class="ti ti-info-circle-filled"></i></span>',
+                        __s('The plugins maintenance actions are disabled when the plugins execution is suspended.')
+                    );
+                }
+
                 //action...
                 $ID = $values[$field];
 
@@ -2571,9 +2763,8 @@ class Plugin extends CommonDBTM
                         }
                     } else {
                         $missing = '';
-                        if (!function_exists("plugin_" . $directory . "_install")) {
-                            $missing .= "plugin_" . $directory . "_install";
-                        }
+                        $missing .= "plugin_" . $directory . "_install";
+
                         //TRANS: %s is the list of missing functions
                         $output .= sprintf(
                             __('%1$s: %2$s'),
@@ -2606,8 +2797,8 @@ TWIG;
                                 'class="btn btn-danger w-100"'
                             ),
                             'content' => sprintf(
-                                __s('By uninstalling the "%s" plugin you will lose all the data of the plugin.'),
-                                htmlescape($plugin->getField('name'))
+                                __('By uninstalling the "%s" plugin you will lose all the data of the plugin.'),
+                                $plugin->getField('name')
                             ),
                         ]);
                     } else {
@@ -2646,7 +2837,13 @@ TWIG;
                 $value = Toolbox::stripTags($values[$field]);
                 $state = $values['state'];
                 $directory = $values['directory'];
-                self::load($directory); // Load plugin to give it ability to define its config_page hook
+
+                if (!(new Plugin())->isPluginsExecutionSuspended()) {
+                    // Load plugin to give it ability to define its config_page hook
+                    // unless plugins execution is suspended.
+                    self::load($directory);
+                }
+
                 if (
                     in_array($state, [self::ACTIVATED, self::TOBECONFIGURED])
                     && isset($PLUGIN_HOOKS[Hooks::CONFIG_PAGE][$directory])
@@ -2781,19 +2978,19 @@ TWIG;
         $actions = [];
 
         if (Session::getCurrentInterface() === 'central' && Config::canUpdate()) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'install']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'install']
             = "<i class='ti ti-folder-plus'></i>" .
             __s('Install');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall']
             = "<i class='ti ti-folder-minus'></i>" .
             __s('Uninstall');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'enable']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'enable']
             = "<i class='ti ti-toggle-right-filled'></i>" .
             __s('Enable');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'disable']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'disable']
             = "<i class='ti ti-toggle-left-filled'></i>" .
             __s('Disable');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'clean']
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'clean']
             = "<i class='ti ti-recycle'></i>" .
             __s('Clean');
         }
@@ -2944,7 +3141,7 @@ TWIG;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var CacheInterface $GLPI_CACHE
          */
         global $CFG_GLPI, $GLPI_CACHE;
 
@@ -2964,5 +3161,34 @@ TWIG;
         }
 
         return $GLPI_CACHE->deleteMultiple($to_clear);
+    }
+
+    final public function getPluginsListSuspendBanner(): string
+    {
+        return TemplateRenderer::getInstance()->render(
+            'pages/admin/plugins/list_suspend_banner.html.twig',
+            [
+                'execution_suspended' => $this->isPluginsExecutionSuspended(),
+            ]
+        );
+    }
+
+    /**
+     * Indicates whether the plugins execution is suspended.
+     */
+    public function isPluginsExecutionSuspended(): bool
+    {
+        /**
+         * @var array $CFG_GLPI
+         */
+        global $CFG_GLPI;
+
+        return in_array(
+            $CFG_GLPI['plugins_execution_mode'] ?? null,
+            [
+                self::EXECUTION_MODE_SUSPENDED_BY_UPDATE,
+                self::EXECUTION_MODE_SUSPENDED_MANUALLY,
+            ]
+        );
     }
 }

@@ -36,35 +36,39 @@
 namespace Glpi\Dashboard;
 
 use CommonDBTM;
-use CommonDBVisible;
+use CommonDevice;
 use CommonITILActor;
 use CommonITILObject;
 use CommonITILValidation;
 use CommonTreeDropdown;
-use CommonDevice;
 use Config;
 use DBConnection;
-use Glpi\Debug\Profiler;
-use Glpi\Search\Input\QueryBuilder;
-use Glpi\Search\SearchOption;
+use DBmysql;
+use ExtraVisibilityCriteria;
 use Glpi\Dashboard\Filters\{
     DatesFilter,
     GroupTechFilter,
     UserTechFilter,
 };
-use Group;
-use Group_Ticket;
-use Profile_User;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QuerySubQuery;
+use Glpi\Debug\Profiler;
+use Glpi\Search\Input\QueryBuilder;
+use Glpi\Search\SearchOption;
+use Group;
+use Group_Ticket;
+use Profile_User;
 use Session;
 use Stat;
 use Ticket;
 use Ticket_User;
+use TicketValidation;
 use Toolbox;
 use User;
-use Search;
+
+use function Safe\mktime;
+use function Safe\strtotime;
 
 /**
  * Provider class
@@ -167,7 +171,7 @@ class Provider
      */
     public static function __callStatic(string $name = "", array $arguments = [])
     {
-        if (strpos($name, 'bigNumber') !== false) {
+        if (str_contains($name, 'bigNumber')) {
             $itemtype = str_replace('bigNumber', '', $name);
             if (is_subclass_of($itemtype, 'CommonDBTM')) {
                 $item = new $itemtype();
@@ -177,8 +181,8 @@ class Provider
         }
 
         if (
-            strpos($name, 'multipleNumber') !== false
-            && strpos($name, 'By') !== false
+            str_contains($name, 'multipleNumber')
+            && str_contains($name, 'By')
         ) {
             $tmp = str_replace('multipleNumber', '', $name);
             $tmp = explode('By', $tmp);
@@ -188,14 +192,14 @@ class Provider
                 $fk_itemtype = $tmp[1];
 
                 return static::nbItemByFk(
-                    new $itemtype(),
-                    new $fk_itemtype(),
+                    getItemForItemtype($itemtype),
+                    getItemForItemtype($fk_itemtype),
                     $arguments[0] ?? []
                 );
             }
         }
 
-        if (strpos($name, 'getArticleList') !== false) {
+        if (str_contains($name, 'getArticleList')) {
             $itemtype = str_replace('getArticleList', '', $name);
             if (is_subclass_of($itemtype, 'CommonDBTM')) {
                 $item = new $itemtype();
@@ -326,7 +330,7 @@ class Provider
 
             case 'waiting_validation':
                 $params['icon']  = "ti ti-eye";
-                $params['label'] = __("Tickets waiting for validation");
+                $params['label'] = __("Tickets waiting for approval");
                 $search_criteria = [
                     [
                         'field'      => 55,
@@ -351,7 +355,7 @@ class Provider
                 ];
 
                 if ($params['validation_check_user']) {
-                    $where[] = \TicketValidation::getTargetCriteriaForUser(Session::getLoginUserID());
+                    $where[] = TicketValidation::getTargetCriteriaForUser(Session::getLoginUserID());
                 }
 
                 $query_criteria = array_merge_recursive($query_criteria, [
@@ -463,7 +467,7 @@ class Provider
 
     public static function nbTicketsByAgreementStatusAndTechnician(array $params = []): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $DBread = DBConnection::getReadConnection();
@@ -610,10 +614,10 @@ class Provider
             }
             $label = $username ?? $name;
             $data['labels'][] = $label;
-            array_push($data['series'][0]['data'], $allLate[$name]);
-            array_push($data['series'][1]['data'], $resolveLate[$name]);
-            array_push($data['series'][2]['data'], $ownLate[$name]);
-            array_push($data['series'][3]['data'], $onTime[$name]);
+            $data['series'][0]['data'][] = $allLate[$name];
+            $data['series'][1]['data'][] = $resolveLate[$name];
+            $data['series'][2]['data'][] = $ownLate[$name];
+            $data['series'][3]['data'][] = $onTime[$name];
         }
 
         if (count($data['series'][0]['data']) < 1) {
@@ -757,10 +761,10 @@ class Provider
             }
             $label = $username ?? $name;
             $data['labels'][] = $label;
-            array_push($data['series'][0]['data'], $allLate[$name]);
-            array_push($data['series'][1]['data'], $resolveLate[$name]);
-            array_push($data['series'][2]['data'], $ownLate[$name]);
-            array_push($data['series'][3]['data'], $onTime[$name]);
+            $data['series'][0]['data'][] = $allLate[$name];
+            $data['series'][1]['data'][] = $resolveLate[$name];
+            $data['series'][2]['data'][] = $ownLate[$name];
+            $data['series'][3]['data'][] = $onTime[$name];
         }
 
         if (count($data['series'][0]['data']) < 1) {
@@ -815,9 +819,7 @@ class Provider
 
         // try to autodetect searchoption id
         $searchoptions = $item->rawSearchOptions();
-        $found_so = array_filter($searchoptions, function ($searchoption) use ($fk_table) {
-            return isset($searchoption['table']) && $searchoption['table'] === $fk_table;
-        });
+        $found_so = array_filter($searchoptions, fn($searchoption) => isset($searchoption['table']) && $searchoption['table'] === $fk_table);
         $found_so = array_shift($found_so);
         $found_so_id = $found_so['id'] ?? 0;
 
@@ -943,7 +945,7 @@ class Provider
                 'FROM'   => $i_table,
             ],
             self::getFiltersCriteria($i_table, $params['apply_filters']),
-            $item instanceof CommonDBVisible ? $item::getVisibilityCriteria() : []
+            $item instanceof ExtraVisibilityCriteria ? $item::getVisibilityCriteria() : []
         );
         Profiler::getInstance()->stop(__METHOD__ . ' build SQL criteria');
 
@@ -1682,7 +1684,7 @@ class Provider
                     'color'  => '#f1a129',
                 ], [
                     'number' => $tovalidate['number'],
-                    'label'  => __("To validate"),
+                    'label'  => __("To approve"),
                     'url'    => $tovalidate['url'],
                     'color'  => '#266ae9',
                 ], [
@@ -1706,8 +1708,8 @@ class Provider
     public static function formatMonthyearDates(string $monthyear): array
     {
         $rawdate = explode('-', $monthyear);
-        $year    = $rawdate[0];
-        $month   = $rawdate[1];
+        $year    = (int) $rawdate[0];
+        $month   = (int) $rawdate[1];
         $monthtime = mktime(0, 0, 0, $month, 1, $year);
 
         $start_day = date("Y-m-d H:i:s", strtotime("first day of this month", $monthtime));

@@ -37,6 +37,11 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Exception\Http\NotFoundHttpException;
+use Safe\DateTime;
+
+use function Safe\mktime;
+use function Safe\preg_match;
+use function Safe\strtotime;
 
 /**
  * Infocom class
@@ -287,7 +292,7 @@ class Infocom extends CommonDBChild
      */
     public static function getDataForAssetInfocomReport(string $itemtype, string $begin, string $end): ?array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $itemtable = getTableForItemType($itemtype);
         if (!$DB->fieldExists($itemtable, "ticket_tco", false)) {
@@ -359,7 +364,7 @@ class Infocom extends CommonDBChild
      */
     public static function getDataForOtherInfocomReport(string $itemtype, string $begin, string $end): ?array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $itemtable = getTableForItemType($itemtype);
         if ($DB->fieldExists($itemtable, "ticket_tco", false)) {
@@ -502,7 +507,6 @@ class Infocom extends CommonDBChild
      **/
     public static function autofillDates(&$infocoms = [], $field = '', $action = 0, $params = [])
     {
-
         if (isset($infocoms[$field]) || is_null($infocoms[$field])) {
             switch ($action) {
                 default:
@@ -545,7 +549,8 @@ class Infocom extends CommonDBChild
     public static function getAutoManagemendDatesFields()
     {
 
-        return ['autofill_buy_date'         => 'buy_date',
+        return [
+            'autofill_buy_date'         => 'buy_date',
             'autofill_use_date'         => 'use_date',
             'autofill_delivery_date'    => 'delivery_date',
             'autofill_warranty_date'    => 'warranty_date',
@@ -648,7 +653,7 @@ class Infocom extends CommonDBChild
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -682,7 +687,7 @@ class Infocom extends CommonDBChild
                 ],
                 'WHERE'     => [
                     new QueryExpression(
-                        '(' . $DB->quoteName('glpi_infocoms.alert') . ' & ' . pow(2, Alert::END) . ') > 0'
+                        '(' . $DB->quoteName('glpi_infocoms.alert') . ' & ' . 2 ** Alert::END . ') > 0'
                     ),
                     "$table.entities_id"       => $entity,
                     "$table.warranty_duration" => ['>', 0],
@@ -733,12 +738,8 @@ class Infocom extends CommonDBChild
 
         foreach ($items_infos as $entity => $items) {
             // We will ignore items that have been deleted but aren't expired, in case they are restored before the warranty expires
-            $not_deleted_items = array_filter($items, static function ($item) {
-                return $item['is_deleted'] === 0;
-            });
-            $deleted_expired_items = array_filter($items, static function ($item) {
-                return $item['is_deleted'] === 1 && $item['warrantyexpiration'] < $_SESSION['glpi_currenttime'];
-            });
+            $not_deleted_items = array_filter($items, static fn($item) => $item['is_deleted'] === 0);
+            $deleted_expired_items = array_filter($items, static fn($item) => $item['is_deleted'] === 1 && $item['warrantyexpiration'] < $_SESSION['glpi_currenttime']);
             if (
                 NotificationEvent::raiseEvent("alert", new self(), [
                     'entities_id' => $entity,
@@ -770,7 +771,7 @@ class Infocom extends CommonDBChild
                     'itemtype' => 'Infocom',
                     'type'     => Alert::END,
                 ];
-                foreach ($not_deleted_items as $id => $item) {
+                foreach (array_keys($not_deleted_items) as $id) {
                     $input["items_id"] = $id;
                     $alert->add($input);
                     unset($alert->fields['id']);
@@ -787,7 +788,7 @@ class Infocom extends CommonDBChild
             }
 
             $alert = new Alert();
-            foreach ($deleted_expired_items as $id => $item) {
+            foreach (array_keys($deleted_expired_items) as $id) {
                 $alert->add([
                     'itemtype' => 'Infocom',
                     'type'     => Alert::END,
@@ -813,7 +814,7 @@ class Infocom extends CommonDBChild
     {
 
         $tmp[0]                  = Dropdown::EMPTY_VALUE;
-        $tmp[pow(2, Alert::END)] = __('Warranty expiration date');
+        $tmp[2 ** Alert::END] = __('Warranty expiration date');
 
         if (is_null($val)) {
             return $tmp;
@@ -939,7 +940,7 @@ class Infocom extends CommonDBChild
         Html::popFooter();
     }
 
-    public static function getPostFormAction(string $form_action): ?string
+    public static function getPostFormAction(string $form_action, bool $action_success): ?string
     {
         // Always return to the previous page
         return 'back';
@@ -952,7 +953,7 @@ class Infocom extends CommonDBChild
      * @param number        $value
      * @param string        $date_achat    (default '')
      *
-     * @return float
+     * @return string
      **/
     public static function showTco($ticket_tco, $value, $date_achat = "")
     {
@@ -970,7 +971,7 @@ class Infocom extends CommonDBChild
             sscanf($date_achat, "%4s-%2s-%2s", $date_Y, $date_m, $date_d);
 
             $timestamp2 = mktime(0, 0, 0, $date_m, $date_d, $date_Y);
-            $timestamp  = mktime(0, 0, 0, date("m"), date("d"), date("Y"));
+            $timestamp  = mktime(0, 0, 0, (int) date("m"), (int) date("d"), (int) date("Y"));
 
             $diff = floor(($timestamp - $timestamp2) / (MONTH_TIMESTAMP)); // Mois d'utilisation
 
@@ -986,18 +987,17 @@ class Infocom extends CommonDBChild
     /**
      * Show infocom link to display modal
      *
-     * @param integer $itemtype item type
+     * @param class-string<CommonDBTM> $itemtype item type
      * @param integer $device_id item ID
      * @param boolean $display  display or not the link (default true)
      *
      * @return void|string
-     * @phpstan-return $display ? void : string
      **/
     public static function showDisplayLink($itemtype, $device_id, bool $display = true)
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1093,10 +1093,10 @@ JS;
 
         try {
             if ($fiscaldate == '') {
-                throw new \RuntimeException('Empty date');
+                throw new RuntimeException('Empty date');
             }
-            $fiscaldate = new \DateTime($fiscaldate, new DateTimeZone($TZ));
-        } catch (\Throwable $e) {
+            $fiscaldate = new DateTime($fiscaldate, new DateTimeZone($TZ));
+        } catch (Throwable $e) {
             Session::addMessageAfterRedirect(
                 __s('Please fill you fiscal year date in preferences.'),
                 false,
@@ -1108,14 +1108,14 @@ JS;
         //get begin date. Work on use date if provided.
         try {
             if ($buydate == '' && $usedate == '') {
-                throw new \RuntimeException('Empty date');
+                throw new RuntimeException('Empty date');
             }
             if ($usedate != '') {
-                $usedate = new \DateTime($usedate, new DateTimeZone($TZ));
+                $usedate = new DateTime($usedate, new DateTimeZone($TZ));
             } else {
-                $usedate = new \DateTime($buydate, new DateTimeZone($TZ));
+                $usedate = new DateTime($buydate, new DateTimeZone($TZ));
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Session::addMessageAfterRedirect(
                 __s('Please fill either buy or use date in preferences.'),
                 false,
@@ -1124,7 +1124,7 @@ JS;
             return false;
         }
 
-        $now = new \DateTime('now', new DateTimeZone($TZ));
+        $now = new DateTime('now', new DateTimeZone($TZ));
 
         $elapsed_years = $now->format('Y') - $usedate->format('Y');
 
@@ -1137,7 +1137,7 @@ JS;
         for ($i = 0; $i <= $elapsed_years; ++$i) {
             $begin_value      = $value;
             $current_annuity  = $annuity;
-            $fiscal_end       = new \DateTime(
+            $fiscal_end       = new DateTime(
                 $fiscaldate->format('d-m-') . ($usedate->format('Y') + $i),
                 new DateTimeZone($TZ)
             );
@@ -1283,7 +1283,7 @@ JS;
                     //## calcul du prorata temporis en mois ##
                     // si l'annee fiscale debute au dela de l'annee courante
                     if ($date_m > $date_m2) {
-                        $date_m2 = $date_m2 + 12;
+                        $date_m2 += 12;
                     }
                     $ecartmois      = ($date_m2 - $date_m) + 1; // calcul ecart entre mois d'acquisition
                     // et debut annee fiscale
@@ -1365,8 +1365,8 @@ JS;
         if (!array_search(date("Y"), $tab["annee"])) {
             $vnc = 0;
         } elseif (
-            mktime(0, 0, 0, $date_m2, $date_d2, date("Y"))
-                 - mktime(0, 0, 0, date("m"), date("d"), date("Y")) < 0
+            mktime(0, 0, 0, $date_m2, $date_d2, (int) date("Y"))
+                 - mktime(0, 0, 0, (int) date("m"), (int) date("d"), (int) date("Y")) < 0
         ) {
             // on a depasse la fin d'exercice de l'annee en cours
             //on prend la valeur residuelle de l'annee en cours
@@ -1393,34 +1393,30 @@ JS;
             return false;
         }
 
-        if (!$item) {
-            echo "<div class='spaced'>" . __('Requested item not found') . "</div>";
-        } else {
-            $dev_ID   = $item->getField('id');
-            $ic       = new self();
+        $dev_ID   = $item->getField('id');
+        $ic       = new self();
 
-            if (in_array($item->getType(), self::getExcludedTypes())) {
-                echo "<div class='firstbloc center'>" .
-                  __('For this type of item, the financial and administrative information are only a model for the items which you should add.') .
-                 "</div>";
-            }
-
-            $ic->getFromDBforDevice($item->getType(), $dev_ID);
-            $can_input = [
-                'itemtype'    => $item->getType(),
-                'items_id'    => $dev_ID,
-                'entities_id' => $item->getEntityID(),
-            ];
-            TemplateRenderer::getInstance()->display('components/infocom.html.twig', [
-                'item'              => $item,
-                'infocom'           => $ic,
-                'withtemplate'      => $withtemplate,
-                'can_create'        => $ic->can(-1, CREATE, $can_input),
-                'can_edit'          => ($ic->canEdit($ic->fields['id']) && ($withtemplate != 2)),
-                'can_global_update' => Session::haveRight(self::$rightname, UPDATE),
-                'can_global_purge'  => Session::haveRight(self::$rightname, PURGE),
-            ]);
+        if (in_array($item->getType(), self::getExcludedTypes())) {
+            echo "<div class='firstbloc center'>" .
+                __('For this type of item, the financial and administrative information are only a model for the items which you should add.') .
+                "</div>";
         }
+
+        $ic->getFromDBforDevice($item->getType(), $dev_ID);
+        $can_input = [
+            'itemtype'    => $item->getType(),
+            'items_id'    => $dev_ID,
+            'entities_id' => $item->getEntityID(),
+        ];
+        TemplateRenderer::getInstance()->display('components/infocom.html.twig', [
+            'item'              => $item,
+            'infocom'           => $ic,
+            'withtemplate'      => $withtemplate,
+            'can_create'        => $ic->can(-1, CREATE, $can_input),
+            'can_edit'          => ($ic->canEdit($ic->fields['id']) && ($withtemplate != 2)),
+            'can_global_update' => Session::haveRight(self::$rightname, UPDATE),
+            'can_global_purge'  => Session::haveRight(self::$rightname, PURGE),
+        ]);
     }
 
     /**
@@ -2040,7 +2036,7 @@ JS;
         ?CommonDBTM $checkitem = null
     ) {
 
-        $action_name = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'activate';
+        $action_name = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'activate';
 
         if (
             Infocom::canApplyOn($itemtype)
@@ -2131,7 +2127,7 @@ JS;
      */
     public static function getTypes($where)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $types_iterator = $DB->request([

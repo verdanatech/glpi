@@ -33,8 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\DBAL\QueryExpression;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
 
 /**
  * NetworkName Class
@@ -91,16 +91,6 @@ class NetworkName extends FQDNLabel
         return $ong;
     }
 
-    /**
-     * Print the network name form
-     *
-     * @param integer $ID ID of the item
-     * @param array $options
-     *     - target for the Form
-     *     - withtemplate template or basic computer
-     *
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         $this->initForm($ID, $options);
@@ -130,6 +120,8 @@ class NetworkName extends FQDNLabel
             'item'                          => $this,
             'params'                        => $options,
         ]);
+
+        return true;
     }
 
     public function rawSearchOptions()
@@ -270,7 +262,7 @@ class NetworkName extends FQDNLabel
 
     public function post_updateItem($history = true)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $this->post_workOnItem();
@@ -322,7 +314,7 @@ class NetworkName extends FQDNLabel
      **/
     public static function unaffectAddressesOfItem($items_id, $itemtype)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -374,7 +366,7 @@ class NetworkName extends FQDNLabel
     public static function showFormForNetworkPort($networkPortID)
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $DB;
 
@@ -438,14 +430,14 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (
             isset($options['massiveactionnetworkname'])
             && $options['massiveactionnetworkname']
         ) {
             $delete_all_column = $base->addHeader(
                 'delete',
-                Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $options['rand']),
+                Html::getCheckAllAsCheckbox('mass' . self::class . $options['rand']),
                 $super,
                 $father
             );
@@ -471,8 +463,8 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
             }
         }
 
-        NetworkAlias::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-        IPAddress::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
+        NetworkAlias::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+        IPAddress::getHTMLTableHeader(self::class, $base, $super, $father, $options);
     }
 
     /**
@@ -489,10 +481,10 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         if ($item === null) {
             if ($father === null) {
@@ -612,7 +604,7 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
                     && $options['massiveactionnetworkname']
                 ) {
                     $header      = $row->getGroup()->getHeaderByName('Internet', 'delete');
-                    $cell_value  = Html::getMassiveActionCheckBox(__CLASS__, $line["id"]);
+                    $cell_value  = Html::getMassiveActionCheckBox(self::class, $line["id"]);
                     $row->addCell($header, $cell_value, $father);
                 }
 
@@ -760,7 +752,7 @@ TWIG, $twig_params);
         );
         $t_group                                   = $table->createGroup('Main', '');
 
-        self::getHTMLTableHeader(__CLASS__, $t_group, $column, null, $table_options);
+        self::getHTMLTableHeader(self::class, $t_group, $column, null, $table_options);
 
         $t_row   = $t_group->createRow();
 
@@ -770,7 +762,7 @@ TWIG, $twig_params);
             $number = min($_SESSION['glpilist_limit'], $table->getNumberOfRows());
             Html::printAjaxPager(self::getTypeName(Session::getPluralNumber()), $start, self::countForItem($item));
             Session::initNavigateListItems(
-                __CLASS__,
+                self::class,
                 //TRANS : %1$s is the itemtype name,
                 //        %2$s is the name of the item (used for headings of a list)
                 sprintf(
@@ -780,10 +772,10 @@ TWIG, $twig_params);
                 )
             );
             if ($canedit && $number) {
-                Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+                Html::openMassiveActionsForm('mass' . self::class . $rand);
                 $massiveactionparams = [
                     'num_displayed'    => min($_SESSION['glpilist_limit'], $number),
-                    'container'        => 'mass' . __CLASS__ . $rand,
+                    'container'        => 'mass' . self::class . $rand,
                 ];
                 Html::showMassiveActions($massiveactionparams);
             }
@@ -826,7 +818,7 @@ TWIG, $twig_params);
      */
     public static function countForItem(CommonDBTM $item): int
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         switch ($item::class) {

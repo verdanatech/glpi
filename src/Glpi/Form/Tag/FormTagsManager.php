@@ -38,6 +38,9 @@ namespace Glpi\Form\Tag;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Form;
 
+use function Safe\preg_match;
+use function Safe\preg_replace_callback;
+
 final class FormTagsManager
 {
     public function getTags(Form $form, string $filter = ""): array
@@ -61,14 +64,14 @@ final class FormTagsManager
 
                 // Extract value.
                 preg_match('/data-form-tag-value="([^"]+)"/', $tag, $value_match);
-                if (empty($value_match)) {
+                if ($value_match === []) {
                     return "";
                 }
 
                 // Extract provider.
                 preg_match('/data-form-tag-provider="([^"]+)"/', $tag, $provider_match);
                 if (
-                    empty($provider_match)
+                    $provider_match === []
                     || !is_a(
                         $provider_match[1],
                         TagProviderInterface::class,

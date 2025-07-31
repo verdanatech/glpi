@@ -11,21 +11,13 @@
 
 namespace Symfony\Component\Serializer\NameConverter;
 
-use Symfony\Component\Serializer\Exception\UnexpectedPropertyException;
-
 /**
  * CamelCase to Underscore name converter.
  *
  * @author Kévin Dunglas <dunglas@gmail.com>
- * @author Aurélien Pillevesse <aurelienpillevesse@hotmail.fr>
  */
 class CamelCaseToSnakeCaseNameConverter implements NameConverterInterface
 {
-    /**
-     * Require all properties to be written in snake_case.
-     */
-    public const REQUIRE_SNAKE_CASE_PROPERTIES = 'require_snake_case_properties';
-
     /**
      * @param array|null $attributes     The list of attributes to rename or null for all attributes
      * @param bool       $lowerCamelCase Use lowerCamelCase style
@@ -36,42 +28,24 @@ class CamelCaseToSnakeCaseNameConverter implements NameConverterInterface
     ) {
     }
 
-    /**
-     * @param class-string|null    $class
-     * @param string|null          $format
-     * @param array<string, mixed> $context
-     */
-    public function normalize(string $propertyName/* , ?string $class = null, ?string $format = null, array $context = [] */): string
+    public function normalize(string $propertyName): string
     {
-        if (null === $this->attributes || \in_array($propertyName, $this->attributes, true)) {
+        if (null === $this->attributes || \in_array($propertyName, $this->attributes)) {
             return strtolower(preg_replace('/[A-Z]/', '_\\0', lcfirst($propertyName)));
         }
 
         return $propertyName;
     }
 
-    /**
-     * @param class-string|null    $class
-     * @param string|null          $format
-     * @param array<string, mixed> $context
-     */
-    public function denormalize(string $propertyName/* , ?string $class = null, ?string $format = null, array $context = [] */): string
+    public function denormalize(string $propertyName): string
     {
-        $class = 1 < \func_num_args() ? func_get_arg(1) : null;
-        $format = 2 < \func_num_args() ? func_get_arg(2) : null;
-        $context = 3 < \func_num_args() ? func_get_arg(3) : [];
-
-        if (($context[self::REQUIRE_SNAKE_CASE_PROPERTIES] ?? false) && $propertyName !== $this->normalize($propertyName, $class, $format, $context)) {
-            throw new UnexpectedPropertyException($propertyName);
-        }
-
         $camelCasedName = preg_replace_callback('/(^|_|\.)+(.)/', fn ($match) => ('.' === $match[1] ? '_' : '').strtoupper($match[2]), $propertyName);
 
         if ($this->lowerCamelCase) {
             $camelCasedName = lcfirst($camelCasedName);
         }
 
-        if (null === $this->attributes || \in_array($camelCasedName, $this->attributes, true)) {
+        if (null === $this->attributes || \in_array($camelCasedName, $this->attributes)) {
             return $camelCasedName;
         }
 

@@ -35,8 +35,11 @@
 namespace Glpi\Form\Migration;
 
 use DBmysql;
+use DBmysqlIterator;
+use Entity;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QuerySubQuery;
 use Glpi\DBAL\QueryUnion;
 use Glpi\Form\AccessControl\ControlType\AllowList;
 use Glpi\Form\AccessControl\ControlType\AllowListConfig;
@@ -50,10 +53,11 @@ use Glpi\Form\Comment;
 use Glpi\Form\Condition\ConditionHandler\ConditionHandlerInterface;
 use Glpi\Form\Condition\CreationStrategy;
 use Glpi\Form\Condition\LogicOperator;
+use Glpi\Form\Condition\ValidationStrategy;
 use Glpi\Form\Condition\ValueOperator;
 use Glpi\Form\Condition\VisibilityStrategy;
-use Glpi\Form\Destination\AbstractConfigField;
 use Glpi\Form\Destination\AbstractCommonITILFormDestination;
+use Glpi\Form\Destination\AbstractConfigField;
 use Glpi\Form\Destination\CommonITILField\ContentField;
 use Glpi\Form\Destination\CommonITILField\ITILActorField;
 use Glpi\Form\Destination\FormDestination;
@@ -81,6 +85,10 @@ use Glpi\Form\Section;
 use Glpi\Message\MessageType;
 use Glpi\Migration\AbstractPluginMigration;
 use LogicException;
+use Override;
+use Throwable;
+
+use function Safe\json_decode;
 
 class FormMigration extends AbstractPluginMigration
 {
@@ -94,11 +102,24 @@ class FormMigration extends AbstractPluginMigration
 
     public function __construct(
         DBmysql $db,
-        FormAccessControlManager $formAccessControlManager
+        FormAccessControlManager $formAccessControlManager,
+        private array $specificFormsIds = []
     ) {
         parent::__construct($db);
 
         $this->formAccessControlManager = $formAccessControlManager;
+    }
+
+    #[Override]
+    protected function getHasBeenExecutedConfigurationKey(): string
+    {
+        return 'glpi_11_form_migration';
+    }
+
+    #[Override]
+    protected function getMainPluginTables(): array
+    {
+        return ['glpi_plugin_formcreator_forms'];
     }
 
     /**
@@ -261,6 +282,27 @@ class FormMigration extends AbstractPluginMigration
         throw new LogicException("Strategy config not found for access type {$form_access_rights['access_rights']}");
     }
 
+    private function getFormWhereCriteria(): array
+    {
+        $criteria = [];
+
+        if ($this->specificFormsIds !== []) {
+            $criteria[] = [
+                'glpi_plugin_formcreator_forms.id' => $this->specificFormsIds,
+            ];
+        } else {
+            $criteria[] = [
+                // Exclude orphan forms that have no associated entity
+                'glpi_plugin_formcreator_forms.entities_id' => new QuerySubQuery([
+                    'SELECT' => 'id',
+                    'FROM'   => Entity::getTable(),
+                ]),
+            ];
+        }
+
+        return $criteria;
+    }
+
     protected function validatePrerequisites(): bool
     {
         $formcreator_schema = [
@@ -293,6 +335,27 @@ class FormMigration extends AbstractPluginMigration
             'glpi_plugin_formcreator_conditions' => [
                 'itemtype', 'items_id', 'plugin_formcreator_questions_id', 'show_condition', 'show_value', 'show_logic', 'order',
             ],
+            'glpi_plugin_formcreator_targettickets' => [
+                'id', 'name', 'plugin_formcreator_forms_id', 'target_name', 'source_rule', 'source_question', 'type_rule', 'type_question', 'tickettemplates_id', 'content', 'due_date_rule', 'due_date_question', 'due_date_value', 'due_date_period', 'urgency_rule', 'urgency_question', 'validation_followup', 'destination_entity', 'destination_entity_value', 'tag_type', 'tag_questions', 'tag_specifics', 'category_rule', 'category_question', 'associate_rule', 'associate_question', 'location_rule', 'location_question', 'commonitil_validation_rule', 'commonitil_validation_question', 'show_rule', 'sla_rule', 'sla_question_tto', 'sla_question_ttr', 'ola_rule', 'ola_question_tto', 'ola_question_ttr', 'uuid',
+            ],
+            'glpi_plugin_formcreator_targetproblems' => [
+                'id', 'name', 'plugin_formcreator_forms_id', 'target_name', 'problemtemplates_id', 'content', 'impactcontent', 'causecontent', 'symptomcontent', 'urgency_rule', 'urgency_question', 'destination_entity', 'destination_entity_value', 'tag_type', 'tag_questions', 'tag_specifics', 'category_rule', 'category_question', 'show_rule', 'uuid',
+            ],
+            'glpi_plugin_formcreator_targetchanges' => [
+                'id', 'name', 'plugin_formcreator_forms_id', 'target_name', 'changetemplates_id', 'content', 'impactcontent', 'controlistcontent', 'rolloutplancontent', 'backoutplancontent','checklistcontent', 'due_date_rule', 'due_date_question', 'due_date_value', 'due_date_period', 'urgency_rule', 'urgency_question', 'validation_followup', 'destination_entity', 'destination_entity_value', 'tag_type', 'tag_questions', 'tag_specifics', 'category_rule', 'category_question', 'commonitil_validation_rule', 'commonitil_validation_question', 'show_rule', 'sla_rule', 'sla_question_tto', 'sla_question_ttr', 'ola_rule', 'ola_question_tto', 'ola_question_ttr', 'uuid',
+            ],
+            'glpi_plugin_formcreator_items_targettickets' => [
+                'id', 'plugin_formcreator_targettickets_id', 'link', 'itemtype', 'items_id', 'uuid',
+            ],
+            'glpi_plugin_formcreator_questionranges' => [
+                'id', 'range_min', 'range_max', 'plugin_formcreator_questions_id', 'fieldname', 'uuid',
+            ],
+            'glpi_plugin_formcreator_questionregexes' => [
+                'id', 'regex', 'plugin_formcreator_questions_id', 'fieldname', 'uuid',
+            ],
+            'glpi_plugin_formcreator_targets_actors' => [
+                'id', 'itemtype', 'items_id', 'actor_role', 'actor_type', 'actor_value', 'use_notification', 'uuid',
+            ],
         ];
 
         return $this->checkDbFieldsExists($formcreator_schema);
@@ -307,9 +370,10 @@ class FormMigration extends AbstractPluginMigration
             'sections' => $this->countRecords('glpi_plugin_formcreator_sections'),
             'questions' => $this->countRecords('glpi_plugin_formcreator_questions', ['NOT' => ['fieldtype' => 'description']]),
             'comments' => $this->countRecords('glpi_plugin_formcreator_questions', ['fieldtype' => 'description']),
-            'targets_ticket' => $this->countRecords('glpi_plugin_formcreator_targettickets'),
-            'targets_problem' => $this->countRecords('glpi_plugin_formcreator_targetproblems'),
-            'targets_change' => $this->countRecords('glpi_plugin_formcreator_targetchanges'),
+            // Each target type is processed twice: once for destinations, once for fields
+            'targets_ticket' => $this->countRecords('glpi_plugin_formcreator_targettickets') * 2,
+            'targets_problem' => $this->countRecords('glpi_plugin_formcreator_targetproblems') * 2,
+            'targets_change' => $this->countRecords('glpi_plugin_formcreator_targetchanges') * 2,
             'translations' => $this->countRecords('glpi_plugin_formcreator_forms_languages'),
             'conditions' => $this->countRecords('glpi_plugin_formcreator_conditions'),
         ];
@@ -330,17 +394,20 @@ class FormMigration extends AbstractPluginMigration
         $this->processMigrationOfAccessControls();
         $this->processMigrationOfFormTargets();
         $this->processMigrationOfTranslations();
-        $this->processMigrationOfConditions();
+        $this->processMigrationOfVisibilityConditions();
+        $this->processMigrationOfValidationConditions();
 
         $this->progress_indicator?->setProgressBarMessage('');
         $this->progress_indicator?->finish();
+
+        $this->displayWarningForNonMigratedItems();
 
         return true;
     }
 
     private function processMigrationOfFormCategories(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing form categories...'));
+        $this->updateProgressWithMessage(__('Importing form categories...'));
 
         // Retrieve data from glpi_plugin_formcreator_categories table
         $raw_form_categories = $this->db->request([
@@ -376,7 +443,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfBasicProperties(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing forms...'));
+        $this->updateProgressWithMessage(__('Importing forms...'));
 
         // Retrieve data from glpi_plugin_formcreator_forms table
         $raw_forms = $this->db->request([
@@ -392,6 +459,7 @@ class FormMigration extends AbstractPluginMigration
                 'is_deleted',
             ],
             'FROM'   => 'glpi_plugin_formcreator_forms',
+            'WHERE'  => $this->getFormWhereCriteria(),
         ]);
 
         foreach ($raw_forms as $raw_form) {
@@ -437,7 +505,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfSections(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing sections...'));
+        $this->updateProgressWithMessage(__('Importing sections...'));
 
         // Retrieve data from glpi_plugin_formcreator_sections table
         $raw_sections = $this->db->request([
@@ -446,10 +514,10 @@ class FormMigration extends AbstractPluginMigration
         ]);
 
         foreach ($raw_sections as $raw_section) {
-            $form_id = $this->getMappedItemTarget(
+            $form_id = $this->validateItemExists(
                 'PluginFormcreatorForm',
                 $raw_section['plugin_formcreator_forms_id']
-            )['items_id'] ?? 0;
+            );
 
             // If the form ID is 0, it means the form does not exist
             if ($form_id === 0) {
@@ -483,7 +551,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfQuestions(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing questions...'));
+        $this->updateProgressWithMessage(__('Importing questions...'));
 
         // Process questions
         $raw_questions = array_values(iterator_to_array($this->db->request([
@@ -507,10 +575,10 @@ class FormMigration extends AbstractPluginMigration
         ])));
 
         foreach ($raw_questions as $raw_question) {
-            $section_id = $this->getMappedItemTarget(
+            $section_id = $this->validateItemExists(
                 'PluginFormcreatorSection',
                 $raw_question['plugin_formcreator_sections_id']
-            )['items_id'] ?? 0;
+            );
 
             // If the section ID is 0, it means the section does not exist
             if ($section_id === 0) {
@@ -520,6 +588,14 @@ class FormMigration extends AbstractPluginMigration
 
             $fieldtype = $raw_question['fieldtype'];
             $type_class = $this->getTypesConvertMap()[$fieldtype] ?? null;
+
+            if ($type_class === null) {
+                $this->result->addMessage(
+                    MessageType::Error,
+                    "Unable to import question '{$raw_question['name']}' with unknown type '$fieldtype'"
+                );
+                continue;
+            }
 
             $default_value = null;
             $extra_data = null;
@@ -560,15 +636,17 @@ class FormMigration extends AbstractPluginMigration
                     Question::class,
                     $question->getID()
                 );
-            } catch (\Throwable $th) {
+            } catch (Throwable $th) {
+                /** @var ?Section $section */
                 $section = Section::getById($section_id) ?: null;
+                $item = $section?->getItem() ?: null;
                 $this->result->addMessage(
                     MessageType::Error,
                     sprintf(
                         __('Error while importing question "%s" in section "%s" and form "%s": %s'),
                         $raw_question['name'],
                         $section?->getName(),
-                        $section?->getItem()?->getName(),
+                        $item?->getName(),
                         $th->getMessage()
                     )
                 );
@@ -580,7 +658,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfComments(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing comments...'));
+        $this->updateProgressWithMessage(__('Importing comments...'));
 
         // Retrieve data from glpi_plugin_formcreator_questions table
         $raw_comments = $this->db->request([
@@ -601,13 +679,21 @@ class FormMigration extends AbstractPluginMigration
         ]);
 
         foreach ($raw_comments as $raw_comment) {
+            $section_id = $this->validateItemExists(
+                'PluginFormcreatorSection',
+                $raw_comment['plugin_formcreator_sections_id']
+            );
+
+            // If the section ID is 0, it means the section does not exist
+            if ($section_id === 0) {
+                // No need to warn the user, as this comment was not visible in formcreator anyway.
+                continue;
+            }
+
             $comment = $this->importItem(
                 Comment::class,
                 [
-                    Section::getForeignKeyField() => $this->getMappedItemTarget(
-                        'PluginFormcreatorSection',
-                        $raw_comment['plugin_formcreator_sections_id']
-                    )['items_id'],
+                    Section::getForeignKeyField() => $section_id,
                     'name'                        => $raw_comment['name'],
                     'description'                 => $raw_comment['description'],
                     'vertical_rank'               => $raw_comment['row'],
@@ -638,7 +724,7 @@ class FormMigration extends AbstractPluginMigration
      */
     private function removeUselessHorizontalRanks(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Cleaning imported data...'));
+        $this->updateProgressWithMessage(__('Cleaning imported data...'));
 
         $tables = [Question::getTable(), Comment::getTable()];
 
@@ -680,7 +766,7 @@ class FormMigration extends AbstractPluginMigration
             }
 
             // Update corresponding records
-            if (!empty($sections_ranks)) {
+            if ($sections_ranks !== []) {
                 $this->db->update(
                     $table,
                     ['horizontal_rank' => null],
@@ -696,7 +782,7 @@ class FormMigration extends AbstractPluginMigration
      */
     private function updateHorizontalRanks(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Fixing forms layouts...'));
+        $this->updateProgressWithMessage(__('Fixing forms layouts...'));
 
         // Retrieve all blocks with horizontal ranks and their new horizontal ranks
         $blocks = $this->db->request([
@@ -745,7 +831,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfAccessControls(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing access controls...'));
+        $this->updateProgressWithMessage(__('Importing access controls...'));
 
         // Retrieve data from glpi_plugin_formcreator_forms table
         $raw_form_access_rights = $this->db->request([
@@ -778,6 +864,7 @@ class FormMigration extends AbstractPluginMigration
                     ],
                 ],
             ],
+            'WHERE'   => $this->getFormWhereCriteria(),
             'GROUPBY' => ['forms_id', 'access_rights'],
         ]);
 
@@ -829,100 +916,122 @@ class FormMigration extends AbstractPluginMigration
      */
     private function processMigrationOfFormTargets(): void
     {
-        $this->processMigrationOfTickets();
-        $this->processMigrationOfProblems();
-        $this->processMigrationOfChanges();
-    }
-
-    private function processMigrationOfTickets(): void
-    {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing ticket targets...'));
-
-        $raw_targets = $this->db->request([
-            'SELECT'    => [
-                'glpi_plugin_formcreator_targettickets.*',
-                new QueryExpression(
-                    'JSON_REMOVE(JSON_OBJECTAGG(COALESCE(itemtype, "NULL"), COALESCE(items_id, "NULL")), "$.NULL")',
-                    'associate_items'
-                ),
-            ],
-            'FROM'      => 'glpi_plugin_formcreator_targettickets',
-            'LEFT JOIN' => [
-                'glpi_plugin_formcreator_items_targettickets' => [
-                    'ON' => [
-                        'glpi_plugin_formcreator_targettickets'       => 'id',
-                        'glpi_plugin_formcreator_items_targettickets' => 'plugin_formcreator_targettickets_id',
-                    ],
-                ],
-            ],
-            'GROUPBY' => 'glpi_plugin_formcreator_targettickets.id',
-        ]);
-
-        $this->processMigrationOfDestination(
-            $raw_targets,
+        // First pass: migrate destinations
+        $this->processMigrationOfDestinationType(
+            'glpi_plugin_formcreator_targettickets',
             FormDestinationTicket::class,
-            'glpi_plugin_formcreator_targettickets'
+            'PluginFormcreatorTargetTicket',
+            __('Importing ticket targets...'),
+            $this->getTicketTargetsQuery()
         );
-        $this->processMigrationOfITILActorsFields(
+
+        $this->processMigrationOfDestinationType(
+            'glpi_plugin_formcreator_targetproblems',
+            FormDestinationProblem::class,
+            'PluginFormcreatorTargetProblem',
+            __('Importing problem targets...'),
+            $this->getBasicTargetsQuery('glpi_plugin_formcreator_targetproblems')
+        );
+
+        $this->processMigrationOfDestinationType(
+            'glpi_plugin_formcreator_targetchanges',
+            FormDestinationChange::class,
+            'PluginFormcreatorTargetChange',
+            __('Importing change targets...'),
+            $this->getBasicTargetsQuery('glpi_plugin_formcreator_targetchanges')
+        );
+
+        // Second pass: migrate destination fields
+        $this->processMigrationOfDestinationFieldsForType(
             FormDestinationTicket::class,
             'glpi_plugin_formcreator_targettickets',
-            'PluginFormcreatorTargetTicket'
+            'PluginFormcreatorTargetTicket',
+            __('Importing ticket targets fields...'),
+            $this->getTicketTargetsQuery()
         );
-    }
 
-    private function processMigrationOfProblems(): void
-    {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing problem targets...'));
-
-        $raw_targets = $this->db->request([
-            'FROM' => 'glpi_plugin_formcreator_targetproblems',
-        ]);
-
-        $this->processMigrationOfDestination(
-            $raw_targets,
-            FormDestinationProblem::class,
-            'glpi_plugin_formcreator_targetproblems'
-        );
-        $this->processMigrationOfITILActorsFields(
+        $this->processMigrationOfDestinationFieldsForType(
             FormDestinationProblem::class,
             'glpi_plugin_formcreator_targetproblems',
-            'PluginFormcreatorTargetProblem'
+            'PluginFormcreatorTargetProblem',
+            __('Importing problem targets fields...'),
+            $this->getBasicTargetsQuery('glpi_plugin_formcreator_targetproblems')
         );
-    }
 
-    private function processMigrationOfChanges(): void
-    {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing change targets...'));
-
-        $raw_targets = $this->db->request([
-            'FROM' => 'glpi_plugin_formcreator_targetchanges',
-        ]);
-
-        $this->processMigrationOfDestination(
-            $raw_targets,
-            FormDestinationChange::class,
-            'glpi_plugin_formcreator_targetchanges'
-        );
-        $this->processMigrationOfITILActorsFields(
+        $this->processMigrationOfDestinationFieldsForType(
             FormDestinationChange::class,
             'glpi_plugin_formcreator_targetchanges',
-            'PluginFormcreatorTargetChange'
+            'PluginFormcreatorTargetChange',
+            __('Importing change targets fields...'),
+            $this->getBasicTargetsQuery('glpi_plugin_formcreator_targetchanges')
         );
     }
 
     /**
      * Process migration of form destinations for a given destination type and target table
      *
-     * @param \DBmysqlIterator $raw_targets The raw targets to process
+     * @param DBmysqlIterator $raw_targets The raw targets to process
      * @param class-string<AbstractCommonITILFormDestination> $destinationClass The destination class
      * @param string $targetTable The target table name
      * @throws LogicException
      */
     private function processMigrationOfDestination(
-        \DBmysqlIterator $raw_targets,
+        DBmysqlIterator $raw_targets,
         string $destinationClass,
         string $targetTable
     ): void {
+        if (is_a($destinationClass, AbstractCommonITILFormDestination::class, true) === false) {
+            throw new LogicException("Invalid destination class {$destinationClass}");
+        }
+
+        foreach ($raw_targets as $raw_target) {
+            $form_id = $this->getMappedItemTarget(
+                'PluginFormcreatorForm',
+                $raw_target['plugin_formcreator_forms_id']
+            )['items_id'] ?? 0;
+
+            $form = new Form();
+
+            // If the form is invalid, skip this target
+            if (!$form->getFromDB($form_id)) {
+                // No need to warn the user, as this destination was not visible in formcreator anyway.
+                continue;
+            }
+
+            $destination = $this->importItem(
+                FormDestination::class,
+                [
+                    Form::getForeignKeyField() => $form->getID(),
+                    'itemtype'                 => $destinationClass,
+                    'name'                     => $raw_target['name'],
+                ],
+                [
+                    Form::getForeignKeyField() => $form->getID(),
+                    'itemtype'                 => $destinationClass,
+                    'name'                     => $raw_target['name'],
+                ]
+            );
+
+            $source_itemtype = $this->getSourceItemtypeForTargetTable($targetTable);
+            $this->mapItem(
+                $source_itemtype,
+                $raw_target['id'],
+                FormDestination::class,
+                $destination->getID()
+            );
+
+            $this->progress_indicator?->advance();
+        }
+    }
+
+    private function processMigrationOfDestinationFields(
+        DBmysqlIterator $raw_targets,
+        string $destinationClass
+    ): void {
+        if (is_a($destinationClass, AbstractCommonITILFormDestination::class, true) === false) {
+            throw new LogicException("Invalid destination class {$destinationClass}");
+        }
+
         foreach ($raw_targets as $raw_target) {
             $form_id = $this->getMappedItemTarget(
                 'PluginFormcreatorForm',
@@ -948,7 +1057,7 @@ class FormMigration extends AbstractPluginMigration
                             $form,
                             $raw_target
                         )->jsonSerialize();
-                    } catch (\Throwable $th) {
+                    } catch (Throwable $th) {
                         $this->result->addMessage(
                             MessageType::Error,
                             sprintf(
@@ -966,7 +1075,7 @@ class FormMigration extends AbstractPluginMigration
                 }
             }
 
-            $destination = $this->importItem(
+            $this->importItem(
                 FormDestination::class,
                 [
                     Form::getForeignKeyField() => $form->getID(),
@@ -979,19 +1088,6 @@ class FormMigration extends AbstractPluginMigration
                     'itemtype'                 => $destinationClass,
                     'name'                     => $raw_target['name'],
                 ]
-            );
-
-            $source_itemtype = match ($targetTable) {
-                'glpi_plugin_formcreator_targettickets'  => 'PluginFormcreatorTargetTicket',
-                'glpi_plugin_formcreator_targetproblems' => 'PluginFormcreatorTargetProblem',
-                'glpi_plugin_formcreator_targetchanges'  => 'PluginFormcreatorTargetChange',
-                default => throw new LogicException("Unknown target table {$targetTable}")
-            };
-            $this->mapItem(
-                $source_itemtype,
-                $raw_target['id'],
-                FormDestination::class,
-                $destination->getID()
             );
 
             $this->progress_indicator?->advance();
@@ -1011,6 +1107,10 @@ class FormMigration extends AbstractPluginMigration
         string $targetTable,
         string $fcDestinationClass
     ): void {
+        if (is_a($destinationClass, AbstractCommonITILFormDestination::class, true) === false) {
+            throw new LogicException("Invalid destination class {$destinationClass}");
+        }
+
         $targets_actors     = [];
         $raw_targets_actors = $this->db->request([
             'SELECT' => [
@@ -1026,16 +1126,11 @@ class FormMigration extends AbstractPluginMigration
         ]);
 
         foreach ($raw_targets_actors as $raw_target_actor) {
-            $source_itemtype = match ($targetTable) {
-                'glpi_plugin_formcreator_targettickets'  => 'PluginFormcreatorTargetTicket',
-                'glpi_plugin_formcreator_targetproblems' => 'PluginFormcreatorTargetProblem',
-                'glpi_plugin_formcreator_targetchanges'  => 'PluginFormcreatorTargetChange',
-                default => throw new LogicException("Unknown target table {$targetTable}")
-            };
-            $target_id = $this->getMappedItemTarget(
+            $source_itemtype = $this->getSourceItemtypeForTargetTable($targetTable);
+            $target_id = $this->validateItemExists(
                 $source_itemtype,
                 $raw_target_actor['items_id']
-            )['items_id'] ?? 0;
+            );
 
             // The destination ID is 0 if the target was not migrated or not existing.
             // In this case, we skip the actor
@@ -1069,7 +1164,7 @@ class FormMigration extends AbstractPluginMigration
                         $destination->getItem(),
                         $actors
                     )->jsonSerialize();
-                } catch (\Throwable $th) {
+                } catch (Throwable $th) {
                     $this->result->addMessage(
                         MessageType::Error,
                         sprintf(
@@ -1094,7 +1189,7 @@ class FormMigration extends AbstractPluginMigration
 
     private function processMigrationOfTranslations(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing translations...'));
+        $this->updateProgressWithMessage(__('Importing translations...'));
 
         // Retrieve data from glpi_plugin_formcreator_forms_languages table
         $raw_languages = $this->db->request([
@@ -1112,7 +1207,7 @@ class FormMigration extends AbstractPluginMigration
             );
 
             // Skip if no translations found
-            if (empty($translations)) {
+            if ($translations === []) {
                 continue;
             }
 
@@ -1124,10 +1219,10 @@ class FormMigration extends AbstractPluginMigration
             }
             $translations = $decoded_translations;
 
-            $form_id = $this->getMappedItemTarget(
+            $form_id = $this->validateItemExists(
                 'PluginFormcreatorForm',
                 $raw_language['plugin_formcreator_forms_id']
-            )['items_id'] ?? 0;
+            );
 
             $form = new Form();
             if (!$form->getFromDB($form_id)) {
@@ -1161,9 +1256,9 @@ class FormMigration extends AbstractPluginMigration
         }
     }
 
-    private function processMigrationOfConditions(): void
+    private function processMigrationOfVisibilityConditions(): void
     {
-        $this->progress_indicator?->setProgressBarMessage(__('Importing conditions...'));
+        $this->updateProgressWithMessage(__('Importing visibility conditions...'));
 
         // Retrieve data from glpi_plugin_formcreator_conditions table
         $raw_conditions = $this->db->request([
@@ -1234,44 +1329,37 @@ class FormMigration extends AbstractPluginMigration
                 $raw_condition['itemtype'],
                 $raw_condition['items_id']
             );
-            $question_id = $this->getMappedItemTarget(
+            $question_id = $this->validateItemExists(
                 'PluginFormcreatorQuestion',
                 $raw_condition['plugin_formcreator_questions_id']
-            )['items_id'] ?? 0;
+            );
 
+            // The target_item is null if the target was not migrated or not existing.
+            // In this case, we skip the condition
             if ($target_item === null) {
-                $this->result->addMessage(
-                    MessageType::Error,
-                    sprintf(
-                        'Condition for itemtype "%s" and items_id "%s" not found. It will not be migrated.',
-                        $raw_condition['itemtype'],
-                        $raw_condition['items_id']
-                    )
-                );
+                // No need to warn the user, as this conditions was not visible/valid in formcreator anyway.
                 continue;
             } elseif ($question_id === 0) {
-                $this->result->addMessage(
-                    MessageType::Error,
-                    sprintf(
-                        'Question with id "%s" for itemtype "%s" and items_id "%s" not found. It will not be migrated.',
-                        $raw_condition['plugin_formcreator_questions_id'],
-                        $raw_condition['itemtype'],
-                        $raw_condition['items_id']
-                    )
-                );
+                // If the question ID is 0, it means the question was not migrated or not existing.
+                // No need to warn the user, as this condition was not visible/valid in formcreator anyway.
+                continue;
             }
 
             $question = Question::getById($question_id);
-            if ($question === false) {
+            if (!$question instanceof Question) {
                 continue;
             }
 
             $value = $raw_condition['show_value'];
             if (isset($question->fields['extra_data'])) {
-                $config              = $question->getQuestionType()->getExtraDataConfig(
+                $question_type = $question->getQuestionType();
+                if ($question_type === null) {
+                    continue;
+                }
+                $config = $question_type->getExtraDataConfig(
                     json_decode($question->fields['extra_data'], true)
                 );
-                $condition_handlers  = $question->getQuestionType()->getConditionHandlers($config);
+                $condition_handlers = $question_type->getConditionHandlers($config);
                 $condition_handler   = null;
 
                 // Get the value operator before trying to find a compatible handler
@@ -1373,6 +1461,179 @@ class FormMigration extends AbstractPluginMigration
         }
     }
 
+    private function displayWarningForNonMigratedItems(): void
+    {
+        // Retrieve orphan forms
+        $orphan_forms = $this->db->request([
+            'FROM'   => 'glpi_plugin_formcreator_forms',
+            'WHERE'  => [
+                'is_deleted' => 0,
+                'NOT' => [
+                    'entities_id' => new QuerySubQuery([
+                        'SELECT' => 'id',
+                        'FROM'   => Entity::getTable(),
+                    ]),
+                ],
+            ],
+        ]);
+
+        if (count($orphan_forms) > 0) {
+            $this->result->addMessage(
+                MessageType::Warning,
+                sprintf(
+                    __('%d forms ignored because they were attached to an invalid entity'),
+                    count($orphan_forms)
+                )
+            );
+        }
+    }
+
+    private function processMigrationOfValidationConditions(): void
+    {
+        $this->updateProgressWithMessage(__('Importing validation conditions...'));
+
+        // Retrieve data from glpi_plugin_formcreator_questionranges and glpi_plugin_formcreator_questionregexes tables
+        $raw_conditions = $this->db->request([
+            'SELECT' => [
+                'glpi_plugin_formcreator_questions.id',
+                'glpi_plugin_formcreator_questionranges.range_min',
+                'glpi_plugin_formcreator_questionranges.range_max',
+                'glpi_plugin_formcreator_questionregexes.regex',
+            ],
+            'FROM'   => 'glpi_plugin_formcreator_questions',
+            'LEFT JOIN' => [
+                'glpi_plugin_formcreator_questionranges' => [
+                    'ON' => [
+                        'glpi_plugin_formcreator_questions' => 'id',
+                        'glpi_plugin_formcreator_questionranges' => 'plugin_formcreator_questions_id',
+                    ],
+                ],
+                'glpi_plugin_formcreator_questionregexes' => [
+                    'ON' => [
+                        'glpi_plugin_formcreator_questions' => 'id',
+                        'glpi_plugin_formcreator_questionregexes' => 'plugin_formcreator_questions_id',
+                    ],
+                ],
+            ],
+            'WHERE' => [
+                'OR' => [
+                    'NOT' => [
+                        'glpi_plugin_formcreator_questionranges.range_min' => 'NULL',
+                        'glpi_plugin_formcreator_questionranges.range_max' => 'NULL',
+                        'glpi_plugin_formcreator_questionregexes.regex'    => 'NULL',
+                    ],
+                ],
+            ],
+        ]);
+
+        foreach ($raw_conditions as $raw_condition) {
+            $question_id = $this->validateItemExists(
+                'PluginFormcreatorQuestion',
+                $raw_condition['id']
+            );
+
+            if ($question_id === 0) {
+                // If the question ID is 0, it means the question was not migrated or not existing.
+                // No need to warn the user, as this condition was not visible/valid in formcreator anyway.
+                continue;
+            }
+
+            $question = Question::getById($question_id);
+            if (!$question instanceof Question) {
+                continue;
+            }
+
+            $input = [
+                'id'                     => $question_id,
+                'validation_strategy'    => ValidationStrategy::VALID_IF->value,
+            ];
+
+            if ($question->fields['horizontal_rank'] !== null) {
+                $input['horizontal_rank'] = $question->fields['horizontal_rank'];
+            }
+
+            $question_type = $question->getQuestionType();
+            if ($question_type === null) {
+                continue;
+            }
+            $raw_config = json_decode(json: $question->fields['extra_data'] ?? '{}', associative: true, flags: JSON_THROW_ON_ERROR);
+            $config = $raw_config ? $question_type->getExtraDataConfig($raw_config) : null;
+            $condition_handlers = $question_type->getConditionHandlers($config);
+            $supported_value_operators = array_filter(
+                array_merge(...array_map(
+                    fn(ConditionHandlerInterface $handler) => $handler->getSupportedValueOperators(),
+                    $condition_handlers
+                )),
+                fn(ValueOperator $operator): bool => $operator->canBeUsedForValidation()
+            );
+
+            // Apply minimum range condition
+            if (is_numeric($raw_condition['range_min']) && !empty(array_intersect(
+                [ValueOperator::GREATER_THAN_OR_EQUALS->value, ValueOperator::LENGTH_GREATER_THAN_OR_EQUALS->value],
+                array_map(fn($vp) => $vp->value, $supported_value_operators)
+            ))) {
+                $value_operator = current(array_intersect(
+                    [ValueOperator::GREATER_THAN_OR_EQUALS->value, ValueOperator::LENGTH_GREATER_THAN_OR_EQUALS->value],
+                    array_map(fn($vp) => $vp->value, $supported_value_operators)
+                ));
+                $input['_validation_conditions'][] = [
+                    'item'           => sprintf('question-%s', $question->getUUID()),
+                    'value'          => $raw_condition['range_min'],
+                    'item_type'      => 'question',
+                    'item_uuid'      => $question->getUUID(),
+                    'value_operator' => $value_operator,
+                    'logic_operator' => LogicOperator::AND->value,
+                ];
+            }
+
+            // Apply maximum range condition
+            if (is_numeric($raw_condition['range_max']) && !empty(array_intersect(
+                [ValueOperator::LESS_THAN_OR_EQUALS->value, ValueOperator::LENGTH_LESS_THAN_OR_EQUALS->value],
+                array_map(fn($vp) => $vp->value, $supported_value_operators)
+            ))) {
+                $value_operator = current(array_intersect(
+                    [ValueOperator::LESS_THAN_OR_EQUALS->value, ValueOperator::LENGTH_LESS_THAN_OR_EQUALS->value],
+                    array_map(fn($vp) => $vp->value, $supported_value_operators)
+                ));
+                $input['_validation_conditions'][] = [
+                    'item'           => sprintf('question-%s', $question->getUUID()),
+                    'value'          => $raw_condition['range_max'],
+                    'item_type'      => 'question',
+                    'item_uuid'      => $question->getUUID(),
+                    'value_operator' => $value_operator,
+                    'logic_operator' => LogicOperator::AND->value,
+                ];
+            }
+
+            // Apply regex validation condition
+            if (!empty($raw_condition['regex']) && in_array(
+                ValueOperator::MATCH_REGEX,
+                $supported_value_operators
+            )) {
+                $input['_validation_conditions'][] = [
+                    'item'           => sprintf('question-%s', $question->getUUID()),
+                    'value'          => $raw_condition['regex'],
+                    'item_type'      => 'question',
+                    'item_uuid'      => $question->getUUID(),
+                    'value_operator' => ValueOperator::MATCH_REGEX->value,
+                    'logic_operator' => LogicOperator::AND->value,
+                ];
+            }
+
+            if (isset($input['_validation_conditions'])) {
+                $this->importItem(
+                    Question::class,
+                    $input,
+                    [
+                        'id' => $question_id,
+                    ]
+                );
+            }
+
+            $this->progress_indicator?->advance();
+        }
+    }
+
     /**
      * Get translations from a formcreator translation file
      *
@@ -1393,5 +1654,164 @@ class FormMigration extends AbstractPluginMigration
         }
 
         return [];
+    }
+
+    /**
+     * Get basic targets query for a table
+     *
+     * @param string $tableName The table name
+     * @return array The query configuration
+     */
+    private function getBasicTargetsQuery(string $tableName): array
+    {
+        return [
+            'FROM' => $tableName,
+        ];
+    }
+
+    /**
+     * Get enhanced ticket targets query with additional fields
+     *
+     * @return array The query configuration
+     */
+    private function getTicketTargetsQuery(): array
+    {
+        return [
+            'SELECT' => [
+                'glpi_plugin_formcreator_targettickets.*',
+                new QueryExpression(
+                    'COALESCE(
+                        (
+                            SELECT JSON_OBJECTAGG(itemtype, items_id)
+                            FROM glpi_plugin_formcreator_items_targettickets t2
+                            WHERE t2.plugin_formcreator_targettickets_id = glpi_plugin_formcreator_targettickets.id
+                                AND t2.link = 0
+                                AND t2.itemtype IS NOT NULL
+                                AND t2.items_id IS NOT NULL
+                        ),
+                        JSON_OBJECT()
+                    )',
+                    'associate_items'
+                ),
+                new QueryExpression(
+                    'COALESCE(
+                        (
+                            SELECT JSON_ARRAYAGG(
+                                JSON_OBJECT(
+                                    "itemtype", itemtype,
+                                    "items_id", items_id,
+                                    "linktype", link
+                                )
+                            )
+                            FROM glpi_plugin_formcreator_items_targettickets t3
+                            WHERE t3.plugin_formcreator_targettickets_id = glpi_plugin_formcreator_targettickets.id
+                                AND t3.link > 0
+                                AND t3.itemtype IS NOT NULL
+                                AND t3.items_id IS NOT NULL
+                        ),
+                        JSON_ARRAY()
+                    )',
+                    'linked_itilobjects'
+                ),
+            ],
+            'FROM' => 'glpi_plugin_formcreator_targettickets',
+        ];
+    }
+
+    /**
+     * Generic method to process migration of destination types
+     *
+     * @param string $targetTable Source table name
+     * @param string $destinationClass Target destination class
+     * @param string $sourceItemtype Source itemtype for mapping
+     * @param string $progressMessage Progress bar message
+     * @param array $queryConfig Database query configuration
+     */
+    private function processMigrationOfDestinationType(
+        string $targetTable,
+        string $destinationClass,
+        string $sourceItemtype,
+        string $progressMessage,
+        array $queryConfig
+    ): void {
+        $this->updateProgressWithMessage($progressMessage);
+
+        $raw_targets = $this->db->request($queryConfig);
+
+        $this->processMigrationOfDestination(
+            $raw_targets,
+            $destinationClass,
+            $targetTable
+        );
+    }
+
+    /**
+     * Generic method to process migration of destination fields for a type
+     *
+     * @param string $destinationClass Target destination class
+     * @param string $targetTable Source table name
+     * @param string $sourceItemtype Source itemtype for mapping
+     * @param string $progressMessage Progress bar message
+     * @param array $queryConfig Database query configuration
+     */
+    private function processMigrationOfDestinationFieldsForType(
+        string $destinationClass,
+        string $targetTable,
+        string $sourceItemtype,
+        string $progressMessage,
+        array $queryConfig
+    ): void {
+        $this->updateProgressWithMessage($progressMessage);
+
+        $raw_targets = $this->db->request($queryConfig);
+
+        $this->processMigrationOfDestinationFields(
+            $raw_targets,
+            $destinationClass
+        );
+        $this->processMigrationOfITILActorsFields(
+            $destinationClass,
+            $targetTable,
+            $sourceItemtype
+        );
+    }
+
+    /**
+     * Update progress indicator with message
+     *
+     * @param string $message Progress message
+     */
+    private function updateProgressWithMessage(string $message): void
+    {
+        $this->progress_indicator?->setProgressBarMessage($message);
+    }
+
+    /**
+     * Validate that an item exists and return its ID, or 0 if not found
+     *
+     * @param string $sourceItemtype Source itemtype
+     * @param int $sourceId Source item ID
+     * @return int Target item ID or 0 if not found
+     */
+    private function validateItemExists(string $sourceItemtype, int $sourceId): int
+    {
+        return $this->getMappedItemTarget($sourceItemtype, $sourceId)['items_id'] ?? 0;
+    }
+
+    /**
+     * Get source itemtype mapping for target tables
+     *
+     * @param string $targetTable Target table name
+     * @return string Source itemtype
+     * @throws LogicException When target table is unknown
+     */
+    private function getSourceItemtypeForTargetTable(string $targetTable): string
+    {
+        return match ($targetTable) {
+            'glpi_plugin_formcreator_targettickets'  => 'PluginFormcreatorTargetTicket',
+            'glpi_plugin_formcreator_targetproblems' => 'PluginFormcreatorTargetProblem',
+            'glpi_plugin_formcreator_targetchanges'  => 'PluginFormcreatorTargetChange',
+            default => throw new LogicException("Unknown target table {$targetTable}")
+        };
     }
 }

@@ -32,7 +32,6 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Dashboard\Dashboard;
 use Glpi\Dashboard\Filter;
@@ -40,16 +39,38 @@ use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\Exception\ForgetPasswordException;
+use Glpi\Exception\PasswordTooWeakException;
+use Glpi\Features\Clonable;
+use Glpi\Features\TreeBrowse;
+use Glpi\Features\TreeBrowseInterface;
 use Glpi\Plugin\Hooks;
-use Sabre\VObject;
+use Glpi\Security\TOTPManager;
+use LDAP\Connection;
+use Sabre\VObject\Component\VCard;
+use Safe\DateTime;
+use Safe\Exceptions\FilesystemException;
 use Symfony\Component\HttpFoundation\Request;
 
-class User extends CommonDBTM
+use function Safe\fclose;
+use function Safe\fopen;
+use function Safe\fwrite;
+use function Safe\json_encode;
+use function Safe\mb_convert_encoding;
+use function Safe\mkdir;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace_callback;
+use function Safe\realpath;
+use function Safe\sha1_file;
+use function Safe\strtotime;
+use function Safe\unlink;
+
+class User extends CommonDBTM implements TreeBrowseInterface
 {
-    use Glpi\Features\Clonable {
-        Glpi\Features\Clonable::computeCloneName as baseComputeCloneName;
+    use Clonable {
+        Clonable::computeCloneName as baseComputeCloneName;
     }
-    use Glpi\Features\TreeBrowse;
+    use TreeBrowse;
 
     // From CommonDBTM
     public $dohistory         = true;
@@ -146,7 +167,7 @@ class User extends CommonDBTM
         if (Auth::useAuthExt() && Session::haveRight('user', self::IMPORTEXTAUTHUSERS)) {
             if (static::canCreate()) {
                 $ext_auth_label = __s('Add from an external source');
-                $links['<i class="ti ti-user-cog"></i><span>' . $ext_auth_label . '</span>'] = 'front/user.form.php?new=1&amp;ext_auth=1';
+                $links['<i class="ti ti-user-cog"></i><span>' . $ext_auth_label . '</span>'] = 'front/user.form.php?new=1&ext_auth=1';
             }
             if (static::canCreate() || static::canUpdate()) {
                 $links['<i class="ti ti-settings"></i><span>' . __s('LDAP directory link') . '</span>'] = "front/ldap.php";
@@ -253,7 +274,7 @@ class User extends CommonDBTM
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
-        return !($CFG_GLPI['system_user'] == $items_id);
+        return $CFG_GLPI['system_user'] != $items_id;
     }
 
 
@@ -331,8 +352,8 @@ class User extends CommonDBTM
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
 
-        switch ($item->getType()) {
-            case __CLASS__:
+        switch ($item::class) {
+            case self::class:
                 $ong    = [];
                 $ong[1] = self::createTabEntry(__('Used items'), 0, $item::getType(), 'ti ti-package');
                 $ong[2] = self::createTabEntry(__('Managed items'), 0, $item::getType(), 'ti ti-package');
@@ -345,7 +366,7 @@ class User extends CommonDBTM
                 }
                 return $ong;
 
-            case 'Preference':
+            case Preference::class:
                 return self::createTabEntry(__('Main'));
         }
         return '';
@@ -398,11 +419,11 @@ class User extends CommonDBTM
         $this->addStandardTab(Profile_User::class, $ong, $options);
         $this->addStandardTab(Group_User::class, $ong, $options);
         $this->addStandardTab(Config::class, $ong, $options);
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Consumable::class, $ong, $options);
-        $this->addStandardTab(Item_Ticket::class, $ong, $options);
-        $this->addStandardTab(Item_Problem::class, $ong, $options);
-        $this->addStandardTab(Change_Item::class, $ong, $options);
+        $this->addStandardTab(Ticket::class, $ong, $options);
+        $this->addStandardTab(Problem::class, $ong, $options);
+        $this->addStandardTab(Change::class, $ong, $options);
         $this->addStandardTab(Document_Item::class, $ong, $options);
         $this->addStandardTab(Reservation::class, $ong, $options);
         $this->addStandardTab(Auth::class, $ong, $options);
@@ -432,7 +453,7 @@ class User extends CommonDBTM
 
     public function pre_deleteItem()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $entities = $this->getEntities();
@@ -469,7 +490,7 @@ class User extends CommonDBTM
     public function cleanDBonPurge()
     {
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // ObjectLock does not extends CommonDBConnexity
@@ -546,7 +567,7 @@ class User extends CommonDBTM
             $dashboard_filters->deleteByCriteria(['users_id' => $this->fields['id']]);
         }
 
-        $this->dropPictureFiles($this->fields['picture']);
+        static::dropPictureFiles($this->fields['picture']);
 
         // Ticket rules use various _users_id_*
         Rule::cleanForItemAction($this, '_users_id%');
@@ -650,7 +671,7 @@ class User extends CommonDBTM
      */
     public static function getUsersIdByEmails(string $email, array $condition = []): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $query = [
@@ -822,7 +843,7 @@ class User extends CommonDBTM
 
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $input = $this->cleanInput($input);
@@ -879,7 +900,7 @@ class User extends CommonDBTM
             } else {
                 if ($input["password"] == $input["password2"]) {
                     $password_errors = [];
-                    if ($this->validatePassword($input["password"], $password_errors)) {
+                    if ($this->validatePassword($input["password"] ?? '', $password_errors)) {
                         $input["password"]
                         = Auth::getPasswordHash($input["password"]);
 
@@ -1011,7 +1032,7 @@ class User extends CommonDBTM
             $email = $this->getDefaultEmail();
             try {
                 $this->forgetPassword($email, true);
-            } catch (\Glpi\Exception\ForgetPasswordException $e) {
+            } catch (ForgetPasswordException $e) {
                 Session::addMessageAfterRedirect(htmlescape($e->getMessage()), false, ERROR);
             }
         }
@@ -1058,9 +1079,7 @@ class User extends CommonDBTM
 
                     // output images with possible transparency to png, other to jpg
                     $extension = strtolower(pathinfo($fullpath, PATHINFO_EXTENSION));
-                    $extension = in_array($extension, ['png', 'gif'])
-                    ? 'png'
-                    : 'jpg';
+                    $extension = in_array($extension, ['png', 'gif']) ? 'png' : 'jpg';
 
                     @mkdir(GLPI_PICTURE_DIR . "/$sub");
                     $picture_path = GLPI_PICTURE_DIR . "/{$sub}/{$filename}.{$extension}";
@@ -1105,15 +1124,15 @@ class User extends CommonDBTM
                 unset($input["password"]);
             } else {
                 if ($input["password"] == $input["password2"]) {
-                    // Check right : my password of user with lesser rights
+                    // Check right: my password of user with lesser rights
                     $password_errors = [];
                     if (
                         isset($input['id'])
-                        && $this->validatePassword($input["password"], $password_errors)
+                        && $this->validatePassword($input["password"] ?? '', $password_errors)
                         && (($input['id'] == Session::getLoginUserID())
                         || $this->currentUserHaveMoreRightThan($input['id'])
                         // Permit to change password with token and email
-                        || (($input['password_forget_token'] == $this->fields['password_forget_token'])
+                        || (isset($this->fields['password_forget_token']) && ($input['password_forget_token'] == $this->fields['password_forget_token'])
                            && (strtotime($_SESSION["glpi_currenttime"]) < strtotime($this->fields['password_forget_token_date']))))
                     ) {
                         $input["password"]
@@ -1121,12 +1140,20 @@ class User extends CommonDBTM
 
                         $input['password_last_update'] = $_SESSION["glpi_currenttime"];
                     } else {
-                        Session::addMessagesAfterRedirect(
-                            array_map('htmlescape', $password_errors),
-                            false,
-                            ERROR
-                        );
+                        if ($password_errors === []) {
+                            $password_errors = [__('An error occurred during password update')];
+                        }
+                        if (PHP_SAPI == 'cli') {
+                            echo implode("\n", $password_errors) . "\n";
+                        } else {
+                            Session::addMessagesAfterRedirect(
+                                array_map('htmlescape', $password_errors),
+                                false,
+                                ERROR
+                            );
+                        }
                         unset($input["password"]);
+                        return false;
                     }
                     unset($input["password2"]);
                 } else {
@@ -1182,7 +1209,7 @@ class User extends CommonDBTM
                     }
                     unset($input[$input_key]);
                 }
-                if (!empty($ignored_fields)) {
+                if ($ignored_fields !== []) {
                     Session::addMessageAfterRedirect(
                         sprintf(
                             __('You are not allowed to update the following fields: %s'),
@@ -1344,7 +1371,7 @@ class User extends CommonDBTM
             $email = $this->getDefaultEmail();
             try {
                 $this->forgetPassword($email, false);
-            } catch (\Glpi\Exception\ForgetPasswordException $e) {
+            } catch (ForgetPasswordException $e) {
                 Session::addMessageAfterRedirect(htmlescape($e->getMessage()), false, ERROR);
             }
         } elseif (in_array('password', $this->updates)) {
@@ -1564,7 +1591,7 @@ class User extends CommonDBTM
      */
     public function syncLdapGroups()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // input["_groups"] not set when update from user.form or preference
@@ -1580,6 +1607,7 @@ class User extends CommonDBTM
                 if (count($authtype)) {
                     // Clean groups
                     $this->input["_groups"] = array_unique($this->input["_groups"]);
+                    $_SESSION["_ldap_groups"] = $this->input["_groups"];
 
                     // Delete not available groups like to LDAP
                     $iterator = $DB->request([
@@ -1740,7 +1768,7 @@ class User extends CommonDBTM
 
                     $params = ['id' => $id];
 
-                    if (strlen($email) === 0) {
+                    if ($email === '') {
                         // Empty email, delete it
                         $deleted = $useremail->delete($params);
                         $userUpdated = $userUpdated || $deleted;
@@ -1798,7 +1826,7 @@ class User extends CommonDBTM
      */
     public function syncDynamicEmails()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $userUpdated = false;
@@ -1935,7 +1963,7 @@ class User extends CommonDBTM
      * Function that tries to load the user membership from LDAP
      * by searching in the attributes of the User.
      *
-     * @param resource $ldap_connection LDAP connection
+     * @param Connection $ldap_connection LDAP connection
      * @param array    $ldap_method     LDAP method
      * @param string   $userdn          Basedn of the user
      * @param string   $login           User login
@@ -1944,7 +1972,7 @@ class User extends CommonDBTM
      */
     private function getFromLDAPGroupVirtual($ldap_connection, array $ldap_method, $userdn, $login): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // Search in DB the ldap_field we need to search for in LDAP
@@ -2051,7 +2079,7 @@ class User extends CommonDBTM
      * Function that tries to load the user membership from LDAP
      * by searching in the attributes of the Groups.
      *
-     * @param resource $ldap_connection    LDAP connection
+     * @param Connection $ldap_connection LDAP connection
      * @param array    $ldap_method        LDAP method
      * @param string   $userdn             Basedn of the user
      * @param string   $login              User login
@@ -2060,7 +2088,7 @@ class User extends CommonDBTM
      */
     private function getFromLDAPGroupDiscret($ldap_connection, array $ldap_method, $userdn, $login)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // No group_member_field : unable to get group
@@ -2108,7 +2136,7 @@ class User extends CommonDBTM
     /**
      * Function that tries to load the user information from LDAP.
      *
-     * @param resource $ldap_connection LDAP connection
+     * @param Connection $ldap_connection LDAP connection
      * @param array    $ldap_method     LDAP method
      * @param string   $userdn          Basedn of the user
      * @param string   $login           User Login
@@ -2120,7 +2148,7 @@ class User extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -2129,7 +2157,7 @@ class User extends CommonDBTM
             return false;
         }
 
-        if ($ldap_connection instanceof \LDAP\Connection) {
+        if ($ldap_connection instanceof Connection) {
             //Set all the search fields
             $this->fields['password'] = "";
 
@@ -2379,7 +2407,7 @@ class User extends CommonDBTM
     /**
      * Get all groups a user belongs to.
      *
-     * @param resource $ds                 ldap connection
+     * @param Connection $ds ldap connection
      * @param string   $ldap_base_dn       Basedn used
      * @param string   $user_dn            Basedn of the user
      * @param string   $group_condition    group search condition
@@ -2460,7 +2488,7 @@ class User extends CommonDBTM
      */
     public function getFromIMAP(array $mail_method, $name)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         // we prevent some delay..
@@ -2520,7 +2548,7 @@ class User extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -2629,7 +2657,7 @@ class User extends CommonDBTM
      */
     public function blankPassword()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!empty($this->fields["name"])) {
@@ -2737,7 +2765,7 @@ HTML;
     public function showForm($ID, array $options = [])
     {
         /**
-         * @var \DBmysql $DB */
+         * @var DBmysql $DB */
         global $DB;
 
         // Affiche un formulaire User
@@ -2765,7 +2793,7 @@ HTML;
                    || (($this->fields["authtype"] == Auth::NOT_YET_AUTHENTIFIED)
                        && !empty($this->fields["password"])));
 
-        $formtitle = $this->getTypeName(1);
+        $formtitle = static::getTypeName(1);
 
         $options['formtitle']      = $formtitle;
         $options['formoptions']    = ($options['formoptions'] ?? '') . " enctype='multipart/form-data'";
@@ -2826,7 +2854,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -2884,7 +2912,7 @@ HTML;
 
     public function pre_updateInDB()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (($key = array_search('name', $this->updates)) !== false) {
@@ -2982,7 +3010,7 @@ HTML;
 
         $isadmin = static::canUpdate();
         $actions = parent::getSpecificMassiveActions($checkitem);
-        $prefix = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR;
+        $prefix = self::class . MassiveAction::CLASS_ACTION_SEPARATOR;
 
         if ($isadmin) {
             $actions['Group_User' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add']
@@ -3127,7 +3155,7 @@ HTML;
 
             case 'disable_2fa':
                 $can_update_auth = Session::haveRight(self::$rightname, self::UPDATEAUTHENT);
-                $totp = new \Glpi\Security\TOTPManager();
+                $totp = new TOTPManager();
                 foreach ($ids as $id) {
                     if (!$can_update_auth || !$item->can($id, UPDATE)) {
                         $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_NORIGHT);
@@ -3666,7 +3694,7 @@ HTML;
      */
     public static function getDelegateGroupsForUser($entities_id = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -3732,7 +3760,7 @@ HTML;
      *
      * @param boolean         $count            true if execute an count(*) (true by default)
      * @param string|string[] $right            limit user who have specific right (default 'all')
-     * @param integer         $entity_restrict  Restrict to a defined entity (default -1)
+     * @param integer|array   $entity_restrict  Restrict to a defined entity (default -1)
      * @param integer         $value            default value (default 0)
      * @param integer[]       $used             Already used items ID: not to display in dropdown
      * @param string          $search           pattern (default '')
@@ -3754,13 +3782,13 @@ HTML;
         $inactive_deleted = false,
         $with_no_right = 0
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
 
 
         // No entity define : use active ones
-        if ($entity_restrict < 0) {
+        if (!is_array($entity_restrict) && $entity_restrict < 0) {
             $entity_restrict = $_SESSION["glpiactiveentities"];
         }
 
@@ -4225,7 +4253,7 @@ HTML;
 
         $output = '';
 
-        if (!($p['entity'] < 0) && $p['entity_sons']) {
+        if ($p['entity'] >= 0 && $p['entity_sons']) {
             if (is_array($p['entity'])) {
                 $output .= "entity_sons options is not available with array of entity";
             } else {
@@ -4303,7 +4331,7 @@ HTML;
             'specific_tags'       => $p['specific_tags'],
             'toadd'               => $p['toadd'],
             'class'               => $p['class'],
-            '_idor_token'         => Session::getNewIDORToken(__CLASS__, [
+            '_idor_token'         => Session::getNewIDORToken(self::class, [
                 'right'           => $p['right'],
                 'entity_restrict' => $entity_restrict,
             ]),
@@ -4467,9 +4495,9 @@ HTML;
      *
      * @return boolean
      */
-    public static function changeAuthMethod(array $IDs = [], $authtype = 1, $server = -1)
+    public static function changeAuthMethod(array $IDs = [], $authtype = 1, $server = 0)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (!Session::haveRight(self::$rightname, self::UPDATEAUTHENT)) {
@@ -4477,7 +4505,7 @@ HTML;
         }
 
         if (
-            !empty($IDs)
+            $IDs !== []
             && in_array($authtype, [Auth::DB_GLPI, Auth::LDAP, Auth::MAIL, Auth::EXTERNAL])
         ) {
             $result = $DB->update(
@@ -4490,6 +4518,10 @@ HTML;
                 ],
                 [
                     'id' => $IDs,
+                    'OR' => [
+                        'authtype' => ['<>', $authtype],
+                        'auths_id' => ['<>', $server],
+                    ],
                 ]
             );
             if ($result) {
@@ -4503,7 +4535,7 @@ HTML;
                             Auth::getMethodName($authtype, $server)
                         ),
                     ];
-                    Log::history($ID, __CLASS__, $changes, '', Log::HISTORY_LOG_SIMPLE_MESSAGE);
+                    Log::history($ID, self::class, $changes, '', Log::HISTORY_LOG_SIMPLE_MESSAGE);
                 }
 
                 return true;
@@ -4537,7 +4569,7 @@ HTML;
             $title->getFromDB($this->fields['usertitles_id']);
         }
         // create vcard
-        $vcard = new VObject\Component\VCard([
+        $vcard = new VCard([
             'N'     => $name,
             'EMAIL' => $this->getDefaultEmail(),
             'NOTE'  => $this->fields["comment"],
@@ -4582,7 +4614,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -4704,7 +4736,7 @@ HTML;
                             'entity'        => Dropdown::getDropdownName("glpi_entities", $data["entities_id"]),
                             'name'          => $link,
                             'serial'        => $data["serial"] ?? '',
-                            'otherserial'   => $data["otherserial"],
+                            'otherserial'   => $data["otherserial"] ?? '',
                             'states'        => !empty($data['states_id'])
                                 ? Dropdown::getDropdownName("glpi_states", $data['states_id'], false, true, false, '')
                                 : '',
@@ -4739,7 +4771,7 @@ HTML;
             'showmassiveactions'    => true,
             'massiveactionparams'   => [
                 'num_displayed'    => min($_SESSION['glpilist_limit'], $number),
-                'container'        => 'mass' . __CLASS__ . mt_rand(),
+                'container'        => 'mass' . self::class . mt_rand(),
                 'specific_actions' => [
                     'update' => __('Update'),
                 ],
@@ -4760,7 +4792,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -4982,7 +5014,7 @@ HTML;
      */
     public static function getIdByField($field, $value)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -5126,7 +5158,7 @@ HTML;
         // Check new password validity, throws exception on failure
         $password_errors = [];
         if (!$this->validatePassword($input["password"], $password_errors)) {
-            $expection = new \Glpi\Exception\PasswordTooWeakException();
+            $expection = new PasswordTooWeakException();
             foreach ($password_errors as $error) {
                 $expection->addMessage($error);
             }
@@ -5140,7 +5172,7 @@ HTML;
 
         // Clear password reset token data.
         // Use a direct DB query to bypass rights checks.
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_users',
@@ -5172,9 +5204,9 @@ HTML;
             if ($this->updateForgottenPassword($input)) {
                 Session::addMessageAfterRedirect(__s('Reset password successful.'));
             }
-        } catch (\Glpi\Exception\ForgetPasswordException $e) {
+        } catch (ForgetPasswordException $e) {
             Session::addMessageAfterRedirect(htmlescape($e->getMessage()), false, ERROR);
-        } catch (\Glpi\Exception\PasswordTooWeakException $e) {
+        } catch (PasswordTooWeakException $e) {
             // Force display on error
             foreach ($e->getMessages() as $message) {
                 Session::addMessageAfteRredirect(htmlescape($message), false, ERROR);
@@ -5198,7 +5230,7 @@ HTML;
     {
         try {
             $this->forgetPassword($email);
-        } catch (\Glpi\Exception\ForgetPasswordException $e) {
+        } catch (ForgetPasswordException $e) {
             Session::addMessageAfterRedirect(htmlescape($e->getMessage()), false, ERROR);
             return;
         }
@@ -5220,7 +5252,7 @@ HTML;
     {
         try {
             $this->forgetPassword($email, true);
-        } catch (\Glpi\Exception\ForgetPasswordException $e) {
+        } catch (ForgetPasswordException $e) {
             Session::addMessageAfterRedirect(htmlescape($e->getMessage()), false, ERROR);
             return;
         }
@@ -5274,7 +5306,7 @@ HTML;
 
         // Randomly increase the response time to prevent an attacker to be able to detect whether
         // a notification was sent (a longer response time could correspond to a SMTP operation).
-        sleep(rand(1, 3));
+        sleep(random_int(1, 3));
 
         // Try to find a single user matching the given email
         if (!$this->getFromDBbyEmail($email, $condition)) {
@@ -5304,7 +5336,7 @@ HTML;
 
         // Store password reset token and date.
         // Use a direct DB query to bypass rights checks.
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_users',
@@ -5329,7 +5361,6 @@ HTML;
         NotificationEvent::raiseEvent($event, $this, [
             'entities_id' => $entities_id,
         ]);
-        QueuedNotification::forceSendFor($this->getType(), $this->fields['id']);
 
         return true;
     }
@@ -5447,7 +5478,7 @@ HTML;
      */
     public static function getUniqueToken($field = 'personal_token')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ok = false;
@@ -5462,7 +5493,9 @@ HTML;
             if ($row['cpt'] == 0) {
                 return $key;
             }
-        } while (!$ok);
+        } while (!$ok); // @phpstan-ignore booleanNot.alwaysTrue
+        // Note: this condition is always true but there is a return statement
+        // above that will be executed when a unique token is generated.
     }
 
 
@@ -5550,7 +5583,7 @@ HTML;
      */
     public static function checkDefaultPasswords()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $passwords = ['glpi'      => 'glpi',
@@ -5644,7 +5677,11 @@ HTML;
     public static function dropPictureFiles($picture)
     {
         if (!empty($picture)) {
-            if (!$filepath = realpath(GLPI_PICTURE_DIR . "/$picture")) {
+            try {
+                if (!$filepath = realpath(GLPI_PICTURE_DIR . "/$picture")) {
+                    return;
+                }
+            } catch (FilesystemException $e) {
                 return;
             }
             if (!str_starts_with($filepath, realpath(GLPI_PICTURE_DIR))) {
@@ -5709,15 +5746,14 @@ HTML;
 
         $ret =  [];
         foreach ($map as $v) {
-            /** @var array $reg */
             if (preg_match_all('/%{(.*)}/U', $v, $reg)) {
                 // e.g. "%{country} > %{city} > %{site}"
-                foreach ($reg [1] as $f) {
-                    $ret [] = $f;
+                foreach ($reg[1] as $f) {
+                    $ret[] = $f;
                 }
             } else {
                 // single field name
-                $ret [] = $v;
+                $ret[] = $v;
             }
         }
         return $ret;
@@ -5739,9 +5775,7 @@ HTML;
 
         $ret = preg_replace_callback(
             '/%{(.*)}/U',
-            function ($matches) use ($res) {
-                return ($res[0][$matches[1]][0] ?? '');
-            },
+            fn($matches) => $res[0][$matches[1]][0] ?? '',
             $map
         );
 
@@ -5817,7 +5851,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -6062,7 +6096,7 @@ HTML;
 
     public static function getFriendlyNameSearchCriteria(string $filter): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $table     = self::getTable();
@@ -6095,7 +6129,7 @@ HTML;
 
     public static function getFriendlyNameFields(string $alias = "name")
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $config = Config::getConfigurationValues('core');
@@ -6140,7 +6174,12 @@ HTML;
                     'is_dynamic' => true,
                 ]);
                 foreach ($groups as $group) {
-                    $group_user->delete($group);
+                    if (!isset($_SESSION['_ldap_groups']) || !in_array($group['groups_id'], $_SESSION['_ldap_groups'])) {
+                        $group_user->delete($group);
+                    }
+                }
+                if (isset($_SESSION['_ldap_groups'])) {
+                    unset($_SESSION['_ldap_groups']);
                 }
             }
             return;
@@ -6229,7 +6268,7 @@ HTML;
     {
         $this->initForm($ID, $options);
 
-        $formtitle = $this->getTypeName(1);
+        $formtitle = static::getTypeName(1);
         $options['formtitle']   = $formtitle;
         $options['formoptions'] = ($options['formoptions'] ?? '') . " enctype='multipart/form-data'";
         $options['candel'] = false;
@@ -6415,7 +6454,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -6467,7 +6506,7 @@ HTML;
      */
     private static function createUserFromMail(string $email): ?User
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -6507,7 +6546,7 @@ HTML;
      */
     public static function getNameForLog(int $ID): string
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -6587,7 +6626,7 @@ HTML;
      */
     final public function isSubstituteOf(int $users_id_delegator, bool $use_date_range = true): bool
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($this->isNewItem()) {

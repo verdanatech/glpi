@@ -130,7 +130,7 @@ class NetworkPort_NetworkPort extends CommonDBRelation
     public function connectToHub($ports_id, $hubs_id)
     {
 
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $netport = new NetworkPort();
@@ -198,9 +198,9 @@ class NetworkPort_NetworkPort extends CommonDBRelation
      */
     public function cleanHubPorts()
     {
-        $netport = new \NetworkPort();
-        $unmanaged = new \Unmanaged();
-        $netport_vlan = new \NetworkPort_Vlan();
+        $netport = new NetworkPort();
+        $unmanaged = new Unmanaged();
+        $netport_vlan = new NetworkPort_Vlan();
 
         $hubs_ids = [];
 
@@ -237,7 +237,7 @@ class NetworkPort_NetworkPort extends CommonDBRelation
                 'items_id'  => $unmanageds_id,
             ]);
             if (count($networkports) < 2) {
-                $unmanaged->delete(['id' => $unmanageds_id], 1);
+                $unmanaged->delete(['id' => $unmanageds_id], true);
             } elseif (count($networkports) === 2) {
                 $switchs_id = 0;
                 $others_id  = 0;
@@ -308,6 +308,7 @@ class NetworkPort_NetworkPort extends CommonDBRelation
         if ($netport->fields['itemtype'] === NetworkEquipment::class) {
             $netports_id = $this->fields['networkports_id_1'];
         } else {
+            $netport = new NetworkPort();
             $netport->getFromDB($this->fields['networkports_id_2']);
             if ($netport->fields['itemtype'] === NetworkEquipment::class) {
                 $netports_id = $this->fields['networkports_id_2'];

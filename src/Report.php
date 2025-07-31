@@ -40,6 +40,8 @@ use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Socket;
 
+use function Safe\mktime;
+
 /**
  *  Report class
  *
@@ -151,7 +153,7 @@ class Report extends CommonGLPI
                     if ($file = $fn_find_selected($data)) {
                         return $file;
                     }
-                } elseif (stripos($_SERVER['REQUEST_URI'], $data['file']) !== false) {
+                } elseif (stripos($_SERVER['REQUEST_URI'], (string) $data['file']) !== false) {
                     return $data['file'];
                 }
             }
@@ -192,13 +194,13 @@ TWIG, $twig_params);
     }
 
     /**
-     * @return array<class-string<CommonDBTM>, array<string, array>>
+     * @return array<class-string<CommonDBTM>, array<string, mixed>>
      */
     private static function getAssetCounts(): array
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -216,7 +218,7 @@ TWIG, $twig_params);
                 ] + getEntitiesRestrictCriteria($table_item) + $itemtype::getSystemSQLCriteria(),
             ];
 
-            $itemtype_object = new $itemtype();
+            $itemtype_object = getItemForItemtype($itemtype);
             if ($itemtype_object->maybeTemplate()) {
                 $criteria["WHERE"]["$table_item.is_template"] = 0;
             }
@@ -247,11 +249,11 @@ TWIG, $twig_params);
     }
 
     /**
-     * @return array<string, array<int, array>>
+     * @return array<int, array<string, mixed>>
      */
     private static function getOSInstallCounts(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = [];
@@ -287,14 +289,11 @@ TWIG, $twig_params);
         return $result;
     }
 
-    /**
-     * @return array<class-string<CommonDBTM>, array<int, array>
-     */
     private static function getAssetTypeCounts(): array
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -337,7 +336,7 @@ TWIG, $twig_params);
                 'GROUPBY'   => "$type_table.name",
             ];
 
-            $itemtype_object = new $itemtype();
+            $itemtype_object = getItemForItemtype($itemtype);
             if ($itemtype_object->maybeTemplate()) {
                 $criteria["WHERE"]["$table_item.is_template"] = 0;
             }
@@ -668,7 +667,7 @@ TWIG, ['title' => $report['title'], 'counts' => $counts]);
     }
 
     /**
-     * @param class-string<'Location'|'NetworkEquioment'|'Glpi\Socket'> $by_itemtype
+     * @param class-string<Location|NetworkEquipment|Socket> $by_itemtype
      * @param int $by_items_id
      * @return array
      * @phpstan-return ReportData
@@ -679,15 +678,17 @@ TWIG, ['title' => $report['title'], 'counts' => $counts]);
         global $DB;
 
         $title = sprintf(match ($by_itemtype) {
-            Location::class => __('Network report by location: %s'),
+            Location::class         => __('Network report by location: %s'),
             NetworkEquipment::class => __('Network report by hardware: %s'),
-            Socket::class => __('Network report by outlet: %s'),
+            Socket::class           => __('Network report by outlet: %s'),
+            default                 => throw new InvalidArgumentException(),
         }, Dropdown::getDropdownName($by_itemtype::getTable(), $by_items_id));
 
         $criteria = match ($by_itemtype) {
-            Location::class => self::getNetworkLocationCriteria($by_items_id),
+            Location::class         => self::getNetworkLocationCriteria($by_items_id),
             NetworkEquipment::class => self::getNetworkEquipmentCriteria($by_items_id),
-            Socket::class => self::getNetworkSocketCriteria($by_items_id),
+            Socket::class           => self::getNetworkSocketCriteria($by_items_id),
+            default                 => throw new InvalidArgumentException(),
         };
 
         $report = [
@@ -899,14 +900,12 @@ TWIG, $twig_params);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         // Filter the itemtypes to only keep the ones that are valid
-        $itemtypes = array_filter($itemtypes, static function (string $itemtype) use ($CFG_GLPI): bool {
-            return in_array($itemtype, $CFG_GLPI['report_types'], true);
-        });
+        $itemtypes = array_filter($itemtypes, static fn(string $itemtype): bool => in_array($itemtype, $CFG_GLPI['report_types'], true));
 
         $report = [
             'title' => __("Equipment's report by year"),
@@ -1070,7 +1069,7 @@ TWIG, $twig_params);
      */
     public static function showYearlyAssetsReport(array $itemtypes, array $years): void
     {
-        if (empty($itemtypes)) {
+        if ($itemtypes === []) {
             self::showYearlyAssetsReportCriteria(false);
             return;
         }
@@ -1155,14 +1154,12 @@ TWIG, $twig_params);
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
         // Filter the itemtypes to only keep the ones that are valid
-        $itemtypes = array_filter($itemtypes, static function (string $itemtype) use ($CFG_GLPI): bool {
-            return in_array($itemtype, $CFG_GLPI['contract_types'], true);
-        });
+        $itemtypes = array_filter($itemtypes, static fn(string $itemtype): bool => in_array($itemtype, $CFG_GLPI['contract_types'], true));
 
         $report = [
             'title' => __('List of the hardware under contract'),
@@ -1349,7 +1346,7 @@ TWIG, $twig_params);
      */
     public static function showContractAssetsReport(array $itemtypes, array $years): void
     {
-        if (empty($itemtypes)) {
+        if ($itemtypes === []) {
             self::showContractAssetsReportCriteria(false);
             return;
         }

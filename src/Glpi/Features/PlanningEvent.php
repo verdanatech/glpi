@@ -37,8 +37,8 @@ namespace Glpi\Features;
 
 use CommonITILTask;
 use DateInterval;
-use DateTime;
 use DateTimeZone;
+use DBmysql;
 use Dropdown;
 use Entity;
 use ExtraVisibilityCriteria;
@@ -50,12 +50,19 @@ use Html;
 use Planning;
 use PlanningEventCategory;
 use PlanningRecall;
+use Ramsey\Uuid\Uuid;
 use Reminder;
 use RRule\RRule;
 use RRule\RSet;
+use Safe\DateTime;
+use Safe\Exceptions\JsonException;
 use Session;
 use Toolbox;
 use User;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\strtotime;
 
 trait PlanningEvent
 {
@@ -113,7 +120,7 @@ trait PlanningEvent
 
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $input = $this->prepareGuestsInput($input);
@@ -129,7 +136,7 @@ trait PlanningEvent
         Toolbox::manageBeginAndEndPlanDates($input['plan']);
 
         if (!isset($input['uuid'])) {
-            $input['uuid'] = \Ramsey\Uuid\Uuid::uuid4();
+            $input['uuid'] = Uuid::uuid4();
         }
 
         $input["name"] = trim($input["name"]);
@@ -398,7 +405,7 @@ trait PlanningEvent
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -434,7 +441,9 @@ trait PlanningEvent
             $_SESSION["glpiactiveprofile"][static::$rightname] = READ;
         }
         $visibility_criteria = [];
-        if ($event_obj instanceof ExtraVisibilityCriteria) {
+        // TODO: avoid instanceof in a trait, bad practice.
+        // PHPstan doesn't like it but we can't fix it now.
+        if ($event_obj instanceof ExtraVisibilityCriteria) { // @phpstan-ignore instanceof.alwaysTrue
             $visibility_criteria = $event_obj::getVisibilityCriteria(true);
         }
         $nreadpub  = [];
@@ -479,7 +488,7 @@ trait PlanningEvent
             } else {
                 $ngrouppriv = [$itemtype::getTableField('groups_id') => $whogroup];
             }
-            if (!empty($nreadpriv)) {
+            if ($nreadpriv !== []) {
                 $nreadpriv['OR'] = [$nreadpriv, $ngrouppriv];
             } else {
                 $nreadpriv = $ngrouppriv;
@@ -600,8 +609,7 @@ trait PlanningEvent
                         'ajaxurl'          => $CFG_GLPI["root_doc"] . "/ajax/planning.php" .
                                         "?action=edit_event_form" .
                                         "&itemtype=$itemtype" .
-                                        "&id=" . $data['id'] .
-                                        "&url=$url",
+                                        "&id=" . $data['id'],
                         'editable'         => $event_obj->canUpdateItem(),
                         'url'              => $url,
                         'begin'            => !$is_rrule && (strcmp($begin, $data["begin"]) > 0)
@@ -655,7 +663,7 @@ trait PlanningEvent
         }
 
         if (count($events_toadd)) {
-            $events = $events + $events_toadd;
+            $events += $events_toadd;
         }
 
         return $events;
@@ -663,7 +671,8 @@ trait PlanningEvent
 
 
     /**
-     * Display a Planning Item
+     * Generate the html code to display a Planning Item.
+     * Note: despite its name, this method do not display anything by itself.
      *
      * @param $val        array of the item to display
      * @param $who        ID of the user (0 if all)
@@ -671,7 +680,7 @@ trait PlanningEvent
      *                    default '')
      * @param $complete   complete display (more details) (default 0)
      *
-     * @return void (display function)
+     * @return string
      **/
     public static function displayPlanningItem(array $val, $who, $type = "", $complete = 0)
     {
@@ -748,7 +757,11 @@ trait PlanningEvent
      */
     public static function showRepetitionForm(string $rrule = "", array $options = []): string
     {
-        $rrule = json_decode($rrule, true) ?? [];
+        try {
+            $rrule = json_decode($rrule, true) ?? [];
+        } catch (JsonException $e) {
+            $rrule = [];
+        }
         $defaults = [
             'freq'       => null,
             'interval'   => 1,
@@ -941,9 +954,9 @@ trait PlanningEvent
             foreach ($rrule['exceptions'] as $exception) {
                 $exdate = new DateTime($exception);
                 $exdate->setTime(
-                    $dtstart_datetime->format('G'),
-                    $dtstart_datetime->format('i'),
-                    $dtstart_datetime->format('s')
+                    (int) $dtstart_datetime->format('G'),
+                    (int) $dtstart_datetime->format('i'),
+                    (int) $dtstart_datetime->format('s')
                 );
                 $rset->addExDate($exdate->format('Y-m-d\TH:i:s\Z'));
             }

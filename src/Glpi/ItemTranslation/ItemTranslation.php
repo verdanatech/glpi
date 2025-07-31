@@ -39,8 +39,12 @@ use CommonDBTM;
 use Gettext\Languages\Language;
 use Glpi\Form\FormTranslation;
 use Glpi\ItemTranslation\Context\ProvideTranslationsInterface;
+use LogicException;
 use Override;
 use Session;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 class ItemTranslation extends CommonDBChild
 {
@@ -134,7 +138,7 @@ class ItemTranslation extends CommonDBChild
     /**
      * Get translations for an item
      *
-     * @return array<ItemTranslation>
+     * @return array<ItemTranslation|false>
      */
     public static function getTranslationsForItem(CommonDBTM $item): array
     {
@@ -159,7 +163,10 @@ class ItemTranslation extends CommonDBChild
         ]);
 
         if (!empty($translation)) {
-            return static::getById(key($translation));
+            $itemtranslation = static::getById(key($translation));
+            if ($itemtranslation instanceof self) {
+                return $itemtranslation;
+            }
         }
 
         return null;
@@ -195,7 +202,7 @@ class ItemTranslation extends CommonDBChild
     {
         $item = $this->getItem();
         if (!($item instanceof ProvideTranslationsInterface)) {
-            throw new \LogicException('Item does not provide translations');
+            throw new LogicException('Item does not provide translations');
         }
 
         $translated_handlers = 0;
@@ -205,11 +212,7 @@ class ItemTranslation extends CommonDBChild
             $translations_handlers,
             function ($handler) use (&$translated_handlers, &$total_handlers) {
                 if (
-                    !empty($this->getForItemKeyAndLanguage(
-                        $handler->getItem(),
-                        $handler->getKey(),
-                        $this->fields['language']
-                    )?->getTranslation())
+                    !empty(static::getForItemKeyAndLanguage($handler->getItem(), $handler->getKey(), $this->fields['language'])?->getTranslation())
                 ) {
                     $translated_handlers++;
                 }
@@ -225,7 +228,7 @@ class ItemTranslation extends CommonDBChild
     {
         $item = $this->getItem();
         if (!($item instanceof ProvideTranslationsInterface)) {
-            throw new \LogicException('Item does not provide translations');
+            throw new LogicException('Item does not provide translations');
         }
 
         $translated_handlers = 0;
@@ -235,11 +238,7 @@ class ItemTranslation extends CommonDBChild
             $translations_handlers,
             function ($handler) use (&$translated_handlers, &$total_handlers) {
                 if (
-                    !empty($this->getForItemKeyAndLanguage(
-                        $handler->getItem(),
-                        $handler->getKey(),
-                        $this->fields['language']
-                    )?->getTranslation())
+                    !empty(static::getForItemKeyAndLanguage($handler->getItem(), $handler->getKey(), $this->fields['language'])?->getTranslation())
                 ) {
                     $translated_handlers++;
                 }
@@ -255,7 +254,7 @@ class ItemTranslation extends CommonDBChild
     {
         $item = $this->getItem();
         if (!($item instanceof ProvideTranslationsInterface)) {
-            throw new \LogicException('Item does not provide translations');
+            throw new LogicException('Item does not provide translations');
         }
 
         $translations_to_review = 0;

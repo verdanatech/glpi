@@ -35,9 +35,15 @@
 
 namespace Glpi\Api\HL;
 
+use CommonDBTM;
 use Glpi\Http\Request;
+use GraphQL\Error\Error;
 use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Utils\BuildSchema;
+use Psr\Log\LoggerInterface;
+use Throwable;
+
+use function Safe\json_decode;
 
 /**
  * GraphQL processor
@@ -55,6 +61,7 @@ final class GraphQL
         $query = (string) $request->getBody();
         $generator = new GraphQLGenerator($api_version);
         $schema_str = $generator->getSchema();
+
         try {
             $result = \GraphQL\GraphQL::executeQuery(
                 schema: BuildSchema::build($schema_str),
@@ -75,17 +82,30 @@ final class GraphQL
                         $completed_schema = self::expandSchemaFromRequestedFields($schema, $field_selection, null, $api_version);
 
                         if (isset($args['id'])) {
-                            $result = json_decode(Search::getOneBySchema($completed_schema, ['id' => $args['id']], [])->getBody(), true);
-                            return [$result];
+                            $result = ResourceAccessor::getOneBySchema($completed_schema, ['id' => $args['id']], []);
+                            if ($result->getStatusCode() !== 200) {
+                                throw new Error($result->getBody());
+                            }
+                            return [json_decode($result->getBody(), true)];
                         }
-                        return json_decode(Search::searchBySchema($completed_schema, $args)->getBody(), true);
+                        $result = ResourceAccessor::searchBySchema($completed_schema, $args);
+                        if ($result->getStatusCode() !== 200) {
+                            throw new Error($result->getBody());
+                        }
+                        return json_decode($result->getBody(), true);
                     }
 
                     return $source[$info->fieldName] ?? null;
                 }
             );
-        } catch (\Throwable $e) {
-            trigger_error("Error processing GraphQL request: {$e->getMessage()}", E_USER_WARNING);
+        } catch (Throwable $e) {
+            /** @var LoggerInterface $PHPLOGGER */
+            global $PHPLOGGER;
+            $PHPLOGGER->error(
+                "Error processing GraphQL request: {$e->getMessage()}",
+                ['exception' => $e]
+            );
+
             return [];
         }
         return $result->toArray();
@@ -95,6 +115,10 @@ final class GraphQL
     {
         $is_schema_array = array_key_exists('items', $schema) && !array_key_exists('properties', $schema);
         $itemtype = self::getSchemaItemtype($schema, $api_version);
+        if (is_subclass_of($itemtype, CommonDBTM::class) && !$itemtype::canView()) {
+            // Cannot view this itemtype so we shouldn't expand it further
+            return $schema;
+        }
         if ($is_schema_array) {
             $properties = $schema['items']['properties'];
         } else {
@@ -180,7 +204,7 @@ final class GraphQL
      *    <li>Is this a primary key?</li>
      *    <li>Is this referenced by an `x-mapped-from` property?</li>
      * </ul>
-     * @param class-string<\CommonDBTM>|null $itemtype The itemtype of the object that contains the property. Used to determine the index field name.
+     * @param class-string<CommonDBTM>|null $itemtype The itemtype of the object that contains the property. Used to determine the index field name.
      * @param string $property The key of the property to remove or hide.
      * @param array $schema_properties The schema properties of the object that contains the property.
      * @param array $other_requested The other properties that were requested.

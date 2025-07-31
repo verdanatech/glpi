@@ -35,6 +35,8 @@
 
 use Glpi\Application\View\TemplateRenderer;
 
+use function Safe\json_encode;
+
 class Item_Rack extends CommonDBRelation
 {
     public static $itemtype_1 = 'Rack';
@@ -72,8 +74,11 @@ class Item_Rack extends CommonDBRelation
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        self::showItems($item);
-        return true;
+        if (!$item instanceof Rack) {
+            return false;
+        }
+
+        return self::showItems($item);
     }
 
     public function getForbiddenStandardMassiveAction()
@@ -128,7 +133,7 @@ class Item_Rack extends CommonDBRelation
 
         $entries = [];
         foreach ($items as $row) {
-            $item = new $row['itemtype']();
+            $item = getItemForItemtype($row['itemtype']);
             $item->getFromDB($row['items_id']);
             $entries[] = [
                 'itemtype' => self::class,
@@ -182,7 +187,7 @@ class Item_Rack extends CommonDBRelation
         foreach ($items as $row) {
             $rel  = new self();
             $rel->getFromDB($row['id']);
-            $item = new $row['itemtype']();
+            $item = getItemForItemtype($row['itemtype']);
             if (!$item->getFromDB($row['items_id'])) {
                 continue;
             }
@@ -206,9 +211,8 @@ class Item_Rack extends CommonDBRelation
                 'reserved'  => (bool) $row['is_reserved'],
             ];
 
-            $model_class = $item->getType() . 'Model';
-            $modelsfield = $model_class::getForeignKeyField();
-            $model = new $model_class();
+            $model = $item->getModelClassInstance();
+            $modelsfield = $model::getForeignKeyField();
             if ($model->getFromDB($item->fields[$modelsfield])) {
                 if ($model->fields['required_units'] > 1) {
                     $gs_item['height'] = $model->fields['required_units'];
@@ -364,13 +368,13 @@ class Item_Rack extends CommonDBRelation
     /**
      * Print racks items
      * @param  Rack   $rack the current rack instance
-     * @return void
+     * @return bool
      */
-    public static function showItems(Rack $rack)
+    public static function showItems(Rack $rack): bool
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -435,6 +439,8 @@ class Item_Rack extends CommonDBRelation
       });
 JAVASCRIPT;
         echo Html::scriptBlock($js);
+
+        return true;
     }
 
     /**
@@ -444,7 +450,7 @@ JAVASCRIPT;
      */
     public static function showStats(Rack $rack)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $items = $DB->request([
@@ -465,12 +471,11 @@ JAVASCRIPT;
         foreach ($items as $row) {
             $rel->getFromDB($row['id']);
 
-            $item = new $row['itemtype']();
+            $item = getItemForItemtype($row['itemtype']);
             $item->getFromDB($row['items_id']);
 
-            $model_class = $item->getType() . 'Model';
-            $modelsfield = $model_class::getForeignKeyField();
-            $model = new $model_class();
+            $model = $item->getModelClassInstance();
+            $modelsfield = $model::getForeignKeyField();
 
             if ($model->getFromDB($item->fields[$modelsfield])) {
                 $required_units = $model->fields['required_units'];
@@ -530,7 +535,7 @@ JAVASCRIPT;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -620,7 +625,7 @@ JAVASCRIPT;
         echo "<td id='items_id'>";
         if (isset($this->fields['itemtype']) && !empty($this->fields['itemtype'])) {
             $itemtype = $this->fields['itemtype'];
-            $itemtype = new $itemtype();
+            $itemtype = getItemForItemtype($itemtype);
             $itemtype::dropdown([
                 'name'   => "items_id",
                 'value'  => $this->fields['items_id'],
@@ -1002,11 +1007,10 @@ JAVASCRIPT;
                 $filled = $rack->getFilled($this->fields['itemtype'], $this->fields['items_id']);
             }
 
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
             $item->getFromDB($items_id);
-            $model_class = $item->getType() . 'Model';
-            $modelsfield = $model_class::getForeignKeyField();
-            $model = new $model_class();
+            $model = $item->getModelClassInstance();
+            $modelsfield = $model::getForeignKeyField();
 
             $required_units = 1;
             $width          = 1;

@@ -32,21 +32,26 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QuerySubQuery;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\DCBreadcrumb;
+use Glpi\Features\DCBreadcrumbInterface;
+use Glpi\Features\Inventoriable;
 use Glpi\Socket;
 
 /**
  * Network equipment Class
  **/
-class NetworkEquipment extends CommonDBTM
+class NetworkEquipment extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface
 {
-    use Glpi\Features\DCBreadcrumb;
-    use Glpi\Features\Clonable;
-    use Glpi\Features\Inventoriable;
+    use DCBreadcrumb;
+    use Clonable;
+    use Inventoriable;
     use Glpi\Features\State;
-    use Glpi\Features\AssignableItem {
+    use AssignableItem {
         prepareInputForAdd as prepareInputForAddAssignableItem;
     }
 
@@ -185,7 +190,7 @@ class NetworkEquipment extends CommonDBTM
      **/
     public function canUnrecurs()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $ID = $this->fields['id'];
@@ -278,7 +283,7 @@ class NetworkEquipment extends CommonDBTM
                => "<i class='ti ti-key'></i>" .
                   _sx('button', 'Add a license'),
             ];
-            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, __CLASS__, 0, $checkitem);
+            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, self::class, false, $checkitem);
         }
 
         return $actions;

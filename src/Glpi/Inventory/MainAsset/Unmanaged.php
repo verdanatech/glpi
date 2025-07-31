@@ -35,11 +35,15 @@
 
 namespace Glpi\Inventory\MainAsset;
 
+use Agent;
+use CommonDBTM;
+use Entity;
 use Glpi\Inventory\Conf;
 use Glpi\Inventory\Request;
 use NetworkPortInstantiation;
 use RefusedEquipment;
 use RuleMatchedLog;
+use stdClass;
 use Transfer;
 
 class Unmanaged extends MainAsset
@@ -81,11 +85,11 @@ class Unmanaged extends MainAsset
     /**
      * Prepare network device information
      *
-     * @param \stdClass $val
+     * @param stdClass $val
      *
      * @return void
      */
-    protected function prepareForNetworkDevice(\stdClass $val): void
+    protected function prepareForNetworkDevice(stdClass $val): void
     {
         if (isset($this->extra_data['network_device'])) {
             $device = (object) $this->extra_data['network_device'];
@@ -102,13 +106,13 @@ class Unmanaged extends MainAsset
                 }
             }
 
-            foreach ($device as $key => $property) {
+            foreach ($device as $key => $property) { /** @phpstan-ignore foreach.nonIterable */
                 $val->$key = $property;
             }
 
             if (property_exists($device, 'ips')) {
                 $portkey = 'management';
-                $port = new \stdClass();
+                $port = new stdClass();
                 if (property_exists($device, 'mac')) {
                     $port->mac = $device->mac;
                 }
@@ -134,10 +138,10 @@ class Unmanaged extends MainAsset
     /**
      * After rule engine passed, update task (log) and create item if required
      *
-     * @param integer $items_id id of the item (0 if new)
-     * @param string  $itemtype Item type
-     * @param integer $rules_id Matched rule id, if any
-     * @param array $ports_id Matched port ids, if any
+     * @param integer       $items_id id of the item (0 if new)
+     * @param string        $itemtype Item type
+     * @param integer       $rules_id Matched rule id, if any
+     * @param integer|array $ports_id Matched port ids, if any
      */
     public function rulepassed($items_id, $itemtype, $rules_id, $ports_id = [])
     {
@@ -186,7 +190,7 @@ class Unmanaged extends MainAsset
                     $entities_id
                 );
                 //manage converted object
-                if (!empty($result)) {
+                if (!empty($result) && is_a($result['itemtype'], CommonDBTM::class, true)) {
                     $converted_object = new $result['itemtype']();
                     if ($converted_object->getFromDB($result['id'])) {
                         $this->item = $converted_object;
@@ -230,7 +234,7 @@ class Unmanaged extends MainAsset
         //check for any old agent to remove only if it an unmanaged
         //to prevent agentdeletion from another asset handle by another agent
         if ($need_to_add) {
-            $agent = new \Agent();
+            $agent = new Agent();
             $agent->deleteByCriteria([
                 'itemtype' => $this->item->getType(),
                 'items_id' => $items_id,
@@ -250,7 +254,7 @@ class Unmanaged extends MainAsset
 
         if ($entities_id != $this->item->fields['entities_id']) {
             //asset entity has changed in rules; do transfer
-            $doTransfer = \Entity::getUsedConfig('transfers_strategy', $this->item->fields['entities_id'], 'transfers_id', 0);
+            $doTransfer = Entity::getUsedConfig('transfers_strategy', $this->item->fields['entities_id'], 'transfers_id', 0);
             $transfer = new Transfer();
             if ($doTransfer > 0 && $transfer->getFromDB($doTransfer)) {
                 $item_to_transfer = [$this->itemtype => [$items_id => $items_id]];

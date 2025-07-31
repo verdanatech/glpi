@@ -86,9 +86,8 @@ abstract class AbstractMarketplaceCommand extends AbstractCommand
             // Ask for plugin list if directory argument is empty
             $choices = $this->getPluginChoiceChoices();
 
-            if (!empty($choices)) {
-                /** @var QuestionHelper $question_helper */
-                $question_helper = $this->getHelper('question');
+            if ($choices !== []) {
+                $question_helper = new QuestionHelper();
                 $question = new ChoiceQuestion(
                     $this->getPluginChoiceQuestion(),
                     $choices

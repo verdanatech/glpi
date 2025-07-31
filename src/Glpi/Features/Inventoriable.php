@@ -36,20 +36,22 @@
 namespace Glpi\Features;
 
 use Agent;
-use CommonDBTM;
 use Computer;
 use DatabaseInstance;
+use DBmysql;
 use Glpi\Asset\Asset_PeripheralAsset;
 use Glpi\Inventory\Conf;
 use Glpi\Plugin\Hooks;
 use Html;
 use Plugin;
 use RefusedEquipment;
+use Safe\Exceptions\FilesystemException;
+
+use function Safe\unlink;
 
 trait Inventoriable
 {
-    /** @var CommonDBTM|null */
-    protected ?CommonDBTM $agent = null;
+    protected ?Agent $agent = null;
 
     public function pre_purgeInventory()
     {
@@ -59,7 +61,12 @@ trait Inventoriable
             return true;
         }
 
-        return unlink($file_name);
+        try {
+            unlink($file_name);
+            return true;
+        } catch (FilesystemException $e) {
+            return false;
+        }
     }
 
 
@@ -102,7 +109,7 @@ trait Inventoriable
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -244,7 +251,7 @@ JAVASCRIPT;
 
     public function getInventoryAgent(): ?Agent
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $agent = $this->getMostRecentAgent([
@@ -317,7 +324,7 @@ JAVASCRIPT;
      */
     private function getMostRecentAgent(array $conditions): ?Agent
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

@@ -36,7 +36,11 @@
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 
-/// Common DataBase Relation Table Manager Class
+use function Safe\preg_match;
+
+/**
+ * Common DataBase Relation Table Manager Class
+ */
 abstract class CommonDBRelation extends CommonDBConnexity
 {
     // Item 1 information
@@ -193,7 +197,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      **/
     public static function getOppositeByTypeAndID($itemtype, $items_id, &$relations_id = null)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($items_id < 0) {
@@ -748,7 +752,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
             // Set the item to allow parent::prepareinputforadd to get the right item ...
             if (
                 ($itemToGetEntity instanceof CommonDBTM)
-                && $itemToGetEntity->isEntityForwardTo(get_called_class())
+                && $itemToGetEntity->isEntityForwardTo(static::class)
             ) {
                 $input['entities_id']  = $itemToGetEntity->getEntityID();
                 $input['is_recursive'] = intval($itemToGetEntity->isRecursive());
@@ -939,7 +943,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
                     $new1->getID(),
                     $new1->getType(),
                     $changes,
-                    get_called_class() . '#' . $field,
+                    static::class . '#' . $field,
                     static::$log_history_1_update
                 );
             }
@@ -951,7 +955,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
                     $new2->getID(),
                     $new2->getType(),
                     $changes,
-                    get_called_class() . '#' . $field,
+                    static::class . '#' . $field,
                     static::$log_history_2_update
                 );
             }
@@ -1222,8 +1226,8 @@ abstract class CommonDBRelation extends CommonDBConnexity
         array $options = []
     ) {
 
-        if (isset($options[get_called_class() . '_side'])) {
-            $side = $options[get_called_class() . '_side'];
+        if (isset($options[static::class . '_side'])) {
+            $side = $options[static::class . '_side'];
         } else {
             $side = 0;
         }
@@ -1244,7 +1248,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
             class_exists($oppositetype)
             && method_exists($oppositetype, 'getHTMLTableHeader')
         ) {
-            $oppositetype::getHTMLTableHeader(get_called_class(), $base, $super, $father, $options);
+            $oppositetype::getHTMLTableHeader(static::class, $base, $super, $father, $options);
         }
     }
 
@@ -1263,7 +1267,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (empty($item)) {
@@ -1453,7 +1457,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
                         $peers_id = static::$items_id_2;
                         break;
                     default:
-                        throw new \LogicException();
+                        throw new LogicException();
                 }
                 if (
                     ($normalized_action == 'remove')
@@ -1542,7 +1546,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
         CommonDBTM $item,
         array $ids
     ) {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $action        = $ma->getAction();
@@ -1627,7 +1631,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
                 !$specificities['can_remove_all_at_once']
                 && !$specificities['only_remove_all_at_once']
             ) {
-                return false;
+                return;
             }
             $peer = false;
         }
@@ -1820,7 +1824,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     protected static function getListForItemParams(CommonDBTM $item, $noent = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (Session::isCron()) {
@@ -1836,7 +1840,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
         if ($inverse === true) {
             $link_type  = static::$itemtype_2;
             if ($link_type == 'itemtype') {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     sprintf(
                         'Cannot use getListForItemParams() for a %s',
                         $item->getType()
@@ -1847,8 +1851,8 @@ abstract class CommonDBRelation extends CommonDBConnexity
             $where_id   = static::$items_id_1;
         }
 
-        $link = new $link_type();
-        $link_table = getTableForItemType($link_type);
+        $link = getItemForItemtype($link_type);
+        $link_table = $link::getTable();
 
         $params = [
             'SELECT'    => [static::getTable() . '.id AS linkid', $link_table . '.*'],
@@ -1912,7 +1916,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     public static function getListForItem(CommonDBTM $item, int $start = 0, int $limit = 0, array $order = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = static::getListForItemParams($item);
@@ -1920,7 +1924,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
         if ($limit > 0) {
             $params['LIMIT'] = $limit;
         }
-        if (!empty($order)) {
+        if ($order !== []) {
             $params['ORDER'] = $order;
         }
         return $DB->request($params);
@@ -1962,7 +1966,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     public static function getDistinctTypes($items_id, $extra_where = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = static::getDistinctTypesParams($items_id, $extra_where);
@@ -1999,7 +2003,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     protected static function getTypeItemsQueryParams($items_id, $itemtype, $noent = false, $where = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $item = getItemForItemtype($itemtype);
@@ -2071,7 +2075,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     public static function getTypeItems($items_id, $itemtype)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = static::getTypeItemsQueryParams($items_id, $itemtype);
@@ -2089,7 +2093,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      */
     public static function countForItem(CommonDBTM $item)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $params = static::getListForItemParams($item);
@@ -2115,7 +2119,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
      **/
     public static function countForMainItem(CommonDBTM $item, $extra_types_where = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $nb = 0;
@@ -2148,7 +2152,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
         }
 
         if (isset(static::$itemtype_1) && isset(static::$itemtype_2) && preg_match('/^itemtype/', static::$itemtype_1) && preg_match('/^itemtype/', static::$itemtype_2)) {
-            throw new \RuntimeException('Bad relation (' . $itemtype . ', ' . static::class . ', ' . static::$itemtype_1 . ', ' . static::$itemtype_2 . ')');
+            throw new RuntimeException('Bad relation (' . $itemtype . ', ' . static::class . ', ' . static::$itemtype_1 . ', ' . static::$itemtype_2 . ')');
         }
 
         if (isset(static::$itemtype_1) && preg_match('/^itemtype/', static::$itemtype_1)) {
@@ -2158,7 +2162,7 @@ abstract class CommonDBRelation extends CommonDBConnexity
             return static::$items_id_2;
         }
 
-        throw new \RuntimeException('Cannot guess ');
+        throw new RuntimeException('Cannot guess ');
     }
 
     public function getForbiddenStandardMassiveAction()

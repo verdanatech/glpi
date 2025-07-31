@@ -32,25 +32,26 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
 
 /**
  * CartridgeItem Class
  * This class is used to manage the various types of cartridges.
- * \see Cartridge
+ * @see Cartridge
  **/
-class CartridgeItem extends CommonDBTM
+class CartridgeItem extends CommonDBTM implements AssignableItemInterface
 {
     use AssetImage;
     use AssignableItem {
         prepareInputForAdd as prepareInputForAddAssignableItem;
         prepareInputForUpdate as prepareInputForUpdateAssignableItem;
     }
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     protected static $forward_entity_to = ['Cartridge', 'Infocom'];
@@ -167,7 +168,7 @@ class CartridgeItem extends CommonDBTM
      **/
     public static function getCount($id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -188,7 +189,7 @@ class CartridgeItem extends CommonDBTM
      **/
     public static function addCompatibleType($cartridgeitems_id, $printermodels_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if (
@@ -407,7 +408,7 @@ class CartridgeItem extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -482,7 +483,7 @@ class CartridgeItem extends CommonDBTM
                     }
                 }
 
-                if (!empty($items)) {
+                if ($items !== []) {
                     $options = [
                         'entities_id' => $entity,
                         'items'       => $items,
@@ -538,7 +539,7 @@ class CartridgeItem extends CommonDBTM
      **/
     public static function dropdownForPrinter(Printer $printer)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([

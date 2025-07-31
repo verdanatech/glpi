@@ -45,7 +45,11 @@ use ITILFollowup;
 use ITILSolution;
 use NotificationEvent;
 use Profile;
+use Throwable;
 use User;
+
+use function Safe\preg_replace;
+use function Safe\simplexml_import_dom;
 
 final class UserMention
 {
@@ -107,7 +111,7 @@ final class UserMention
         // Keep only newly mentioned actors
         $mentionned_actors_ids = array_diff($mentionned_actors_ids, $previously_mentionned_actors_ids);
 
-        if (empty($mentionned_actors_ids)) {
+        if ($mentionned_actors_ids === []) {
             return;
         }
 
@@ -154,7 +158,7 @@ final class UserMention
             }
 
             // Retrieve current actors list
-            $userlink = new $main_item->userlinkclass();
+            $userlink = $main_item->getActorObjectForItem(User::class);
             $current_actors_ids = [];
             $current_actors = $userlink->getActors($main_item->fields['id']);
             foreach ($current_actors as $actors) {
@@ -200,17 +204,17 @@ final class UserMention
             $dom = new DOMDocument();
             libxml_use_internal_errors(true);
             $dom->loadHTML($content);
-            // TODO In GLPI 11.0, find a way to remove usage of this `@` operator
-            // that was added to prevent Error E_WARNING simplexml_import_dom(): Invalid Nodetype to import
-            // with bad HTML content.
-            $content_as_xml = @simplexml_import_dom($dom);
-        } catch (\Throwable $e) {
+            if (!libxml_get_errors()) {
+                $content_as_xml = simplexml_import_dom($dom);
+            }
+            libxml_clear_errors();
+        } catch (Throwable $e) {
             // Sanitize process does not handle correctly `<` and `>` chars that are not surrounding html tags.
             // This generates invalid HTML that cannot be loaded by `SimpleXMLElement`.
             return [];
         }
 
-        if ($content_as_xml === null) {
+        if (!isset($content_as_xml)) {
             return [];
         }
 
@@ -292,7 +296,7 @@ final class UserMention
         $items_id = $item->getID();
 
         //get actors from item
-        $userlink = new $item->userlinkclass();
+        $userlink = $item->getActorObjectForItem(User::class);
         $actors = $userlink->getActors($items_id);
 
         $data['users'] = [];

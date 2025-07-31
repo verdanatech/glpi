@@ -36,6 +36,7 @@
 namespace Glpi\Dashboard;
 
 use Config;
+use DBmysql;
 use Dropdown;
 use Glpi\Application\Environment;
 use Glpi\Application\View\TemplateRenderer;
@@ -46,13 +47,19 @@ use Glpi\Plugin\Hooks;
 use Html;
 use Item_Devices;
 use Plugin;
+use Psr\SimpleCache\CacheInterface;
 use Ramsey\Uuid\Uuid;
+use ReflectionClass;
 use Reminder;
 use Session;
 use ShareDashboardDropdown;
 use Telemetry;
+use Throwable;
 use Ticket;
 use Toolbox;
+
+use function Safe\json_encode;
+use function Safe\preg_replace;
 
 class Grid
 {
@@ -201,9 +208,7 @@ HTML;
 
         $viewable = self::$all_dashboards;
         if ($context) {
-            $viewable = array_filter(self::$all_dashboards, function ($dashboard) use ($context) {
-                return $dashboard['context'] === $context;
-            });
+            $viewable = array_filter(self::$all_dashboards, fn($dashboard) => $dashboard['context'] === $context);
         }
         return (count($viewable) > 0);
     }
@@ -239,7 +244,7 @@ HTML;
      */
     public function show(bool $mini = false, ?string $token = null)
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         $rand = mt_rand();
@@ -498,6 +503,7 @@ TWIG, $twig_params);
     public function initEmbedSession(array $params = [])
     {
         // load minimal session
+        Session::start();
         $_SESSION["glpiactive_entity"]           = $params['entities_id'];
         $_SESSION["glpiactive_entity_recursive"] = $params['is_recursive'];
         $_SESSION["glpiname"]                    = 'embed_dashboard';
@@ -600,7 +606,7 @@ TWIG, $twig_params);
      */
     public function getGridItemsHtml(bool $with_lock = true, bool $embed = false): string
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($embed) {
@@ -942,7 +948,7 @@ HTML;
      */
     public function getCardHtml(string $card_id = "", array $card_options = []): string
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         $gridstack_id = $card_options['args']['gridstack_id'] ?? $card_id;
@@ -1046,7 +1052,7 @@ HTML;
             if ($html === '') {
                 return $notfound_html;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $html = $render_error_html;
             // Log the error message without exiting
             ErrorHandler::logCaughtException($e);
@@ -1136,7 +1142,7 @@ HTML;
                     return false;
                 }
 
-                $testClass = new \ReflectionClass($itemtype);
+                $testClass = new ReflectionClass($itemtype);
                 return !$testClass->isAbstract();
             });
         }
@@ -1175,7 +1181,7 @@ HTML;
     {
         /**
          * @var array $CFG_GLPI
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var CacheInterface $GLPI_CACHE
          */
         global $CFG_GLPI, $GLPI_CACHE;
 
@@ -1370,7 +1376,7 @@ HTML;
                 'widgettype' => ['hBars', 'stackedHBars'],
                 'itemtype'   => "\\Ticket",
                 'group'      => __('Assistance'),
-                'label'      => sprintf(__("Number of tickets by SLA status and technician")),
+                'label'      => __("Number of tickets by SLA status and technician"),
                 'provider'   => "Glpi\\Dashboard\\Provider::nbTicketsByAgreementStatusAndTechnician",
                 'filters'    => Filter::getAppliableFilters(Ticket::getTable()),
             ];
@@ -1379,7 +1385,7 @@ HTML;
                 'widgettype' => ['hBars', 'stackedHBars'],
                 'itemtype'   => "\\Ticket",
                 'group'      => __('Assistance'),
-                'label'      => sprintf(__("Number of tickets by SLA status and technician group")),
+                'label'      => __("Number of tickets by SLA status and technician group"),
                 'provider'   => "Glpi\\Dashboard\\Provider::nbTicketsByAgreementStatusAndTechnicianGroup",
                 'filters'    => Filter::getAppliableFilters(Ticket::getTable()),
             ];

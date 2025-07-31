@@ -70,7 +70,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $antivirus->check($_POST["id"], PURGE);
 
-    if ($antivirus->delete($_POST, 1)) {
+    if ($antivirus->delete($_POST, true)) {
         Event::log(
             $antivirus->fields['items_id'],
             $antivirus->fields['itemtype'],
@@ -81,7 +81,7 @@ if (isset($_POST["add"])) {
         );
     }
     $itemtype = $antivirus->fields['itemtype'];
-    $item = new $itemtype();
+    $item = getItemForItemtype($itemtype);
     $item->getFromDB($antivirus->fields['items_id']);
     Html::redirect(Toolbox::getItemTypeFormURL($antivirus->fields['itemtype']) . '?id=' . $antivirus->fields['items_id'] .
                   ($item->fields['is_template'] ? "&withtemplate=1" : ""));

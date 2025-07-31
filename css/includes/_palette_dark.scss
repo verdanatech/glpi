@@ -37,6 +37,7 @@
     --tblr-info: #5885c0;
     --tblr-body-bg: #000;
     --tblr-body-color: #e6e6e6;
+    --tblr-body-color-rgb: 230, 230, 230;
     --tblr-bg-surface: color-mix(in srgb, var(--tblr-body-bg), black 2%);
     --tblr-border-color: color-mix(in srgb, var(--tblr-body-bg), white 33.33%);
     --tblr-gray-100: var(--tblr-dark);
@@ -64,6 +65,8 @@
     --glpi-timeline-solution-bg: #3a4d55;
     --glpi-timeline-solution-fg: #89bfd3;
     --glpi-timeline-solution-border-color: #435963;
+    --glpi-timeline-document-bg: #2b4137;
+    --glpi-timeline-document-fg: #68b997;
     --glpi-timeline-badge-bg: rgb(104, 104, 104, 15%);
     --glpi-timeline-badge-fg: rgb(236, 236, 236, 80%);
     --glpi-badge-bg: color-mix(in srgb, var(--tblr-link-color), var(--tblr-dark) 85%);
@@ -102,10 +105,6 @@
 
         color: var(--tblr-light);
         border-color: #6d000a;
-    }
-
-    .accordion-item .accordion-button {
-        background-color: var(--tblr-dark) !important;
     }
 
     .search_page .search-container .search-card .search-results.deleted-results td {
@@ -159,5 +158,9 @@
 
     .avatar {
         color: var(--tblr-dark);
+    }
+
+    .list-group {
+        --tblr-list-group-action-active-bg: rgb(var(--tblr-secondary-rgb), 0.5);
     }
 }

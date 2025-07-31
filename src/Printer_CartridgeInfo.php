@@ -32,8 +32,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Inventory\Asset\Cartridge;
+
+use function Safe\preg_match;
 
 class Printer_CartridgeInfo extends CommonDBChild
 {
@@ -48,7 +50,7 @@ class Printer_CartridgeInfo extends CommonDBChild
 
     public function getInfoForPrinter(Printer $printer)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -70,7 +72,7 @@ class Printer_CartridgeInfo extends CommonDBChild
     {
         $info = $this->getInfoForPrinter($printer);
 
-        $asset = new Glpi\Inventory\Asset\Cartridge($printer);
+        $asset = new Cartridge($printer);
         $tags = $asset->knownTags();
         $entries = [];
 
@@ -219,7 +221,7 @@ HTML;
             'yellow'        => __('Yellow'),
         ];
 
-        if (isset($data['property'], $data['value']) && is_array($data) && str_starts_with($data['property'], $type)) {
+        if (isset($data['property'], $data['value']) && str_starts_with($data['property'], $type)) {
             $color = str_replace($type, '', $data['property']);
             $twig_params = [
                 'color_translated' => $color_translations[$color] ?? ucwords($color),
@@ -243,9 +245,7 @@ TWIG, $twig_params);
         if (str_starts_with($field, '_virtual_')) {
             $type = preg_match('/_virtual_(.*)_percent/', $field, $matches) ? $matches[1] : '';
             $badges = array_filter(array_map(
-                static function ($data) use ($type) {
-                    return self::createCartridgeInformationBadge($data, $type);
-                },
+                static fn($data) => self::createCartridgeInformationBadge($data, $type),
                 $options['raw_data']['Printer_' . $printer->getSearchOptionIDByField('field', $field)]
             ));
 

@@ -37,11 +37,13 @@ require_once(__DIR__ . '/_check_webserver_config.php');
 
 use Glpi\Event;
 
+use function Safe\json_decode;
+
 if (empty($_GET["id"])) {
     $_GET["id"] = '';
 }
 
-// as _actors virtual field stores json, bypass automatic escaping
+// as _actors virtual field stores JSON, bypass automatic escaping
 if (isset($_POST['_actors'])) {
     $_POST['_actors'] = json_decode($_POST['_actors'], true);
     $_REQUEST['_actors'] = $_POST['_actors'];
@@ -93,7 +95,7 @@ if (isset($_POST["add"])) {
     $change->redirectToList();
 } elseif (isset($_POST["purge"])) {
     $change->check($_POST["id"], PURGE);
-    $change->delete($_POST, 1);
+    $change->delete($_POST, true);
 
     Event::log(
         $_POST["id"],
@@ -212,7 +214,7 @@ if (isset($_POST["add"])) {
     $id = (int) $_GET['id'];
     if ($id > 0) {
         $url = KnowbaseItem::getFormURLWithParam($_GET) . '&_in_modal=1&item_itemtype=Change&item_items_id=' . $id;
-        if (strpos($url, '_to_kb=') !== false) {
+        if (str_contains($url, '_to_kb=')) {
             Ajax::createIframeModalWindow(
                 'savetokb',
                 $url,

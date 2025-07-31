@@ -80,14 +80,6 @@ var Reservations = function() {
                 : my.currentv,
             height: function() {
                 var _newheight = $(window).height() - 272;
-                if ($('#debugajax').length > 0) {
-                    _newheight -= $('#debugajax').height();
-                }
-
-                if (my.is_tab) {
-                    // TODO .glpi_tabs not exists anymore
-                    _newheight = $('.glpi_tabs ').height() - 150;
-                }
 
                 //minimal size
                 var _minheight = 300;
@@ -238,9 +230,10 @@ var Reservations = function() {
                         title: __("Add reservation"),
                         url: `${CFG_GLPI.root_doc}/ajax/reservations.php`,
                         params: {
-                            action: 'add_reservation_fromselect',
-                            id:     my.id,
-                            start:  info.start.toISOString(),
+                            action: 'add_edit_reservation_fromselect',
+                            id: 0,
+                            item:     [my.id],
+                            begin:  info.start.toISOString(),
                             end:    info.end.toISOString(),
                         },
                         dialogclass: 'modal-lg',
@@ -263,7 +256,7 @@ var Reservations = function() {
 
                 glpi_ajax_dialog({
                     title: __("Edit reservation"),
-                    url: `${ajaxurl}&ajax=true`,
+                    url: `${ajaxurl}`,
                     dialogclass: 'modal-lg',
                 });
             }

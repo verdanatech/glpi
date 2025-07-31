@@ -59,7 +59,7 @@ class KnowbaseItem_KnowbaseItemCategory extends CommonDBRelation
 
     public static function getItems(CommonDBTM $item, $start = 0, $limit = 0, $used = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $kbi_cat_table = self::getTable();
@@ -133,7 +133,7 @@ class KnowbaseItem_KnowbaseItemCategory extends CommonDBRelation
         $kb_item = new KnowbaseItem();
         $kb_item->getEmpty();
         if ($kb_item->canViewItem()) {
-            $action_prefix = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR;
+            $action_prefix = self::class . MassiveAction::CLASS_ACTION_SEPARATOR;
 
             $actions[$action_prefix . 'add']
             = "<i class='ma-icon ti ti-book'></i>" .

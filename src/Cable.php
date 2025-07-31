@@ -32,16 +32,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
 use Glpi\Socket;
 use Glpi\SocketModel;
 
-/// Class Cable
-class Cable extends CommonDBTM
+/**
+ * Class Cable
+ */
+class Cable extends CommonDBTM implements AssignableItemInterface
 {
-    use Glpi\Features\AssignableItem;
-    use Glpi\Features\Clonable;
+    use AssignableItem;
+    use Clonable;
     use Glpi\Features\State;
 
     // From CommonDBTM
@@ -441,7 +445,7 @@ class Cable extends CommonDBTM
             case 'items_id_endpoint_a':
             case 'items_id_endpoint_b':
                 $itemtype = $values[str_replace('items_id', 'itemtype', $field)] ?? null;
-                if ($itemtype !== null && class_exists($itemtype)) {
+                if ($itemtype !== null && class_exists($itemtype) && is_a($itemtype, CommonDBTM::class, true)) {
                     if ($values[$field] > 0) {
                         $item = new $itemtype();
                         $item->getFromDB($values[$field]);

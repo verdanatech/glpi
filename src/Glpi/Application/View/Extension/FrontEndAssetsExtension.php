@@ -49,6 +49,8 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 use function Safe\json_encode;
+use function Safe\parse_url;
+use function Safe\preg_match;
 
 /**
  * @since 10.0.0
@@ -120,7 +122,7 @@ class FrontEndAssetsExtension extends AbstractExtension
 
         if (
             preg_match('/\.scss$/', $file_path)
-            || (strpos($extra_params, 'is_custom_theme=1') !== false
+            || (str_contains($extra_params, 'is_custom_theme=1')
                 && ThemeManager::getInstance()->getTheme($file_path))
         ) {
             $compiled_file = Html::getScssCompilePath($file_path, $this->root_dir);
@@ -188,7 +190,7 @@ class FrontEndAssetsExtension extends AbstractExtension
     private function getVersionnedPath(string $path, array $options = []): string
     {
         $version = $options['version'] ?? GLPI_VERSION;
-        $path .= (strpos($path, '?') !== false ? '&' : '?') . 'v=' . FrontEnd::getVersionCacheKey($version);
+        $path .= (str_contains($path, '?') ? '&' : '?') . 'v=' . FrontEnd::getVersionCacheKey($version);
 
         return $path;
     }
@@ -200,7 +202,7 @@ class FrontEndAssetsExtension extends AbstractExtension
      */
     public function customCss(): string
     {
-        /** @var \DBmysql|null $DB */
+        /** @var DBmysql|null $DB */
         global $DB;
 
         $css = '';

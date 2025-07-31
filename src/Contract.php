@@ -32,17 +32,19 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Glpi\Features\Clonable;
+
+use function Safe\strtotime;
 
 /**
  *  Contract class
  */
 class Contract extends CommonDBTM
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
     use Glpi\Features\State;
 
     // From CommonDBTM
@@ -406,10 +408,10 @@ class Contract extends CommonDBTM
 
         if ($isadmin) {
             $prefix                    = 'Contract_Item' . MassiveAction::CLASS_ACTION_SEPARATOR;
-            $actions[$prefix . 'add']    = _sx('button', 'Add an item');
-            $actions[$prefix . 'remove'] = _sx('button', 'Remove an item');
+            $actions[$prefix . 'add']    = "<i class='ti ti-package'></i>" . _sx('button', 'Add an item');
+            $actions[$prefix . 'remove'] = "<i class='ti ti-package-off'></i>" . _sx('button', 'Remove an item');
             $actions['Contract_Supplier' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add']
-               = _sx('button', 'Add a supplier');
+               = "<i class='" . Supplier::getIcon() . "'></i>" . _sx('button', 'Add a supplier');
         }
 
         return $actions;
@@ -853,7 +855,7 @@ class Contract extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1037,7 +1039,7 @@ class Contract extends CommonDBTM
      **/
     public function getSuppliersNames()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -1077,7 +1079,7 @@ class Contract extends CommonDBTM
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -1141,7 +1143,7 @@ class Contract extends CommonDBTM
                 'WHERE'     => [
                     [
                         'RAW' => [
-                            DBmysql::quoteName('glpi_contracts.alert') . ' & ' . pow(2, Alert::NOTICE) => ['>', 0],
+                            DBmysql::quoteName('glpi_contracts.alert') . ' & ' . 2 ** Alert::NOTICE => ['>', 0],
                         ],
                     ],
                     'glpi_alerts.date'           => null,
@@ -1179,7 +1181,7 @@ class Contract extends CommonDBTM
                 'WHERE'     => [
                     [
                         'RAW' => [
-                            DBmysql::quoteName('glpi_contracts.alert') . ' & ' . pow(2, Alert::END) => ['>', 0],
+                            DBmysql::quoteName('glpi_contracts.alert') . ' & ' . 2 ** Alert::END => ['>', 0],
                         ],
                     ],
                     'glpi_alerts.date'           => null,
@@ -1231,7 +1233,7 @@ class Contract extends CommonDBTM
             }
 
             // Get contrats with periodicity alerts
-            $valPow = pow(2, Alert::PERIODICITY);
+            $valPow = 2 ** Alert::PERIODICITY;
             $query_periodicity = ['FROM' => 'glpi_contracts',
                 'WHERE' => ['alert' => ['&', $valPow],
                     'entities_id' => $entity,
@@ -1246,7 +1248,7 @@ class Contract extends CommonDBTM
                 // For contracts with begin date and periodicity
                 if (!empty($data['begin_date']) && $data['periodicity']) {
                     $todo = ['periodicity' => Alert::PERIODICITY];
-                    if ($data['alert'] & pow(2, Alert::NOTICE)) {
+                    if ($data['alert'] & 2 ** Alert::NOTICE) {
                         $todo['periodicitynotice'] = Alert::NOTICE;
                     }
 
@@ -1257,7 +1259,7 @@ class Contract extends CommonDBTM
                          */
                         // Get previous alerts from DB
                         $previous_alert = [
-                            $type => Alert::getAlertDate(__CLASS__, $data['id'], $event),
+                            $type => Alert::getAlertDate(self::class, $data['id'], $event),
                         ];
                         // If alert never occurs...
                         if (empty($previous_alert[$type])) {
@@ -1288,7 +1290,7 @@ class Contract extends CommonDBTM
                         // If this date is passed : clean alerts and send again
                         if ($next_alert[$type] <= date('Y-m-d')) {
                             $alert = new Alert();
-                            $alert->clear(__CLASS__, $data['id'], $event);
+                            $alert->clear(self::class, $data['id'], $event);
                             // Computation of the real date => add Config [alert xxx days before]
                             $real_alert_date = date('Y-m-d', strtotime($next_alert[$type] . " +" . ($before) . " day"));
                             $message = sprintf(__('%1$s: %2$s') . "<br>\n", $data["name"], Html::convDate($real_alert_date));
@@ -1345,10 +1347,10 @@ class Contract extends CommonDBTM
 
                         $alert = new Alert();
                         $input = [
-                            'itemtype' => __CLASS__,
+                            'itemtype' => self::class,
                             'type'     => $type,
                         ];
-                        foreach ($contracts as $id => $contract) {
+                        foreach (array_keys($contracts) as $id) {
                             $input["items_id"] = $id;
 
                             $alert->add($input);
@@ -1395,7 +1397,7 @@ class Contract extends CommonDBTM
      **/
     public static function dropdown($options = [])
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         //$name,$entity_restrict=-1,$alreadyused=array(),$nochecklimit=false
@@ -1423,7 +1425,7 @@ class Contract extends CommonDBTM
         }
 
         if (
-            !($p['entity'] < 0)
+            $p['entity'] >= 0
             && $p['entity_sons']
         ) {
             if (is_array($p['entity'])) {
@@ -1649,7 +1651,7 @@ class Contract extends CommonDBTM
 
     public static function getNotExpiredCriteria()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         return [
             'OR' => [

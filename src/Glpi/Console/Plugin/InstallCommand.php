@@ -39,11 +39,16 @@ use Auth;
 use Plugin;
 use Session;
 use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use User;
+
+use function Safe\ob_end_clean;
+use function Safe\ob_start;
+use function Safe\opendir;
 
 class InstallCommand extends AbstractPluginCommand
 {
@@ -95,8 +100,7 @@ class InstallCommand extends AbstractPluginCommand
         parent::interact($input, $output);
 
         if (null === $input->getOption('username')) {
-            /** @var \Symfony\Component\Console\Helper\QuestionHelper $question_helper */
-            $question_helper = $this->getHelper('question');
+            $question_helper = new QuestionHelper();
             $value = $question_helper->ask(
                 $input,
                 $output,
@@ -253,7 +257,7 @@ class InstallCommand extends AbstractPluginCommand
             $_SESSION['glpi_use_mode'] = $session_use_mode;
             Session::loadLanguage();
         } else {
-            throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
+            throw new InvalidArgumentException(
                 __('User name defined by --username option is invalid.')
             );
         }
@@ -264,7 +268,7 @@ class InstallCommand extends AbstractPluginCommand
      *
      * @param string $directory
      *
-     * @return array
+     * @return bool
      */
     private function isAlreadyInstalled($directory)
     {

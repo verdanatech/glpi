@@ -34,8 +34,12 @@
 
 namespace Glpi\Form\Condition\ConditionHandler;
 
+use CommonDBTM;
+use Glpi\Form\Condition\ConditionData;
 use Glpi\Form\Condition\ValueOperator;
 use Override;
+
+use function Safe\preg_match;
 
 final class UserDevicesConditionHandler implements ConditionHandlerInterface
 {
@@ -66,7 +70,7 @@ final class UserDevicesConditionHandler implements ConditionHandlerInterface
     }
 
     #[Override]
-    public function getTemplateParameters(): array
+    public function getTemplateParameters(ConditionData $condition): array
     {
         return [
             'is_multiple_devices' => $this->is_multiple_devices,
@@ -117,7 +121,7 @@ final class UserDevicesConditionHandler implements ConditionHandlerInterface
                 ),
                 false
             ),
-            ValueOperator::ALL_ITEMS_OF_ITEMTYPE => !empty($actual_itemtypes) && array_reduce(
+            ValueOperator::ALL_ITEMS_OF_ITEMTYPE => $actual_itemtypes !== [] && array_reduce(
                 $actual_itemtypes,
                 fn(bool $carry, string $actual_itemtype) => $carry && in_array(
                     $actual_itemtype,
@@ -158,7 +162,7 @@ final class UserDevicesConditionHandler implements ConditionHandlerInterface
     /**
      * Get all device types supported by getMyDevices
      *
-     * @return class-string<\CommonDBTM>[]
+     * @return class-string<CommonDBTM>[]
      */
     private function getSupportedDeviceTypes(): array
     {

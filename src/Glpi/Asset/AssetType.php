@@ -35,6 +35,7 @@
 namespace Glpi\Asset;
 
 use CommonType;
+use RuntimeException;
 use Toolbox;
 
 abstract class AssetType extends CommonType
@@ -57,7 +58,7 @@ abstract class AssetType extends CommonType
     {
         $definition = AssetDefinitionManager::getInstance()->getDefinition(static::$definition_system_name);
         if (!($definition instanceof AssetDefinition)) {
-            throw new \RuntimeException('Asset definition is expected to be defined in concrete class.');
+            throw new RuntimeException('Asset definition is expected to be defined in concrete class.');
         }
 
         return $definition;
@@ -83,13 +84,21 @@ abstract class AssetType extends CommonType
 
     public static function getSearchURL($full = true)
     {
-        return Toolbox::getItemTypeSearchURL(self::class, $full) . '?class=' . static::getDefinition()->getAssetClassName(false);
+        return Toolbox::getItemTypeSearchURL(self::class, $full) . '?class=' . static::getDefinition()->fields['system_name'];
     }
 
     public static function getFormURL($full = true)
     {
-        return Toolbox::getItemTypeFormURL(self::class, $full) . '?class=' . static::getDefinition()->getAssetClassName(false);
+        return Toolbox::getItemTypeFormURL(self::class, $full) . '?class=' . static::getDefinition()->fields['system_name'];
     }
+
+    /**
+     * Retrieve an item from the database
+     *
+     * @param int|null $id ID of the item to get
+     *
+     * @return self|false
+     */
 
     public static function getById(?int $id)
     {
@@ -117,8 +126,7 @@ abstract class AssetType extends CommonType
         }
 
         // Instanciate concrete class
-        $asset_type_class = $definition->getAssetTypeClassName(true);
-        $asset_type = new $asset_type_class();
+        $asset_type = $definition->getAssetTypeClassInstance();
         if (!$asset_type->getFromDB($id)) {
             return false;
         }
@@ -128,20 +136,7 @@ abstract class AssetType extends CommonType
 
     public static function getSystemSQLCriteria(?string $tablename = null): array
     {
-        $table_prefix = $tablename !== null
-            ? $tablename . '.'
-            : '';
-
-        // Keep only items from current definition must be shown.
-        $criteria = [
-            $table_prefix . AssetDefinition::getForeignKeyField() => static::getDefinition()->getID(),
-        ];
-
-        // Add another layer to the array to prevent losing duplicates keys if the
-        // result of the function is merged with another array.
-        $criteria = [crc32(serialize($criteria)) => $criteria];
-
-        return $criteria;
+        return static::getDefinition()->getSystemSQLCriteriaForConcreteClass($tablename);
     }
 
     public function prepareInputForAdd($input)
@@ -169,14 +164,14 @@ abstract class AssetType extends CommonType
             array_key_exists($definition_fkey, $input)
             && (int) $input[$definition_fkey] !== $definition_id
         ) {
-            throw new \RuntimeException('Definition does not match the current concrete class.');
+            throw new RuntimeException('Definition does not match the current concrete class.');
         }
 
         if (
             !$this->isNewItem()
             && (int) $this->fields[$definition_fkey] !== $definition_id
         ) {
-            throw new \RuntimeException('Definition cannot be changed.');
+            throw new RuntimeException('Definition cannot be changed.');
         }
 
         $input[$definition_fkey] = $definition_id;

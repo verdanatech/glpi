@@ -14,6 +14,7 @@ namespace Symfony\Component\Serializer\Debug;
 use Symfony\Component\Serializer\DataCollector\SerializerDataCollector;
 use Symfony\Component\Serializer\Encoder\DecoderInterface;
 use Symfony\Component\Serializer\Encoder\EncoderInterface;
+use Symfony\Component\Serializer\Normalizer\CacheableSupportsMethodInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -23,7 +24,7 @@ use Symfony\Component\Serializer\SerializerInterface;
  *
  * @author Mathias Arlaud <mathias.arlaud@gmail.com>
  *
- * @internal
+ * @final
  */
 class TraceableSerializer implements SerializerInterface, NormalizerInterface, DenormalizerInterface, EncoderInterface, DecoderInterface
 {
@@ -33,11 +34,14 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
         private SerializerInterface&NormalizerInterface&DenormalizerInterface&EncoderInterface&DecoderInterface $serializer,
         private SerializerDataCollector $dataCollector,
     ) {
+        if (!method_exists($serializer, 'getSupportedTypes')) {
+            trigger_deprecation('symfony/serializer', '6.3', 'Not implementing the "NormalizerInterface::getSupportedTypes()" in "%s" is deprecated.', get_debug_type($serializer));
+        }
     }
 
     public function serialize(mixed $data, string $format, array $context = []): string
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->serialize($data, $format, $context);
@@ -52,7 +56,7 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function deserialize(mixed $data, string $type, string $format, array $context = []): mixed
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->deserialize($data, $type, $format, $context);
@@ -67,7 +71,7 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function normalize(mixed $object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->normalize($object, $format, $context);
@@ -82,7 +86,7 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): mixed
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->denormalize($data, $type, $format, $context);
@@ -97,7 +101,7 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function encode(mixed $data, string $format, array $context = []): string
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->encode($data, $format, $context);
@@ -112,7 +116,7 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function decode(string $data, string $format, array $context = []): mixed
     {
-        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid();
+        $context[self::DEBUG_TRACE_ID] = $traceId = uniqid('', true);
 
         $startTime = microtime(true);
         $result = $this->serializer->decode($data, $format, $context);
@@ -127,6 +131,11 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
 
     public function getSupportedTypes(?string $format): array
     {
+        // @deprecated remove condition in 7.0
+        if (!method_exists($this->serializer, 'getSupportedTypes')) {
+            return ['*' => $this->serializer instanceof CacheableSupportsMethodInterface && $this->serializer->hasCacheableSupportsMethod()];
+        }
+
         return $this->serializer->getSupportedTypes($format);
     }
 
@@ -170,8 +179,8 @@ class TraceableSerializer implements SerializerInterface, NormalizerInterface, D
                 && $method === $trace[$i]['function']
                 && is_a($trace[$i]['class'], $interface, true)
             ) {
-                $file = $trace[$i]['file'];
-                $line = $trace[$i]['line'];
+                $file = $trace[$i]['file'] ?? $trace[$i + 1]['file'];
+                $line = $trace[$i]['line'] ?? $trace[$i + 1]['line'];
 
                 break;
             }

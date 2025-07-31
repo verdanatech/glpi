@@ -35,18 +35,22 @@
 namespace Glpi\Kernel\Listener\RequestListener;
 
 use Glpi\Exception\Http\NotFoundHttpException;
-use Glpi\Http\LegacyRouterTrait;
+use Glpi\Http\RequestRouterTrait;
 use Glpi\Kernel\ListenersPriority;
 use Plugin;
+use Safe\Exceptions\FileinfoException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
+use function Safe\mime_content_type;
+use function Safe\preg_match;
+
 final class FrontEndAssetsListener implements EventSubscriberInterface
 {
-    use LegacyRouterTrait;
+    use RequestRouterTrait;
 
     public function __construct(
         #[Autowire('%kernel.project_dir%')]
@@ -68,7 +72,7 @@ final class FrontEndAssetsListener implements EventSubscriberInterface
     {
         $request = $event->getRequest();
 
-        [$uri_prefix, $path] = $this->extractPathAndPrefix($request);
+        $path = $this->normalizePath($request);
 
         $target_file = $this->getTargetFile($path);
 
@@ -119,9 +123,9 @@ final class FrontEndAssetsListener implements EventSubscriberInterface
             case 'woff2':
                 return 'font/woff2';
             default:
-                $mime = \mime_content_type($target_file);
-
-                if ($mime === false) {
+                try {
+                    $mime = mime_content_type($target_file);
+                } catch (FileinfoException $e) {
                     $mime = 'application/octet-stream';
                 }
 

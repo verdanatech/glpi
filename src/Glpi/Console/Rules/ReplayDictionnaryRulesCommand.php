@@ -36,6 +36,9 @@
 namespace Glpi\Console\Rules;
 
 use Glpi\Console\AbstractCommand;
+use RuleCollection;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -74,8 +77,7 @@ class ReplayDictionnaryRulesCommand extends AbstractCommand
 
         if (empty($input->getOption('dictionnary'))) {
             // Ask for dictionary argument is empty
-            /** @var \Symfony\Component\Console\Helper\QuestionHelper $question_helper */
-            $question_helper = $this->getHelper('question');
+            $question_helper = new QuestionHelper();
             $question = new ChoiceQuestion(
                 __('Which dictionary do you want to replay?'),
                 $this->getDictionnaryTypes()
@@ -93,14 +95,14 @@ class ReplayDictionnaryRulesCommand extends AbstractCommand
     {
 
         $dictionnary = $input->getOption('dictionnary');
-        $rulecollection = \RuleCollection::getClassByType($dictionnary);
+        $rulecollection = RuleCollection::getClassByType($dictionnary);
 
         if (
             !in_array($dictionnary, $this->getDictionnaryTypes())
-            || !($rulecollection instanceof \RuleCollection)
+            || !($rulecollection instanceof RuleCollection)
         ) {
-            throw new \Symfony\Component\Console\Exception\InvalidArgumentException(
-                sprintf(__('Invalid "dictionary" value.'))
+            throw new InvalidArgumentException(
+                __('Invalid "dictionary" value.')
             );
         }
 

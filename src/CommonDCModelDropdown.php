@@ -58,7 +58,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
      **/
     public function getAdditionalFields()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $fields = parent::getAdditionalFields();
@@ -131,7 +131,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $options = parent::rawSearchOptions();
         $table   = $this->getTable();
@@ -224,7 +224,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
      */
     public function getItemtypeForModel(): string
     {
-        return str_replace('Model', '', get_called_class());
+        return str_replace('Model', '', static::class);
     }
 
     /**
@@ -272,7 +272,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
                     array_reverse($cell[$hpos]) // If orientation is rear, reverse the array
                     : $cell[$hpos],
                 0,
-                $depth * 4
+                (int) ceil($depth * 4)
             );
 
             // Check if any of the units is filled
@@ -335,6 +335,9 @@ abstract class CommonDCModelDropdown extends CommonDropdown
         $positionsToCheck = [];
         foreach ($this->getItemsRackForModel() as $item_rack) {
             $rack = Rack::getById($item_rack['racks_id']);
+            if (!$rack instanceof Rack) {
+                continue;
+            }
             $filled = $rack->getFilled($itemtype, $item_rack['items_id']);
             $requiredUnits = $input['required_units'] ?? $this->fields['required_units'];
             $orientation = $item_rack['orientation'];
@@ -439,7 +442,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
                 );
                 break;
             default:
-                throw new \RuntimeException("Unknown {$field['type']}");
+                throw new RuntimeException("Unknown {$field['type']}");
         }
     }
 
@@ -480,7 +483,7 @@ abstract class CommonDCModelDropdown extends CommonDropdown
 
     public static function getIcon()
     {
-        $model_class  = get_called_class();
+        $model_class  = static::class;
         $device_class = str_replace('Model', '', $model_class);
         return $device_class::getIcon();
     }

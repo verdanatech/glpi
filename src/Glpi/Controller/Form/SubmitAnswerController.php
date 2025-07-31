@@ -83,7 +83,7 @@ final class SubmitAnswerController extends AbstractController
         }
 
         $form = Form::getById($forms_id);
-        if (!$form) {
+        if (!$form instanceof Form) {
             throw new NotFoundHttpException();
         }
 
@@ -104,7 +104,7 @@ final class SubmitAnswerController extends AbstractController
         );
         $answers    = $provider->getAnswers($post);
         $files      = $provider->getFiles($post, $answers);
-        if (empty($answers)) {
+        if ($answers === []) {
             throw new BadRequestHttpException();
         }
 

@@ -50,21 +50,20 @@ if ($filepath === null) {
     Html::redirect($CFG_GLPI["root_doc"] . "/front/logs.php");
 }
 
-if (!file_exists(GLPI_LOG_DIR . '/' . $filepath) || is_dir(GLPI_LOG_DIR . '/' . $filepath)) {
+$logparser = new LogParser();
+if ($logparser->getFullPath($filepath) === null) {
     throw new NotFoundHttpException('Not found');
 }
 
-if (($_GET['action'] ?? '') === 'download') {
+if (($_GET['action'] ?? '') === 'download_log_file') {
     $logparser = new LogParser();
     $logparser->download($filepath);
 } elseif (($_POST['action'] ?? '') === 'empty') {
     Session::checkRight('config', UPDATE);
-    $logparser = new LogParser();
     $logparser->empty($filepath);
     Html::back();
 } elseif (($_POST['action'] ?? '') === 'delete') {
     Session::checkRight('config', UPDATE);
-    $logparser = new LogParser();
     $logparser->delete($filepath);
     Html::redirect($CFG_GLPI["root_doc"] . "/front/logs.php");
 } else {

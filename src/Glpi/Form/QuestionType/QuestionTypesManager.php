@@ -39,6 +39,8 @@ use BackedEnum;
 use DirectoryIterator;
 use ReflectionClass;
 
+use function Safe\json_encode;
+
 /**
  * Helper class to load all available question types and categories.
  */
@@ -282,6 +284,7 @@ JS;
 
             // Validate that the class is a valid question type
             if ($this->isClassAValidQuestionType($classname)) {
+                // @phpstan-ignore glpi.forbidDynamicInstantiation (Type is checked by `self::isClassAValidQuestionType()`)
                 $this->question_types[] = new $classname();
             }
 

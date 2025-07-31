@@ -94,7 +94,7 @@ class RuleDefineItemtype extends Rule
      */
     public static function addMoreCriteria($criterion = '')
     {
-        return \RuleImportAsset::addMoreCriteria($criterion);
+        return RuleImportAsset::addMoreCriteria($criterion);
     }
 
     public function getAdditionalCriteriaDisplayPattern($ID, $condition, $pattern)
@@ -229,7 +229,7 @@ TWIG, $twig_params);
 
         $types = [];
         foreach ($CFG_GLPI['inventory_types'] as $itemtype) {
-            if (class_exists($itemtype)) {
+            if (class_exists($itemtype) && is_a($itemtype, CommonDBTM::class, true)) {
                 /** @var CommonDBTM $item */
                 $item = new $itemtype();
                 $types[$itemtype] = $item->getTypeName(1);
@@ -256,7 +256,7 @@ TWIG, $twig_params);
 
     public static function getSpecificValueToDisplay($field, $values, array $options = [])
     {
-        if (!is_array($values)) { //@phpstan-ignore-line array is an array in phpdoc **only**
+        if (!is_array($values)) {
             $values = [$field => $values];
         }
         switch ($field) {

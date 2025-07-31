@@ -140,6 +140,8 @@ class Notification extends CommonDBTM implements FilterableInterface
     public const MENTIONNED_USER                     = 39;
     //Notification to the ticket's validation target (Who was asked to approve)
     public const VALIDATION_TARGET                   = 40;
+    // Notification to the ticket's validation substitutes (Who can approve if the target is not available)
+    public const VALIDATION_TARGET_SUBSTITUTES       = 41;
 
     // From CommonDBTM
     public $dohistory = true;
@@ -466,8 +468,8 @@ class Notification extends CommonDBTM implements FilterableInterface
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_template'] = _sx('button', 'Add notification template');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'remove_all_template'] = _sx('button', 'Remove all notification templates');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_template'] = _sx('button', 'Add notification template');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'remove_all_template'] = _sx('button', 'Remove all notification templates');
         }
 
         return $actions;
@@ -594,6 +596,11 @@ class Notification extends CommonDBTM implements FilterableInterface
     public static function send($options)
     {
         $classname = Notification_NotificationTemplate::getModeClass($options['mode']);
+
+        if (!is_a($classname, NotificationInterface::class, true)) {
+            throw new LogicException(sprintf('Invalid `%s` class.', $classname));
+        }
+
         $notif = new $classname();
         $notif->sendNotification($options);
     }
@@ -629,7 +636,7 @@ class Notification extends CommonDBTM implements FilterableInterface
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 

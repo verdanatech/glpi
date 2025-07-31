@@ -36,14 +36,19 @@ namespace Glpi\Http;
 
 use Config;
 use Glpi\Exception\Http\AccessDeniedHttpException;
+use LogicException;
 use Session;
 use Symfony\Component\HttpFoundation\Request;
+
+use function Safe\preg_match;
 
 /**
  * @since 10.0.10
  */
 final class Firewall
 {
+    use RequestRouterTrait;
+
     /**
      * Nothing to check. Entrypoint accepts anonymous access.
      */
@@ -85,17 +90,6 @@ final class Firewall
     private const FALLBACK_STRATEGY_FOR_LEGACY_SCRIPTS = self::STRATEGY_AUTHENTICATED;
 
     /**
-     * GLPI root directory.
-     */
-    private string $root_dir;
-
-    /**
-     * GLPI plugins root directories.
-     * @var string[]
-     */
-    private array $plugins_dirs;
-
-    /**
      * Registered plugins strategies for legacy scripts.
      *
      * @phpstan-var array<string, array<string, self::STRATEGY_*>>
@@ -103,13 +97,13 @@ final class Firewall
     private static array $plugins_legacy_scripts_strategies = [];
 
     /**
-     * @param ?string $root_dir             GLPI root directory on filesystem
-     * @param ?array  $plugins_dirs         GLPI plugins root directories on filesystem
+     * @param ?string $glpi_root             GLPI root directory on filesystem
+     * @param ?array  $plugin_directories         GLPI plugins root directories on filesystem
      */
-    public function __construct(?string $root_dir = null, ?array $plugins_dirs = null)
+    public function __construct(?string $glpi_root = null, ?array $plugin_directories = null)
     {
-        $this->root_dir = $root_dir ?? GLPI_ROOT;
-        $this->plugins_dirs = $plugins_dirs ?? GLPI_PLUGINS_DIRECTORIES;
+        $this->glpi_root = $glpi_root ?? GLPI_ROOT;
+        $this->plugin_directories = $plugin_directories ?? GLPI_PLUGINS_DIRECTORIES;
     }
 
     /**
@@ -167,7 +161,7 @@ final class Firewall
                 // nothing to do
                 break;
             default:
-                throw new \LogicException(sprintf('Invalid firewall strategy `%s`.', $strategy));
+                throw new LogicException(sprintf('Invalid firewall strategy `%s`.', $strategy));
         }
     }
 
@@ -176,22 +170,18 @@ final class Firewall
      */
     public function computeFallbackStrategy(Request $request): string
     {
-        $unprefixed_path = preg_replace(
-            '/^' . preg_quote($request->getBasePath(), '/') . '/',
-            '',
-            $request->getPathInfo()
-        );
+        $path = $this->normalizePath($request);
 
         $path_matches = [];
-        $plugin_path_pattern = '#^/(plugins|marketplace)/(?<plugin_key>[^/]+)(?<plugin_resource>/.+)$#';
-        if (preg_match($plugin_path_pattern, $unprefixed_path, $path_matches) === 1) {
+        $plugin_path_pattern = '#^/plugins/(?<plugin_key>[^/]+)(?<plugin_resource>/.+)$#';
+        if (preg_match($plugin_path_pattern, $path, $path_matches) === 1) {
             return $this->computeFallbackStrategyForPlugin(
                 $path_matches['plugin_key'],
                 $path_matches['plugin_resource']
             );
         }
 
-        return $this->computeFallbackStrategyForCore($unprefixed_path);
+        return $this->computeFallbackStrategyForCore($path);
     }
 
     /**
@@ -199,33 +189,16 @@ final class Firewall
      */
     private function computeFallbackStrategyForCore(string $path): string
     {
-        if (!file_exists($this->root_dir . $path)) {
-            $paths = [
-                '/_wdt/' => self::STRATEGY_NO_CHECK,
-                '/_profiler/' => self::STRATEGY_NO_CHECK,
-            ];
-            foreach ($paths as $checkPath => $strategy) {
-                if (\str_starts_with($path, $checkPath)) {
-                    return $strategy;
-                }
-            }
-
+        if (!file_exists($this->glpi_root . $path)) {
             // Modern controllers
             return self::FALLBACK_STRATEGY;
-        }
-
-        if (isset($_GET["token"]) && str_starts_with($path, '/front/planning.php')) {
-            // Token based access for ical/webcal access can be made anonymously.
-            return 'no_check';
         }
 
         $paths = [
             '/front/helpdesk.faq.php' => self::STRATEGY_FAQ_ACCESS,
 
             '/ajax/common.tabs.php' => self::STRATEGY_NO_CHECK, // specific checks done later to allow anonymous access to public FAQ tabs
-            '/ajax/dashboard.php' => self::STRATEGY_NO_CHECK, // specific checks done later to allow anonymous access to embed dashboards
             '/ajax/telemetry.php' => self::STRATEGY_NO_CHECK, // Must be available during installation. This script already checks for permissions when the flag usually set by the installer is missing.
-            '/front/cron.php' => self::STRATEGY_NO_CHECK, // in GLPI mode, cronjob can also be triggered from public pages
             '/front/css.php' => self::STRATEGY_NO_CHECK, // CSS must be accessible also on public pages
             '/front/document.send.php' => self::STRATEGY_NO_CHECK, // may allow unauthenticated access, for public FAQ images
             '/front/locale.php' => self::STRATEGY_NO_CHECK, // locales must be accessible also on public pages
@@ -252,7 +225,7 @@ final class Firewall
     private function computeFallbackStrategyForPlugin(string $plugin_key, string $plugin_resource): string
     {
         // Check if the file exists to apply the strategies related to legacyy scripts
-        foreach ($this->plugins_dirs as $plugin_dir) {
+        foreach ($this->plugin_directories as $plugin_dir) {
             $expected_filenames = [
                 $plugin_dir . '/' . $plugin_key . $plugin_resource,
 
@@ -260,7 +233,7 @@ final class Firewall
                 $plugin_dir . '/' . $plugin_key . '/public' . $plugin_resource,
             ];
             $resource_matches = [];
-            if (\preg_match('#^(?<filename>.+\.php)(/.*)$#', $plugin_resource, $resource_matches)) {
+            if (preg_match('#^(?<filename>.+\.php)(/.*)$#', $plugin_resource, $resource_matches)) {
                 // /front/api.php/path/to/endpoint -> /front/api.php
                 $expected_filenames[] = $plugin_dir . '/' . $plugin_key . $resource_matches['filename'];
             }

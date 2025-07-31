@@ -91,7 +91,7 @@ class Item_RemoteManagement extends CommonDBChild
      */
     public static function getFromItem(CommonDBTM $item, $sort = null, $order = null): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -144,6 +144,10 @@ class Item_RemoteManagement extends CommonDBChild
             'canedit'  => $canedit && !(!empty($withtemplate) && $withtemplate == 2),
             'form_url' => self::getFormURL() . "?itemtype=$itemtype&items_id=$ID&withtemplate=$withtemplate",
             'entries'  => $entries,
+            'massiveactionparams' => [
+                'num_displayed' => min($_SESSION['glpilist_limit'], count($entries)),
+                'container'     => 'mass' . static::class . mt_rand(),
+            ],
         ]);
     }
 
@@ -264,7 +268,16 @@ class Item_RemoteManagement extends CommonDBChild
         } elseif (isset($this->fields['itemtype']) && !empty($this->fields['itemtype'])) {
             $itemtype = $this->fields['itemtype'];
         } else {
-            throw new \RuntimeException('Unable to retrieve itemtype');
+            throw new RuntimeException('Unable to retrieve itemtype');
+        }
+
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            throw new RuntimeException(
+                sprintf(
+                    'Item type %s is not a valid item type',
+                    $itemtype
+                )
+            );
         }
 
         if (!Session::haveRight($itemtype::$rightname, READ)) {

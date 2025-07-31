@@ -40,7 +40,7 @@
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 
-/** @var \DBmysql $DB */
+/** @var DBmysql $DB */
 global $DB;
 
 header("Content-Type: text/html; charset=UTF-8");
@@ -77,7 +77,7 @@ if (
         ]
     );
     echo "<table class='w-100'><tr><td>" . __s('Choose an existing device') . "</td><td rowspan='2'>" .
-        __('and/or') . "</td><td>" . __s('Add new devices') . '</td></tr>';
+        __s('and/or') . "</td><td>" . __s('Add new devices') . '</td></tr>';
     echo "<tr><td>";
     if (count($result) === 0) {
         echo __s('No unaffected device!');

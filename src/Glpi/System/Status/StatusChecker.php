@@ -38,10 +38,16 @@ namespace Glpi\System\Status;
 use AuthLDAP;
 use CronTask;
 use DBConnection;
+use DBmysql;
 use Glpi\Plugin\Hooks;
+use GLPIKey;
 use MailCollector;
 use Plugin;
+use RuntimeException;
+use Throwable;
 use Toolbox;
+
+use function Safe\fclose;
 
 /**
  * @since 9.5.0
@@ -127,7 +133,7 @@ final class StatusChecker
                     'status' => self::STATUS_OK,
                 ],
             ];
-            foreach ($services as $name => $service_check_method) {
+            foreach (array_keys($services) as $name) {
                 $service_status = self::getServiceStatus($name, $public_only);
                 $status[$name] = $service_status;
             }
@@ -179,7 +185,7 @@ final class StatusChecker
                     $status['replicas']['status'] = self::STATUS_OK;
                 }
 
-                foreach ($hosts as $num => $name) {
+                foreach (array_keys($hosts) as $num) {
                     $diff = DBConnection::getReplicateDelay($num);
                     if (abs($diff) > 1000000000) {
                         $status['replicas']['servers'][$num] = [
@@ -262,7 +268,7 @@ final class StatusChecker
                                 @AuthLDAP::tryToConnectToServer(
                                     $method,
                                     $method['rootdn'],
-                                    (new \GLPIKey())->decrypt($method['rootdn_passwd'])
+                                    (new GLPIKey())->decrypt($method['rootdn_passwd'])
                                 )
                             ) {
                                 $status['servers'][$display_name] = [
@@ -276,7 +282,7 @@ final class StatusChecker
                                 $total_error++;
                                 $global_status = self::STATUS_PROBLEM;
                             }
-                        } catch (\RuntimeException $e) {
+                        } catch (RuntimeException $e) {
                             // May be missing LDAP extension (Probably test environment)
                             $status['servers'][$method['name']] = [
                                 'status' => self::STATUS_PROBLEM,
@@ -333,7 +339,7 @@ final class StatusChecker
                         } else {
                             $host = $param['address'];
                         }
-                        if ($fp = @fsockopen($host, $param['port'], $errno, $errstr, 1)) {
+                        if ($fp = @fsockopen($host, $param['port'], $errno, $errstr, 1)) { // @phpstan-ignore theCodingMachineSafe.function
                             $status['servers'][$display_name] = [
                                 'status' => self::STATUS_OK,
                             ];
@@ -438,7 +444,7 @@ final class StatusChecker
                                 $status['servers'][$display_name] = [
                                     'status' => self::STATUS_OK,
                                 ];
-                            } catch (\Throwable $e) {
+                            } catch (Throwable $e) {
                                 $status['servers'][$display_name] = [
                                     'status'       => self::STATUS_PROBLEM,
                                     'error_code'   => $e->getCode(),
@@ -477,13 +483,11 @@ final class StatusChecker
                 'stuck' => [],
             ];
             if (self::isDBAvailable()) {
-                /** @var \DBmysql $DB */
+                /** @var DBmysql $DB */
                 global $DB;
 
                 $crontasks = getAllDataFromTable('glpi_crontasks');
-                $running = count(array_filter($crontasks, static function ($crontask) {
-                    return $crontask['state'] === CronTask::STATE_RUNNING;
-                }));
+                $running = count(array_filter($crontasks, static fn($crontask) => $crontask['state'] === CronTask::STATE_RUNNING));
                 $stuck_crontasks = CronTask::getZombieCronTasks();
                 foreach ($stuck_crontasks as $ct) {
                     $status['stuck'][] = $ct['name'];
@@ -511,7 +515,7 @@ final class StatusChecker
                     'status' => self::STATUS_OK,
                 ],
             ];
-            $session_handler = ini_get('session.save_handler');
+            $session_handler = ini_get('session.save_handler'); // @phpstan-ignore theCodingMachineSafe.function
             if ($session_handler !== false && strtolower($session_handler) === 'files') {
                 // Check session dir (useful when NFS mounted))
                 if (!is_dir(GLPI_SESSION_DIR)) {

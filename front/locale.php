@@ -37,10 +37,18 @@ require_once(__DIR__ . '/_check_webserver_config.php');
 
 use Glpi\Application\Environment;
 use Glpi\Error\ErrorHandler;
+use Laminas\I18n\Translator\TextDomain;
+use Laminas\I18n\Translator\Translator;
+
+use function Safe\fopen;
+use function Safe\json_encode;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+use function Safe\session_write_close;
 
 /**
  * @var array $CFG_GLPI
- * @var \Laminas\I18n\Translator\Translator $TRANSLATE
+ * @var Translator $TRANSLATE
  */
 global $CFG_GLPI, $TRANSLATE;
 
@@ -74,11 +82,11 @@ $default_response = json_encode(
 $messages = null;
 try {
     $messages = $TRANSLATE->getAllMessages($_GET['domain']);
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     // Error may happen when overrided translation files does not use same plural rules as GLPI.
     ErrorHandler::logCaughtException($e);
 }
-if (!($messages instanceof \Laminas\I18n\Translator\TextDomain)) {
+if (!($messages instanceof TextDomain)) {
     // No TextDomain found means that there is no translations for given domain.
     // It is mostly related to plugins that does not provide any translations.
     echo $default_response;

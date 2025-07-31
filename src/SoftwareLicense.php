@@ -32,19 +32,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
-use Glpi\DBAL\QueryExpression;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
 use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
 
 /**
  * SoftwareLicense Class
  **/
-class SoftwareLicense extends CommonTreeDropdown
+class SoftwareLicense extends CommonTreeDropdown implements AssignableItemInterface
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
     use Glpi\Features\State;
     use AssetImage;
     use AssignableItem {
@@ -270,6 +271,7 @@ class SoftwareLicense extends CommonTreeDropdown
         TemplateRenderer::getInstance()->display('pages/management/softwarelicense.html.twig', [
             'item'   => $this,
             'params' => $options,
+            'licences_assigned' => Item_SoftwareLicense::countForLicense($this->getID()),
         ]);
 
         return true;
@@ -579,6 +581,18 @@ class SoftwareLicense extends CommonTreeDropdown
             'computationtype' => 'count',
         ];
 
+        $tab[] = [
+            'id'                 => '164',
+            'table'              => Item_SoftwareLicense::getTable(),
+            'field'              => 'id',
+            'linkfield'          => 'id',
+            'name'               => _x('quantity', 'Affected items'),
+            'datatype'           => 'specific',
+            'massiveaction'      => false,
+            'nosearch'           => true,
+            'nosort'             => true,
+        ];
+
         // add objectlock search options
         $tab = array_merge($tab, ObjectLock::rawSearchOptionsToAdd(get_class($this)));
         $tab = array_merge($tab, Notepad::rawSearchOptionsToAdd());
@@ -737,7 +751,7 @@ class SoftwareLicense extends CommonTreeDropdown
     {
         /**
          * @var array $CFG_GLPI
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          */
         global $CFG_GLPI, $DB;
 
@@ -808,7 +822,7 @@ class SoftwareLicense extends CommonTreeDropdown
                 $items[$license['id']] = $license;
             }
 
-            if (!empty($items)) {
+            if ($items !== []) {
                 $alert                  = new Alert();
                 $options['entities_id'] = $entity;
                 $options['licenses']    = $items;
@@ -831,7 +845,7 @@ class SoftwareLicense extends CommonTreeDropdown
                     $input["itemtype"] = 'SoftwareLicense';
 
                     // add alerts
-                    foreach ($items as $ID => $consumable) {
+                    foreach (array_keys($items) as $ID) {
                         $input["items_id"] = $ID;
                         $alert->add($input);
                         unset($alert->fields['id']);
@@ -862,7 +876,7 @@ class SoftwareLicense extends CommonTreeDropdown
      */
     public static function countForVersion($softwareversions_id, $entity = '')
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -885,7 +899,7 @@ class SoftwareLicense extends CommonTreeDropdown
      **/
     public static function countForSoftware($softwares_id)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -922,7 +936,7 @@ class SoftwareLicense extends CommonTreeDropdown
         $actions = parent::getSpecificMassiveActions($checkitem);
         if (static::canUpdate()) {
             $prefix                       = 'Item_SoftwareLicense' . MassiveAction::CLASS_ACTION_SEPARATOR;
-            $actions[$prefix . 'add_item']  = _sx('button', 'Add an item');
+            $actions[$prefix . 'add_item']  = "<i class='ti ti-package'></i>" . _sx('button', 'Add an item');
         }
 
         return $actions;
@@ -964,7 +978,7 @@ class SoftwareLicense extends CommonTreeDropdown
      **/
     public static function showForSoftware(Software $software)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $softwares_id  = $software->getField('id');

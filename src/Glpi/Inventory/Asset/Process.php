@@ -36,6 +36,7 @@
 
 namespace Glpi\Inventory\Asset;
 
+use DBmysql;
 use Glpi\Inventory\Conf;
 use Item_Process;
 
@@ -77,7 +78,7 @@ class Process extends InventoryAsset
 
     protected function getExisting(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $db_existing = [];
@@ -133,7 +134,7 @@ class Process extends InventoryAsset
             foreach ($db_itemProcess as $dbid => $data) {
                 if ($data['is_dynamic'] == 1) {
                     //Delete only dynamics
-                    $itemProcess->delete(['id' => $dbid], 1);
+                    $itemProcess->delete(['id' => $dbid], true);
                 }
             }
         }

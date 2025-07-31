@@ -36,6 +36,7 @@
 require_once(__DIR__ . '/_check_webserver_config.php');
 
 use Glpi\Mail\SMTP\OauthConfig;
+use Psr\Log\LoggerInterface;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
@@ -46,7 +47,7 @@ if (!array_key_exists('cookie_refresh', $_GET)) {
     // Redirecting on self using `http-equiv="refresh"` will get around this limitation.
     $url = htmlescape(
         $_SERVER['REQUEST_URI']
-        . (strpos($_SERVER['REQUEST_URI'], '?') !== false ? '&' : '?')
+        . (str_contains($_SERVER['REQUEST_URI'], '?') ? '&' : '?')
         . 'cookie_refresh'
     );
 
@@ -118,11 +119,14 @@ if (
                     ]
                 );
             }
-        } catch (\Throwable $e) {
-            trigger_error(
+        } catch (Throwable $e) {
+            /** @var LoggerInterface $PHPLOGGER */
+            global $PHPLOGGER;
+            $PHPLOGGER->error(
                 sprintf('Error during authorization code fetching: %s', $e->getMessage()),
-                E_USER_WARNING
+                ['exception' => $e]
             );
+
             Session::addMessageAfterRedirect(
                 htmlescape(sprintf(_x('oauth', 'Unable to fetch authorization code. Error is: %s'), $e->getMessage())),
                 false,

@@ -35,11 +35,13 @@
 namespace Glpi\Form\Destination\CommonITILField;
 
 use Entity;
+use Exception;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\AnswersSet;
 use Glpi\Form\Destination\AbstractCommonITILFormDestination;
 use Glpi\Form\Destination\AbstractConfigField;
+use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Export\Context\DatabaseMapper;
 use Glpi\Form\Export\Serializer\DynamicExportDataField;
 use Glpi\Form\Export\Specification\DataRequirementSpecification;
@@ -68,6 +70,7 @@ final class EntityField extends AbstractConfigField implements DestinationFieldC
     #[Override]
     public function renderConfigForm(
         Form $form,
+        FormDestination $destination,
         JsonFieldInterface $config,
         string $input_name,
         array $display_options
@@ -118,9 +121,9 @@ final class EntityField extends AbstractConfigField implements DestinationFieldC
         // Compute value according to strategy
         $entity_id = $strategy->getEntityID($config, $answers_set);
 
-        // Do not edit input if invalid value was found
+        // We always need a valid value for entities
         if (Entity::getById($entity_id) === false) {
-            return $input;
+            throw new Exception("Invalid entity: $entity_id");
         }
 
         // Apply value
@@ -227,7 +230,7 @@ final class EntityField extends AbstractConfigField implements DestinationFieldC
                 );
 
                 if ($mapped_item === null) {
-                    throw new InvalidArgumentException("Question not found in a target form");
+                    throw new InvalidArgumentException("Question '{$rawData['destination_entity_value']}' not found in a target form");
                 }
 
                 return new EntityFieldConfig(

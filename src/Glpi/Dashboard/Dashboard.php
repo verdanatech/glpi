@@ -35,11 +35,18 @@
 
 namespace Glpi\Dashboard;
 
+use CommonDBTM;
+use DBmysql;
 use Glpi\Debug\Profiler;
+use Psr\SimpleCache\CacheInterface;
 use Ramsey\Uuid\Uuid;
+use RuntimeException;
 use Session;
+use Toolbox;
 
-class Dashboard extends \CommonDBTM
+use function Safe\json_decode;
+
+class Dashboard extends CommonDBTM
 {
     protected $id      = 0;
     protected $key     = "";
@@ -112,7 +119,7 @@ class Dashboard extends \CommonDBTM
 
     public function getFromDB($ID)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -128,9 +135,13 @@ class Dashboard extends \CommonDBTM
             $this->post_getFromDB();
             return true;
         } elseif (count($iterator) > 1) {
-            trigger_error(
-                sprintf('getFromDB expects to get one result, %1$s found!', count($iterator)),
-                E_USER_WARNING
+            throw new RuntimeException(
+                sprintf(
+                    '`%1$s::getFromDB()` expects to get one result, %2$s found in query "%3$s".',
+                    static::class,
+                    count($iterator),
+                    $iterator->getSql()
+                )
             );
         }
 
@@ -234,7 +245,7 @@ class Dashboard extends \CommonDBTM
         $this->fields['name']   = $title;
         $this->fields['context'] = $context;
         $this->fields['users_id'] = Session::getLoginUserID();
-        $this->key    = \Toolbox::slugify($title);
+        $this->key    = Toolbox::slugify($title);
         $this->items  = $items;
         $this->rights = $rights;
 
@@ -254,8 +265,8 @@ class Dashboard extends \CommonDBTM
     public function save(bool $skip_child = false)
     {
         /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
+         * @var DBmysql $DB
+         * @var CacheInterface $GLPI_CACHE
          */
         global $DB, $GLPI_CACHE;
 
@@ -403,7 +414,7 @@ class Dashboard extends \CommonDBTM
 
         $this->fields['name'] = sprintf(__('Copy of %s'), $this->fields['name']);
         $this->fields['users_id'] = Session::getLoginUserID();
-        $this->key = \Toolbox::slugify($this->fields['name']) . '-' . Uuid::uuid4()->toString();
+        $this->key = Toolbox::slugify($this->fields['name']) . '-' . Uuid::uuid4()->toString();
 
         // replace gridstack_id (with uuid V4) in the copy, to avoid cache issue
         $this->items = array_map(function (array $item) {
@@ -435,7 +446,7 @@ class Dashboard extends \CommonDBTM
      */
     public static function getAll(bool $force = false, bool $check_rights = true, ?string $context = 'core'): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         if ($force || count(self::$all_dashboards) == 0) {
@@ -449,18 +460,14 @@ class Dashboard extends \CommonDBTM
                 $key = $dashboard['key'];
                 $id  = $dashboard['id'];
 
-                $d_rights = array_filter($rights, static function ($right_line) use ($id) {
-                    return $right_line['dashboards_dashboards_id'] == $id;
-                });
+                $d_rights = array_filter($rights, static fn($right_line) => $right_line['dashboards_dashboards_id'] == $id);
                 $dashboardItem = new self($key);
                 if ($check_rights && !$dashboardItem->canViewCurrent()) {
                     continue;
                 }
                 $dashboard['rights'] = self::convertRights($d_rights);
 
-                $d_items = array_filter($items, static function ($item) use ($id) {
-                    return $item['dashboards_dashboards_id'] == $id;
-                });
+                $d_items = array_filter($items, static fn($item) => $item['dashboards_dashboards_id'] == $id);
                 $d_items = array_map(static function ($item) {
                     $item['card_options'] = importArrayFromDB($item['card_options']);
                     return $item;
@@ -473,9 +480,7 @@ class Dashboard extends \CommonDBTM
 
         // Return dashboards filtered by context (if applicable)
         if ($context !== null && $context !== '') {
-            return array_filter(self::$all_dashboards, static function ($dashboard) use ($context) {
-                return $dashboard['context'] === $context;
-            });
+            return array_filter(self::$all_dashboards, static fn($dashboard) => $dashboard['context'] === $context);
         }
 
         return self::$all_dashboards;
@@ -578,7 +583,7 @@ class Dashboard extends \CommonDBTM
     public static function importFromJson($import = null)
     {
         if (!is_array($import)) {
-            if (!\Toolbox::isJSON($import)) {
+            if (!Toolbox::isJSON($import)) {
                 return false;
             }
             $import = json_decode($import, true);

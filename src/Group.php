@@ -32,18 +32,19 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QuerySubQuery;
+use Glpi\Features\Clonable;
 use Glpi\Search\Provider\SQLProvider;
+use Psr\SimpleCache\CacheInterface;
 
 /**
  * Group class
  **/
 class Group extends CommonTreeDropdown
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     public $dohistory       = true;
 
@@ -212,30 +213,21 @@ class Group extends CommonTreeDropdown
             isset($this->fields['is_requester'])
             && $this->fields['is_requester']
         ) {
-            $this->addStandardTab(Item_Ticket::class, $ong, $options);
+            $this->addStandardTab(Ticket::class, $ong, $options);
         }
-        $this->addStandardTab(Item_Problem::class, $ong, $options);
-        $this->addStandardTab(Change_Item::class, $ong, $options);
+        $this->addStandardTab(Problem::class, $ong, $options);
+        $this->addStandardTab(Change::class, $ong, $options);
         $this->addStandardTab(Notepad::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
         return $ong;
     }
 
-    /**
-     * Print the group form
-     *
-     * @param integer $ID  ID of the item
-     * @param array   $options
-     *     - target filename : where to go when done.
-     *     - withtemplate boolean : template or basic item
-     *
-     * @return void
-     **/
     public function showForm($ID, array $options = [])
     {
         TemplateRenderer::getInstance()->display('pages/admin/group.html.twig', [
             'item' => $this,
         ]);
+        return true;
     }
 
     public static function getAdditionalMenuLinks()
@@ -529,7 +521,7 @@ class Group extends CommonTreeDropdown
         TemplateRenderer::getInstance()->display('pages/2fa/2fa_config.html.twig', [
             'canedit' => $canedit,
             'item'   => $this,
-            'action' => Toolbox::getItemTypeFormURL(__CLASS__),
+            'action' => Toolbox::getItemTypeFormURL(self::class),
         ]);
     }
 
@@ -550,7 +542,7 @@ class Group extends CommonTreeDropdown
     public function getDataItems(bool $tech, bool $tree, bool $user, int $start, array &$res, array $extra_criteria = []): int
     {
         /**
-         * @var \DBmysql $DB
+         * @var DBmysql $DB
          * @var array $CFG_GLPI
          */
         global $DB, $CFG_GLPI;
@@ -754,7 +746,7 @@ class Group extends CommonTreeDropdown
                 'name'     => $item->getLink(['comments' => true]),
                 'entity'   => $entity_names[$item->getEntityID()],
             ];
-            if ($item->canViewItem() || ($item->canViewItem() && self::canUpdate())) {
+            if ($item->canViewItem() && self::canUpdate()) {
                 // Show massive actions if there is at least one viewable/updatable item.
                 $show_massive_actions = true;
             } else {
@@ -783,7 +775,9 @@ class Group extends CommonTreeDropdown
         }
 
         $columns = [
-            'type' => _n('Type', 'Types', 1),
+            'type' => [
+                'label' => _n('Type', 'Types', 1),
+            ],
             'name' => [
                 'label' => __('Name'),
                 'no_filter' => true,
@@ -799,6 +793,7 @@ class Group extends CommonTreeDropdown
             'is_tab' => true,
             'start' => $start,
             'limit' => $_SESSION['glpilist_limit'],
+            'items_id' => $ID,
             'filters' => $filters,
             'columns' => $columns,
             'formatters' => [
@@ -827,7 +822,7 @@ class Group extends CommonTreeDropdown
 
     public function cleanRelationData()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         parent::cleanRelationData();
@@ -950,7 +945,7 @@ class Group extends CommonTreeDropdown
         }
     }
 
-    public function post_updateItem($history = 1)
+    public function post_updateItem($history = true)
     {
         parent::post_updateItem($history);
         // Changing a group's parent might invalidate the group cache if recursive
@@ -985,7 +980,7 @@ class Group extends CommonTreeDropdown
      */
     public static function updateLastGroupChange()
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
+        /** @var CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
         $GLPI_CACHE->set('last_group_change', $_SESSION['glpi_currenttime']);
 

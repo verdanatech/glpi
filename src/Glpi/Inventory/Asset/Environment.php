@@ -36,14 +36,12 @@
 
 namespace Glpi\Inventory\Asset;
 
+use DBmysql;
 use Glpi\Inventory\Conf;
 use Item_Environment;
 
 final class Environment extends InventoryAsset
 {
-    /** @var Conf */
-    private $conf;
-
     public function prepare(): array
     {
         foreach ($this->data as $key => &$val) {
@@ -56,7 +54,7 @@ final class Environment extends InventoryAsset
 
     protected function getExisting(): array
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $db_existing = [];
@@ -83,7 +81,7 @@ final class Environment extends InventoryAsset
 
     public function handle()
     {
-        $itemEnv = new \Item_Environment();
+        $itemEnv = new Item_Environment();
         $db_itemEnvs = $this->getExisting();
 
         $value = $this->data;
@@ -112,7 +110,7 @@ final class Environment extends InventoryAsset
             foreach ($db_itemEnvs as $dbid => $data) {
                 if ($data['is_dynamic'] == 1) {
                     //Delete only dynamics
-                    $itemEnv->delete(['id' => $dbid], 1);
+                    $itemEnv->delete(['id' => $dbid], true);
                 }
             }
         }
@@ -132,7 +130,6 @@ final class Environment extends InventoryAsset
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
-        $this->conf = $conf;
         return $conf->import_env == 1 && in_array($this->item::class, $CFG_GLPI['environment_types']);
     }
 

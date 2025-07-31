@@ -36,6 +36,18 @@
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 
+use function Safe\curl_exec;
+use function Safe\curl_getinfo;
+use function Safe\curl_init;
+use function Safe\curl_setopt;
+use function Safe\file_get_contents;
+use function Safe\ini_get;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+
 class Telemetry extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
@@ -104,7 +116,7 @@ class Telemetry extends CommonGLPI
         }
 
         if ($CFG_GLPI['use_notifications']) {
-            foreach (array_keys(\Notification_NotificationTemplate::getModes()) as $mode) {
+            foreach (array_keys(Notification_NotificationTemplate::getModes()) as $mode) {
                 if ($CFG_GLPI['notifications_' . $mode]) {
                     $glpi['usage']['notifications'][] = $mode;
                 }
@@ -121,7 +133,7 @@ class Telemetry extends CommonGLPI
      */
     public static function grabDbInfos(bool $hide_sensitive_data = false)
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
 
         $dbinfos = $DB->getInfo();
@@ -215,7 +227,6 @@ class Telemetry extends CommonGLPI
                 'max_execution_time'    => ini_get('max_execution_time'),
                 'memory_limit'          => ini_get('memory_limit'),
                 'post_max_size'         => ini_get('post_max_size'),
-                'safe_mode'             => ini_get('safe_mode'),
                 'session'               => ini_get('session.save_handler'),
                 'upload_max_filesize'   => ini_get('upload_max_filesize'),
             ],
@@ -288,10 +299,8 @@ class Telemetry extends CommonGLPI
      * Send telemetry information
      *
      * @param CronTask $task CronTask instance
-     *
-     * @return void
      */
-    public static function cronTelemetry($task)
+    public static function cronTelemetry($task): ?int
     {
         $data = self::getTelemetryInfos();
         $infos = json_encode(['data' => $data]);
@@ -392,7 +401,7 @@ class Telemetry extends CommonGLPI
      */
     public static function enable()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_crontasks',
@@ -408,7 +417,7 @@ class Telemetry extends CommonGLPI
      */
     public static function disable(): void
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_crontasks',
@@ -424,7 +433,7 @@ class Telemetry extends CommonGLPI
      */
     public static function isEnabled()
     {
-        /** @var \DBmysql $DB */
+        /** @var DBmysql $DB */
         global $DB;
         $iterator = $DB->request([
             'SELECT' => ['state'],

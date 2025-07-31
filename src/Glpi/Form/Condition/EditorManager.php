@@ -34,8 +34,8 @@
 
 namespace Glpi\Form\Condition;
 
-use Glpi\Form\Condition\ConditionHandler\ConditionHandlerInterface;
 use Glpi\Form\Comment;
+use Glpi\Form\Condition\ConditionHandler\ConditionHandlerInterface;
 use Glpi\Form\Question;
 use Glpi\Form\Section;
 use Session;
@@ -61,7 +61,7 @@ final class EditorManager
     public function getDefinedConditions(): array
     {
         $conditions = $this->form_data->getConditionsData();
-        if (empty($conditions)) {
+        if ($conditions === []) {
             $conditions[] = new ConditionData(
                 item_uuid: '',
                 item_type: '',

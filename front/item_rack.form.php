@@ -40,7 +40,7 @@ use Glpi\Exception\Http\NotFoundHttpException;
 
 Session::checkCentralAccess();
 
-$ira = new \Item_Rack();
+$ira = new Item_Rack();
 $rack = new Rack();
 
 if (isset($_POST['update'])) {
@@ -59,7 +59,7 @@ if (isset($_POST['update'])) {
     Html::redirect($url);
 } elseif (isset($_POST['purge'])) {
     $ira->check($_POST['id'], PURGE);
-    $ira->delete($_POST, 1);
+    $ira->delete($_POST, true);
     $url = $rack->getFormURLWithID($_POST['racks_id']);
     Html::redirect($url);
 }
@@ -81,7 +81,7 @@ if (isset($_GET['id'])) {
         $params['_onlypdu'] = $_GET['_onlypdu'];
     }
 }
-$ajax = isset($_REQUEST['ajax']) ? true : false;
+$ajax = isset($_REQUEST['ajax']);
 
 if ($ajax) {
     $item = new Item_Rack();

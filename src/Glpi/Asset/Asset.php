@@ -39,29 +39,40 @@ use Dropdown;
 use Entity;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\CustomFieldType\TextType;
+use Glpi\CustomObject\AbstractDefinition;
 use Glpi\CustomObject\CustomObjectTrait;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\Inventoriable;
 use Group;
 use Group_Item;
+use InvalidArgumentException;
 use Location;
 use Log;
 use Manufacturer;
+use RuntimeException;
+use Safe\Exceptions\JsonException;
 use Session;
 use State;
 use User;
 
-abstract class Asset extends CommonDBTM
+use function Safe\json_decode;
+use function Safe\json_encode;
+
+abstract class Asset extends CommonDBTM implements AssignableItemInterface
 {
     use CustomObjectTrait;
 
-    use \Glpi\Features\AssignableItem {
+    use AssignableItem {
         getEmpty as getEmptyFromAssignableItem;
         post_getFromDB as post_getFromDBFromAssignableItem;
         post_addItem as post_addItemFromAssignableItem;
         post_updateItem as post_updateItemFromAssignableItem;
     }
-    use \Glpi\Features\Clonable;
+    use Clonable;
     use \Glpi\Features\State;
-    use \Glpi\Features\Inventoriable;
+    use Inventoriable;
 
     /**
      * Asset definition system name.
@@ -88,15 +99,15 @@ abstract class Asset extends CommonDBTM
     {
         $definition = AssetDefinitionManager::getInstance()->getDefinition(static::$definition_system_name);
         if (!($definition instanceof AssetDefinition)) {
-            throw new \RuntimeException('Asset definition is expected to be defined in concrete class.');
+            throw new RuntimeException('Asset definition is expected to be defined in concrete class.');
         }
 
         return $definition;
     }
 
-    public static function getDefinitionClass(): string
+    public static function getDefinitionClassInstance(): AbstractDefinition
     {
-        return AssetDefinition::class;
+        return new AssetDefinition();
     }
 
     public static function getSectorizedDetails(): array
@@ -115,10 +126,8 @@ abstract class Asset extends CommonDBTM
 
         $search_options = array_merge($search_options, Location::rawSearchOptionsToAdd());
 
-        /** @var AssetModel $asset_model_class */
-        $asset_model_class = $this->getDefinition()->getAssetModelClassName();
-        /** @var AssetType $asset_type_class */
-        $asset_type_class = $this->getDefinition()->getAssetTypeClassName();
+        $asset_model_class = static::getDefinition()->getAssetModelClassName();
+        $asset_type_class = static::getDefinition()->getAssetTypeClassName();
 
         $search_options[] = [
             'id'            => '2',
@@ -282,7 +291,16 @@ abstract class Asset extends CommonDBTM
             'datatype'           => 'dropdown',
         ];
 
-        // TODO 65 for template
+        $search_options[] = [
+            'id'                 => '65',
+            'table'              => $this->getTable(),
+            'field'              => 'template_name',
+            'name'               => __('Template name'),
+            'datatype'           => 'text',
+            'massiveaction'      => false,
+            'nosearch'           => true,
+            'nodisplay'          => true,
+        ];
 
         $search_options[] = [
             'id'                 => '80',
@@ -310,7 +328,7 @@ abstract class Asset extends CommonDBTM
 
         $search_options[] = [
             'id' => 'customfields',
-            'name' => _n('Custom field', 'Custom fields', \Session::getPluralNumber()),
+            'name' => _n('Custom field', 'Custom fields', Session::getPluralNumber()),
         ];
         $custom_fields = static::getDefinition()->getCustomFieldDefinitions();
         foreach ($custom_fields as $custom_field) {
@@ -407,7 +425,7 @@ abstract class Asset extends CommonDBTM
 
             try {
                 $custom_fields[$custom_field->getID()] = $custom_field->getFieldType()->formatValueForDB($value);
-            } catch (\InvalidArgumentException) {
+            } catch (InvalidArgumentException) {
                 continue;
             }
         }
@@ -418,7 +436,13 @@ abstract class Asset extends CommonDBTM
 
     private function getDecodedCustomFields(): array
     {
-        return json_decode($this->fields['custom_fields'] ?? '[]', true) ?? [];
+        $return = [];
+        try {
+            $return = json_decode($this->fields['custom_fields'] ?? '[]', true);
+        } catch (JsonException $e) {
+            //empty catch
+        }
+        return $return;
     }
 
     public function getEmpty()
@@ -552,5 +576,10 @@ abstract class Asset extends CommonDBTM
             $relations = [...$relations, ...$capacity->getCloneRelations()];
         }
         return array_unique($relations);
+    }
+
+    public static function getSystemSQLCriteria(?string $tablename = null): array
+    {
+        return static::getDefinition()->getSystemSQLCriteriaForConcreteClass($tablename);
     }
 }
