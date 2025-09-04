@@ -35,24 +35,31 @@
 {% set anonymized = enable_anonymization and entity_config('anonymize_support_agents', session('glpiactive_entity')) != constant('Entity::ANONYMIZE_DISABLED') %}
 {% set user = user_object ?? get_item('User', users_id) %}
 {% set with_link = with_link ?? true %}
-{% set user_thumbnail = user.getThumbnailPicturePath(enable_anonymization) %}
-{% if user_thumbnail == null and not entity_config('display_users_initials', session('glpiactive_entity')) %}
-    {% set user_thumbnail = user.getPicturePath(enable_anonymization) %}
+{% set force_initials = force_initials ?? false %}
+{% if not force_initials %}
+    {% set user_thumbnail = user.getThumbnailPicturePath(enable_anonymization) %}
+    {% if user_thumbnail == null and not entity_config('display_users_initials', session('glpiactive_entity')) %}
+        {% set user_thumbnail = user.getPicturePath(enable_anonymization) %}
+    {% endif %}
+{% else %}
+    {% set user_thumbnail = null %}
 {% endif %}
 
 {% if with_link and not anonymized %}
    <a href="{{ user.getLinkURL() }}" class="d-flex align-items-center">
 {% endif %}
 
+{% set bg_color = user.getUserInitialsBgColor() %}
+{% set fg_color = call('Toolbox::getFgColor', [bg_color, 60]) %}
 <span class="avatar {{ avatar_size }} rounded"
-      style="{% if user_thumbnail is not null %}background-image: url({{ user_thumbnail }}); background-color: inherit; {% else %} background-color: {{ user.getUserInitialsBgColor() }}{% endif %}">
+      style="{% if user_thumbnail is not null %}background-image: url({{ user_thumbnail }}); background-color: inherit; {% else %} background-color: {{ bg_color }};{% endif %} aspect-ratio: 1;">
    {% if user_thumbnail is null %}
          {{ user.getUserInitials(enable_anonymization) }}
    {% endif %}
 </span>
 
 {% if with_link and not anonymized %}
-   {% if display_login %}
+   {% if display_login ?? false %}
       <span class="ms-2">{{ user.fields['name'] }}</span>
    {% endif %}
 

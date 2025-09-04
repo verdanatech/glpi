@@ -33,13 +33,18 @@
  */
 
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
 
 /** Domains improvements */
 
 /** Add templates to domains  */
+
+use Glpi\DBAL\QueryExpression;
+
+use function Safe\json_encode;
+
 $migration->addField('glpi_domains', 'is_template', 'bool', [
     'after' => 'comment',
 ]);
@@ -56,7 +61,7 @@ $migration->addPostQuery(
     $DB->buildUpdate(
         'glpi_domains',
         ['is_active' => 1],
-        [true]
+        [new QueryExpression('true')]
     )
 );
 /** /Active domains */

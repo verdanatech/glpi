@@ -100,7 +100,7 @@ class ProjectTaskTemplate extends CommonDropdown
                 'type'  => 'actiontime',
             ],
             ['name'  => 'comments',
-                'label' => __('Comments'),
+                'label' => _n('Comment', 'Comments', Session::getPluralNumber()),
                 'type'  => 'textarea',
             ],
             ['name'  => 'description',
@@ -254,13 +254,13 @@ class ProjectTaskTemplate extends CommonDropdown
     {
 
         $ong = parent::defineTabs($options);
-        $this->addStandardTab('Document_Item', $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
 
         return $ong;
     }
 
     public static function getIcon()
     {
-        return "fas fa-layer-group";
+        return "ti ti-stack-2-filled";
     }
 }

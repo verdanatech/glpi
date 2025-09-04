@@ -32,9 +32,15 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Plugin\Hooks;
-use Glpi\Toolbox\Sanitizer;
+use Safe\Exceptions\FilesystemException;
+use Safe\Exceptions\SodiumException;
+use Safe\Exceptions\UrlException;
+
+use function Safe\base64_decode;
+use function Safe\file_put_contents;
+use function Safe\sodium_crypto_aead_xchacha20poly1305_ietf_decrypt;
+use function Safe\sodium_crypto_aead_xchacha20poly1305_ietf_encrypt;
 
 /**
  *  GLPI security key
@@ -63,6 +69,7 @@ class GLPIKey
     protected $fields = [
         'glpi_authldaps.rootdn_passwd',
         'glpi_mailcollectors.passwd',
+        'glpi_oauthclients.secret',
         'glpi_snmpcredentials.auth_passphrase',
         'glpi_snmpcredentials.priv_passphrase',
     ];
@@ -111,7 +118,7 @@ class GLPIKey
     /**
      * Check if GLPI security key used for decryptable passwords exists
      *
-     * @return string
+     * @return bool
      */
     public function keyExists()
     {
@@ -129,7 +136,7 @@ class GLPIKey
             trigger_error('You must create a security key, see security:change_key command.', E_USER_WARNING);
             return null;
         }
-        if (!is_readable($this->keyfile) || ($key = file_get_contents($this->keyfile)) === false) {
+        if (!is_readable($this->keyfile) || ($key = file_get_contents($this->keyfile)) === false) { //@phpstan-ignore theCodingMachineSafe.function
             trigger_error('Unable to get security key file contents.', E_USER_WARNING);
             return null;
         }
@@ -152,7 +159,7 @@ class GLPIKey
             return GLPIKEY;
         }
         //load key from existing config file
-        if (!is_readable($this->legacykeyfile) || ($key = file_get_contents($this->legacykeyfile)) === false) {
+        if (!is_readable($this->legacykeyfile) || ($key = file_get_contents($this->legacykeyfile)) === false) { //@phpstan-ignore theCodingMachineSafe.function
             trigger_error('Unable to get security legacy key file contents.', E_USER_WARNING);
             return null;
         }
@@ -165,9 +172,8 @@ class GLPIKey
      *
      * @return bool
      */
-    public function generate(): bool
+    public function generate(bool $update_db = true): bool
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // Check ability to create/update key file.
@@ -181,29 +187,32 @@ class GLPIKey
 
         // Fetch old key before generating the new one (but only if DB exists and there is something to migrate)
         $previous_key = null;
-        if ($DB instanceof DBmysql && $DB->connected) {
-            if ($this->keyExists()) {
-                $previous_key = $this->get();
-                if ($previous_key === null) {
-                    // Do not continue if unable to get previous key.
-                    // Detailed warning has already been triggered by `get()` method.
-                    return false;
-                }
+        if ($update_db && $this->keyExists()) {
+            $previous_key = $this->get();
+            if ($previous_key === null) {
+                // Do not continue if unable to get previous key when DB update is requested.
+                // Detailed warning has already been triggered by `get()` method.
+                return false;
             }
         }
 
         $key = sodium_crypto_aead_chacha20poly1305_ietf_keygen();
-        $written_bytes = file_put_contents($this->keyfile, $key);
+        try {
+            $written_bytes = file_put_contents($this->keyfile, $key);
+        } catch (FilesystemException $e) {
+            $written_bytes = false;
+        }
         if ($written_bytes !== strlen($key)) {
             trigger_error('Unable to write security key file contents.', E_USER_WARNING);
             return false;
         }
 
-        if ($DB instanceof DBmysql && $DB->connected) {
-            if (!$this->migrateFieldsInDb($previous_key) || !$this->migrateConfigsInDb($previous_key)) {
-                trigger_error('Error during encrypted data update in database.', E_USER_WARNING);
-                return false;
-            }
+        if (
+            $update_db
+            && (!$this->migrateFieldsInDb($previous_key) || !$this->migrateConfigsInDb($previous_key))
+        ) {
+            trigger_error('Error during encrypted data update in database.', E_USER_WARNING);
+            return false;
         }
 
         return true;
@@ -216,7 +225,6 @@ class GLPIKey
      */
     public function getFields(): array
     {
-        /** @var array $PLUGIN_HOOKS */
         global $PLUGIN_HOOKS;
 
         $fields = $this->fields;
@@ -236,7 +244,6 @@ class GLPIKey
      */
     public function getConfigs(): array
     {
-        /** @var array $PLUGIN_HOOKS */
         global $PLUGIN_HOOKS;
 
         $configs = $this->configs;
@@ -276,7 +283,6 @@ class GLPIKey
      */
     protected function migrateFieldsInDb(?string $sodium_key): bool
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $success = true;
@@ -321,7 +327,6 @@ class GLPIKey
      */
     protected function migrateConfigsInDb($sodium_key): bool
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $success = true;
@@ -389,14 +394,14 @@ class GLPIKey
     }
 
     /**
-     * Descrypt a string.
+     * Decrypt a string.
      *
-     * @param string|null   $string  String to decrypt.
-     * @param string|null   $key     Key to use, fallback to default key if null.
+     * @param string|null $string String to decrypt.
+     * @param string|null $key Key to use, fallback to default key if null.
      *
      * @return string|null
      */
-    public function decrypt(?string $string, $key = null): ?string
+    public function decrypt(?string $string, ?string $key = null): ?string
     {
         if (empty($string)) {
             // Avoid sodium exception for blank content. Just return the null/empty value.
@@ -412,7 +417,15 @@ class GLPIKey
             return $string;
         }
 
-        $string = base64_decode($string);
+        try {
+            $string = base64_decode($string);
+        } catch (UrlException $e) {
+            trigger_error(
+                'Unable to base64_decode the string. The string was probably not encrypted using GLPIKey::encrypt',
+                E_USER_WARNING
+            );
+            return '';
+        }
 
         $nonce = mb_substr($string, 0, SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES, '8bit');
         if (mb_strlen($nonce, '8bit') !== SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES) {
@@ -425,20 +438,21 @@ class GLPIKey
 
         $ciphertext = mb_substr($string, SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES, null, '8bit');
 
-        $plaintext = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt(
-            $ciphertext,
-            $nonce,
-            $nonce,
-            $key
-        );
-        if ($plaintext === false) {
+        try {
+            $plaintext = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt(
+                $ciphertext,
+                $nonce,
+                $nonce,
+                $key
+            );
+            return $plaintext;
+        } catch (SodiumException $e) {
             trigger_error(
                 'Unable to decrypt string. It may have been crypted with another key.',
                 E_USER_WARNING
             );
             return '';
         }
-        return $plaintext;
     }
 
     /**
@@ -468,10 +482,19 @@ class GLPIKey
         for ($i = 0; $i < strlen($string); $i++) {
             $char    = substr($string, $i, 1);
             $keychar = substr($key, ($i % strlen($key)) - 1, 1);
-            $char    = chr(ord($char) - ord($keychar));
-            $result .= $char;
+
+            $bytevalue = ord($char) - ord($keychar);
+            while ($bytevalue < 0) {
+                $bytevalue += 256;
+            }
+            $bytevalue %= 256;
+
+            $result .= chr($bytevalue);
         }
 
-        return Sanitizer::unsanitize($result);
+        // In legacy password encrytion logic, an HTML encoded value of password was sometimes stored
+        $result = str_replace(['<', '>'], ['&lt;', '&gt;'], $result);
+
+        return $result;
     }
 }

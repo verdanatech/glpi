@@ -33,7 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use function Safe\strtotime;
 
 Session::checkRight("planning", READ);
 
@@ -62,10 +64,19 @@ if (isset($_POST["add"])) {
     $extevent->redirectToList();
 } elseif (isset($_POST["purge"])) {
     $extevent->check($_POST["id"], PURGE);
-    $extevent->delete($_POST, 1);
+    $extevent->delete($_POST, true);
     $extevent->redirectToList();
 } elseif (isset($_POST["purge_instance"])) {
     $extevent->check($_POST["id"], PURGE);
+    $extevent->deleteInstance((int) $_POST["id"], $_POST['day']);
+    $extevent->redirectToList();
+} elseif (isset($_POST["save_instance"])) {
+    $input = $_POST;
+    unset($input['id']);
+    unset($input['rrule']);
+    $input['plan']['begin'] = $_POST['day'] . date(" H:i:s", strtotime($_POST['plan']['begin']));
+    $extevent->check(-1, CREATE, $input);
+    $extevent->add($input);
     $extevent->deleteInstance((int) $_POST["id"], $_POST['day']);
     $extevent->redirectToList();
 } elseif (isset($_POST["update"])) {
@@ -73,6 +84,6 @@ if (isset($_POST["add"])) {
     $extevent->update($_POST);
     Html::back();
 } else {
-    $menus = ["helpdesk", "planning", "external"];
+    $menus = ["helpdesk", "planning", "PlanningExternalEvent"];
     PlanningExternalEvent::displayFullPageForItem($_GET["id"], $menus);
 }

@@ -46,10 +46,15 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
     public $stop_on_first_match = true;
     public $can_replay_rules    = true;
 
+    public function countTotalItemsForRulesReplay(array $params = []): int
+    {
+        global $DB;
+
+        return $DB->request($this->getIteratorCriteriaForRulesReplay())->count();
+    }
 
     public function replayRulesOnExistingDB($offset = 0, $maxtime = 0, $items = [], $params = [])
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // Model check : need to check using manufacturer extra data so specific function
@@ -57,44 +62,26 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
             return $this->replayRulesOnExistingDBForModel($offset, $maxtime);
         }
 
-        if (isCommandLine()) {
-            printf(__('Replay rules on existing database started on %s') . "\n", date("r"));
-        }
-
-        // Get All items
-        $criteria = ['FROM' => $this->item_table];
+        $criteria = $this->getIteratorCriteriaForRulesReplay();
         if ($offset) {
             $criteria['START'] = $offset;
-            $criteria['LIMIT'] = 999999999;
+            $criteria['LIMIT'] = 2 ** 32; // MySQL requires a limit, set it to an unreachable value
         }
         $iterator   = $DB->request($criteria);
         $nb         = count($iterator) + $offset;
         $i          = $offset;
         if ($nb > $offset) {
-            // Step to refresh progressbar
-            $step = (($nb > 20) ? floor($nb / 20) : 1);
-
             foreach ($iterator as $data) {
-                if (!($i % $step)) {
-                    if (isCommandLine()) {
-                        //TRANS: %1$s is a row, %2$s is total rows
-                        printf(__('Replay rules on existing database: %1$s/%2$s') . "\r", $i, $nb);
-                    } else {
-                        Html::changeProgressBarPosition($i, $nb, "$i / $nb");
-                    }
-                }
-
-                //Replay Type dictionary
+                // Replay Type dictionnary
                 $ID = Dropdown::importExternal(
                     getItemTypeForTable($this->item_table),
-                    addslashes($data["name"]),
+                    $data["name"],
                     -1,
                     [],
-                    addslashes($data["comment"])
+                    $data["comment"]
                 );
                 if ($data['id'] != $ID) {
-                    $tomove[$data['id']] = $ID;
-                    $type                = getItemTypeForTable($this->item_table);
+                    $type = getItemTypeForTable($this->item_table);
 
                     if ($dropdown = getItemForItemtype($type)) {
                         $dropdown->delete(['id'          => $data['id'],
@@ -104,81 +91,59 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
                 }
                 $i++;
 
-                if ($maxtime) {
-                    $crt = explode(" ", microtime());
-                    if (((float) $crt[0] + (float) $crt[1]) > $maxtime) {
-                        break;
-                    }
+                if ($maxtime && microtime(true) > $maxtime) {
+                    break;
                 }
             }
         }
 
-        if (isCommandLine()) {
-            printf(__('Replay rules on existing database started on %s') . "\n", date("r"));
-        } else {
-            Html::changeProgressBarPosition($i, $nb, "$i / $nb");
-        }
         return (($i == $nb) ? -1 : $i);
     }
-
 
     /**
      * Replay collection rules on an existing DB for model dropdowns
      *
-     * @param $offset    offset used to begin (default 0)
-     * @param $maxtime   maximum time of process (reload at the end) (default 0)
+     * @param integer $offset    offset used to begin (default 0)
+     * @param integer $maxtime   maximum time of process (reload at the end) (default 0)
      *
      * @return int|boolean current offset or -1 on completion or false on failure
      **/
     public function replayRulesOnExistingDBForModel($offset = 0, $maxtime = 0)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (isCommandLine()) {
-            printf(__('Replay rules on existing database started on %s') . "\n", date("r"));
+            /**
+             * Safe CLI context.
+             * @psalm-taint-escape html
+             * @psalm-taint-escape has_quotes
+             */
+            $out = sprintf(__('Replay rules on existing database started on %s') . "\n", date("r"));
+            echo $out;
         }
 
         // Model check: need to check using manufacturer extra data
-        if (strpos($this->item_table, 'models') === false) {
-            echo __('Error replaying rules');
+        if (!str_contains($this->item_table, 'models')) {
+            if (isCommandLine()) {
+                /**
+                 * Safe CLI context.
+                 * @psalm-taint-escape html
+                 * @psalm-taint-escape has_quotes
+                 */
+                $out = __('Error replaying rules');
+                echo $out;
+            }
             return false;
         }
 
         $model_table = getPlural(str_replace('models', '', $this->item_table));
         $model_field = getForeignKeyFieldForTable($this->item_table);
 
-        // Need to give manufacturer from item table
-        $criteria = [
-            'SELECT'          => [
-                'glpi_manufacturers.id AS idmanu',
-                'glpi_manufacturers.name AS manufacturer',
-                $this->item_table . '.id',
-                $this->item_table . '.name AS name',
-                $this->item_table . '.comment',
-            ],
-            'DISTINCT'        => true,
-            'FROM'            => $this->item_table,
-            'INNER JOIN'      => [
-                $model_table         => [
-                    'ON' => [
-                        $this->item_table => 'id',
-                        $model_table      => $model_field,
-                    ],
-                ],
-            ],
-            'LEFT JOIN'       => [
-                'glpi_manufacturers' => [
-                    'ON' => [
-                        'glpi_manufacturers' => 'id',
-                        $model_table         => 'manufacturers_id',
-                    ],
-                ],
-            ],
-        ];
+        $criteria = $this->getIteratorCriteriaForRulesReplay();
 
         if ($offset) {
             $criteria['START'] = (int) $offset;
+            $criteria['LIMIT'] = 2 ** 32; // MySQL requires a limit, set it to an unreachable value
         }
 
         $iterator = $DB->request($criteria);
@@ -186,31 +151,21 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
         $i       = $offset;
 
         if ($nb > $offset) {
-            // Step to refresh progressbar
-            $step    = (($nb > 20) ? floor($nb / 20) : 1);
             $tocheck = [];
 
             foreach ($iterator as $data) {
-                if (!($i % $step)) {
-                    if (isCommandLine()) {
-                        printf(__('Replay rules on existing database: %1$s/%2$s') . "\r", $i, $nb);
-                    } else {
-                        Html::changeProgressBarPosition($i, $nb, "$i / $nb");
-                    }
-                }
-
                 // Model case
                 if (isset($data["manufacturer"])) {
-                    $data["manufacturer"] = Manufacturer::processName(addslashes($data["manufacturer"]));
+                    $data["manufacturer"] = Manufacturer::processName($data["manufacturer"]);
                 }
 
                 //Replay Type dictionary
                 $ID = Dropdown::importExternal(
                     getItemTypeForTable($this->item_table),
-                    addslashes($data["name"]),
+                    $data["name"],
                     -1,
                     $data,
-                    addslashes($data["comment"] ?? '')
+                    $data["comment"]
                 );
 
                 if ($data['id'] != $ID) {
@@ -235,11 +190,9 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
                 }
 
                 $i++;
-                if ($maxtime) {
-                    $crt = explode(" ", microtime());
-                    if (((float) $crt[0] + (float) $crt[1]) > $maxtime) {
-                        break;
-                    }
+
+                if ($maxtime && microtime(true) > $maxtime) {
+                    break;
                 }
             }
 
@@ -267,7 +220,7 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
                 }
 
                 // Manage cartridge assoc Update items
-                if ($this->getRuleClassName() == RuleDictionnaryPrinterModel::class) {
+                if (static::getRuleClassName() === RuleDictionnaryPrinterModel::class) {
                     $iterator2 = $DB->request([
                         'FROM'   => 'glpi_cartridgeitems_printermodels',
                         'WHERE'  => ['printermodels_id' => $ID],
@@ -289,10 +242,9 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
                             );
                         }
                         // Add new assoc
-                        $ct = new CartridgeItem();
                         foreach ($carttype as $cartID) {
                             foreach ($tab as $model) {
-                                $ct->addCompatibleType($cartID, $model);
+                                CartridgeItem::addCompatibleType($cartID, $model);
                             }
                         }
                     }
@@ -300,11 +252,51 @@ class RuleDictionnaryDropdownCollection extends RuleCollection
             }
         }
 
-        if (isCommandLine()) {
-            printf(__('Replay rules on existing database ended on %s') . "\n", date("r"));
-        } else {
-            Html::changeProgressBarPosition($i, $nb, "$i / $nb");
-        }
         return ($i == $nb ? -1 : $i);
+    }
+
+    private function getIteratorCriteriaForRulesReplay(): array
+    {
+        if (strpos($this->item_table, 'models')) {
+            // Need to give manufacturer from item table
+            $model_table = getPlural(str_replace('models', '', $this->item_table));
+            $model_field = getForeignKeyFieldForTable($this->item_table);
+
+            return [
+                'SELECT'          => [
+                    'glpi_manufacturers.id AS idmanu',
+                    'glpi_manufacturers.name AS manufacturer',
+                    $this->item_table . '.id',
+                    $this->item_table . '.name AS name',
+                    $this->item_table . '.comment',
+                ],
+                'DISTINCT'        => true,
+                'FROM'            => $this->item_table,
+                'INNER JOIN'      => [
+                    $model_table         => [
+                        'ON' => [
+                            $this->item_table => 'id',
+                            $model_table      => $model_field,
+                        ],
+                    ],
+                ],
+                'LEFT JOIN'       => [
+                    'glpi_manufacturers' => [
+                        'ON' => [
+                            'glpi_manufacturers' => 'id',
+                            $model_table         => 'manufacturers_id',
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        // Get All items
+        return ['FROM' => $this->item_table];
+    }
+
+    public static function getIcon()
+    {
+        return 'ti ti-vocabulary';
     }
 }

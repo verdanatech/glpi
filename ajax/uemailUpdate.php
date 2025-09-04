@@ -33,21 +33,19 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-if (strpos($_SERVER['PHP_SELF'], "uemailUpdate.php")) {
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-}
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
-Session::checkLoginUser();
+use function Safe\preg_match;
+
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 if (
     (isset($_POST['field']) && ($_POST["value"] > 0))
     || (isset($_POST['allow_email']) && $_POST['allow_email'])
 ) {
     if (preg_match('/[^a-z_\-0-9]/i', $_POST['field'])) {
-        throw new \RuntimeException('Invalid field provided!');
+        throw new RuntimeException('Invalid field provided!');
     }
 
     $default_email = "";
@@ -55,19 +53,35 @@ if (
     if (isset($_POST['typefield']) && ($_POST['typefield'] == 'supplier')) {
         $supplier = new Supplier();
         if (!$supplier->can($_POST["value"], READ)) {
-            throw new \RuntimeException('Not allowed');
+            throw new AccessDeniedHttpException();
         }
         if ($supplier->getFromDB($_POST["value"])) {
             $default_email = $supplier->fields['email'];
         }
     } else {
-        $user          = new User();
-        if (!$user->can($_POST["value"], READ)) {
-            throw new \RuntimeException('Not allowed');
-        }
-        if ($user->getFromDB($_POST["value"])) {
-            $default_email = $user->getDefaultEmail();
-            $emails        = $user->getAllEmails();
+        $user = new User();
+
+        if ((int) $_POST["value"] !== 0) {
+            // Make sure to not expose others users emails unless the current user
+            // is allowed to see them.
+            $can_view_user_emails
+                // User can always see their own emails
+                = $_POST["value"] === Session::getLoginUserID()
+
+                // Users that are allowed to see the specified user can also see his emails
+                || $user->can($_POST["value"], READ)
+
+                // Delegates of the current users should be allowed to see his emails
+                || Ticket::canDelegateeCreateTicket($_POST["value"])
+            ;
+            if (!$can_view_user_emails) {
+                throw new AccessDeniedHttpException();
+            }
+
+            if ($user->getFromDB($_POST["value"])) {
+                $default_email = $user->getDefaultEmail();
+                $emails        = $user->getAllEmails();
+            }
         }
     }
 
@@ -82,15 +96,15 @@ if (
         if (NotificationMailing::isUserAddressValid($_POST['alternative_email'][$user_index])) {
             $default_email = $_POST['alternative_email'][$user_index];
         } else {
-            throw new \RuntimeException('Invalid email provided!');
+            throw new RuntimeException('Invalid email provided!');
         }
     }
 
     $switch_name = $_POST['field'] . '[use_notification][]';
     echo "<div class='my-1 d-flex align-items-center'>
          <label  for='email_fup_check'>
-            <i class='far fa-envelope me-1'></i>
-            " . __('Email followup') . "
+            <i class='ti ti-mail me-1'></i>
+            " . __s('Email followup') . "
          </label>
          <div class='ms-2'>
             " . Dropdown::showYesNo($_POST['field'] . '[use_notification][]', $default_notif, -1, ['display' => false]) . "
@@ -104,9 +118,9 @@ if (
         && !empty($default_email)
         && NotificationMailing::isUserAddressValid($default_email[$user_index])
     ) {
-        $email_string =  $default_email[$user_index];
+        $email_string = htmlescape($default_email[$user_index]);
         // Clean alternative email
-        echo "<input type='hidden' size='25' name='" . $_POST['field'] . "[alternative_email][]'
+        echo "<input type='hidden' size='25' name='" . htmlescape($_POST['field']) . "[alternative_email][]'
              value=''>";
     } elseif (count($emails) > 1) {
         // Several emails: select in the list
@@ -127,11 +141,11 @@ if (
             ]
         );
     } else {
-        $email_string = "<input type='mail' class='form-control' name='" . $_POST['field'] . "[alternative_email][]'
-                        value='" . htmlentities($default_email, ENT_QUOTES, 'utf-8') . "'>";
+        $email_string = "<input type='mail' class='form-control' name='" . htmlescape($_POST['field']) . "[alternative_email][]'
+                         value='" . htmlescape($default_email) . "'>";
     }
 
-    echo "$email_string";
+    echo $email_string;
 }
 
 Ajax::commonDropdownUpdateItem($_POST);

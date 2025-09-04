@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 /**
  * @since 9.1
  */
@@ -42,33 +44,30 @@
 // or url should be of the form 'http://.../.../unlockobject.php?requestunlock=1&id=xxxxxx'
 // to send notification to locker of object
 
-use Glpi\Http\Response;
-
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
-Session::checkLoginUser();
 
 $ret = 0;
 if (isset($_POST['unlock']) && isset($_POST["id"])) {
     // then we may have something to unlock
     $ol = new ObjectLock();
-    if (!$ol->can($_POST["id"], PURGE)) {
-        Response::sendError(400, 'Not allowed');
-    }
-    if (
-        $ol->getFromDB($_POST["id"])
-        && $ol->deleteFromDB(1)
-    ) {
-        Log::history(
-            $ol->fields['items_id'],
-            $ol->fields['itemtype'],
-            [0, '', ''],
-            0,
-            Log::HISTORY_UNLOCK_ITEM
-        );
-        $ret = 1;
+    if ($ol->getFromDB($_POST["id"])) {
+        $can_unlock = $ol->fields['users_id'] === Session::getLoginUserID()
+            || Session::haveRight($ol->fields['itemtype']::$rightname, UNLOCK);
+        if (!$can_unlock) {
+            throw new AccessDeniedHttpException();
+        }
+
+        if ($ol->deleteFromDB(true)) {
+            Log::history(
+                $ol->fields['items_id'],
+                $ol->fields['itemtype'],
+                [0, '', ''],
+                0,
+                Log::HISTORY_UNLOCK_ITEM
+            );
+            $ret = 1;
+        }
     }
 } elseif (
     isset($_POST['requestunlock'])

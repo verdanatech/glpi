@@ -33,23 +33,21 @@
  * ---------------------------------------------------------------------
  */
 
-$SECURITY_STRATEGY = 'no_check';
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
-
-include('../inc/includes.php');
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
 // Cannot use `Session::checkLoginUser()` as it block users that have their password expired to be able to change it.
 // Indeed, when password expired, sessions is loaded without profiles nor rights, and `Session::checkLoginUser()`
 // considers it as an invalid session.
 if (Session::getLoginUserID() === false) {
-    Html::redirectToLogin();
+    throw new AccessDeniedHttpException();
 }
 
 switch (Session::getCurrentInterface()) {
     case 'central':
-        Html::header(__('Update password'), $_SERVER['PHP_SELF']);
+        Html::header(__('Update password'));
         break;
     case 'helpdesk':
         Html::helpHeader(__('Update password'));
@@ -80,32 +78,35 @@ if (array_key_exists('update', $_POST)) {
             $error_messages = [__('The new password must be different from current password')];
         } elseif ($input['password'] !== $input['password2']) {
             $error_messages = [__('The two passwords do not match')];
-        } else {
-            try {
-                Config::validatePassword($input['password'], false);
-                if ($user->update($input)) {
-                    $success = true;
-                } else {
-                    $error_messages = [__('An error occurred during password update')];
-                }
-            } catch (\Glpi\Exception\PasswordTooWeakException $exception) {
-                $error_messages = $exception->getMessages();
+        } elseif ($user->validatePassword($input['password'], $error_messages)) {
+            // Password validation was successfull
+            if ($user->update($input)) {
+                $success = true;
+            } else {
+                $error_messages = [__('An error occurred during password update')];
             }
         }
     }
 }
 
 if ($success) {
-    echo '<table class="tab_cadre">';
-    echo '<tr><th colspan="2">' . __('Password update') . '</th></tr>';
-    echo '<tr>';
-    echo '<td>';
-    echo __('Your password has been successfully updated.');
-    echo '<br />';
-    echo '<a href="' . $CFG_GLPI['root_doc'] . '/front/logout.php?noAUTO=1">' . __('Log in') . '</a>';
-    echo '</td>';
-    echo '</tr>';
-    echo '</table>';
+    $twig_params = [
+        'title' => __('Password update'),
+        'message' => __('Your password has been successfully updated.'),
+        'btn_label' => __('Log in'),
+    ];
+    // language=Twig
+    echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+        <div class="d-flex justify-content-center">
+            <div class="alert alert-success">
+                <div class="alert-title">{{ title }}</div>
+                <div>{{ message }}</div>
+                <div class="d-flex flex-row-reverse mt-3">
+                    <a href="{{ path('front/logout.php') }}?noAUTO=1" role="button" class="btn btn-primary">{{ btn_label }}</a>
+                </div>
+            </div>
+        </div>
+TWIG, $twig_params);
 } else {
     $user->showPasswordUpdateForm($error_messages);
 }

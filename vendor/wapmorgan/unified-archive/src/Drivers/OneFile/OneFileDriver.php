@@ -1,6 +1,7 @@
 <?php
 namespace wapmorgan\UnifiedArchive\Drivers\OneFile;
 
+use wapmorgan\UnifiedArchive\Abilities;
 use wapmorgan\UnifiedArchive\ArchiveEntry;
 use wapmorgan\UnifiedArchive\ArchiveInformation;
 use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
@@ -21,7 +22,7 @@ abstract class OneFileDriver extends BasicExtensionDriver
     protected $uncompressedSize;
     protected $modificationTime;
 
-    public static function getSupportedFormats()
+    public static function getFormats()
     {
         return [static::FORMAT];
     }
@@ -30,14 +31,14 @@ abstract class OneFileDriver extends BasicExtensionDriver
      * @param $format
      * @return array
      */
-    public static function checkFormatSupport($format)
+    public static function getFormatAbilities($format)
     {
         if (!static::isInstalled()) {
             return [];
         }
         switch ($format) {
             case static::FORMAT:
-                return [BasicDriver::OPEN, BasicDriver::EXTRACT_CONTENT, BasicDriver::STREAM_CONTENT, BasicDriver::CREATE];
+                return [Abilities::OPEN, Abilities::EXTRACT_CONTENT, Abilities::STREAM_CONTENT, Abilities::CREATE];
         }
     }
 
@@ -121,17 +122,21 @@ abstract class OneFileDriver extends BasicExtensionDriver
      */
     public function extractArchive($outputFolder)
     {
-        $data = $this->getFileContent($this->inArchiveFileName);
-        if ($data === false)
-            throw new ArchiveExtractionException('Could not extract archive');
+        if(method_exists($this, 'streamToFile')){
+            $this->streamToFile($outputFolder.$this->inArchiveFileName);
+        }else{
+            $data = $this->getFileContent($this->inArchiveFileName);
+            if ($data === false)
+                throw new ArchiveExtractionException('Could not extract archive');
 
-        $size = strlen($data);
-        $written = file_put_contents($outputFolder.$this->inArchiveFileName, $data);
+            $size = strlen($data);
+            $written = file_put_contents($outputFolder.$this->inArchiveFileName, $data);
 
-        if ($written === true) {
-            throw new ArchiveExtractionException('Could not extract file "'.$this->inArchiveFileName.'": could not write data');
-        } else if ($written < $size) {
-            throw new ArchiveExtractionException('Could not archive file "'.$this->inArchiveFileName.'": written '.$written.' of '.$size);
+            if ($written === true) {
+                throw new ArchiveExtractionException('Could not extract file "'.$this->inArchiveFileName.'": could not write data');
+            } else if ($written < $size) {
+                throw new ArchiveExtractionException('Could not archive file "'.$this->inArchiveFileName.'": written '.$written.' of '.$size);
+            }
         }
         return 1;
     }

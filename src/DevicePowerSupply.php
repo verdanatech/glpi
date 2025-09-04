@@ -43,7 +43,6 @@ class DevicePowerSupply extends CommonDevice
         return _n('Power supply', 'Power supplies', $nb);
     }
 
-
     public function getAdditionalFields()
     {
 
@@ -65,14 +64,13 @@ class DevicePowerSupply extends CommonDevice
         );
     }
 
-
     public function rawSearchOptions()
     {
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'                 => '11',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'is_atx',
             'name'               => __('ATX'),
             'datatype'           => 'bool',
@@ -80,7 +78,7 @@ class DevicePowerSupply extends CommonDevice
 
         $tab[] = [
             'id'                 => '12',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'power',
             'name'               => __('Power'),
             'datatype'           => 'string',
@@ -97,7 +95,6 @@ class DevicePowerSupply extends CommonDevice
         return $tab;
     }
 
-
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
@@ -105,7 +102,6 @@ class DevicePowerSupply extends CommonDevice
         ?HTMLTableHeader $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableHeader($itemtype, $base, $super, $father, $options);
 
         if ($column == $father) {
@@ -114,12 +110,11 @@ class DevicePowerSupply extends CommonDevice
 
         switch ($itemtype) {
             case 'Computer':
-                Manufacturer::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-                $base->addHeader('power', __('Power'), $super, $father);
+                Manufacturer::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+                $base->addHeader('power', __s('Power'), $super, $father);
                 break;
         }
     }
-
 
     public function getHTMLTableCellForItem(
         ?HTMLTableRow $row = null,
@@ -127,7 +122,6 @@ class DevicePowerSupply extends CommonDevice
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableCellForItem($row, $item, $father, $options);
 
         if ($column == $father) {
@@ -138,9 +132,13 @@ class DevicePowerSupply extends CommonDevice
             case 'Computer':
                 Manufacturer::getHTMLTableCellsForItem($row, $this, null, $options);
                 if ($this->fields["power"]) {
-                    $row->addCell($row->getHeaderByName('power'), $this->fields["power"]);
+                    $row->addCell(
+                        $row->getHeaderByName('power'),
+                        htmlescape($this->fields["power"])
+                    );
                 }
         }
+        return null;
     }
 
     public static function rawSearchOptionsToAdd($itemtype, $main_joinparams)
@@ -164,9 +162,32 @@ class DevicePowerSupply extends CommonDevice
             ],
         ];
 
+        $tab[] = [
+            'id'                 => '1334',
+            'table'              => 'glpi_items_devicepowersupplies',
+            'field'              => 'serial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Serial Number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
+        ];
+
+        $tab[] = [
+            'id'                 => '1335',
+            'table'              => 'glpi_items_devicepowersupplies',
+            'field'              => 'otherserial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Inventory number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
+        ];
+
         return $tab;
     }
-
 
     public static function getIcon()
     {

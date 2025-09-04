@@ -33,6 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
+
 /**
  * Document_Item Class
  *
@@ -56,22 +59,19 @@ class Document_Item extends CommonDBRelation
 
     public function getForbiddenStandardMassiveAction()
     {
-
         $forbidden   = parent::getForbiddenStandardMassiveAction();
         $forbidden[] = 'update';
         return $forbidden;
     }
 
-
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
-
-        if ($this->fields['itemtype'] == 'Ticket') {
+        if ($this->fields['itemtype'] === 'Ticket') {
             $ticket = new Ticket();
             // Not item linked for closed tickets
             if (
                 $ticket->getFromDB($this->fields['items_id'])
-                && in_array($ticket->fields['status'], $ticket->getClosedStatusArray())
+                && in_array($ticket->fields['status'], $ticket->getClosedStatusArray(), true)
             ) {
                 return false;
             }
@@ -80,10 +80,8 @@ class Document_Item extends CommonDBRelation
         return parent::canCreateItem();
     }
 
-
     public function prepareInputForAdd($input)
     {
-
         if (empty($input['itemtype'])) {
             trigger_error('Item type is mandatory', E_USER_WARNING);
             return false;
@@ -96,7 +94,7 @@ class Document_Item extends CommonDBRelation
 
         if (
             (empty($input['items_id']))
-            && ($input['itemtype'] != 'Entity')
+            && ($input['itemtype'] !== 'Entity')
         ) {
             trigger_error('Item ID is mandatory', E_USER_WARNING);
             return false;
@@ -109,8 +107,8 @@ class Document_Item extends CommonDBRelation
 
         // Do not insert circular link for document
         if (
-            ($input['itemtype'] == 'Document')
-            && ($input['items_id'] == $input['documents_id'])
+            ($input['itemtype'] === Document::class)
+            && ((int) $input['items_id'] === (int) $input['documents_id'])
         ) {
             trigger_error('Cannot link document to itself', E_USER_WARNING);
             return false;
@@ -126,7 +124,7 @@ class Document_Item extends CommonDBRelation
         if (is_subclass_of($input['itemtype'], 'CommonITILObject') && !isset($input['timeline_position'])) {
             $input['timeline_position'] = CommonITILObject::TIMELINE_LEFT;
             if (isset($input["users_id"])) {
-                $input['timeline_position'] = $input['itemtype']::getTimelinePosition($input['items_id'], $this->getType(), $input["users_id"]);
+                $input['timeline_position'] = $input['itemtype']::getTimelinePosition($input['items_id'], static::class, $input["users_id"]);
             }
         }
 
@@ -159,19 +157,13 @@ class Document_Item extends CommonDBRelation
         if (array_key_exists('timeline_position', $input) && !empty($input['timeline_position'])) {
             $criteria['timeline_position'] = $input['timeline_position'];
         }
-        return countElementsInTable($this->getTable(), $criteria) > 0;
+        return countElementsInTable(static::getTable(), $criteria) > 0;
     }
 
-
-    /**
-     * @since 0.90.2
-     *
-     * @see CommonDBTM::pre_deleteItem()
-     **/
     public function pre_deleteItem()
     {
         // fordocument mandatory
-        if ($this->fields['itemtype'] == 'Ticket') {
+        if ($this->fields['itemtype'] === Ticket::class) {
             $ticket = new Ticket();
             $ticket->getFromDB($this->fields['items_id']);
 
@@ -186,17 +178,17 @@ class Document_Item extends CommonDBRelation
                 // refuse delete if only one document
                 if (
                     countElementsInTable(
-                        $this->getTable(),
+                        static::getTable(),
                         ['items_id' => $this->fields['items_id'],
                             'itemtype' => 'Ticket',
                         ]
-                    ) == 1
+                    ) === 1
                 ) {
                     $message = sprintf(
                         __('Mandatory fields are not filled. Please correct: %s'),
                         Document::getTypeName(Session::getPluralNumber())
                     );
-                    Session::addMessageAfterRedirect($message, false, ERROR);
+                    Session::addMessageAfterRedirect(htmlescape($message), false, ERROR);
                     return false;
                 }
             }
@@ -204,14 +196,9 @@ class Document_Item extends CommonDBRelation
         return true;
     }
 
-
-    /**
-     * @TODO Remove `_do_update_ticket` handling in GLPI 10.1, it is not used anymore.
-     */
     public function post_addItem()
     {
-
-        if ($this->fields['itemtype'] == 'Ticket' && ($this->input['_do_update_ticket'] ?? true)) {
+        if ($this->fields['itemtype'] === Ticket::class) {
             $ticket = new Ticket();
             $input  = [
                 'id'              => $this->fields['items_id'],
@@ -227,19 +214,27 @@ class Document_Item extends CommonDBRelation
 
             $ticket->update($input);
         }
+
+        self::addToMergedTickets();
+
         parent::post_addItem();
     }
 
+    private function addToMergedTickets(): void
+    {
+        $merged = Ticket::getMergedTickets($this->fields['items_id']);
+        foreach ($merged as $ticket_id) {
+            $input = $this->input;
+            $input['items_id'] = $ticket_id;
 
-    /**
-     * @since 0.83
-     *
-     * @see CommonDBTM::post_purgeItem()
-     **/
+            $document = new self();
+            $document->add($input);
+        }
+    }
+
     public function post_purgeItem()
     {
-
-        if ($this->fields['itemtype'] == 'Ticket') {
+        if ($this->fields['itemtype'] === Ticket::class) {
             $ticket = new Ticket();
             $input = [
                 'id'              => $this->fields['items_id'],
@@ -255,11 +250,9 @@ class Document_Item extends CommonDBRelation
             $doc->getFromDB($this->fields['documents_id']);
             if (!empty($doc->fields['tag'])) {
                 $ticket->getFromDB($this->fields['items_id']);
-                $input['content'] = Toolbox::addslashes_deep(
-                    Toolbox::cleanTagOrImage(
-                        $ticket->fields['content'],
-                        [$doc->fields['tag']]
-                    )
+                $input['content'] = Toolbox::cleanTagOrImage(
+                    $ticket->fields['content'],
+                    [$doc->fields['tag']]
                 );
             }
 
@@ -268,13 +261,15 @@ class Document_Item extends CommonDBRelation
         parent::post_purgeItem();
     }
 
-
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
+        if (!$item instanceof CommonDBTM) {
+            return '';
+        }
 
         $nbdoc = $nbitem = 0;
-        switch ($item->getType()) {
-            case 'Document':
+        switch ($item::class) {
+            case Document::class:
                 $ong = [];
                 if ($_SESSION['glpishow_count_on_tabs'] && !$item->isNewItem()) {
                     $nbdoc  = self::countForMainItem($item, ['NOT' => ['itemtype' => 'Document']]);
@@ -284,10 +279,11 @@ class Document_Item extends CommonDBRelation
                     'Associated item',
                     'Associated items',
                     Session::getPluralNumber()
-                ), $nbdoc);
+                ), $nbdoc, $item::class, 'ti ti-package');
                 $ong[2] = self::createTabEntry(
                     Document::getTypeName(Session::getPluralNumber()),
-                    $nbitem
+                    $nbitem,
+                    $item::class
                 );
                 return $ong;
 
@@ -295,57 +291,45 @@ class Document_Item extends CommonDBRelation
                 // Can exist for template
                 if (
                     Document::canView()
-                    || ($item->getType() == 'Ticket')
-                    || ($item->getType() == 'Reminder')
-                    || ($item->getType() == 'KnowbaseItem')
+                    || ($item::class === Ticket::class)
+                    || ($item::class === Reminder::class)
+                    || ($item::class === KnowbaseItem::class)
                 ) {
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nbitem = self::countForItem($item);
                     }
                     return self::createTabEntry(
                         Document::getTypeName(Session::getPluralNumber()),
-                        $nbitem
+                        $nbitem,
+                        $item::class
                     );
                 }
         }
         return '';
     }
 
-
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-
-        switch ($item->getType()) {
-            case 'Document':
-                switch ($tabnum) {
-                    case 1:
-                        self::showForDocument($item);
-                        break;
-
-                    case 2:
-                        self::showForItem($item, $withtemplate);
-                        break;
-                }
-                break;
-
-            default:
-                self::showForitem($item, $withtemplate);
-                break;
+        if (!$item instanceof CommonDBTM) {
+            return false;
         }
-        return true;
-    }
 
+        if ($item instanceof Document && $tabnum === 1) {
+            return self::showForDocument($item);
+        }
+        return self::showForItem($item, $withtemplate);
+    }
 
     /**
      * Show items links to a document
      *
      * @since 0.84
      *
-     * @param $doc Document object
+     * @param Document $doc Document object
      *
-     * @return void
+     * @return bool
      **/
-    public static function showForDocument(Document $doc)
+    public static function showForDocument(Document $doc): bool
     {
         $instID = $doc->fields['id'];
         if (!$doc->can($instID, READ)) {
@@ -356,67 +340,39 @@ class Document_Item extends CommonDBRelation
         // don't show here others documents associated to this one,
         // it's done for both directions in self::showAssociated
         $types_iterator = self::getDistinctTypes($instID, ['NOT' => ['itemtype' => 'Document']]);
-        $number = count($types_iterator);
 
         $rand   = mt_rand();
         if ($canedit) {
-            echo "<div class='firstbloc'>";
-            echo "<form name='documentitem_form$rand' id='documentitem_form$rand' method='post'
-               action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
-
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_2'><th colspan='2'>" . __('Add an item') . "</th></tr>";
-
-            echo "<tr class='tab_bg_1'><td class='right'>";
-            Dropdown::showSelectItemFromItemtypes(['itemtypes'
-                                                       => Document::getItemtypesThatCanHave(),
-                'entity_restrict'
-                                                       => ($doc->fields['is_recursive']
-                                                           ? getSonsOf(
-                                                               'glpi_entities',
-                                                               $doc->fields['entities_id']
-                                                           )
-                                                           : $doc->fields['entities_id']),
-                'checkright'
-                                                      => true,
-            ]);
-            echo "</td><td class='center'>";
-            echo "<input type='submit' name='add' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
-            echo "<input type='hidden' name='documents_id' value='$instID'>";
-            echo "</td></tr>";
-            echo "</table>";
-            Html::closeForm();
-            echo "</div>";
+            $twig_params = [
+                'doc' => $doc,
+                'entity_restrict' => $doc->fields['is_recursive'] ? getSonsOf('glpi_entities', $doc->fields['entities_id']) : $doc->fields['entities_id'],
+                'add_item_msg' => __('Add an item'),
+                'add_btn_msg' => _x('button', 'Add'),
+            ];
+            // language=Twig
+            echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+                {% import 'components/form/fields_macros.html.twig' as fields %}
+                {% import 'components/form/basic_inputs_macros.html.twig' as inputs %}
+                {% set rand = random() %}
+                <div class="mb-3">
+                    <form method="post" action="{{ 'Document_Item'|itemtype_form_path }}">
+                        {{ inputs.hidden('_glpi_csrf_token', csrf_token()) }}
+                        {{ inputs.hidden('documents_id', doc.fields['id']) }}
+                        {{ fields.dropdownItemsFromItemtypes('', add_item_msg, {
+                            'itemtypes': doc.getItemtypesThatCanHave(),
+                            'entity_restrict': entity_restrict,
+                            'checkright': true
+                        }) }}
+                        <div class="d-flex px-3 flex-row-reverse">
+                            {{ inputs.submit('add', add_btn_msg, 1) }}
+                        </div>
+                    </form>
+                </div>
+TWIG, $twig_params);
         }
 
-        echo "<div class='spaced table-responsive'>";
-        if ($canedit && $number) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
-            $massiveactionparams = ['container' => 'mass' . __CLASS__ . $rand];
-            Html::showMassiveActions($massiveactionparams);
-        }
-        echo "<table class='tab_cadre_fixehov'>";
-
-        $header_begin  = "<tr>";
-        $header_top    = '';
-        $header_bottom = '';
-        $header_end    = '';
-
-        if ($canedit && $number) {
-            $header_top    .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-            $header_top    .= "</th>";
-            $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
-            $header_bottom .= "</th>";
-        }
-
-        $header_end .= "<th>" . _n('Type', 'Types', 1) . "</th>";
-        $header_end .= "<th>" . __('Name') . "</th>";
-        $header_end .= "<th>" . Entity::getTypeName(1) . "</th>";
-        $header_end .= "<th>" . __('Serial number') . "</th>";
-        $header_end .= "<th>" . __('Inventory number') . "</th>";
-        $header_end .= "</tr>";
-        echo $header_begin . $header_top . $header_end;
-
+        $entries = [];
+        $entity_names = [];
         foreach ($types_iterator as $type_row) {
             $main_itemtype = $type_row['itemtype'];
             if (!is_a($main_itemtype, CommonDBTM::class, true)) {
@@ -430,12 +386,10 @@ class Document_Item extends CommonDBRelation
                     if (!($item = getItemForItemtype($main_itemtype))) {
                         continue;
                     }
-                    $itemtype = $main_itemtype;
                     $linkname_extra = "";
-                    if ($item instanceof ITILFollowup || $item instanceof ITILSolution) {
+                    if (($item instanceof ITILFollowup || $item instanceof ITILSolution) && is_a($data['itemtype'], CommonDBTM::class, true)) {
                         $linkname_extra = "(" . $item::getTypeName(1) . ")";
-                        $itemtype = $data['itemtype'];
-                        $item = new $itemtype();
+                        $item = new $data['itemtype']();
                         $item->getFromDB($data['items_id']);
                         $data['id'] = $item->fields['id'];
                         $data['entity'] = $item->fields['entities_id'];
@@ -444,18 +398,17 @@ class Document_Item extends CommonDBRelation
                         || $item instanceof CommonITILValidation
                     ) {
                         $linkname_extra = "(" . CommonITILTask::getTypeName(1) . ")";
-                        $itemtype = $item->getItilObjectItemType();
-                        $item = new $itemtype();
-                        $item->getFromDB($data[$item->getForeignKeyField()]);
+                        $item = $item::getItilObjectItemInstance();
+                        $item->getFromDB($data[$item::getForeignKeyField()]);
                         $data['id'] = $item->fields['id'];
                         $data['entity'] = $item->fields['entities_id'];
                     }
 
                     if ($item instanceof CommonITILObject) {
-                        $data["name"] = sprintf(__('%1$s: %2$s'), $item->getTypeName(1), $data["id"]);
+                        $data["name"] = sprintf(__('%1$s: %2$s'), $item::getTypeName(1), $data["id"]);
                     }
 
-                    if ($itemtype == 'SoftwareLicense') {
+                    if ($item instanceof SoftwareLicense) {
                         $soft = new Software();
                         $soft->getFromDB($data['softwares_id']);
                         $data["name"] = sprintf(
@@ -464,13 +417,12 @@ class Document_Item extends CommonDBRelation
                             $soft->fields['name']
                         );
                     }
-                    if ($item instanceof CommonDevice) {
-                        $linkname = $data["designation"];
-                    } elseif ($item instanceof Item_Devices) {
-                        $linkname = $data["itemtype"];
-                    } else {
-                        $linkname = $data[$item::getNameField()];
-                    }
+                    $linkname = match (true) {
+                        $item instanceof CommonDevice => $data["designation"],
+                        $item instanceof Item_Devices, $item instanceof Notepad => $data["itemtype"],
+                        default => $data[$item::getNameField()]
+                    };
+
                     if (
                         $_SESSION["glpiis_ids_visible"]
                         || empty($data["name"])
@@ -478,51 +430,63 @@ class Document_Item extends CommonDBRelation
                         $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["id"]);
                     }
                     if ($item instanceof Item_Devices) {
-                        $tmpitem = new $item::$itemtype_2();
+                        $tmpitem = getItemForItemtype($item::$itemtype_2);
                         if ($tmpitem->getFromDB($data[$item::$items_id_2])) {
                             $linkname = $tmpitem->getLink();
                         }
                     }
 
-                    $link     = $itemtype::getFormURLWithID($data['id']);
-                    $name = "<a href='$link'>$linkname $linkname_extra</a>";
+                    $link = $item::getFormURLWithID($data['id']);
+                    $name = '<a href="' . htmlescape($link) . '">' . htmlescape($linkname) . ' ' . htmlescape($linkname_extra) . "</a>";
 
-                    echo "<tr class='tab_bg_1'>";
-
-                    if ($canedit) {
-                        echo "<td width='10'>";
-                        Html::showMassiveActionCheckBox(__CLASS__, $data["linkid"]);
-                        echo "</td>";
+                    $entity_name = '-';
+                    if (isset($data['entity'])) {
+                        if (!isset($entity_names[$data['entity']])) {
+                            $entity_names[$data['entity']] = Dropdown::getDropdownName(
+                                "glpi_entities",
+                                $data['entity']
+                            );
+                        }
+                        $entity_name = $entity_names[$data['entity']];
                     }
-                    echo "<td class='center'>" . $item->getTypeName(1) . "</td>";
-                    echo "<td " .
-                     (isset($data['is_deleted']) && $data['is_deleted'] ? "class='tab_bg_2_2'" : "") .
-                     ">" . $name . "</td>";
-                    echo "<td class='center'>" .
-                    (isset($data['entity']) ? Dropdown::getDropdownName(
-                        "glpi_entities",
-                        $data['entity']
-                    ) : "-");
-                    echo "</td>";
-                    echo "<td class='center'>" .
-                        (isset($data["serial"]) ? "" . $data["serial"] . "" : "-") . "</td>";
-                    echo "<td class='center'>" .
-                        (isset($data["otherserial"]) ? "" . $data["otherserial"] . "" : "-") . "</td>";
-                    echo "</tr>";
+                    $entries[] = [
+                        'itemtype' => self::class,
+                        'row_class' => $data['is_deleted'] ? 'table-danger' : '',
+                        'id'       => $data['linkid'],
+                        'linked_itemtype' => $item::getTypeName(1),
+                        'name'    => $name,
+                        'entity'  => $entity_name,
+                        'serial'  => $data["serial"] ?? "-",
+                        'otherserial' => $data["otherserial"] ?? "-",
+                    ];
                 }
             }
         }
 
-        if ($number) {
-            echo $header_begin . $header_bottom . $header_end;
-        }
-        echo "</table>";
-        if ($canedit && $number) {
-            $massiveactionparams['ontop'] = false;
-            Html::showMassiveActions($massiveactionparams);
-            Html::closeForm();
-        }
-        echo "</div>";
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
+            'is_tab' => true,
+            'nofilter' => true,
+            'columns' => [
+                'linked_itemtype' => _n('Type', 'Types', 1),
+                'name'            => __('Name'),
+                'entity'          => Entity::getTypeName(1),
+                'serial'          => __('Serial number'),
+                'otherserial'     => __('Inventory number'),
+            ],
+            'formatters' => [
+                'name' => 'raw_html',
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'filtered_number' => count($entries),
+            'showmassiveactions' => $canedit,
+            'massiveactionparams' => [
+                'num_displayed' => count($entries),
+                'container'     => 'mass' . static::class . $rand,
+            ],
+        ]);
+
+        return true;
     }
 
     /**
@@ -530,10 +494,12 @@ class Document_Item extends CommonDBRelation
      *
      * @since 0.84
      *
-     * @param $item            CommonDBTM object for which associated documents must be displayed
-     * @param $withtemplate    (default 0)
+     * @param CommonDBTM $item         Object for which associated documents must be displayed
+     * @param int        $withtemplate (default 0)
+     *
+     * @return bool
      **/
-    public static function showForItem(CommonDBTM $item, $withtemplate = 0)
+    public static function showForItem(CommonDBTM $item, $withtemplate = 0): bool
     {
         $ID = $item->getField('id');
 
@@ -542,9 +508,9 @@ class Document_Item extends CommonDBRelation
         }
 
         if (
-            ($item->getType() != 'Ticket')
-            && ($item->getType() != 'KnowbaseItem')
-            && ($item->getType() != 'Reminder')
+            ($item::class !== Ticket::class)
+            && ($item::class !== KnowbaseItem::class)
+            && ($item::class !== Reminder::class)
             && !Document::canView()
         ) {
             return false;
@@ -555,42 +521,9 @@ class Document_Item extends CommonDBRelation
 
         self::showAddFormForItem($item, $withtemplate, $params);
         self::showListForItem($item, $withtemplate, $params);
+
+        return true;
     }
-
-
-    /**
-     * @since 0.90
-     *
-     * @param $item
-     * @param $withtemplate   (default 0)
-     * @param $colspan
-     */
-    public static function showSimpleAddForItem(CommonDBTM $item, $withtemplate = 0, $colspan = 1)
-    {
-
-        $entity = $_SESSION["glpiactive_entity"];
-        if ($item->isEntityAssign()) {
-            /// Case of personal items : entity = -1 : create on active entity (Reminder case))
-            if ($item->getEntityID() >= 0) {
-                $entity = $item->getEntityID();
-            }
-        }
-
-        echo "<tr class='tab_bg_1'>";
-        echo "<td>" . __('Add a document') . "</td>";
-        echo "<td colspan='$colspan'>";
-        echo "<input type='hidden' name='entities_id' value='$entity'>";
-        echo "<input type='hidden' name='is_recursive' value='" . $item->isRecursive() . "'>";
-        echo "<input type='hidden' name='itemtype' value='" . $item->getType() . "'>";
-        echo "<input type='hidden' name='items_id' value='" . $item->getID() . "'>";
-        if ($item->getType() == 'Ticket') {
-            echo "<input type='hidden' name='tickets_id' value='" . $item->getID() . "'>";
-        }
-        Html::file(['multiple' => true]);
-        echo "</td><td class='left'>(" . Document::getMaxUploadSize() . ")&nbsp;</td>";
-        echo "<td></td></tr>";
-    }
-
 
     /**
      * @since 0.90
@@ -603,10 +536,6 @@ class Document_Item extends CommonDBRelation
      **/
     public static function showAddFormForItem(CommonDBTM $item, $withtemplate = 0, $options = [])
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         //default options
@@ -629,7 +558,7 @@ class Document_Item extends CommonDBRelation
         $doc_item   = new self();
         $used_found = $doc_item->find([
             'items_id'  => $item->getID(),
-            'itemtype'  => $item->getType(),
+            'itemtype'  => $item::class,
         ]);
         $used       = array_keys($used_found);
         $used       = array_combine($used, $used);
@@ -643,7 +572,7 @@ class Document_Item extends CommonDBRelation
             $entity   = $_SESSION["glpiactive_entity"];
 
             if ($item->isEntityAssign()) {
-                /// Case of personal items : entity = -1 : create on active entity (Reminder case))
+                // Case of personal items : entity = -1 : create on active entity (Reminder case))
                 if ($item->getEntityID() >= 0) {
                     $entity = $item->getEntityID();
                 }
@@ -664,97 +593,34 @@ class Document_Item extends CommonDBRelation
             ])->current();
             $nb = $count['cpt'];
 
-            if ($item->getType() == 'Document') {
+            if ($item::class === Document::class) {
                 $used[$item->getID()] = $item->getID();
             }
 
-            echo "<div class='firstbloc'>";
-            echo "<form name='documentitem_form" . $params['rand'] . "' id='documentitem_form" .
-               $params['rand'] . "' method='post' action='" . Toolbox::getItemTypeFormURL('Document') .
-               "' enctype=\"multipart/form-data\">";
-
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_2'><th colspan='5'>" . __('Add a document') . "</th></tr>";
-            echo "<tr class='tab_bg_1'>";
-
-            echo "<td class='center'>";
-            echo __('Heading');
-            echo "</td><td width='20%'>";
-            DocumentCategory::dropdown(['entity' => $entities]);
-            echo "</td>";
-            echo "<td class='right'>";
-            echo "<input type='hidden' name='entities_id' value='$entity'>";
-            echo "<input type='hidden' name='is_recursive' value='" . $item->isRecursive() . "'>";
-            echo "<input type='hidden' name='itemtype' value='" . $item->getType() . "'>";
-            echo "<input type='hidden' name='items_id' value='" . $item->getID() . "'>";
-            if ($item->getType() == 'Ticket') {
-                echo "<input type='hidden' name='tickets_id' value='" . $item->getID() . "'>";
-            }
-            Html::file(['multiple' => true]);
-            echo "</td><td class='left'>(" . Document::getMaxUploadSize() . ")&nbsp;</td>";
-            echo "<td class='center' width='20%'>";
-            echo "<input type='submit' name='add' value=\"" . _sx('button', 'Add a new file') . "\"
-                class='btn btn-primary'>";
-            echo "</td></tr>";
-            echo "</table>";
-            Html::closeForm();
-
-            if (
-                Document::canView()
-                && ($nb > count($used))
-            ) {
-                echo "<form name='document_form" . $params['rand'] . "' id='document_form" . $params['rand'] .
-                  "' method='post' action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
-                echo "<table class='tab_cadre_fixe'>";
-                echo "<tr class='tab_bg_1'>";
-                echo "<td colspan='4' class='center'>";
-                echo "<input type='hidden' name='itemtype' value='" . $item->getType() . "'>";
-                echo "<input type='hidden' name='items_id' value='" . $item->getID() . "'>";
-                if ($item->getType() == 'Ticket') {
-                    echo "<input type='hidden' name='tickets_id' value='" . $item->getID() . "'>";
-                    echo "<input type='hidden' name='documentcategories_id' value='" .
-                      $CFG_GLPI["documentcategories_id_forticket"] . "'>";
-                }
-
-                Document::dropdown(['entity' => $entities,
-                    'used'   => $used,
-                ]);
-                echo "</td><td class='center' width='20%'>";
-                echo "<input type='submit' name='add' value=\"" .
-                     _sx('button', 'Associate an existing document') . "\" class='btn btn-primary'>";
-                echo "</td>";
-                echo "</tr>";
-                echo "</table>";
-                Html::closeForm();
-            }
-
-            echo "</div>";
+            TemplateRenderer::getInstance()->display('pages/management/document_item.html.twig', [
+                'canview' => Document::canView(),
+                'item' => $item,
+                'used' => $used,
+                'entity' => $entity,
+                'entities' => $entities,
+                'nb' => $nb,
+                'rand' => mt_rand(),
+            ]);
         }
 
         return true;
     }
 
-
     /**
      * @since 0.90
      *
-     * @param $item
-     * @param $withtemplate   (default 0)
-     * @param $options        array
+     * @param CommonDBTM $item
+     * @param integer $withtemplate
+     * @param array $options
      */
     public static function showListForItem(CommonDBTM $item, $withtemplate = 0, $options = [])
     {
-        /** @var \DBmysql $DB */
         global $DB;
-
-        //default options
-        $params['rand'] = mt_rand();
-
-        if (is_array($options) && count($options)) {
-            foreach ($options as $key => $val) {
-                $params[$key] = $val;
-            }
-        }
 
         $canedit = $item->canAddItem('Document') && Document::canView();
 
@@ -769,16 +635,13 @@ class Document_Item extends CommonDBRelation
             'assocdate' => _n('Date', 'Dates', 1),
         ];
 
-        if (isset($_GET["order"]) && ($_GET["order"] == "ASC")) {
+        if (isset($_GET["order"]) && ($_GET["order"] === 'ASC')) {
             $order = "ASC";
         } else {
             $order = "DESC";
         }
 
-        if (
-            (isset($_GET["sort"]) && !empty($_GET["sort"]))
-            && isset($columns[$_GET["sort"]])
-        ) {
+        if (!empty($_GET["sort"]) && isset($columns[$_GET["sort"]])) {
             $sort = $_GET["sort"];
         } else {
             $sort = "assocdate";
@@ -791,7 +654,7 @@ class Document_Item extends CommonDBRelation
         $criteria = self::getDocumentForItemRequest($item, ["$sort $order"]);
 
         // Document : search links in both order using union
-        if ($item->getType() == 'Document') {
+        if ($item::class === Document::class) {
             $owhere = $criteria['WHERE'];
             $o2where =  $owhere + ['glpi_documents_items.documents_id' => $item->getID()];
             unset($o2where['glpi_documents_items.items_id']);
@@ -804,150 +667,84 @@ class Document_Item extends CommonDBRelation
         }
 
         $iterator = $DB->request($criteria);
-        $number = count($iterator);
-        $i      = 0;
 
         $documents = [];
-        $used      = [];
         foreach ($iterator as $data) {
             $documents[$data['assocID']] = $data;
-            $used[$data['id']]           = $data['id'];
         }
 
-        echo "<div class='spaced table-responsive'>";
-        if (
-            $canedit
-            && $number
-            && ($withtemplate < 2)
-        ) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $params['rand']);
-            $massiveactionparams = ['num_displayed'  => min($_SESSION['glpilist_limit'], $number),
-                'container'      => 'mass' . __CLASS__ . $params['rand'],
-            ];
-            Html::showMassiveActions($massiveactionparams);
-        }
+        $document = new Document();
+        $category_names = [];
+        $entries  = [];
+        foreach ($documents as $data) {
+            $docID        = $data["id"];
+            $name         = htmlescape(NOT_AVAILABLE);
+            $downloadlink = htmlescape(NOT_AVAILABLE);
 
-        echo "<table class='tab_cadre_fixehov'>";
 
-        $header_begin  = "<tr>";
-        $header_top    = '';
-        $header_bottom = '';
-        $header_end    = '';
-        if (
-            $canedit
-            && $number
-            && ($withtemplate < 2)
-        ) {
-            $header_top    .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $params['rand']);
-            $header_top    .= "</th>";
-            $header_bottom .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $params['rand']);
-            $header_bottom .= "</th>";
-        }
-
-        foreach ($columns as $key => $val) {
-            $header_end .= "<th" . ($sort == "$key" ? " class='order_$order'" : '') . ">" .
-                        "<a href='javascript:reloadTab(\"sort=$key&amp;order=" .
-                          (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a></th>";
-        }
-
-        $header_end .= "</tr>";
-        echo $header_begin . $header_top . $header_end;
-
-        $used = [];
-
-        if ($number) {
-            // Don't use this for document associated to document
-            // To not loose navigation list for current document
-            if ($item->getType() != 'Document') {
-                Session::initNavigateListItems(
-                    'Document',
-                    //TRANS : %1$s is the itemtype name,
-                    //        %2$s is the name of the item (used for headings of a list)
-                    sprintf(
-                        __('%1$s = %2$s'),
-                        $item->getTypeName(1),
-                        $item->getName()
-                    )
-                );
+            if ($document->getFromDB($docID)) {
+                $name         = $document->getLink();
+                $downloadlink = $document->getDownloadLink($item);
             }
 
-            $document = new Document();
-            foreach ($documents as $data) {
-                $docID        = $data["id"];
-                $link         = NOT_AVAILABLE;
-                $downloadlink = NOT_AVAILABLE;
+            if ($item::class !== Document::class) {
+                Session::addToNavigateListItems(Document::class, $docID);
+            }
 
-                if ($document->getFromDB($docID)) {
-                    $link         = $document->getLink();
-                    $downloadlink = $document->getDownloadLink($item);
-                }
+            $link = !empty($data["link"])
+                ? '<a target="_blank" href="' . htmlescape(Toolbox::formatOutputWebLink($data["link"])) . '">' . htmlescape($data["link"]) . "</a>"
+                : '';
 
-                if ($item->getType() != 'Document') {
-                    Session::addToNavigateListItems('Document', $docID);
-                }
-                $used[$docID] = $docID;
-
-                echo "<tr class='tab_bg_1" . ($data["is_deleted"] ? "_2" : "") . "'>";
-                if (
-                    $canedit
-                    && ($withtemplate < 2)
-                ) {
-                    echo "<td width='10'>";
-                    Html::showMassiveActionCheckBox(__CLASS__, $data["assocID"]);
-                    echo "</td>";
-                }
-                echo "<td class='center'>$link</td>";
-                echo "<td class='center'>" . $data['entity'] . "</td>";
-                echo "<td class='center'>$downloadlink</td>";
-                echo "<td class='center'>";
-                if (!empty($data["link"])) {
-                    echo "<a target=_blank href='" . Toolbox::formatOutputWebLink($data["link"]) . "'>" . $data["link"];
-                    echo "</a>";
-                } else {
-                    echo "&nbsp;";
-                }
-                echo "</td>";
-                echo "<td class='center'>" . Dropdown::getDropdownName(
+            if (!isset($category_names[$data["documentcategories_id"]])) {
+                $category_names[$data["documentcategories_id"]] = Dropdown::getDropdownName(
                     "glpi_documentcategories",
                     $data["documentcategories_id"]
                 );
-                echo "</td>";
-                echo "<td class='center'>" . $data["mime"] . "</td>";
-                echo "<td class='center'>";
-                echo !empty($data["tag"]) ? Document::getImageTag($data["tag"]) : '';
-                echo "</td>";
-                echo "<td class='center'>" . Html::convDateTime($data["assocdate"]) . "</td>";
-                echo "</tr>";
-                $i++;
             }
-            echo $header_begin . $header_bottom . $header_end;
+            $entries[] = [
+                'itemtype' => self::class,
+                'row_class' => $data['is_deleted'] ? 'table-danger' : '',
+                'id'       => $data['assocID'],
+                'name'     => $name,
+                'entity'   => $data['entity'],
+                'filename' => $downloadlink,
+                'link'     => $link,
+                'headings' => $category_names[$data["documentcategories_id"]],
+                'mime'     => $data["mime"],
+                'tag'      => !empty($data["tag"]) ? Document::getImageTag($data["tag"]) : '',
+                'assocdate' => $data["assocdate"],
+            ];
         }
 
-        echo "</table>";
-        if ($canedit && $number && ($withtemplate < 2)) {
-            $massiveactionparams['ontop'] = false;
-            Html::showMassiveActions($massiveactionparams);
-            Html::closeForm();
-        }
-        echo "</div>";
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
+            'is_tab' => true,
+            'nofilter' => true,
+            'columns' => $columns,
+            'formatters' => [
+                'name' => 'raw_html',
+                'filename' => 'raw_html',
+                'link' => 'raw_html',
+                'assocdate' => 'datetime',
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'filtered_number' => count($entries),
+            'showmassiveactions' => $canedit && $withtemplate < 2,
+            'massiveactionparams' => [
+                'num_displayed' => count($entries),
+                'container'     => 'mass' . static::class . mt_rand(),
+            ],
+        ]);
     }
-
 
     public static function getRelationMassiveActionsPeerForSubForm(MassiveAction $ma)
     {
-
-        switch ($ma->getAction()) {
-            case 'add':
-            case 'remove':
-                return 1;
-
-            case 'add_item':
-            case 'remove_item':
-                return 2;
-        }
-        return 0;
+        return match ($ma->getAction()) {
+            'add', 'remove' => 1,
+            'add_item', 'remove_item' => 2,
+            default => 0,
+        };
     }
-
 
     public static function getRelationMassiveActionsSpecificities()
     {
@@ -971,11 +768,11 @@ class Document_Item extends CommonDBRelation
      * @since 9.3.1
      *
      * @param integer $items_id Object id to restrict on
-     * @param string  $itemtype Type for items to retrieve
+     * @param class-string<CommonDBTM> $itemtype Type for items to retrieve
      * @param boolean $noent    Flag to not compute enitty information (see Document_Item::getTypeItemsQueryParams)
      * @param array   $where    Inital WHERE clause. Defaults to []
      *
-     * @return DBmysqlIterator
+     * @return array Criteria to use in a request
      */
     protected static function getTypeItemsQueryParams($items_id, $itemtype, $noent = false, $where = [])
     {
@@ -988,7 +785,7 @@ class Document_Item extends CommonDBRelation
         ],
         ];
 
-        if ($itemtype != 'KnowbaseItem') {
+        if ($itemtype !== KnowbaseItem::class) {
             $params = parent::getTypeItemsQueryParams($items_id, $itemtype, $noent, $commonwhere);
         } else {
             //KnowbaseItem case: no entity restriction, we'll manage it here
@@ -1022,13 +819,12 @@ class Document_Item extends CommonDBRelation
      */
     protected static function getListForItemParams(CommonDBTM $item, $noent = false)
     {
-
         if (Session::getLoginUserID()) {
             $params = parent::getListForItemParams($item);
         } else {
             $params = parent::getListForItemParams($item, true);
             // Anonymous access from FAQ
-            $params['WHERE'][self::getTable() . '.entities_id'] = 0;
+            $params['WHERE'][static::getTable() . '.entities_id'] = 0;
         }
 
         return $params;
@@ -1072,7 +868,7 @@ class Document_Item extends CommonDBRelation
     public function isFromSupportAgent()
     {
         // If not a CommonITILObject
-        if (!is_a($this->fields['itemtype'], 'CommonITILObject', true)) {
+        if (!is_a($this->fields['itemtype'], CommonITILObject::class, true)) {
             return true;
         }
 
@@ -1134,13 +930,13 @@ class Document_Item extends CommonDBRelation
             ],
             'WHERE'     => [
                 'glpi_documents_items.items_id'  => $item->getID(),
-                'glpi_documents_items.itemtype'  => $item->getType(),
+                'glpi_documents_items.itemtype'  => $item::class,
             ],
             'ORDERBY'   => $order,
         ];
 
         if (Session::getLoginUserID()) {
-            $criteria['WHERE'] = $criteria['WHERE'] + getEntitiesRestrictCriteria('glpi_documents', '', '', true);
+            $criteria['WHERE'] += getEntitiesRestrictCriteria('glpi_documents', '', '', true);
         } else {
             // Anonymous access from FAQ
             $criteria['WHERE']['glpi_documents.entities_id'] = 0;

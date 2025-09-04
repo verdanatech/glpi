@@ -7,12 +7,12 @@ use IntlException;
 use Laminas\Validator\AbstractValidator;
 use Laminas\Validator\Exception as ValidatorException;
 use Locale;
-use Traversable;
 
 use function date_default_timezone_get;
 use function intl_is_failure;
 use function is_string;
 
+/** @final */
 class DateTime extends AbstractValidator
 {
     public const INVALID          = 'datetimeInvalid';
@@ -54,7 +54,7 @@ class DateTime extends AbstractValidator
     /** @var int|null */
     protected $calendar;
 
-    /** @var IntlDateFormatter */
+    /** @var IntlDateFormatter|null */
     protected $formatter;
 
     /**
@@ -68,7 +68,7 @@ class DateTime extends AbstractValidator
     /**
      * Constructor for the Date validator
      *
-     * @param array|Traversable $options
+     * @param iterable<string, mixed> $options
      */
     public function __construct($options = [])
     {
@@ -90,6 +90,8 @@ class DateTime extends AbstractValidator
     /**
      * Sets the calendar to be used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
+     *
      * @param int|null $calendar
      * @return $this
      */
@@ -102,6 +104,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Returns the calendar to by the IntlDateFormatter
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
      *
      * @return int|null
      */
@@ -117,6 +121,8 @@ class DateTime extends AbstractValidator
     /**
      * Sets the date format to be used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
+     *
      * @param int|null $dateType
      * @return $this
      */
@@ -131,6 +137,8 @@ class DateTime extends AbstractValidator
     /**
      * Returns the date format used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
+     *
      * @return int|null
      */
     public function getDateType()
@@ -140,6 +148,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Sets the pattern to be used by the IntlDateFormatter
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
      *
      * @param string|null $pattern
      * @return $this
@@ -153,6 +163,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Returns the pattern used by the IntlDateFormatter
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
      *
      * @return string|null
      */
@@ -168,6 +180,8 @@ class DateTime extends AbstractValidator
     /**
      * Sets the time format to be used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
+     *
      * @param int|null $timeType
      * @return $this
      */
@@ -182,6 +196,8 @@ class DateTime extends AbstractValidator
     /**
      * Returns the time format used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
+     *
      * @return int|null
      */
     public function getTimeType()
@@ -191,6 +207,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Sets the timezone to be used by the IntlDateFormatter
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
      *
      * @param string|null $timezone
      * @return $this
@@ -204,6 +222,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Returns the timezone used by the IntlDateFormatter or the system default if none given
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
      *
      * @return string|null
      */
@@ -219,6 +239,8 @@ class DateTime extends AbstractValidator
     /**
      * Sets the locale to be used by the IntlDateFormatter
      *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0. Provide options to the constructor instead.
+     *
      * @param string|null $locale
      * @return $this
      */
@@ -232,6 +254,8 @@ class DateTime extends AbstractValidator
 
     /**
      * Returns the locale used by the IntlDateFormatter or the system default if none given
+     *
+     * @deprecated Since 2.28.0 - This method will be removed in 3.0
      *
      * @return string|null
      */
@@ -275,7 +299,7 @@ class DateTime extends AbstractValidator
                 $this->invalidateFormatter = true;
                 return false;
             }
-        } catch (IntlException $intlException) {
+        } catch (IntlException) {
             $this->error(self::INVALID_DATETIME);
             $this->invalidateFormatter = true;
             return false;

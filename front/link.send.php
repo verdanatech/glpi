@@ -33,10 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var \DBmysql $DB */
-global $DB;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+global $DB;
 
 Session::checkRight("link", READ);
 
@@ -56,7 +57,7 @@ if (isset($_GET["lID"])) {
 
         if ($item = getItemForItemtype($_GET["itemtype"])) {
             if (!$item->can($_GET['id'], READ)) {
-                throw new \RuntimeException('Not allowed');
+                throw new AccessDeniedHttpException();
             }
             if ($item->getFromDB($_GET["id"])) {
                 $content_filename = Link::generateLinkContents($link, $item, false);
@@ -75,7 +76,7 @@ if (isset($_GET["lID"])) {
                     // first one (probably missing arg)
                     $data = reset($content_data);
                 }
-                header("Content-disposition: filename=\"$filename\"");
+                header("Content-disposition: filename=\"" . rawurlencode($filename) . "\"");
                 $mime = "application/scriptfile";
 
                 header("Content-type: " . $mime);

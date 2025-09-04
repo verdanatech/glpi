@@ -25,10 +25,9 @@ use function in_array;
 use function is_array;
 use function max;
 use function min;
-use function pow;
 use function preg_match;
 use function sprintf;
-use function strpos;
+use function str_starts_with;
 
 use const PHP_INT_MAX;
 
@@ -192,7 +191,7 @@ class DateStep extends Date
     {
         // Custom week format support
         if (
-            strpos($this->format, 'Y-\WW') === 0
+            str_starts_with($this->format, 'Y-\WW')
             && preg_match('/^([0-9]{4})\-W([0-9]{2})/', $value, $matches)
         ) {
             $date = new DateTime();
@@ -204,7 +203,7 @@ class DateStep extends Date
         // Invalid dates can show up as warnings (ie. "2007-02-99")
         // and still return a DateTime object.
         $errors = DateTime::getLastErrors();
-        if ($errors['warning_count'] > 0) {
+        if (is_array($errors) && $errors['warning_count'] > 0) {
             if ($addErrors) {
                 $this->error(self::FALSEFORMAT);
             }
@@ -463,7 +462,7 @@ class DateStep extends Date
 
         // If we use PHP_INT_MAX DateInterval::__construct falls over with a bad format error
         // before we reach the max on 64 bit machines
-        $maxInteger = min(pow(2, 31), PHP_INT_MAX);
+        $maxInteger = min(2 ** 31, PHP_INT_MAX);
         // check for integer overflow and split $minimum interval if needed
         $maximumInterval        = max($intervalParts);
         $requiredStepIterations = 1;

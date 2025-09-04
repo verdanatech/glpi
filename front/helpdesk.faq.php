@@ -33,12 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $CFG_GLPI */
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 global $CFG_GLPI;
-
-$SECURITY_STRATEGY = 'faq_access';
-
-include('../inc/includes.php');
 
 // Redirect management
 if (isset($_GET["redirect"])) {

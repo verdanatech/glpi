@@ -33,14 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Toolbox\Sanitizer;
-
-include('../inc/includes.php');
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 Session::checkCentralAccess();
 
 if (!isset($_REQUEST["action"])) {
-    exit;
+    return;
 }
 
 $extevent = new PlanningExternalEvent();
@@ -48,29 +47,29 @@ $extevent = new PlanningExternalEvent();
 if ($_REQUEST["action"] == "get_events") {
     header("Content-Type: application/json; charset=UTF-8");
     echo json_encode(Planning::constructEventsArray($_REQUEST));
-    exit;
+    return;
 }
 
 if (($_POST["action"] ?? null) == "update_event_times") {
     echo Planning::updateEventTimes($_POST);
-    exit;
+    return;
 }
 
 if (($_POST["action"] ?? null) == "view_changed") {
     Planning::viewChanged($_POST['view']);
-    exit;
+    return;
 }
 
 if (($_POST["action"] ?? null) == "clone_event") {
     $extevent->check(-1, CREATE);
     echo Planning::cloneEvent($_POST['event']);
-    exit;
+    return;
 }
 
 if (($_POST["action"] ?? null) == "delete_event") {
     $extevent->check(-1, DELETE);
     echo Planning::deleteEvent($_POST['event']);
-    exit;
+    return;
 }
 
 if ($_REQUEST["action"] == "get_externalevent_template") {
@@ -82,11 +81,10 @@ if ($_REQUEST["action"] == "get_externalevent_template") {
         $template = new PlanningExternalEventTemplate();
         $template->getFromDB($_POST[$key]);
 
-        $template->fields = Sanitizer::decodeHtmlSpecialCharsRecursive($template->fields);
         $template->fields['rrule'] = json_decode($template->fields['rrule'], true);
         header("Content-Type: application/json; charset=UTF-8");
         echo json_encode($template->fields, JSON_NUMERIC_CHECK);
-        exit;
+        return;
     }
 }
 
@@ -144,5 +142,3 @@ if (($_POST["action"] ?? null) == "color_filter") {
 if (($_POST["action"] ?? null) == "delete_filter") {
     Planning::deleteFilter($_POST);
 }
-
-Html::ajaxFooter();

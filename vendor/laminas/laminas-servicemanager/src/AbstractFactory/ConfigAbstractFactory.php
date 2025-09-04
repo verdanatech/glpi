@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Laminas\ServiceManager\AbstractFactory;
 
 use ArrayObject;
-use Interop\Container\ContainerInterface;
 use Laminas\ServiceManager\Exception\ServiceNotCreatedException;
 use Laminas\ServiceManager\Factory\AbstractFactoryInterface;
+use Psr\Container\ContainerInterface;
 
 use function array_key_exists;
 use function array_map;
@@ -36,9 +36,7 @@ final class ConfigAbstractFactory implements AbstractFactoryInterface
         return is_array($dependencies) && array_key_exists($requestedName, $dependencies);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         if (! $container->has('config')) {

@@ -33,11 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Event;
-
-include('../inc/includes.php');
-
-Session::checkLoginUser();
+use Glpi\Exception\Http\BadRequestHttpException;
 
 $inquest = new TicketSatisfaction();
 
@@ -56,4 +55,4 @@ if (isset($_POST["update"])) {
     Html::back();
 }
 
-Html::displayErrorAndDie('Lost');
+throw new BadRequestHttpException();

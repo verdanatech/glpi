@@ -32,13 +32,19 @@
  *
  * ---------------------------------------------------------------------
  */
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\StateInterface;
 
 /**
  * Cluster Class
  **/
-class Cluster extends CommonDBTM
+class Cluster extends CommonDBTM implements AssignableItemInterface, StateInterface
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
+    use Glpi\Features\State;
+    use AssignableItem;
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -48,6 +54,9 @@ class Cluster extends CommonDBTM
     {
         return [
             NetworkPort::class,
+            Appliance_Item::class,
+            Contract_Item::class,
+            ManualLink::class,
         ];
     }
 
@@ -56,20 +65,31 @@ class Cluster extends CommonDBTM
         return _n('Cluster', 'Clusters', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'inventory';
+    }
+
     public function defineTabs($options = [])
     {
         $ong = [];
         $this->addDefaultFormTab($ong)
          ->addImpactTab($ong, $options)
-         ->addStandardTab('Item_Cluster', $ong, $options)
-         ->addStandardTab('NetworkPort', $ong, $options)
-         ->addStandardTab('Contract_Item', $ong, $options)
-         ->addStandardTab('Document_Item', $ong, $options)
-         ->addStandardTab('Ticket', $ong, $options)
-         ->addStandardTab('Item_Problem', $ong, $options)
-         ->addStandardTab('Change_Item', $ong, $options)
-         ->addStandardTab('Appliance_Item', $ong, $options)
-         ->addStandardTab('Log', $ong, $options);
+         ->addStandardTab(Item_Cluster::class, $ong, $options)
+         ->addStandardTab(NetworkPort::class, $ong, $options)
+         ->addStandardTab(Contract_Item::class, $ong, $options)
+         ->addStandardTab(Document_Item::class, $ong, $options)
+         ->addStandardTab(Item_Ticket::class, $ong, $options)
+         ->addStandardTab(Item_Problem::class, $ong, $options)
+         ->addStandardTab(Change_Item::class, $ong, $options)
+         ->addStandardTab(ManualLink::class, $ong, $options)
+         ->addStandardTab(Appliance_Item::class, $ong, $options)
+         ->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -80,12 +100,21 @@ class Cluster extends CommonDBTM
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
+            'id'                 => 2,
+            'table'              => self::getTable(),
+            'field'              => 'id',
+            'name'               => __('ID'),
+            'datatype'           => 'number',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
             'id'                 => '31',
-            'table'              => 'glpi_states',
+            'table'              => State::getTable(),
             'field'              => 'completename',
             'name'               => __('Status'),
             'datatype'           => 'dropdown',
-            'condition'          => ['is_visible_cluster' => 1],
+            'condition'          => $this->getStateVisibilityCriteria(),
         ];
 
         $tab[] = [
@@ -100,7 +129,7 @@ class Cluster extends CommonDBTM
             'id'                 => '16',
             'table'              => $this->getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -136,15 +165,40 @@ class Cluster extends CommonDBTM
             'id'                 => '49',
             'table'              => 'glpi_groups',
             'field'              => 'completename',
-            'linkfield'          => 'groups_id_tech',
+            'linkfield'          => 'groups_id',
             'name'               => __('Group in charge'),
             'condition'          => ['is_assign' => 1],
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => 'glpi_groups_items',
+                    'joinparams'         => [
+                        'jointype'           => 'itemtype_item',
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_TECH],
+                    ],
+                ],
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
             'datatype'           => 'dropdown',
         ];
 
         $tab = array_merge($tab, Notepad::rawSearchOptionsToAdd());
 
         return $tab;
+    }
+
+    public function getFormOptionsFromUrl(array $query_params): array
+    {
+        $options = [];
+
+        if (isset($query_params['position'])) {
+            $options['position'] = $query_params['position'];
+        }
+        if (isset($query_params['room'])) {
+            $options['room'] = $query_params['room'];
+        }
+
+        return $options;
     }
 
     public function cleanDBonPurge()
@@ -155,6 +209,28 @@ class Cluster extends CommonDBTM
                 Item_Cluster::class,
             ]
         );
+    }
+
+    /**
+     * Get the cluster of an item
+     *
+     * @param CommonDBTM $item
+     *
+     * @return Cluster|null
+     */
+    public static function getClusterByItem(CommonDBTM $item): ?Cluster
+    {
+        $cluster = new self();
+        $item_cluster = new Item_Cluster();
+        if (
+            $item_cluster->getFromDBByCrit(['itemtype' => $item->getType(), 'items_id' => $item->getID()])
+            && $item_cluster->fields['clusters_id'] != 0
+            && $cluster->getFromDB($item_cluster->fields['clusters_id'])
+        ) {
+            return $cluster;
+        }
+
+        return null;
     }
 
 

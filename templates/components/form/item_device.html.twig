@@ -52,15 +52,15 @@
                <div class="row flex-row">
                   <script>
                      function showField(item) {
-                        // BC - Remove in 10.1
+                        // BC - Remove in 11.0
                         showDisclosablePasswordField(item);
                      }
                      function hideField(item) {
-                        // BC - Remove in 10.1
+                        // BC - Remove in 11.0
                         hideDisclosablePasswordField(item);
                      }
                      function copyToClipboard(item) {
-                        // BC - Remove in 10.1
+                        // BC - Remove in 11.0
                         copyDisclosablePasswordFieldToClipboard(item);
                      }
                   </script>
@@ -181,8 +181,7 @@
                      ) }}
                   {% endif %}
 
-                  {% if item.isField('states_id') %}
-                     {% set condition = item.getType() in config('state_types') ? {('is_visible_' ~ item.getType()|lower): 1} : {} %}
+                  {% if item.isField('states_id') and item is usingtrait('Glpi\\Features\\State') %}
                      {{ fields.dropdownField(
                         'State',
                         'states_id',
@@ -190,7 +189,7 @@
                         __('Status'),
                         field_options|merge({
                            'entity': item.fields['entities_id'],
-                           'condition': condition
+                           'condition': item.getStateVisibilityCriteria()
                         })
                      ) }}
                   {% endif %}
@@ -208,7 +207,7 @@
                      ) }}
                   {% endif %}
 
-                  {% if item.isField('groups_id') %}
+                  {% if item.isField('groups_id') or item is usingtrait('Glpi\\Features\\AssignableItem') %}
                      {{ fields.dropdownField(
                         'Group',
                         'groups_id',
@@ -217,6 +216,7 @@
                         field_options|merge({
                            'entity': item.fields['entities_id'],
                            'condition': {'is_itemgroup': 1},
+                           'multiple': item is usingtrait('Glpi\\Features\\AssignableItem') ? true : false
                         })
                      ) }}
                   {% endif %}

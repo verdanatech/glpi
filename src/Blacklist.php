@@ -33,6 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
+use function Safe\preg_match;
+
 /**
  * Blacklist Class
  *
@@ -40,6 +44,8 @@
  **/
 class Blacklist extends CommonDropdown
 {
+    use Clonable;
+
     // From CommonDBTM
     public $dohistory = true;
 
@@ -50,9 +56,8 @@ class Blacklist extends CommonDropdown
     /**
      * Loaded blacklists.
      * Used for caching purposes.
-     * @var array
      */
-    private $blacklists;
+    private ?array $blacklists = null;
 
     public const IP             = 1;
     public const MAC            = 2;
@@ -68,16 +73,12 @@ class Blacklist extends CommonDropdown
         return 0;
     }
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return static::canUpdate();
     }
 
-
-    /**
-     * @since 0.85
-     */
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         return static::canUpdate();
     }
@@ -170,7 +171,7 @@ class Blacklist extends CommonDropdown
         switch ($field) {
             case 'type':
                 $types = self::getTypes();
-                return $types[$values[$field]];
+                return htmlescape($types[$values[$field]]);
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
@@ -261,7 +262,6 @@ class Blacklist extends CommonDropdown
 
     private function loadBlacklists()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request(['FROM' => self::getTable()]);
@@ -278,7 +278,7 @@ class Blacklist extends CommonDropdown
     /**
      * Get blacklisted items for a specific type
      *
-     * @param string $type type to get (see constants)
+     * @param int $type type to get (see constants)
      *
      * @return array Array of blacklisted items
      **/
@@ -559,6 +559,11 @@ class Blacklist extends CommonDropdown
 
     public static function getIcon()
     {
-        return "fas fa-ban";
+        return "ti ti-ban";
+    }
+
+    public function getCloneRelations(): array
+    {
+        return [];
     }
 }

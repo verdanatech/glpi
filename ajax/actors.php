@@ -33,11 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
-
-Session::checkLoginUser();
-
 switch ($_REQUEST['action']) {
     case "getActors":
         header("Content-Type: application/json; charset=UTF-8");

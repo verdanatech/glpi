@@ -2,12 +2,14 @@
 
 namespace Laminas\I18n\Translator;
 
-use Interop\Container\ContainerInterface;
 use Laminas\ServiceManager\FactoryInterface;
 use Laminas\ServiceManager\ServiceLocatorInterface;
+use Psr\Container\ContainerInterface;
 
 /**
  * Translator.
+ *
+ * @final
  */
 class TranslatorServiceFactory implements FactoryInterface
 {
@@ -32,6 +34,9 @@ class TranslatorServiceFactory implements FactoryInterface
 
     /**
      * laminas-servicemanager v2 factory for creating Translator instance.
+     *
+     * @deprecated Since 2.16.0 - This component is no longer compatible with Service Manager v2.
+     *             This method will be removed in version 3.0
      *
      * Proxies to `__invoke()`.
      *

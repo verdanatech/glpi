@@ -33,33 +33,33 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Event;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
+global $DB;
+
 /**
  * Following variables have to be defined before inclusion of this file:
  * @var CommonITILTask $task
  */
 
-use Glpi\Event;
-
-/** @var \DBmysql $DB */
-global $DB;
-
-// autoload include in objecttask.form (tickettask, problemtask,...)
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
 Session::checkCentralAccess();
 
 if (!($task instanceof CommonITILTask)) {
-    Html::displayErrorAndDie('');
+    throw new BadRequestHttpException();
 }
 if (!$task->canView()) {
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
-$itemtype = $task->getItilObjectItemType();
-$fk       = getForeignKeyFieldForItemType($itemtype);
+$track = $task::getItilObjectItemInstance();
 
-$track = new $itemtype();
+$itemtype = $track::class;
+$fk       = $track::getForeignKeyField();
+
 $track->getFromDB($task->getField($fk));
 
 $redirect = null;
@@ -81,7 +81,7 @@ if (isset($_POST["add"])) {
     $handled = true;
 } elseif (isset($_POST["purge"])) {
     $task->check($_POST['id'], PURGE);
-    $task->delete($_POST, 1);
+    $task->delete($_POST, true);
 
     Event::log(
         $task->getField($fk),
@@ -123,23 +123,6 @@ if (isset($_POST["add"])) {
 }
 
 if ($handled) {
-    if (isset($_POST['kb_linked_id'])) {
-        //if followup should be linked to selected KB entry
-        $params = [
-            'knowbaseitems_id' => $_POST['kb_linked_id'],
-            'itemtype'         => $itemtype,
-            'items_id'         => $task->getField($fk),
-        ];
-        $existing = $DB->request(
-            'glpi_knowbaseitems_items',
-            $params
-        );
-        if ($existing->numrows() == 0) {
-            $kb_item_item = new KnowbaseItem_Item();
-            $kb_item_item->add($params);
-        }
-    }
-
     if ($track->can($task->getField($fk), READ)) {
         $toadd = '';
         // Copy followup to KB redirect to KB
@@ -149,7 +132,7 @@ if ($handled) {
         $redirect = $track->getLinkURL() . $toadd;
     } else {
         Session::addMessageAfterRedirect(
-            __('You have been redirected because you no longer have access to this ticket'),
+            __s('You have been redirected because you no longer have access to this ticket'),
             true,
             ERROR
         );
@@ -162,5 +145,3 @@ if (null == $redirect) {
 } else {
     Html::redirect($redirect);
 }
-
-Html::displayErrorAndDie('Lost');

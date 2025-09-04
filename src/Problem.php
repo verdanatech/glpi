@@ -34,13 +34,16 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\ContentTemplates\Parameters\CommonITILObjectParameters;
 use Glpi\ContentTemplates\Parameters\ProblemParameters;
+use Glpi\DBAL\QueryExpression;
 use Glpi\RichText\RichText;
+use Glpi\Search\DefaultSearchRequestInterface;
 
 /**
  * Problem class
  **/
-class Problem extends CommonITILObject
+class Problem extends CommonITILObject implements DefaultSearchRequestInterface
 {
     // From CommonDBTM
     public $dohistory = true;
@@ -60,27 +63,22 @@ class Problem extends CommonITILObject
     public const IMPACT_MASK_FIELD    = 'impact_mask';
     public const STATUS_MATRIX_FIELD  = 'problem_status';
 
-    public const READMY               = 1;
-    public const READALL              = 1024;
-
-
-    /**
-     * Name of the type
-     *
-     * @param $nb : number of item in the type
-     **/
     public static function getTypeName($nb = 0)
     {
         return _n('Problem', 'Problems', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['helpdesk', self::class];
+    }
 
     public function canSolve()
     {
 
         return (self::isAllowedStatus($this->fields['status'], self::SOLVED)
               // No edition on closed status
-              && !in_array($this->fields['status'], $this->getClosedStatusArray())
+              && !in_array($this->fields['status'], static::getClosedStatusArray())
               && (Session::haveRight(self::$rightname, UPDATE)
                   || (Session::haveRight(self::$rightname, self::READMY)
                       && ($this->isUser(CommonITILActor::ASSIGN, Session::getLoginUserID())
@@ -92,7 +90,7 @@ class Problem extends CommonITILObject
     }
 
 
-    public static function canView()
+    public static function canView(): bool
     {
         return Session::haveRightsOr(self::$rightname, [self::READALL, self::READMY]);
     }
@@ -103,7 +101,7 @@ class Problem extends CommonITILObject
      *
      * @return boolean
      **/
-    public function canViewItem()
+    public function canViewItem(): bool
     {
 
         if (!Session::haveAccessToEntity($this->getEntityID(), $this->isRecursive())) {
@@ -133,7 +131,7 @@ class Problem extends CommonITILObject
      *
      * @return boolean
      **/
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
 
         if (!Session::haveAccessToEntity($this->getEntityID())) {
@@ -153,7 +151,7 @@ class Problem extends CommonITILObject
     public function canReopen()
     {
         return Session::haveRight('followup', CREATE)
-             && in_array($this->fields["status"], $this->getClosedStatusArray())
+             && in_array($this->fields["status"], static::getClosedStatusArray())
              && ($this->isAllowedStatus($this->fields['status'], self::INCOMING)
                  || $this->isAllowedStatus($this->fields['status'], self::ASSIGNED));
     }
@@ -161,7 +159,6 @@ class Problem extends CommonITILObject
 
     public function pre_deleteItem()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (!isset($this->input['_disablenotif']) && $CFG_GLPI['use_notifications']) {
@@ -175,14 +172,44 @@ class Problem extends CommonITILObject
     {
 
         if (static::canView()) {
-            switch ($item->getType()) {
-                case __CLASS__:
+            switch ($item::class) {
+                case self::class:
                     $ong = [];
                     if ($item->canUpdate()) {
-                        $ong[1] = __('Statistics');
+                        $ong[1] = static::createTabEntry(__('Statistics'), 0, null, 'ti ti-chart-pie');
                     }
 
                     return $ong;
+
+                case User::class:
+                    $nb = 0;
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = countElementsInTable(
+                            ['glpi_problems', 'glpi_problems_users'],
+                            [
+                                'glpi_problems_users.problems_id'  => new QueryExpression(DBmysql::quoteName('glpi_problems.id')),
+                                'glpi_problems_users.users_id'    => $item->getID(),
+                                'glpi_problems_users.type'        => CommonITILActor::REQUESTER,
+                                'glpi_problems.is_deleted'        => 0,
+                            ] + getEntitiesRestrictCriteria(self::getTable())
+                        );
+                    }
+                    return self::createTabEntry(__('Created problems'), $nb, $item::getType());
+
+                case Group::class:
+                    $nb = 0;
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = countElementsInTable(
+                            ['glpi_problems', 'glpi_groups_problems'],
+                            [
+                                'glpi_groups_problems.problems_id' => new QueryExpression(DBmysql::quoteName('glpi_problems.id')),
+                                'glpi_groups_problems.groups_id'  => $item->getID(),
+                                'glpi_groups_problems.type'       => CommonITILActor::REQUESTER,
+                                'glpi_problems.is_deleted'        => 0,
+                            ] + getEntitiesRestrictCriteria(self::getTable())
+                        );
+                    }
+                    return self::createTabEntry(__('Created problems'), $nb, $item::getType());
             }
         }
         return '';
@@ -193,12 +220,17 @@ class Problem extends CommonITILObject
     {
 
         switch (get_class($item)) {
-            case __CLASS__:
+            case self::class:
                 switch ($tabnum) {
                     case 1:
                         $item->showStats();
                         break;
                 }
+                break;
+
+            case User::class:
+            case Group::class:
+                return self::showListForItem($item, $withtemplate);
         }
         return true;
     }
@@ -208,20 +240,18 @@ class Problem extends CommonITILObject
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab(__CLASS__, $ong, $options);
-        $this->addStandardTab('Problem_Ticket', $ong, $options);
-        $this->addStandardTab('Change_Problem', $ong, $options);
-        $this->addStandardTab('ProblemCost', $ong, $options);
-        $this->addStandardTab('Itil_Project', $ong, $options);
-        $this->addStandardTab('Item_Problem', $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
+        $this->addStandardTab(Problem_Ticket::class, $ong, $options);
+        $this->addStandardTab(Change_Problem::class, $ong, $options);
+        $this->addStandardTab(ProblemCost::class, $ong, $options);
+        $this->addStandardTab(Itil_Project::class, $ong, $options);
+        $this->addStandardTab(Item_Problem::class, $ong, $options);
         if ($this->hasImpactTab()) {
-            $this->addStandardTab('Impact', $ong, $options);
+            $this->addStandardTab(Impact::class, $ong, $options);
         }
-        $this->addStandardTab('Change_Problem', $ong, $options);
-        $this->addStandardTab('Problem_Ticket', $ong, $options);
-        $this->addStandardTab('Notepad', $ong, $options);
-        $this->addStandardTab('KnowbaseItem_Item', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Notepad::class, $ong, $options);
+        $this->addStandardTab(KnowbaseItem_Item::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -243,6 +273,7 @@ class Problem extends CommonITILObject
                 Problem_Ticket::class,
                 // Done by parent: Problem_User::class,
                 ProblemCost::class,
+                Problem_Problem::class,
             ]
         );
 
@@ -252,7 +283,6 @@ class Problem extends CommonITILObject
 
     public function post_updateItem($history = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         parent::post_updateItem($history);
@@ -272,7 +302,7 @@ class Problem extends CommonITILObject
             if (
                 isset($this->input["status"]) && $this->input["status"]
                 && in_array("status", $this->updates)
-                && in_array($this->input["status"], $this->getSolvedStatusArray())
+                && in_array($this->input["status"], static::getSolvedStatusArray())
             ) {
                 $mailtype = "solved";
             }
@@ -281,7 +311,7 @@ class Problem extends CommonITILObject
                 isset($this->input["status"])
                 && $this->input["status"]
                 && in_array("status", $this->updates)
-                && in_array($this->input["status"], $this->getClosedStatusArray())
+                && in_array($this->input["status"], static::getClosedStatusArray())
             ) {
                 $mailtype = "closed";
             }
@@ -299,6 +329,8 @@ class Problem extends CommonITILObject
         if ($input === false) {
             return false;
         }
+
+        $this->processRules(RuleCommonITILObject::ONADD, $input);
 
         if (!isset($input['_skip_auto_assign']) || $input['_skip_auto_assign'] === false) {
             // Manage auto assign
@@ -320,20 +352,20 @@ class Problem extends CommonITILObject
         return $input;
     }
 
-
     public function prepareInputForUpdate($input)
     {
         $input = $this->transformActorsInput($input);
 
-        $input = parent::prepareInputForUpdate($input);
+        $entid = $input['entities_id'] ?? $this->fields['entities_id'];
+        $this->processRules(RuleCommonITILObject::ONUPDATE, $input, $entid);
 
+        $input = parent::prepareInputForUpdate($input);
         return $input;
     }
 
 
     public function post_addItem()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         parent::post_addItem();
@@ -369,7 +401,7 @@ class Problem extends CommonITILObject
                     unset($row['tickets_id']);
                     unset($row['id']);
                     $row['problems_id'] = $this->fields['id'];
-                    $assoc->add(Toolbox::addslashes_deep($row));
+                    $assoc->add($row);
                 }
             }
         }
@@ -388,14 +420,10 @@ class Problem extends CommonITILObject
                 '_disablenotif' => true,
             ]);
         }
-
-        $this->handleItemsIdInput();
     }
 
-    /**
-     * Get default values to search engine to override
-     **/
-    public static function getDefaultSearchRequest()
+    #[Override]
+    public static function getDefaultSearchRequest(): array
     {
 
         $search = ['criteria' => [0 => ['field'      => 12,
@@ -415,12 +443,12 @@ class Problem extends CommonITILObject
     {
         $actions = parent::getSpecificMassiveActions($checkitem);
         if (ProblemTask::canCreate()) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_task'] = __('Add a new task');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_task'] = __s('Add a new task');
         }
         if ($this->canAdminActors()) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_actor'] = __('Add an actor');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'update_notif']
-               = __('Set notifications for all actors');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'add_actor'] = __s('Add an actor');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'update_notif']
+               = __s('Set notifications for all actors');
         }
 
         return $actions;
@@ -556,119 +584,135 @@ class Problem extends CommonITILObject
     }
 
 
-    public static function rawSearchOptionsToAdd()
+    public static function rawSearchOptionsToAdd(string $itemtype)
     {
+        global $CFG_GLPI;
 
         $tab = [];
 
-        $tab[] = [
-            'id'                 => 'problem',
-            'name'               => __('Problems'),
-        ];
+        if ($itemtype == "Ticket") {
+            $tab[] = [
+                'id'                 => 'problem',
+                'name'               => __('Problems'),
+            ];
 
-        $tab[] = [
-            'id'                 => '200',
-            'table'              => 'glpi_problems_tickets',
-            'field'              => 'id',
-            'name'               => _x('quantity', 'Number of problems'),
-            'forcegroupby'       => true,
-            'usehaving'          => true,
-            'datatype'           => 'count',
-            'massiveaction'      => false,
-            'joinparams'         => [
-                'jointype'           => 'child',
-            ],
-        ];
+            //FIXME: Fix the search options for linked ITIL objects
+            $tab[] = [
+                'id'                 => '200',
+                'table'              => 'glpi_problems_tickets',
+                'field'              => 'id',
+                'name'               => _x('quantity', 'Number of problems'),
+                'forcegroupby'       => true,
+                'usehaving'          => true,
+                'datatype'           => 'count',
+                'massiveaction'      => false,
+                'joinparams'         => [
+                    'jointype'           => 'child',
+                ],
+            ];
 
-        $tab[] = [
-            'id'                 => '201',
-            'table'              => Problem::getTable(),
-            'field'              => 'name',
-            'name'               => Problem::getTypeName(1),
-            'datatype'           => 'dropdown',
-            'massiveaction'      => false,
-            'forcegroupby'       => true,
-            'joinparams'         => [
-                'beforejoin'         => [
-                    'table'              => Problem_Ticket::getTable(),
-                    'joinparams'         => [
-                        'jointype'           => 'child',
+            $tab[] = [
+                'id'                 => '201',
+                'table'              => Problem::getTable(),
+                'field'              => 'name',
+                'name'               => Problem::getTypeName(1),
+                'datatype'           => 'dropdown',
+                'massiveaction'      => false,
+                'forcegroupby'       => true,
+                'joinparams'         => [
+                    'beforejoin'         => [
+                        'table'              => Problem_Ticket::getTable(),
+                        'joinparams'         => [
+                            'jointype'           => 'child',
+                        ],
                     ],
                 ],
-            ],
-        ];
+            ];
 
-        $tab[] = [
-            'id'                  => '202',
-            'table'               => Problem::getTable(),
-            'field'               => 'status',
-            'name'                => __('Status'),
-            'datatype'            => 'specific',
-            'searchtype'          => 'equals',
-            'searchequalsonfield' => true,
-            'massiveaction'       => false,
-            'forcegroupby'        => true,
-            'joinparams'          => [
-                'beforejoin'          => [
-                    'table'               => Problem_Ticket::getTable(),
-                    'joinparams'          => [
-                        'jointype'            => 'child',
+            $tab[] = [
+                'id'                  => '202',
+                'table'               => Problem::getTable(),
+                'field'               => 'status',
+                'name'                => __('Status'),
+                'datatype'            => 'specific',
+                'searchtype'          => 'equals',
+                'searchequalsonfield' => true,
+                'massiveaction'       => false,
+                'forcegroupby'        => true,
+                'joinparams'          => [
+                    'beforejoin'          => [
+                        'table'               => Problem_Ticket::getTable(),
+                        'joinparams'          => [
+                            'jointype'            => 'child',
+                        ],
                     ],
                 ],
-            ],
-        ];
+            ];
 
-        $tab[] = [
-            'id'                 => '203',
-            'table'              => Problem::getTable(),
-            'field'              => 'solvedate',
-            'name'               => __('Resolution date'),
-            'datatype'           => 'datetime',
-            'massiveaction'      => false,
-            'forcegroupby'       => true,
-            'joinparams'         => [
-                'beforejoin'         => [
-                    'table'              => Problem_Ticket::getTable(),
-                    'joinparams'         => [
-                        'jointype'           => 'child',
+            $tab[] = [
+                'id'                 => '203',
+                'table'              => Problem::getTable(),
+                'field'              => 'solvedate',
+                'name'               => __('Resolution date'),
+                'datatype'           => 'datetime',
+                'massiveaction'      => false,
+                'forcegroupby'       => true,
+                'joinparams'         => [
+                    'beforejoin'         => [
+                        'table'              => Problem_Ticket::getTable(),
+                        'joinparams'         => [
+                            'jointype'           => 'child',
+                        ],
                     ],
                 ],
-            ],
-        ];
+            ];
 
-        $tab[] = [
-            'id'                 => '204',
-            'table'              => Problem::getTable(),
-            'field'              => 'date',
-            'name'               => __('Opening date'),
-            'datatype'           => 'datetime',
-            'massiveaction'      => false,
-            'forcegroupby'       => true,
-            'joinparams'         => [
-                'beforejoin'         => [
-                    'table'              => Problem_Ticket::getTable(),
-                    'joinparams'         => [
-                        'jointype'           => 'child',
+            $tab[] = [
+                'id'                 => '204',
+                'table'              => Problem::getTable(),
+                'field'              => 'date',
+                'name'               => __('Opening date'),
+                'datatype'           => 'datetime',
+                'massiveaction'      => false,
+                'forcegroupby'       => true,
+                'joinparams'         => [
+                    'beforejoin'         => [
+                        'table'              => Problem_Ticket::getTable(),
+                        'joinparams'         => [
+                            'jointype'           => 'child',
+                        ],
                     ],
                 ],
-            ],
-        ];
+            ];
+        } elseif (in_array($itemtype, $CFG_GLPI["ticket_types"])) {
+            $tab[] = [
+                'id'            => 140,
+                'table'         => self::getTable(),
+                'field'         => "id",
+                'datatype'      => "count",
+                'name'          => _x('quantity', 'Number of problems'),
+                'forcegroupby'  => true,
+                'usehaving'     => true,
+                'massiveaction' => false,
+                'joinparams'    => [
+                    'beforejoin' => [
+                        'table' => self::getItemLinkClass()::getTable(),
+                        'joinparams' => [
+                            'jointype' => 'itemtype_item',
+                        ],
+                    ],
+                    'condition' => getEntitiesRestrictCriteria('NEWTABLE'),
+                ],
+            ];
+        }
 
         return $tab;
     }
 
-    /**
-     * get the problem status list
-     *
-     * @param $withmetaforsearch  boolean  (false by default)
-     *
-     * @return array
-     **/
     public static function getAllStatusArray($withmetaforsearch = false)
     {
-
-        // To be overridden by class
-        $tab = [self::INCOMING => _x('status', 'New'),
+        $tab = [
+            self::INCOMING => _x('status', 'New'),
             self::ACCEPTED => _x('status', 'Accepted'),
             self::ASSIGNED => _x('status', 'Processing (assigned)'),
             self::PLANNED  => _x('status', 'Processing (planned)'),
@@ -757,10 +801,6 @@ class Problem extends CommonITILObject
      **/
     public static function showCentralList($start, $status = "process", $showgroupproblems = true)
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         if (!static::canView()) {
@@ -860,7 +900,6 @@ class Problem extends CommonITILObject
                 'criteria' => [],
                 'reset'    => 'reset',
             ];
-            $forcetab         = '';
             if ($showgroupproblems) {
                 switch ($status) {
                     case "waiting":
@@ -874,9 +913,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = 'mygroups';
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                         Toolbox::append_params($options, '&amp;') . "\">" .
-                         Html::makeTitle(__('Problems on pending status'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                         . Toolbox::append_params($options, '&amp;') . "\">"
+                         . Html::makeTitle(__('Problems on pending status'), $displayed_row_count, $total_row_count) . "</a>";
                         break;
 
                     case "process":
@@ -890,9 +929,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = 'mygroups';
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                         Toolbox::append_params($options, '&amp;') . "\">" .
-                         Html::makeTitle(__('Problems to be processed'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                         . Toolbox::append_params($options, '&amp;') . "\">"
+                         . Html::makeTitle(__('Problems to be processed'), $displayed_row_count, $total_row_count) . "</a>";
                         break;
 
                     default:
@@ -906,9 +945,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = 'mygroups';
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                         Toolbox::append_params($options, '&amp;') . "\">" .
-                         Html::makeTitle(__('Your problems in progress'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                         . Toolbox::append_params($options, '&amp;') . "\">"
+                         . Html::makeTitle(__('Your problems in progress'), $displayed_row_count, $total_row_count) . "</a>";
                 }
             } else {
                 switch ($status) {
@@ -923,9 +962,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = Session::getLoginUserID();
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                         Toolbox::append_params($options, '&amp;') . "\">" .
-                         Html::makeTitle(__('Problems on pending status'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                         . Toolbox::append_params($options, '&amp;') . "\">"
+                         . Html::makeTitle(__('Problems on pending status'), $displayed_row_count, $total_row_count) . "</a>";
                         break;
 
                     case "process":
@@ -939,9 +978,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = 'process';
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                         Toolbox::append_params($options, '&amp;') . "\">" .
-                         Html::makeTitle(__('Problems to be processed'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                         . Toolbox::append_params($options, '&amp;') . "\">"
+                         . Html::makeTitle(__('Problems to be processed'), $displayed_row_count, $total_row_count) . "</a>";
                         break;
 
                     default:
@@ -955,9 +994,9 @@ class Problem extends CommonITILObject
                         $options['criteria'][1]['value']      = 'notold';
                         $options['criteria'][1]['link']       = 'AND';
 
-                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?" .
-                        Toolbox::append_params($options, '&amp;') . "\">" .
-                        Html::makeTitle(__('Your problems in progress'), $displayed_row_count, $total_row_count) . "</a>";
+                        $main_header = "<a href=\"" . $CFG_GLPI["root_doc"] . "/front/problem.php?"
+                        . Toolbox::append_params($options, '&amp;') . "\">"
+                        . Html::makeTitle(__('Your problems in progress'), $displayed_row_count, $total_row_count) . "</a>";
                 }
             }
 
@@ -998,7 +1037,7 @@ class Problem extends CommonITILObject
                         $bgcolor = $_SESSION["glpipriority_" . $problem->fields["priority"]];
                         $name = sprintf(__('%1$s: %2$s'), __('ID'), $problem->fields["id"]);
                         $row['values'][] = [
-                            'class' => 'priority_block',
+                            'class' => 'badge_block',
                             'content' => "<span style='background: $bgcolor'></span>&nbsp;$name",
                         ];
 
@@ -1009,13 +1048,12 @@ class Problem extends CommonITILObject
                         ) {
                             foreach ($problem->users[CommonITILActor::REQUESTER] as $d) {
                                 if ($d["users_id"] > 0) {
-                                    $userdata = getUserName($d["users_id"], 2);
-                                    $name = '<i class="fas fa-sm fa-fw fa-user text-muted me-1"></i>' .
-                                        $userdata['name'];
+                                    $name = '<i class="fs-4 ti ti-user text-muted me-1"></i>'
+                                        . htmlescape(getUserName($d["users_id"]));
                                     $requesters[] = $name;
                                 } else {
-                                    $requesters[] = '<i class="fas fa-sm fa-fw fa-envelope text-muted me-1"></i>' .
-                                        $d['alternative_email'];
+                                    $requesters[] = '<i class="fs-4 ti ti-mail text-muted me-1"></i>'
+                                        . $d['alternative_email'];
                                 }
                             }
                         }
@@ -1025,17 +1063,14 @@ class Problem extends CommonITILObject
                             && count($problem->groups[CommonITILActor::REQUESTER])
                         ) {
                             foreach ($problem->groups[CommonITILActor::REQUESTER] as $d) {
-                                $requesters[] = '<i class="fas fa-sm fa-fw fa-users text-muted me-1"></i>' .
-                                    Dropdown::getDropdownName("glpi_groups", $d["groups_id"]);
+                                $requesters[] = '<i class="fs-4 ti ti-users text-muted me-1"></i>'
+                                    . Dropdown::getDropdownName("glpi_groups", $d["groups_id"]);
                             }
                         }
                         $row['values'][] = implode('<br>', $requesters);
 
-                        $link = "<a id='problem" . $problem->fields["id"] . $rand . "' href='" .
-                            Problem::getFormURLWithID($problem->fields["id"]);
-                        if ($forcetab != '') {
-                            $link .= "&amp;forcetab=" . $forcetab;
-                        }
+                        $link = "<a id='problem" . $problem->fields["id"] . $rand . "' href='"
+                            . Problem::getFormURLWithID($problem->fields["id"]);
                         $link .= "'>";
                         $link .= "<span class='b'>" . $problem->fields["name"] . "</span></a>";
                         $link = sprintf(
@@ -1082,10 +1117,6 @@ class Problem extends CommonITILObject
      **/
     public static function showCentralCount(bool $foruser = false, bool $display = true)
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         // show a tab with count of jobs in the central and give link
@@ -1192,7 +1223,7 @@ class Problem extends CommonITILObject
         $twig_params['items'][] = [
             'link'   => $CFG_GLPI["root_doc"] . "/front/problem.php?" . Toolbox::append_params($options),
             'text'   => __('Deleted'),
-            'icon'   => 'fas fa-trash bg-red-lt',
+            'icon'   => 'ti ti-trash bg-red-lt',
             'count'  => $number_deleted,
         ];
 
@@ -1222,11 +1253,11 @@ class Problem extends CommonITILObject
         $problem   = new self();
         $rand      = mt_rand();
         if ($problem->getFromDBwithData($ID)) {
-            $bgcolor = $_SESSION["glpipriority_" . $problem->fields["priority"]];
-            $name    = sprintf(__('%1$s: %2$s'), __('ID'), $problem->fields["id"]);
+            $bgcolor = htmlescape($_SESSION["glpipriority_" . $problem->fields["priority"]]);
+            $name    = htmlescape(sprintf(__('%1$s: %2$s'), __('ID'), $problem->fields["id"]));
             echo "<tr class='tab_bg_2'>";
             echo "<td>
-            <div class='priority_block' style='border-color: $bgcolor'>
+            <div class='badge_block' style='border-color: $bgcolor'>
                <span style='background: $bgcolor'></span>&nbsp;$name
             </div>
          </td>";
@@ -1237,16 +1268,17 @@ class Problem extends CommonITILObject
                 && count($problem->users[CommonITILActor::REQUESTER])
             ) {
                 foreach ($problem->users[CommonITILActor::REQUESTER] as $d) {
-                    if ($d["users_id"] > 0) {
-                        $userdata = getUserName($d["users_id"], 2);
-                        $name     = "<span class='b'>" . $userdata['name'] . "</span>";
+                    $user = new User();
+                    if ($d["users_id"] > 0 && $user->getFromDB($d["users_id"])) {
+                        $name = "<span class='b'>" . htmlescape($user->getName()) . "</span>";
                         if ($viewusers) {
                             $name = sprintf(
-                                __('%1$s %2$s'),
+                                __s('%1$s %2$s'),
                                 $name,
                                 Html::showToolTip(
-                                    $userdata["comment"],
-                                    ['link'    => $userdata["link"],
+                                    $user->getInfoCard(),
+                                    [
+                                        'link'    => $user->getLinkURL(),
                                         'display' => false,
                                     ]
                                 )
@@ -1254,7 +1286,7 @@ class Problem extends CommonITILObject
                         }
                         echo $name;
                     } else {
-                        echo $d['alternative_email'] . "&nbsp;";
+                        echo htmlescape($d['alternative_email']) . "&nbsp;";
                     }
                     echo "<br>";
                 }
@@ -1265,7 +1297,7 @@ class Problem extends CommonITILObject
                 && count($problem->groups[CommonITILActor::REQUESTER])
             ) {
                 foreach ($problem->groups[CommonITILActor::REQUESTER] as $d) {
-                    echo Dropdown::getDropdownName("glpi_groups", $d["groups_id"]);
+                    echo htmlescape(Dropdown::getDropdownName("glpi_groups", $d["groups_id"]));
                     echo "<br>";
                 }
             }
@@ -1273,15 +1305,15 @@ class Problem extends CommonITILObject
             echo "</td>";
 
             echo "<td>";
-            $link = "<a id='problem" . $problem->fields["id"] . $rand . "' href='" .
-                  Problem::getFormURLWithID($problem->fields["id"]);
+            $link = "<a id='problem" . $problem->getID() . $rand . "' href='"
+                  . htmlescape(Problem::getFormURLWithID($problem->getID()));
             if ($forcetab != '') {
-                $link .= "&amp;forcetab=" . $forcetab;
+                $link .= "&amp;forcetab=" . htmlescape($forcetab);
             }
             $link .= "'>";
-            $link .= "<span class='b'>" . $problem->fields["name"] . "</span></a>";
+            $link .= "<span class='b'>" . htmlescape($problem->fields["name"]) . "</span></a>";
             $link = printf(
-                __('%1$s %2$s'),
+                __s('%1$s %2$s'),
                 $link,
                 Html::showToolTip(
                     RichText::getEnhancedHtml($problem->fields['content']),
@@ -1297,7 +1329,7 @@ class Problem extends CommonITILObject
             echo "</tr>";
         } else {
             echo "<tr class='tab_bg_2'>";
-            echo "<td colspan='6' ><i>" . __('No problem in progress.') . "</i></td></tr>";
+            echo "<td colspan='6' ><i>" . __s('No problem in progress.') . "</i></td></tr>";
         }
     }
 
@@ -1309,14 +1341,11 @@ class Problem extends CommonITILObject
      * @param CommonDBTM $item
      * @param integer    $withtemplate
      *
-     * @return void
+     * @return void|false
      **/
     public static function showListForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if (!Session::haveRight(self::$rightname, self::READALL)) {
+        if (!Session::haveRightsOr(self::$rightname, [self::READALL])) {
             return false;
         }
 
@@ -1324,184 +1353,75 @@ class Problem extends CommonITILObject
             return false;
         }
 
-        $restrict = [];
-        $options  = [
-            'criteria' => [],
-            'reset'    => 'reset',
+        $options = [
+            'metacriteria' => [],
         ];
 
         switch (get_class($item)) {
-            case User::class:
-                $restrict['glpi_problems_users.users_id'] = $item->getID();
-
-                $options['criteria'][0]['field']      = 4; // status
-                $options['criteria'][0]['searchtype'] = 'equals';
-                $options['criteria'][0]['value']      = $item->getID();
-                $options['criteria'][0]['link']       = 'AND';
-
-                $options['criteria'][1]['field']      = 66; // status
-                $options['criteria'][1]['searchtype'] = 'equals';
-                $options['criteria'][1]['value']      = $item->getID();
-                $options['criteria'][1]['link']       = 'OR';
-
-                $options['criteria'][5]['field']      = 5; // status
-                $options['criteria'][5]['searchtype'] = 'equals';
-                $options['criteria'][5]['value']      = $item->getID();
-                $options['criteria'][5]['link']       = 'OR';
-
-                break;
-
-            case Supplier::class:
-                $restrict['glpi_problems_suppliers.suppliers_id'] = $item->getID();
-
-                $options['criteria'][0]['field']      = 6;
-                $options['criteria'][0]['searchtype'] = 'equals';
-                $options['criteria'][0]['value']      = $item->getID();
-                $options['criteria'][0]['link']       = 'AND';
-                break;
-
             case Group::class:
                 // Mini search engine
+                /** @var Group $item */
                 if ($item->haveChildren()) {
-                    $tree = Session::getSavedOption(__CLASS__, 'tree', 0);
-                    echo "<table class='tab_cadre_fixe'>";
-                    echo "<tr class='tab_bg_1'><th>" . __('Last problems') . "</th></tr>";
-                    echo "<tr class='tab_bg_1'><td class='center'>";
-                    echo __('Child groups');
-                    Dropdown::showYesNo(
-                        'tree',
-                        $tree,
-                        -1,
-                        ['on_change' => 'reloadTab("start=0&tree="+this.value)']
-                    );
+                    $tree = (int) Session::getSavedOption(self::class, 'tree', 0);
+                    TemplateRenderer::getInstance()->display('components/form/item_itilobject_group.html.twig', [
+                        'tree' => $tree,
+                    ]);
                 } else {
                     $tree = 0;
                 }
-                echo "</td></tr></table>";
+                break;
+        }
+        Item_Problem::showListForItem($item, $withtemplate, $options);
+    }
 
+    public static function getListForItemRestrict(CommonDBTM $item)
+    {
+        $restrict = [];
+
+        switch (true) {
+            case $item instanceof User:
+                $restrict['glpi_problems_users.users_id'] = $item->getID();
+                $restrict['glpi_problems_users.type'] = CommonITILActor::REQUESTER;
+                break;
+
+            case $item instanceof Supplier:
+                $restrict['glpi_problems_suppliers.suppliers_id'] = $item->getID();
+                $restrict['glpi_problems_suppliers.type'] = CommonITILActor::ASSIGN;
+                break;
+
+            case $item instanceof Group:
+                if ($item->haveChildren()) {
+                    $tree = Session::getSavedOption(self::class, 'tree', 0);
+                } else {
+                    $tree = 0;
+                }
                 $restrict['glpi_groups_problems.groups_id'] = ($tree ? getSonsOf('glpi_groups', $item->getID()) : $item->getID());
-
-                $options['criteria'][0]['field']      = 71;
-                $options['criteria'][0]['searchtype'] = ($tree ? 'under' : 'equals');
-                $options['criteria'][0]['value']      = $item->getID();
-                $options['criteria'][0]['link']       = 'AND';
+                $restrict['glpi_groups_problems.type'] = CommonITILActor::REQUESTER;
                 break;
 
             default:
-                $restrict['items_id'] = $item->getID();
-                $restrict['itemtype'] = $item->getType();
-                break;
-        }
-
-        // Link to open a new problem
-        if (
-            $item->getID()
-            && Problem::isPossibleToAssignType($item->getType())
-            && self::canCreate()
-            && !(!empty($withtemplate) && $withtemplate == 2)
-            && (!isset($item->fields['is_template']) || $item->fields['is_template'] == 0)
-        ) {
-            echo "<div class='firstbloc'>";
-            Html::showSimpleForm(
-                Problem::getFormURL(),
-                '_add_fromitem',
-                __('New problem for this item...'),
-                [
-                    '_from_itemtype' => $item->getType(),
-                    '_from_items_id' => $item->getID(),
-                    'entities_id'    => $item->fields['entities_id'],
-                ]
-            );
-            echo "</div>";
-        }
-
-        $criteria = self::getCommonCriteria();
-        $criteria['WHERE'] = $restrict + getEntitiesRestrictCriteria(self::getTable());
-        $criteria['LIMIT'] = (int) $_SESSION['glpilist_limit'];
-        $iterator = $DB->request($criteria);
-        $number = count($iterator);
-
-        // Ticket for the item
-        echo "<div class='table-responsive'><table class='tab_cadre_fixe'>";
-
-        $colspan = 11;
-        if (count($_SESSION["glpiactiveentities"]) > 1) {
-            $colspan++;
-        }
-        if ($number > 0) {
-            Session::initNavigateListItems(
-                'Problem',
-                //TRANS : %1$s is the itemtype name,
-                //        %2$s is the name of the item (used for headings of a list)
-                sprintf(
-                    __('%1$s = %2$s'),
-                    $item->getTypeName(1),
-                    $item->getName()
-                )
-            );
-
-            echo "<tr><th colspan='$colspan'>";
-
-            //TRANS : %d is the number of problems
-            echo sprintf(_n('Last %d problem', 'Last %d problems', $number), $number);
-            // echo "<span class='small_space'><a href='".$CFG_GLPI["root_doc"]."/front/ticket.php?".
-            //         Toolbox::append_params($options,'&amp;')."'>".__('Show all')."</a></span>";
-
-            echo "</th></tr>";
-        } else {
-            echo "<tr><th>" . __('No problem found.') . "</th></tr>";
-        }
-        // Ticket list
-        if ($number > 0) {
-            self::commonListHeader(Search::HTML_OUTPUT);
-
-            foreach ($iterator as $data) {
-                Session::addToNavigateListItems('Problem', $data["id"]);
-                self::showShort($data["id"]);
-            }
-            self::commonListHeader(Search::HTML_OUTPUT);
-        }
-
-        echo "</table></div>";
-
-        // Tickets for linked items
-        $linkeditems = $item->getLinkedItems();
-        $restrict = [];
-        if (count($linkeditems)) {
-            foreach ($linkeditems as $ltype => $tab) {
-                foreach ($tab as $lID) {
-                    $restrict[] = ['AND' => ['itemtype' => $ltype, 'items_id' => $lID]];
+                $restrict['glpi_items_problems.items_id'] = $item->getID();
+                $restrict['glpi_items_problems.itemtype'] = $item->getType();
+                // you can only see your tickets
+                if (!Session::haveRight(self::$rightname, self::READALL)) {
+                    $or = [
+                        'glpi_problems.users_id_recipient'   => Session::getLoginUserID(),
+                        [
+                            'AND' => [
+                                'glpi_problems_users.problems_id'  => 'glpi_problems.id',
+                                'glpi_problems_users.users_id'    => Session::getLoginUserID(),
+                            ],
+                        ],
+                    ];
+                    if (count($_SESSION['glpigroups'])) {
+                        $or['glpi_groups_problems.groups_id'] = $_SESSION['glpigroups'];
+                    }
+                    $restrict[] = ['OR' => $or];
                 }
-            }
         }
 
-        if (count($restrict)) {
-            $criteria = self::getCommonCriteria();
-            $criteria['WHERE'] = ['OR' => $restrict]
-            + getEntitiesRestrictCriteria(self::getTable());
-            $iterator = $DB->request($criteria);
-            $number = count($iterator);
-
-            echo "<div class='spaced'><table class='tab_cadre_fixe'>";
-            echo "<tr><th colspan='$colspan'>";
-            echo __('Problems on linked items');
-
-            echo "</th></tr>";
-            if ($number > 0) {
-                self::commonListHeader(Search::HTML_OUTPUT);
-
-                foreach ($iterator as $data) {
-                    // Session::addToNavigateListItems(TRACKING_TYPE,$data["id"]);
-                    self::showShort($data["id"]);
-                }
-                self::commonListHeader(Search::HTML_OUTPUT);
-            } else {
-                echo "<tr><th>" . __('No problem found.') . "</th></tr>";
-            }
-            echo "</table></div>";
-        }
+        return $restrict;
     }
-
 
     /**
      * @since 0.85
@@ -1557,7 +1477,7 @@ class Problem extends CommonITILObject
             'actiontime'                 => 0,
             'date'                       => 'NULL',
             '_add_validation'            => 0,
-            'users_id_validate'          => [],
+            '_validation_targets'        => [],
             '_tasktemplates_id'          => [],
             'items_id'                   => 0,
             '_actors'                    => [],
@@ -1583,7 +1503,6 @@ class Problem extends CommonITILObject
      */
     public function getActiveProblemsForItem($itemtype, $items_id)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         return $DB->request([
@@ -1607,8 +1526,8 @@ class Problem extends CommonITILObject
                 $this->getTable() . '.is_deleted' => 0,
                 'NOT'                         => [
                     $this->getTable() . '.status' => array_merge(
-                        $this->getSolvedStatusArray(),
-                        $this->getClosedStatusArray()
+                        static::getSolvedStatusArray(),
+                        static::getClosedStatusArray()
                     ),
                 ],
             ],
@@ -1626,13 +1545,8 @@ class Problem extends CommonITILObject
         return Item_Problem::class;
     }
 
-    public static function getTaskClass()
+    public static function getContentTemplatesParametersClassInstance(): CommonITILObjectParameters
     {
-        return ProblemTask::class;
-    }
-
-    public static function getContentTemplatesParametersClass(): string
-    {
-        return ProblemParameters::class;
+        return new ProblemParameters();
     }
 }

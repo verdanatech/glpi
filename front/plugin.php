@@ -33,7 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\Marketplace\View;
+
+require_once(__DIR__ . '/_check_webserver_config.php');
 
 Session::checkRight("config", UPDATE);
 
@@ -42,19 +45,21 @@ Session::checkRight("config", UPDATE);
 $plugin = new Plugin();
 $plugin->checkStates(true);
 
-Html::header(__('Setup'), $_SERVER['PHP_SELF'], "config", "plugin");
+Html::header(__('Setup'), '', "config", "plugin");
 
-\Glpi\Marketplace\View::showFeatureSwitchDialog();
+View::showFeatureSwitchDialog();
 
-$catalog_btn = '<div class="center my-2">'
-   . '<a href="http://plugins.glpi-project.org" class="btn btn-primary" target="_blank">'
-   . "<i class='fas fa-eye'></i>"
-   . "<span>" . __('See the catalog of plugins') . "</span>"
-   . '</a>'
-   . '</div>';
+echo $plugin->getPluginsListSuspendBanner();
 
 Search::show('Plugin');
 
-echo $catalog_btn;
+echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+    <div class="text-center my-2">
+        <a href="https://plugins.glpi-project.org" class="btn btn-primary" role="button">
+            <i class="ti ti-eye"></i>
+            <span>{{ label }}</span>
+        </a>
+    </div>
+TWIG, ['label' => __('See the catalog of plugins')]);
 
 Html::footer();

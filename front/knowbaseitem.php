@@ -33,25 +33,20 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Toolbox\Sanitizer;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-/** @var array $CFG_GLPI */
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
 if (!Session::haveRightsOr('knowbase', [READ, KnowbaseItem::READFAQ])) {
-    Session::redirectIfNotLoggedIn();
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 if (isset($_GET["id"])) {
     Html::redirect(KnowbaseItem::getFormURLWithID($_GET["id"]));
 }
 
-Html::header(KnowbaseItem::getTypeName(1), $_SERVER['PHP_SELF'], "tools", "knowbaseitem");
-
-// Clean for search
-$_GET = Sanitizer::dbUnescapeRecursive($_GET);
+Html::header(KnowbaseItem::getTypeName(1), '', "tools", "knowbaseitem");
 
 // Search a solution
 if (

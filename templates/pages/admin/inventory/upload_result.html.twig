@@ -30,20 +30,26 @@
  # ---------------------------------------------------------------------
  #}
 
+{% extends "layout/page_without_tabs.html.twig" %}
+
+{% set title = __('Inventory') %}
+{% set menu = ["admin", "glpi\\inventory\\inventory"] %}
+
+{% block content_body %}
 <div class="container-fluid">
     <div class="search_page">
         <div class="search-container">
             <div class="card card-sm search-card">
                 <div class="card-header search-header pe-0">
-                    <div class='btn-group flex-wrap mb-3'>
+                    <div class='btn-group flex-wrap'>
                         <span class="btn bg-blue-lt pe-none" aria-disabled="true">
-                            <i class='fas fa-check fa-lg me-2'></i>
+                            <i class='ti ti-check fs-2 me-2'></i>
                             {{ __('Import process is complete.') }}
                         </span>
                     </div>
-                    <div class='btn-group flex-wrap mb-3 ms-2'>
+                    <div class='btn-group flex-wrap ms-2'>
                         <a href="javascript:history.back();" class="btn btn-primary">
-                        <i class='fas fa-backward fa-lg me-2'></i>
+                        <i class='ti ti-player-track-prev-filled fs-2 me-2'></i>
                             {{ __('Back') }}
                         </a>
                     </div>
@@ -61,7 +67,7 @@
                                 <td>{{ filename }}</td>
                                 <td>
                                     <span class="{{ result['success'] ? 'text-success' : 'text-danger' }}">
-                                        <i class="fas {{ result['success'] ? 'fa-check' : 'fa-exclamation-triangle' }}"></i>
+                                        <i class="ti {{ result['success'] ? 'ti-check' : 'ti-alert-triange' }}"></i>
                                         {{ result['message'] }}
                                     </span>
                                 </td>
@@ -89,3 +95,4 @@
         </div>
     </div>
 </div>
+{% endblock content_body %}

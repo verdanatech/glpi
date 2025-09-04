@@ -33,6 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QuerySubQuery;
+use Glpi\DBAL\QueryUnion;
 use Glpi\Team\Team;
 
 //!  ProjectTeam Class
@@ -67,12 +70,15 @@ class ProjectTeam extends CommonDBRelation
         return 'id';
     }
 
-
     public static function getTypeName($nb = 0)
     {
         return _n('Project team', 'Project teams', $nb);
     }
 
+    public static function getIcon()
+    {
+        return 'ti ti-users';
+    }
 
     public function getForbiddenStandardMassiveAction()
     {
@@ -82,10 +88,6 @@ class ProjectTeam extends CommonDBRelation
         return $forbidden;
     }
 
-
-    /**
-     * @see CommonGLPI::getTabNameForItem()
-     **/
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
 
@@ -96,7 +98,7 @@ class ProjectTeam extends CommonDBRelation
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nb = $item->getTeamCount();
                     }
-                    return self::createTabEntry(self::getTypeName(1), $nb);
+                    return self::createTabEntry(self::getTypeName(1), $nb, $item::getType());
             }
         }
         return '';
@@ -123,7 +125,6 @@ class ProjectTeam extends CommonDBRelation
      */
     public static function expandTeamData(array $team)
     {
-        /** @var \DBmysql $DB */
         global $DB;
         $subqueries = [];
 
@@ -221,7 +222,6 @@ class ProjectTeam extends CommonDBRelation
      */
     public static function getTeamFor($projects_id, bool $expand = false)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $team = [];

@@ -32,27 +32,27 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\preg_match_all;
+
 /**
  * Update from 9.5.1 to 9.5.2
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update951to952()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
     $updateresult     = true;
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.5.2'));
     $migration->setVersion('9.5.2');
 
     /* Fix document_item migration */
-    $migration->displayTitle("Building inline images data in " . Document_Item::getTable());
+    $migration->displayMessage("Building inline images data in " . Document_Item::getTable());
 
     $now = date('Y-m-d H:i:s');
 
@@ -71,7 +71,7 @@ function update951to952()
     $docs_input = [];
     foreach ($itemtypes as $itemtype => $field) {
         // Check ticket and child items (followups, tasks, solutions) contents
-        $regexPattern = 'document\\\.send\\\.php\\\?docid=[0-9]+';
+        $regexPattern = 'document\.send\.php\?docid=[0-9]+';
         $user_field = is_a($itemtype, CommonITILObject::class, true) ? 'users_id_recipient' : 'users_id';
         $result = $DB->request([
             'SELECT' => ['id', $field, $user_field],
@@ -86,7 +86,7 @@ function update951to952()
             preg_match_all('/document\\.send\\.php\\?docid=([0-9]+)/', $data[$field], $matches);
 
             // No inline documents found in this item, skip to next
-            if (!isset($matches[1])) {
+            if (count($matches[1]) === 0) {
                 continue;
             }
 
@@ -131,19 +131,15 @@ function update951to952()
         if (countElementsInTable('glpi_documents_items', $unicity_fields) > 0) {
             continue; // Already declared in DB
         }
-        $DB->insertOrDie('glpi_documents_items', $doc_input);
+        $DB->insert('glpi_documents_items', $doc_input);
     }
     /* /Fix document_item migration */
 
     /* Register missing DomainAlert crontask */
-    CronTask::Register(
+    $migration->addCrontask(
         'Domain',
         'DomainsAlert',
         DAY_TIMESTAMP,
-        [
-            'mode'  => CronTask::MODE_EXTERNAL,
-            'state' => CronTask::STATE_WAITING,
-        ]
     );
     /* /Register missing DomainAlert crontask */
 

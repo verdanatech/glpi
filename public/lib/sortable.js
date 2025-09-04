@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 30:
+/***/ 44:
 /***/ ((module, exports, __webpack_require__) => {
 
 var __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -58,8 +58,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       return Array.from(nodes).filter(function (item) { return item.nodeType === 1 && item.matches(selector); });
   });
 
-  /* eslint-env browser */
-  /* eslint-disable no-use-before-define */
   var stores = new Map();
   /* eslint-enable no-use-before-define */
   /**
@@ -113,7 +111,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
        */
       Store.prototype.setConfig = function (key, value) {
           if (!this._config.has(key)) {
-              throw new Error("Trying to set invalid configuration item: " + key);
+              throw new Error("Trying to set invalid configuration item: ".concat(key));
           }
           // set config
           this._config.set(key, value);
@@ -126,7 +124,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
        */
       Store.prototype.getConfig = function (key) {
           if (!this._config.has(key)) {
-              throw new Error("Invalid configuration item requested: " + key);
+              throw new Error("Invalid configuration item requested: ".concat(key));
           }
           return this._config.get(key);
       };
@@ -223,7 +221,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
           return;
       }
       element.addEventListener(eventName, callback);
-      store(element).setData("event" + eventName, callback);
+      store(element).setData("event".concat(eventName), callback);
   }
   /**
    * @param {Array<HTMLElement>|HTMLElement} element
@@ -236,8 +234,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
           }
           return;
       }
-      element.removeEventListener(eventName, store(element).getData("event" + eventName));
-      store(element).deleteData("event" + eventName);
+      element.removeEventListener(eventName, store(element).getData("event".concat(eventName)));
+      store(element).deleteData("event".concat(eventName));
   }
 
   /**
@@ -550,8 +548,21 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       if (!customDragImage) {
           customDragImage = defaultDragImage;
       }
-      // check if setDragImage method is available
-      if (event.dataTransfer && event.dataTransfer.setDragImage) {
+      // set default function if none is provided
+      if (customDragImage instanceof HTMLElement) {
+          var elementOffset = offset(customDragImage);
+          var dragImage = {
+              element: customDragImage,
+              posX: event.pageX - elementOffset.left,
+              posY: event.pageY - elementOffset.top
+          };
+          // set the drag image on the event
+          event.dataTransfer.effectAllowed = 'copyMove';
+          event.dataTransfer.setData('text/plain', getEventTarget(event).id);
+          event.dataTransfer.setDragImage(dragImage.element, event.offsetX, event.offsetY);
+      }
+      else if (typeof customDragImage === 'function' && event.dataTransfer.setDragImage) {
+          // check if setDragImage method is available
           // get the elements offset
           var elementOffset = offset(draggedElement);
           // get the dragImage
@@ -730,6 +741,16 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       removeEventListener(items, 'mouseenter');
       removeEventListener(items, 'mouseleave');
   };
+  /**
+   *
+   * remove Store map values
+   * @param {Array|NodeList} items
+   */
+  var removeStoreData = function (items) {
+      if (items instanceof Array) {
+          items.forEach(function (element) { return stores.delete(element); });
+      }
+  };
   // Remove container events
   var removeContainerEvents = function (originContainer, previousContainer) {
       if (originContainer) {
@@ -826,6 +847,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
       removeEventListener(handles, 'mousedown');
       removeItemEvents(items);
       removeItemData(items);
+      removeStoreData(items);
+      removeStoreData([sortableElement]);
       removeContainerEvents(originContainer, previousContainer);
       // clear sortable flag
       sortableElement.isSortable = false;
@@ -929,7 +952,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
           // log deprecation
           ['connectWith', 'disableIEFix'].forEach(function (configKey) {
               if (Object.prototype.hasOwnProperty.call(options, configKey) && options[configKey] !== null) {
-                  console.warn("HTML5Sortable: You are using the deprecated configuration \"" + configKey + "\". This will be removed in an upcoming version, make sure to migrate to the new options when updating.");
+                  console.warn("HTML5Sortable: You are using the deprecated configuration \"".concat(configKey, "\". This will be removed in an upcoming version, make sure to migrate to the new options when updating."));
               }
           });
           // merge options with default options
@@ -991,7 +1014,15 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
               originElementIndex = getIndex(dragItem, sortableContainer.children);
               originContainer = sortableContainer;
               // add transparent clone or other ghost to cursor
-              setDragImage(e, dragItem, options.customDragImage);
+              var dragImage = null;
+              if (typeof options.customDragImage === 'string') {
+                  dragImage = document.querySelector(options.customDragImage);
+                  dragImage !== null && dragImage !== void 0 ? dragImage : console.error('The NodeList provided does not contain any valid elements.');
+              }
+              else if (options.customDragImage === 'function') {
+                  dragImage = options.customDragImage;
+              }
+              setDragImage(e, dragItem, dragImage);
               // cache selsection & add attr for dragging
               draggingHeight = getElementHeight(dragItem);
               draggingWidth = getElementWidth(dragItem);
@@ -1278,7 +1309,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*
                   return;
               }
               var options = addData(sortableElement, 'opts');
-              if (parseInt(options.maxItems) && filter(sortableElement.children, addData(sortableElement, 'items')).length > parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
+              if (parseInt(options.maxItems) && filter(sortableElement.children, addData(sortableElement, 'items')).length >= parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
                   return;
               }
               e.preventDefault();
@@ -1381,7 +1412,7 @@ var __webpack_exports__ = {};
  * ---------------------------------------------------------------------
  */
 
-window.sortable = __webpack_require__(30);
+window.sortable = __webpack_require__(44);
 })();
 
 /******/ })()

@@ -33,10 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-// Must be available during installation. This script already checks for permissions when the flag usually set by the installer is missing.
-$SECURITY_STRATEGY = 'no_check';
+use Glpi\Application\View\TemplateRenderer;
 
-include('../inc/includes.php');
+use function Safe\json_encode;
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
@@ -48,12 +47,25 @@ if (!($_SESSION['telemetry_from_install'] ?? false)) {
     $hide_sensitive_data = true;
 }
 
-echo Html::css("public/lib/prismjs.css");
-echo Html::script("public/lib/prismjs.js");
+echo Html::css("lib/monaco.css");
 
-$infos = Telemetry::getTelemetryInfos($hide_sensitive_data);
-
-echo "<p>" . __("We only collect the following data: plugins usage, performance and responsiveness statistics about user interface features, memory, and hardware configuration.") . "</p>";
-echo "<pre><code class='language-json'>";
-echo json_encode($infos, JSON_PRETTY_PRINT);
-echo "</code></pre>";
+$twig_params = [
+    'info' => json_encode(Telemetry::getTelemetryInfos($hide_sensitive_data), JSON_PRETTY_PRINT),
+    'description' => __("We only collect the following data: plugins usage, performance and responsiveness statistics about user interface features, memory, and hardware configuration."),
+];
+// language=Twig
+echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+    <p>{{ description }}</p>
+    <div id='telemetry-preview' style="height: 400px"></div>
+    <script type="module">
+        import('/js/modules/Monaco/MonacoEditor.js').then(() => {
+            window.GLPI.Monaco.createEditor('telemetry-preview', 'javascript', `{{ info|escape('js') }}`, [], {
+                readOnly: true,
+                minimap: {
+                    enabled: false
+                },
+                automaticLayout: true
+            });
+        });
+    </script>
+TWIG, $twig_params);

@@ -33,28 +33,29 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Event;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.85
  */
+
+global $CFG_GLPI;
 
 /**
  * Following variables have to be defined before inclusion of this file:
  * @var Item_Devices $item_device
  */
 
-use Glpi\Event;
-
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
-
 /** @var Item_Devices|null $item_device */
 if (!($item_device instanceof Item_Devices)) {
-    Html::displayErrorAndDie('');
+    throw new BadRequestHttpException();
 }
 if (!$item_device->canView()) {
-    // Gestion timeout session
-    Session::redirectIfNotLoggedIn();
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
 
@@ -82,7 +83,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $item_device->check($_POST["id"], PURGE);
-    $item_device->delete($_POST, 1);
+    $item_device->delete($_POST, true);
 
     Event::log(
         $_POST["id"],

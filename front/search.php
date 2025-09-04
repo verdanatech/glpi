@@ -33,16 +33,18 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $CFG_GLPI */
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 global $CFG_GLPI;
 
-include('../inc/includes.php');
-
 Session::checkCentralAccess();
-Html::header(__('Search'), $_SERVER['PHP_SELF']);
+Html::header(__('Search'));
 
 if (!$CFG_GLPI['allow_search_global']) {
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 if (isset($_GET["globalsearch"])) {
     $searchtext = trim($_GET["globalsearch"]);
@@ -67,7 +69,7 @@ if (isset($_GET["globalsearch"])) {
 
             $data = Search::getDatas($itemtype, $params);
             if ($data['data']['count'] > 0) {
-                echo "<div class='search-container w-100 disable-overflow-y' counter='" . $data['data']['count'] . "'>";
+                echo "<div class='search-container w-100 disable-overflow-y' counter='" . (int) $data['data']['count'] . "'>";
                 Search::displayData($data);
                 echo "</div>";
             } else {
@@ -76,21 +78,23 @@ if (isset($_GET["globalsearch"])) {
         }
     }
 
-    echo "<div class='search-container w-100 disable-overflow-y' counter='0'>";
-    echo "<div class='ajax-container search-display-data'>";
-    echo "<div class='card card-sm mt-0 search-card'>";
-    echo "<div class='card-header d-flex justify-content-between search-header pe-0'>";
-    echo "<h2>" . __('Other searches with no item found') . "</h2>";
-    echo "</div>";
-    echo '<ul>';
-    foreach ($no_result as $itemtype) {
-        echo "<li>" . $itemtype . "</li>";
-    }
-    echo '</ul>';
-    echo "</div>";
-    echo "</div>";
-    echo "</div>";
-    echo "</div>";
+    // language=Twig
+    echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+        <div class="search-container w-100 disable-overflow-y" counter="0">
+            <div class="ajax-container search-display-data">
+                <div class="card card-sm mt-0 search-card">
+                    <div class="card-header d-flex justify-content-between search-header pe-0">
+                        <h2>{{ label }}</h2>
+                    </div>
+                    <ul>
+                        {% for itemtype in no_result %}
+                            <li>{{ itemtype }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+TWIG, ['label' => __('Other searches with no item found'),'no_result' => $no_result]);
 }
 
 Html::footer();

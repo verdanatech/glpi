@@ -39,22 +39,18 @@
 /**
  * Update from 9.2.2 to 9.2.3
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update922to923()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
-    $current_config   = Config::getConfigurationValues('core');
     $updateresult     = true;
-    $ADDTODISPLAYPREF = [];
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.2.3'));
     $migration->setVersion('9.2.3');
 
     //add a column for the model
@@ -81,7 +77,7 @@ function update922to923()
             $notification->getFromDBByCrit(['itemtype' => $notif, 'event' => 'alert'])
             && $template->getFromDBByCrit(['itemtype' => $notif])
         ) {
-            $DB->updateOrDie(
+            $DB->update(
                 "glpi_notificationtemplatetranslations",
                 ["notificationtemplates_id" => $template->fields['id']],
                 ["notificationtemplates_id" => $notification->fields['id']]
@@ -99,7 +95,7 @@ function update922to923()
                 ) == 0
             ) {
                 //Add missing notification template link for saved searches
-                $DB->insertOrDie("glpi_notifications_notificationtemplates", [
+                $DB->insert("glpi_notifications_notificationtemplates", [
                     'notifications_id'         => $notification->fields['id'],
                     'mode'                     => Notification_NotificationTemplate::MODE_MAIL,
                     'notificationtemplates_id' => $template->fields['id'],

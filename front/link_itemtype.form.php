@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkCentralAccess();
 

@@ -32,36 +32,49 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\CalDAV\Contracts\CalDAVCompatibleItemInterface;
 use Glpi\CalDAV\Traits\VobjectConverterTrait;
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+use Glpi\DBAL\QuerySubQuery;
+use Glpi\Features\ParentStatus;
+use Glpi\Features\PlanningEvent;
 use Glpi\RichText\RichText;
-use Glpi\Toolbox\Sanitizer;
+use Ramsey\Uuid\Uuid;
 use Sabre\VObject\Component\VCalendar;
+use Safe\DateTime;
+
+use function Safe\strtotime;
 
 /// TODO extends it from CommonDBChild
 abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItemInterface
 {
-    use Glpi\Features\ParentStatus;
-    use Glpi\Features\PlanningEvent;
+    use ParentStatus;
+    use PlanningEvent;
     use VobjectConverterTrait;
+    use ITILSubItemRights;
 
     // From CommonDBTM
     public $auto_message_on_action = false;
 
-    public const SEEPUBLIC       =    1;
-    public const UPDATEMY        =    2;
-    public const UPDATEALL       = 1024;
-    //   const NOTUSED      = 2048;
-    public const ADDALLITEM      = 4096;
-    public const SEEPRIVATE      = 8192;
+    public static $rightname = 'task';
 
-
-
-    public function getItilObjectItemType()
+    /** @return class-string<CommonITILObject> */
+    public static function getItilObjectItemType()
     {
-        return str_replace('Task', '', $this->getType());
+        return str_replace('Task', '', static::class);
+    }
+
+    public static function getItilObjectItemInstance(): CommonITILObject
+    {
+        $class = static::getItilObjectItemType();
+
+        if (!is_a($class, CommonITILObject::class, true)) {
+            throw new LogicException();
+        }
+
+        return new $class();
     }
 
     public static function getNameField()
@@ -74,17 +87,158 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return 'ti ti-checkbox';
     }
 
+    public static function canCreate(): bool
+    {
+        return (Session::haveRightsOr(
+            self::$rightname,
+            [
+                self::ADDALLITEM,
+                self::ADD_AS_GROUP,
+                self::ADDMY,
+                self::ADD_AS_OBSERVER,
+                self::ADD_AS_TECHNICIAN,
+            ],
+        ));
+    }
+
+    public static function canUpdate(): bool
+    {
+        return (Session::haveRightsOr(
+            self::$rightname,
+            [
+                self::UPDATEALL,
+                self::UPDATEMY,
+            ]
+        ));
+    }
+
+
     public function canViewPrivates()
     {
-        return false;
+        return Session::haveRight(self::$rightname, self::SEEPRIVATE);
     }
 
 
     public function canEditAll()
     {
+        return Session::haveRightsOr(self::$rightname, [CREATE, DELETE, PURGE, self::UPDATEALL]);
+    }
+
+
+    /**
+     * Does current user have right to show the current task?
+     *
+     * @return boolean
+     **/
+    public function canViewItem(): bool
+    {
+        if (!$this->canReadITILItem()) {
+            return false;
+        }
+
+        if (Session::haveRight(self::$rightname, self::SEEPRIVATE)) {
+            return true;
+        }
+
+        if (
+            !$this->fields['is_private']
+            && Session::haveRight(self::$rightname, self::SEEPUBLIC)
+        ) {
+            return true;
+        }
+
+        // see task created or affected to me
+        if (
+            Session::getCurrentInterface() == "central"
+            && ($this->fields["users_id"] === Session::getLoginUserID())
+              || ($this->fields["users_id_tech"] === Session::getLoginUserID())
+        ) {
+            return true;
+        }
+
+        if (
+            $this->fields["groups_id_tech"] && ($this->fields["groups_id_tech"] > 0)
+            && isset($_SESSION["glpigroups"])
+            && in_array($this->fields["groups_id_tech"], $_SESSION["glpigroups"])
+        ) {
+            return true;
+        }
+
         return false;
     }
 
+
+    /**
+     * Does current user have right to create the current task?
+     *
+     * @return boolean
+     **/
+    public function canCreateItem(): bool
+    {
+
+        if (!$this->canReadITILItem()) {
+            return false;
+        }
+
+        $item = static::getItilObjectItemInstance();
+        if ($item->getFromDB($this->fields[$item::getForeignKeyField()])) {
+            return $item->canAddTasks();
+        }
+
+        return false;
+    }
+
+    /**
+     * Does current user have right to update the current task?
+     *
+     * @return boolean
+     **/
+    public function canUpdateItem(): bool
+    {
+        if (!$this->canReadITILItem()) {
+            return false;
+        }
+
+        $item = static::getItilObjectItemInstance();
+        if (
+            $item->getFromDB($this->fields[$item::getForeignKeyField()])
+            && in_array($item->fields['status'], $item->getClosedStatusArray())
+        ) {
+            return false;
+        }
+
+        if (Session::haveRight(self::$rightname, self::UPDATEALL)) {
+            return true;
+        }
+
+        if (
+            $this->fields['users_id'] == Session::getLoginUserID()
+            && Session::haveRight(self::$rightname, self::UPDATEMY)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /**
+     * Does current user have right to purge the current task?
+     *
+     * @return boolean
+     **/
+    public function canPurgeItem(): bool
+    {
+        $item = static::getItilObjectItemInstance();
+        if (
+            $item->getFromDB($this->fields[$item::getForeignKeyField()])
+            && in_array($item->fields['status'], $item->getClosedStatusArray())
+        ) {
+            return false;
+        }
+
+        return Session::haveRight(self::$rightname, PURGE);
+    }
 
     /**
      * Get the item associated with the current object.
@@ -95,15 +249,12 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      **/
     public function getItem()
     {
-
-        if ($item = getItemForItemtype($this->getItilObjectItemType())) {
-            if ($item->getFromDB($this->fields[$item->getForeignKeyField()])) {
-                return $item;
-            }
+        $item = static::getItilObjectItemInstance();
+        if ($item->getFromDB($this->fields[$item::getForeignKeyField()])) {
+            return $item;
         }
         return false;
     }
-
 
     /**
      * can read the parent ITIL Object ?
@@ -112,15 +263,12 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      **/
     public function canReadITILItem()
     {
-
-        $itemtype = $this->getItilObjectItemType();
-        $item     = new $itemtype();
+        $item = static::getItilObjectItemInstance();
         if (!$item->can($this->getField($item->getForeignKeyField()), READ)) {
             return false;
         }
         return true;
     }
-
 
     /**
      * can update the parent ITIL Object ?
@@ -131,26 +279,26 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      **/
     public function canUpdateITILItem()
     {
-
-        $itemtype = $this->getItilObjectItemType();
-        $item     = new $itemtype();
+        $item = static::getItilObjectItemInstance();
         if (!$item->can($this->getField($item->getForeignKeyField()), UPDATE)) {
             return false;
         }
         return true;
     }
 
+    public static function canView(): bool
+    {
+        if (!Session::haveRightsOr(static::$rightname, [self::SEEPUBLIC, self::SEEPRIVATE])) {
+            return false;
+        }
+        $parent = static::getItilObjectItemInstance();
+        return $parent::canView();
+    }
 
-    /**
-     * Name of the type
-     *
-     * @param $nb : number of item in the type (default 0)
-     **/
     public static function getTypeName($nb = 0)
     {
         return _n('Task', 'Tasks', $nb);
     }
-
 
     /**
      * @since 0.84
@@ -172,7 +320,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
-
 
     /**
      * @since 0.84
@@ -199,13 +346,12 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return parent::getSpecificValueToSelect($field, $name, $values, $options);
     }
 
-
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         /** @var CommonDBTM $item */
         if (
-            ($item->getType() == $this->getItilObjectItemType())
-            && $this->canView()
+            ($item->getType() == static::getItilObjectItemType())
+            && static::canView()
         ) {
             $nb = 0;
             if ($_SESSION['glpishow_count_on_tabs']) {
@@ -222,22 +368,20 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 }
                 $nb = countElementsInTable($this->getTable(), $restrict);
             }
-            return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+            return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb, $item::getType());
         }
         return '';
     }
 
-
     public function post_deleteFromDB()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $itemtype = $this->getItilObjectItemType();
-        $item     = new $itemtype();
-        $item->getFromDB($this->fields[$item->getForeignKeyField()]);
-        $item->updateActiontime($this->fields[$item->getForeignKeyField()]);
-        $item->updateDateMod($this->fields[$item->getForeignKeyField()]);
+        $item = static::getItilObjectItemInstance();
+        $fk = $item::getForeignKeyField();
+        $item->getFromDB($this->fields[$fk]);
+        $item->updateActiontime($this->fields[$fk]);
+        $item->updateDateMod($this->fields[$fk]);
 
         // Add log entry in the ITIL object
         $changes = [
@@ -246,10 +390,10 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $this->fields['id'],
         ];
         Log::history(
-            $this->getField($item->getForeignKeyField()),
-            $this->getItilObjectItemType(),
+            $this->getField($item::getForeignKeyField()),
+            $item::class,
             $changes,
-            $this->getType(),
+            static::class,
             Log::HISTORY_DELETE_SUBITEM
         );
 
@@ -262,14 +406,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 'task_users_id_tech'  => $this->fields['users_id_tech'],
                 'task_groups_id_tech' => $this->fields['groups_id_tech'],
             ];
-            NotificationEvent::raiseEvent('delete_task', $item, $options);
+            NotificationEvent::raiseEvent('delete_task', $item, $options, $this);
         }
     }
 
     /**
      * Handle the task duration and planned duration logic.
      *
-     * This function ensures a bi-directional link between the task duration and the planned duration.
+     * This function ensures a bidirectional link between the task duration and the planned duration.
      * These two fields can be a bit redundant when task planning is enabled.
      *
      * @param array $input The input array, passed by reference.
@@ -289,13 +433,48 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
     }
 
+    public function assignTechFromtask(array $input): void
+    {
+        //if user or group assigned to CommonITIL task, add it to the main item
+        $item = static::getItilObjectItemInstance();
+        $itemData = [
+            'users_id_tech' => $item->getActorObjectForItem(User::class),
+            'groups_id_tech' => $item->getActorObjectForItem(Group::class),
+        ];
+        $foreignkey = $item::getForeignKeyField();
+        if (!isset($input[$foreignkey])) {
+            return;
+        }
+        foreach ($itemData as $key => $value) {
+            if (empty($input[$key])) {
+                continue;
+            }
+            $actorFkey = str_replace('_tech', '', $key);
+            if (
+                $value->getFromDBByCrit(
+                    [
+                        $foreignkey => $input[$foreignkey],
+                        $actorFkey => $input[$key],
+                        'type' => CommonITILActor::ASSIGN,
+                    ]
+                ) == false
+            ) {
+                $value->add(
+                    [
+                        $foreignkey => $input[$foreignkey],
+                        $actorFkey => $input[$key],
+                        'type' => CommonITILActor::ASSIGN,
+                    ]
+                );
+            }
+        }
+    }
 
     public function prepareInputForUpdate($input)
     {
-
         if (array_key_exists('content', $input) && empty($input['content'])) {
             Session::addMessageAfterRedirect(
-                __("You can't remove description of a task."),
+                __s("You can't remove description of a task."),
                 false,
                 ERROR
             );
@@ -316,8 +495,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $input["users_id_editor"] = $uid;
         }
 
-        $itemtype      = $this->getItilObjectItemType();
-        $input["_job"] = new $itemtype();
+        $input["_job"] = static::getItilObjectItemInstance();
 
         if (
             isset($input[$input["_job"]->getForeignKeyField()])
@@ -339,7 +517,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
 
             if (!$this->test_valid_date($input)) {
                 Session::addMessageAfterRedirect(
-                    __('Error in entering dates. The starting date is later than the ending date'),
+                    __s('Error in entering dates. The starting date is later than the ending date'),
                     false,
                     ERROR
                 );
@@ -367,14 +545,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             ) {
                 if (!$calendar->isAWorkingHour(strtotime($input["begin"]))) {
                     Session::addMessageAfterRedirect(
-                        __('Start of the selected timeframe is not a working hour.'),
+                        __s('Start of the selected timeframe is not a working hour.'),
                         false,
                         ERROR
                     );
                 }
                 if (!$calendar->isAWorkingHour(strtotime($input["end"]))) {
                     Session::addMessageAfterRedirect(
-                        __('End of the selected timeframe is not a working hour.'),
+                        __s('End of the selected timeframe is not a working hour.'),
                         false,
                         ERROR
                     );
@@ -385,10 +563,8 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return $input;
     }
 
-
     public function post_updateItem($history = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         // Handle rich-text images and uploaded documents
@@ -408,8 +584,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
 
         $update_done = false;
-        $itemtype    = $this->getItilObjectItemType();
-        $item        = new $itemtype();
+        $item        = static::getItilObjectItemInstance();
 
         $this->input = PendingReason_Item::handleTimelineEdits($this);
 
@@ -436,45 +611,18 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 }
 
                 // change ticket status (from splitted button)
-                $itemtype = $this->getItilObjectItemType();
-                $this->input['_job'] = new $itemtype();
+                $this->input['_job'] = static::getItilObjectItemInstance();
                 if (!$this->input['_job']->getFromDB($this->fields[$this->input['_job']->getForeignKeyField()])) {
-                    return false;
-                }
-                if (
-                    isset($this->input['_status'])
-                    && ($this->input['_status'] != $this->input['_job']->fields['status'])
-                ) {
-                    $update = [
-                        'status'        => $this->input['_status'],
-                        'id'            => $this->input['_job']->fields['id'],
-                        '_disablenotif' => true,
-                    ];
-                    $this->input['_job']->update($update);
+                    return;
                 }
 
-                if (
-                    !empty($this->fields['begin'])
-                    && $item->isStatusExists(CommonITILObject::PLANNED)
-                    && (($item->fields["status"] == CommonITILObject::INCOMING)
-                     || ($item->fields["status"] == CommonITILObject::ASSIGNED))
-                ) {
-                    $input2 = [
-                        'id'            => $item->getID(),
-                        'status'        => CommonITILObject::PLANNED,
-                        '_disablenotif' => true,
-                    ];
-                    $item->update($input2);
-                } elseif ($item->fields["status"] == CommonITILObject::PLANNED) {
-                    $this->input['_status'] = CommonITILObject::ASSIGNED;
-                    $this->updateParentStatus($this->input['_job'], $this->input);
-                }
+                $this->updateParentStatus($this->input['_job'], $this->input);
 
                 if (!isset($this->input['_disablenotif']) && $CFG_GLPI["use_notifications"]) {
                     $options = ['task_id'    => $this->fields["id"],
                         'is_private' => $this->isPrivate(),
                     ];
-                    NotificationEvent::raiseEvent('update_task', $item, $options);
+                    NotificationEvent::raiseEvent('update_task', $item, $options, $this);
                 }
             }
         }
@@ -488,26 +636,26 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             ];
             Log::history(
                 $this->getField($item->getForeignKeyField()),
-                $itemtype,
+                $item::class,
                 $changes,
                 $this->getType(),
                 Log::HISTORY_UPDATE_SUBITEM
             );
         }
 
+        // Assign technician to main item  from task
+        self::assignTechFromtask($this->input);
+
         parent::post_updateItem($history);
     }
-
 
     public function prepareInputForAdd($input)
     {
 
-        $itemtype = $this->getItilObjectItemType();
-
         // Handle template
         if (isset($input['_tasktemplates_id'])) {
             $template = new TaskTemplate();
-            $parent_item = new $itemtype();
+            $parent_item = static::getItilObjectItemInstance();
             if (
                 !$template->getFromDB($input['_tasktemplates_id'])
                 || !$parent_item->getFromDB($input[$parent_item->getForeignKeyField()])
@@ -517,7 +665,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $input['tasktemplates_id']  = $input['_tasktemplates_id'];
             $input = array_replace(
                 [
-                    'content'           => Sanitizer::sanitize($template->getRenderedContent($parent_item)),
+                    'content'           => $template->getRenderedContent($parent_item),
                     'taskcategories_id' => $template->fields['taskcategories_id'],
                     'actiontime'        => $template->fields['actiontime'],
                     'state'             => $template->fields['state'],
@@ -527,11 +675,22 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 ],
                 $input
             );
+
+            $pendingReason = new PendingReason();
+            if (
+                $template->fields['pendingreasons_id'] > 0
+                && $pendingReason->getFromDB($template->fields['pendingreasons_id'])
+            ) {
+                $input['pending']           = 1;
+                $input['pendingreasons_id'] = $pendingReason->getID();
+                $input['followup_frequency'] = $pendingReason->fields['followup_frequency'];
+                $input['followups_before_resolution'] = $pendingReason->fields['followups_before_resolution'];
+            }
         }
 
         if (empty($input['content'])) {
             Session::addMessageAfterRedirect(
-                __("You can't add a task without description."),
+                __s("You can't add a task without description."),
                 false,
                 ERROR
             );
@@ -539,7 +698,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
 
         if (!isset($input['uuid'])) {
-            $input['uuid'] = \Ramsey\Uuid\Uuid::uuid4();
+            $input['uuid'] = Uuid::uuid4();
         }
 
         Toolbox::manageBeginAndEndPlanDates($input['plan']);
@@ -556,7 +715,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             unset($input["plan"]);
             if (!$this->test_valid_date($input)) {
                 Session::addMessageAfterRedirect(
-                    __('Error in entering dates. The starting date is later than the ending date'),
+                    __s('Error in entering dates. The starting date is later than the ending date'),
                     false,
                     ERROR
                 );
@@ -564,7 +723,9 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             }
         }
 
-        $input["_job"] = new $itemtype();
+        $parent = static::getItilObjectItemInstance();
+        ;
+        $input["_job"] = $parent;
         if (!$input["_job"]->getFromDB($input[$input["_job"]->getForeignKeyField()])) {
             return false;
         }
@@ -590,16 +751,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
 
         $input['timeline_position'] = CommonITILObject::TIMELINE_LEFT;
         if (isset($input["users_id"])) {
-            $input['timeline_position'] = $itemtype::getTimelinePosition($input["_job"]->getID(), $this->getType(), $input["users_id"]);
+            $input['timeline_position'] = $parent::getTimelinePosition($input["_job"]->getID(), $this->getType(), $input["users_id"]);
         }
 
         return $input;
     }
 
-
     public function post_addItem()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         // Handle rich-text images and uploaded documents
@@ -612,7 +771,8 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
 
         $donotif = !isset($this->input['_disablenotif']) && $CFG_GLPI["use_notifications"];
 
-        if (isset($this->fields["begin"]) && !empty($this->fields["begin"])) {
+        $skip_check = $this->input['_do_not_check_already_planned'] ?? false;
+        if (!$skip_check && isset($this->fields["begin"]) && !empty($this->fields["begin"])) {
             Planning::checkAlreadyPlanned(
                 $this->fields["users_id_tech"],
                 $this->fields["begin"],
@@ -635,14 +795,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             ) {
                 if (!$calendar->isAWorkingHour(strtotime($this->fields["begin"]))) {
                     Session::addMessageAfterRedirect(
-                        __('Start of the selected timeframe is not a working hour.'),
+                        __s('Start of the selected timeframe is not a working hour.'),
                         false,
                         ERROR
                     );
                 }
                 if (!$calendar->isAWorkingHour(strtotime($this->fields["end"]))) {
                     Session::addMessageAfterRedirect(
-                        __('End of the selected timeframe is not a working hour.'),
+                        __s('End of the selected timeframe is not a working hour.'),
                         false,
                         ERROR
                     );
@@ -662,7 +822,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $options = ['task_id'             => $this->fields["id"],
                 'is_private'          => $this->isPrivate(),
             ];
-            NotificationEvent::raiseEvent('add_task', $this->input["_job"], $options);
+            NotificationEvent::raiseEvent('add_task', $this->input["_job"], $options, $this);
         }
 
         PendingReason_Item::handlePendingReasonUpdateFromNewTimelineItem($this);
@@ -681,9 +841,30 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             Log::HISTORY_ADD_SUBITEM
         );
 
+        // Assign technician to main item  from task
+        self::assignTechFromtask($this->input);
+
+        if ($this->input["_job"]->getType() == 'Ticket') {
+            self::addToMergedTickets();
+        }
+
         parent::post_addItem();
     }
 
+    private function addToMergedTickets(): void
+    {
+        $merged = Ticket::getMergedTickets($this->fields['tickets_id']);
+        foreach ($merged as $ticket_id) {
+            $input = $this->fields;
+            $input['tickets_id'] = $ticket_id;
+            $input['sourceitems_id'] = $this->fields['tickets_id'];
+            unset($input['id']);
+            $input['uuid'] = Uuid::uuid4();
+
+            $task = new static();
+            $task->add($input);
+        }
+    }
 
     public function post_getEmpty()
     {
@@ -701,7 +882,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
     }
 
-
     /**
      * @see CommonDBTM::cleanDBonPurge()
      *
@@ -717,7 +897,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         );
     }
 
-
     // SPECIFIC FUNCTIONS
     protected function computeFriendlyName()
     {
@@ -729,11 +908,10 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                     $this->fields['taskcategories_id']
                 );
             }
-            return $this->getTypeName(1);
+            return static::getTypeName(1);
         }
         return '';
     }
-
 
     public function rawSearchOptions()
     {
@@ -742,6 +920,15 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         $tab[] = [
             'id'                 => 'common',
             'name'               => __('Characteristics'),
+        ];
+
+        $tab[] = [
+            'id'                 => '8',
+            'table'              => self::getTable(),
+            'field'              => 'id',
+            'name'               => __('ID'),
+            'datatype'           => 'number',
+            'massiveaction'      => false,
         ];
 
         $tab[] = [
@@ -809,13 +996,11 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return $tab;
     }
 
-
     /**
      * @since 0.85
      **/
     public static function rawSearchOptionsToAdd($itemtype = null)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $task = new static();
@@ -1007,7 +1192,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 'jointype'           => 'child',
                 'condition'          => $task_condition,
             ],
-            'computation' => 'MAX( ' . $DB->quoteName('TABLE.date') . ')',
+            'computation'        => QueryFunction::max('TABLE.date'),
             'nometa'             => true, // cannot GROUP_CONCAT a MAX
         ];
 
@@ -1079,7 +1264,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return $tab;
     }
 
-
     /**
      * Current dates are valid ? begin before end
      *
@@ -1095,7 +1279,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
               && (strtotime($input["begin"]) < strtotime($input["end"])));
     }
 
-
     /**
      * Populate the planning with planned tasks
      *
@@ -1107,16 +1290,11 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      *    - end                Date
      *    - color
      *    - event_type_color
-     *    - display_done_events (boolean)
      *
-     * @return array of planning item
+     * @return false|array of planning item
      **/
     public static function genericPopulatePlanning($itemtype, $options = [])
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $interv = [];
@@ -1129,27 +1307,27 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
 
         if (!$item = getItemForItemtype($itemtype)) {
-            return;
+            return false;
         }
 
         if (!$item instanceof CommonITILTask) {
-            return;
+            return false;
         }
 
-        $parentitemtype = $item->getItilObjectItemType();
+        $parentitemtype = $item::getItilObjectItemType();
         if (!$parentitem = getItemForItemtype($parentitemtype)) {
-            return;
+            return false;
         }
 
         if (!$parentitem instanceof CommonITILObject) {
-            return;
+            return false;
         }
 
         $default_options = [
             'genical'             => false,
             'color'               => '',
             'event_type_color'    => '',
-            'display_done_events' => true,
+            'state_done'          => true,
         ];
         $options = array_merge($default_options, $options);
 
@@ -1166,11 +1344,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             // as we consider that people often create tasks after their execution
             // begin date is task date minus duration
             // and end date is task date
-            $bdate = "DATE_SUB(" . $DB->quoteName($item->getTable() . '.date') .
-            ", INTERVAL " . $DB->quoteName($item->getTable() . '.actiontime') . " SECOND)";
-            $SELECT[] = new QueryExpression($bdate . ' AS ' . $DB->quoteName('notp_date'));
-            $edate = $DB->quoteName($item->getTable() . '.date');
-            $SELECT[] = new QueryExpression($edate . ' AS ' . $DB->quoteName('notp_edate'));
+            $bdate = QueryFunction::dateSub(
+                date: $item::getTable() . '.date',
+                interval: new QueryExpression($DB::quoteName($item::getTable() . '.actiontime')),
+                interval_unit: 'SECOND'
+            );
+            $SELECT[] = new QueryExpression($bdate, 'notp_date');
+            $edate = $DB::quoteName($item::getTable() . '.date');
+            $SELECT[] = new QueryExpression($edate, 'notp_edate');
             $WHERE = [
                 $item->getTable() . '.end'     => null,
                 $item->getTable() . '.begin'   => null,
@@ -1186,6 +1367,30 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 $item->getTable() . '.begin'   => ['<=', $end],
             ];
         }
+
+        if (!$options['state_done']) {
+            $WHERE[] = [
+                'OR' => [
+                    $item->getTable() . ".state" => Planning::TODO,
+                    [
+                        'AND' => [
+                            $item->getTable() . '.state' => Planning::INFO,
+                            $item->getTable() . '.end' => ['>', QueryFunction::now()],
+                        ],
+                    ],
+                ],
+            ];
+
+            $WHERE[] = [
+                'NOT' => [
+                    $parentitem->getTable() . '.status' => array_merge(
+                        $parentitem->getSolvedStatusArray(),
+                        $parentitem->getClosedStatusArray()
+                    ),
+                ],
+            ];
+        }
+
         $ADDWHERE = [];
 
         if ($whogroup === "mine") {
@@ -1207,7 +1412,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
 
         if (!count($ADDWHERE)) {
             $ADDWHERE = [
-                $item->getTable() . '.users_id_tech' => new \QuerySubQuery([
+                $item->getTable() . '.users_id_tech' => new QuerySubQuery([
                     'SELECT'          => 'glpi_profiles_users.users_id',
                     'DISTINCT'        => true,
                     'FROM'            => 'glpi_profiles',
@@ -1221,7 +1426,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                     ],
                     'WHERE'           => [
                         'glpi_profiles.interface'  => 'central',
-                    ] + getEntitiesRestrictCriteria('glpi_profiles_users', '', $_SESSION['glpiactive_entity'], 1),
+                    ] + getEntitiesRestrictCriteria('glpi_profiles_users', '', $_SESSION['glpiactive_entity'], true),
                 ]),
             ];
         }
@@ -1230,31 +1435,8 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $WHERE[] = ['OR' => $ADDWHERE];
         }
 
-        if (!$options['display_done_events']) {
-            $WHERE[] = ['OR' => [
-                $item->getTable() . ".state"  => Planning::TODO,
-                [
-                    'AND' => [
-                        $item->getTable() . '.state'  => Planning::INFO,
-                        $item->getTable() . '.end'    => ['>', new \QueryExpression('NOW()')],
-                    ],
-                ],
-            ],
-            ];
-        }
-
         if ($parentitem->maybeDeleted()) {
             $WHERE[$parentitem->getTable() . '.is_deleted'] = 0;
-        }
-
-        if (!$options['display_done_events']) {
-            $WHERE[] = ['NOT' => [
-                $parentitem->getTable() . '.status' => array_merge(
-                    $parentitem->getSolvedStatusArray(),
-                    $parentitem->getClosedStatusArray()
-                ),
-            ],
-            ];
         }
 
         $iterator = $DB->request([
@@ -1286,10 +1468,10 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                             $data['begin'] = $data['notp_date'];
                             $data['end'] = $data['notp_edate'];
                         }
-                        $key = $data["begin"] .
-                         "$$$" . $itemtype .
-                         "$$$" . $data["id"] .
-                         "$$$" . $who . "$$$" . $whogroup;
+                        $key = $data["begin"]
+                         . "$$$" . $itemtype
+                         . "$$$" . $data["id"]
+                         . "$$$" . $who . "$$$" . $whogroup;
 
                         if (isset($options['from_group_users'])) {
                             $key .= "_gu";
@@ -1302,15 +1484,15 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                         if (!$options['genical']) {
                             $interv[$key]["url"] = $parentitemtype::getFormURLWithID($url_id);
                         } else {
-                            $interv[$key]["url"] = $CFG_GLPI["url_base"] .
-                                            $parentitemtype::getFormURLWithID($url_id, false);
+                            $interv[$key]["url"] = $CFG_GLPI["url_base"]
+                                            . $parentitemtype::getFormURLWithID($url_id, false);
                         }
-                        $interv[$key]["ajaxurl"] = $CFG_GLPI["root_doc"] . "/ajax/planning.php" .
-                                             "?action=edit_event_form" .
-                                             "&itemtype=" . $itemtype .
-                                             "&parentitemtype=" . $parentitemtype .
-                                             "&parentid=" . $item->fields[$parentitem->getForeignKeyField()] .
-                                             "&id=" . $data['id'];
+                        $interv[$key]["ajaxurl"] = $CFG_GLPI["root_doc"] . "/ajax/planning.php"
+                                             . "?action=edit_event_form"
+                                             . "&itemtype=" . $itemtype
+                                             . "&parentitemtype=" . $parentitemtype
+                                             . "&parentid=" . $item->fields[$parentitem->getForeignKeyField()]
+                                             . "&id=" . $data['id'];
 
                         $interv[$key][$item->getForeignKeyField()] = $data["id"];
                         $interv[$key]["id"]                        = $data["id"];
@@ -1335,7 +1517,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                             $interv[$key]["end"] = $data["end"];
                         }
 
-                        $interv[$key]["name"]     = Sanitizer::unsanitize($parentitem->fields['name']); // name is re-encoded on JS side
+                        $interv[$key]["name"]     = $parentitem->fields['name'];
                         $interv[$key]["content"]  = RichText::getSafeHtml($item->fields['content']);
                         $interv[$key]["status"]   = $parentitem->fields["status"];
                         $interv[$key]["priority"] = $parentitem->fields["priority"];
@@ -1350,8 +1532,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                             && !empty($parentitem->hardwaredatas)
                         ) {
                             foreach ($parentitem->hardwaredatas as $hardwaredata) {
-                                $interv[$key]["device"][$hardwaredata->fields['id']] = ($hardwaredata
-                                                   ? $hardwaredata->getName() : '');
+                                $interv[$key]["device"][$hardwaredata->fields['id']] = htmlescape($hardwaredata ? $hardwaredata->getName() : '');
                             }
                             if (is_array($interv[$key]["device"])) {
                                 $interv[$key]["device"] = implode("<br>", $interv[$key]["device"]);
@@ -1375,7 +1556,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      *    - end                Date
      *    - color
      *    - event_type_color
-     *    - display_done_events (boolean)
      *
      * @return array of planning item
      **/
@@ -1394,11 +1574,10 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      * @param string          $type      position of the item in the time block (in, through, begin or end)
      * @param integer|boolean $complete  complete display (more details) (default 0)
      *
-     * @return string Output
+     * @return false|string Output
      **/
     public static function genericDisplayPlanningItem($itemtype, array $val, $who, $type = "", $complete = 0)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $html = "";
@@ -1415,28 +1594,28 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         $parenttype = str_replace('Task', '', $itemtype);
         if ($parent = getItemForItemtype($parenttype)) {
             if (!$parent instanceof CommonITILObject) {
-                return;
+                return false;
             }
             $parenttype_fk = $parent->getForeignKeyField();
         } else {
-            return;
+            return false;
         }
 
-        $html .= "<img src='" . $CFG_GLPI["root_doc"] . "/pics/rdv_interv.png' alt='' title=\"" .
-             Html::entities_deep($parent->getTypeName(1)) . "\">&nbsp;&nbsp;";
+        $html .= "<img src='" . htmlescape($CFG_GLPI["root_doc"]) . "/pics/rdv_interv.png' alt='' title=\""
+             . htmlescape($parent->getTypeName(1)) . "\">&nbsp;&nbsp;";
         $html .= $parent->getStatusIcon($val['status']);
-        $html .= "&nbsp;<a id='content_tracking_" . $val["id"] . $rand . "'
-                   href='" . $parenttype::getFormURLWithID($val[$parenttype_fk]) . "'
+        $html .= "&nbsp;<a id='content_tracking_" . htmlescape($val["id"] . $rand) . "'
+                   href='" . htmlescape($parenttype::getFormURLWithID($val[$parenttype_fk])) . "'
                    style='$styleText'>";
 
-        if (!empty($val["device"])) {
+        if (!empty($val["device"])) { // $val['device'] has already been sanitized by self::populatePlanning()
             $html .= "<br>" . $val["device"];
         }
 
         if ($who <= 0) { // show tech for "show all and show group"
             $html .= "<br>";
             //TRANS: %s is user name
-            $html .= sprintf(__('By %s'), getUserName($val["users_id_tech"]));
+            $html .= sprintf(__s('By %s'), htmlescape(getUserName($val["users_id_tech"])));
         }
 
         $html .= "</a>";
@@ -1455,30 +1634,32 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 )
             ) {
                 $recall = "<span class='b'>" . sprintf(
-                    __('Recall on %s'),
-                    Html::convDateTime($pr->fields['when'])
-                ) .
-                      "<span>";
+                    __s('Recall on %s'),
+                    htmlescape(Html::convDateTime($pr->fields['when']))
+                )
+                      . "<span>";
             }
         }
 
         if (isset($val["state"])) {
             $html .= "<span>";
-            $html .= Planning::getState($val["state"]);
+            $html .= htmlescape(Planning::getState($val["state"]));
             $html .= "</span>";
         }
         $html .= "<div>";
-        $html .= sprintf(__('%1$s: %2$s'), __('Priority'), $parent->getPriorityName($val["priority"]));
+        $html .= htmlescape(sprintf(__('%1$s: %2$s'), __('Priority'), $parent->getPriorityName($val["priority"])));
         $html .= "</div>";
 
-        // $val['content'] has already been sanitized and decoded by self::populatePlanning()
+        // $val['content'] has already been sanitized by self::populatePlanning()
         $content = $val['content'];
         $html .= "<div class='event-description rich_text_container'>" . $content . "</div>";
         $html .= $recall;
 
+        $parent->getFromDB($val[$parent->getForeignKeyField()]);
+        $html .= $parent->getLink(['icon' => true, 'forceid' => true]) . "<br>";
+        $html .= "<span>" . Entity::badgeCompletenameById($parent->getEntityID()) . "</span><br>";
         return $html;
     }
-
 
     /** form for Task
      *
@@ -1498,60 +1679,28 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return true;
     }
 
-
     /**
      * Form for Ticket or Problem Task on Massive action
      */
     public function showMassiveActionAddTaskForm()
     {
-        echo "<table class='tab_cadre_fixe'>";
-        echo '<tr><th colspan=4>' . __('Add a new task') . '</th></tr>';
+        $twig = TemplateRenderer::getInstance();
 
-        echo "<tr class='tab_bg_2'>";
-        echo "<td>" . _n('Category', 'Categories', 1) . "</td>";
-        echo "<td>";
-        TaskCategory::dropdown(['condition' => ['is_active' => 1]]);
-        echo "</td>";
-        echo "</tr>";
+        $item = static::getItilObjectItemInstance();
+        $item->getEmpty();
+        $this->getEmpty();
 
-        echo "<tr class='tab_bg_2'>";
-        echo "<td>" . __('Description') . "</td>";
-        echo "<td><textarea name='content' cols='50' rows='6'></textarea></td>";
-        echo "</tr>";
+        // No mentions for massive actions.
+        $mentions_options = [
+            'enabled' => false,
+        ];
 
-        echo "<tr class='tab_bg_2'>";
-        echo "<td>" . __('Duration') . "</td>";
-        echo "<td>";
-        $toadd = [];
-        for ($i = 9; $i <= 100; $i++) {
-            $toadd[] = $i * HOUR_TIMESTAMP;
-        }
-        Dropdown::showTimeStamp("actiontime", ['min'             => 0,
-            'max'             => 8 * HOUR_TIMESTAMP,
-            'addfirstminutes' => true,
-            'inhours'         => true,
-            'toadd'           => $toadd,
+        $twig->display('components/massive_action/add_task.html.twig', [
+            'item'                    => $item,
+            'subitem'                 => $this,
+            'mention_options'         => $mentions_options,
         ]);
-        echo "</td>";
-        echo "</tr>";
 
-        echo "<tr class='tab_bg_2'>";
-        echo "<td>" . __('Status') . "</td>";
-        echo "<td>";
-        Planning::dropdownState("state", $_SESSION['glpitask_state']);
-        echo "</td>";
-        echo "</tr>";
-
-        echo "<tr class='tab_bg_2'>";
-        echo "<td class='center' colspan='2'>";
-        if ($this->maybePrivate()) {
-            echo "<input type='hidden' name='is_private' value='" . $_SESSION['glpitask_private'] . "'>";
-        }
-        echo "<input type='submit' name='add' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
-        echo "</td>";
-        echo "</tr>";
-
-        echo "</table>";
     }
 
     /**
@@ -1563,7 +1712,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      */
     public static function getTaskList($status, $showgrouptickets, $start = null, $limit = null)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $prep_req = ['SELECT' => self::getTable() . '.id', 'FROM' => self::getTable()];
@@ -1592,7 +1740,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 $prep_req['WHERE'][self::getTable() . '.groups_id_tech'] = $_SESSION['glpigroups'];
             } else {
                 // Return empty iterator result
-                $prep_req['WHERE'][] = 0;
+                $prep_req['WHERE'][] = new QueryExpression('false');
             }
         } else {
             $prep_req['WHERE'][self::getTable() . '.users_id_tech'] = $_SESSION['glpiID'];
@@ -1614,7 +1762,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         return $req;
     }
 
-
     /**
      * Display tasks in homepage
      *
@@ -1628,16 +1775,13 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      */
     public static function showCentralList($start, $status = 'todo', $showgrouptickets = true)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         $iterator = self::getTaskList($status, $showgrouptickets);
 
         $total_row_count = count($iterator);
         $displayed_row_count = min((int) $_SESSION['glpidisplay_count_on_home'], $total_row_count);
 
         if ($total_row_count > 0) {
-            $itemtype = get_called_class();
+            $itemtype = static::class;
             switch ($status) {
                 case "todo":
                     $options  = [
@@ -1691,9 +1835,9 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                         return;
                     }
                     $linked_itemtype = str_replace("Task", "", $itemtype);
-                    $main_header = "<a href=\"" . $linked_itemtype::getSearchURL() . "?" .
-                      Toolbox::append_params($options, '&amp;') . "\">" .
-                      Html::makeTitle($title, $displayed_row_count, $total_row_count) . "</a>";
+                    $main_header = "<a href=\"" . htmlescape($linked_itemtype::getSearchURL() . "?"
+                      . Toolbox::append_params($options, '&')) . "\">"
+                      . Html::makeTitle($title, $displayed_row_count, $total_row_count) . "</a>";
                     break;
 
                 default:
@@ -1742,22 +1886,22 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                     }
 
                     // Parent item id with priority hint
-                    $bgcolor = $_SESSION["glpipriority_" . $parent_item->fields["priority"]];
-                    $name = sprintf(__('%1$s: %2$s'), __('ID'), $parent_item->fields["id"]);
+                    $bgcolor = htmlescape($_SESSION["glpipriority_" . $parent_item->fields["priority"]]);
+                    $name = htmlescape(sprintf(__('%1$s: %2$s'), __('ID'), $parent_item->fields["id"]));
                     $row['values'][] = [
-                        'content' => "<div class='priority_block' style='border-color: $bgcolor'><span style='background: $bgcolor'></span>&nbsp;$name</div>",
+                        'content' => "<div class='badge_block' style='border-color: $bgcolor'><span style='background: $bgcolor'></span>&nbsp;$name</div>",
                     ];
 
                     // Parent item name
                     $row['values'][] = [
-                        'content' => $parent_item->fields['name'],
+                        'content' => htmlescape($parent_item->fields['name']),
                     ];
 
                     // Task description
                     $href = $parent_item::getFormURLWithID($parent_item->fields['id']);
-                    $link_title = Html::resume_text(RichText::getTextFromHtml($task->fields['content'], false, true, true), 50);
+                    $link_title = Html::resume_text(RichText::getTextFromHtml($task->fields['content'], false, true), 50);
                     $row['values'][] = [
-                        'content' => "<a href='$href'>$link_title</a>",
+                        'content' => "<a href='" . htmlescape($href) . "'>$link_title</a>",
                     ];
 
                     $twig_params['rows'][] = $row;
@@ -1772,8 +1916,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         }
     }
 
-
-
     /**
      * Very short table to display the task
      *
@@ -1786,10 +1928,9 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      */
     public static function showVeryShort($ID, $itemtype)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
-        $job  = new $itemtype();
+        $job  = getItemForItemtype($itemtype);
         $rand = mt_rand();
         if ($job->getFromDB($ID)) {
             if ($DB->fieldExists($job->getTable(), 'tickets_id')) {
@@ -1805,33 +1946,33 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 $item_link->getFromDB($job->fields['changes_id']);
                 $tab_name = "ChangeTask";
             } else {
-                throw new \RuntimeException(sprintf('Unexpected `%s` itemtype.', $itemtype));
+                throw new RuntimeException(sprintf('Unexpected `%s` itemtype.', $itemtype));
             }
 
-            $bgcolor = $_SESSION["glpipriority_" . $item_link->fields["priority"]];
-            $name    = sprintf(__('%1$s: %2$s'), __('ID'), $job->fields["id"]);
+            $bgcolor = htmlescape($_SESSION["glpipriority_" . $item_link->fields["priority"]]);
+            $name    = htmlescape(sprintf(__('%1$s: %2$s'), __('ID'), $job->fields["id"]));
             echo "<tr class='tab_bg_2'>";
             echo "<td>
-            <div class='priority_block' style='border-color: $bgcolor'>
+            <div class='badge_block' style='border-color: $bgcolor'>
                <span style='background: $bgcolor'></span>&nbsp;$name
             </div>
          </td>";
 
             echo "<td>";
-            echo $item_link->fields['name'];
+            echo htmlescape($item_link->fields['name']);
             echo "</td>";
 
             echo "<td>";
-            $link = "<a id='" . strtolower($item_link->getType()) . "ticket" . $item_link->fields["id"] . $rand . "' href='" .
-                   $item_link->getFormURLWithID($item_link->fields["id"]);
-            $link .= "&amp;forcetab=" . $tab_name . "$1";
+            $link = "<a id='" . htmlescape(strtolower($item_link->getType())) . "ticket" . htmlescape($item_link->fields["id"] . $rand) . "' href='"
+                   . htmlescape($item_link->getFormURLWithID($item_link->fields["id"]));
+            $link .= "&amp;forcetab=" . htmlescape($tab_name) . "$1";
             $link   .= "'>";
-            $link    = sprintf(__('%1$s'), $link);
-            printf(
-                __('%1$s %2$s'),
-                $link,
-                Html::resume_text(RichText::getTextFromHtml($job->fields['content'], false, true, true), 50)
+            $link = sprintf(
+                __s('%1$s %2$s'),
+                htmlescape($link),
+                Html::resume_text(RichText::getTextFromHtml($job->fields['content'], false, true), 50)
             );
+            echo $link;
 
             echo "</a>";
             echo "</td>";
@@ -1840,7 +1981,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             echo "</tr>";
         } else {
             echo "<tr class='tab_bg_2'>";
-            echo "<td colspan='6' ><i>" . __('No tasks do to.') . "</i></td></tr>";
+            echo "<td colspan='6' ><i>" . __s('No tasks do to.') . "</i></td></tr>";
         }
     }
 
@@ -1861,18 +2002,17 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      *
      * @param array $criteria
      *
-     * @return \Sabre\VObject\Component\VCalendar[]
+     * @return false|VCalendar[]
      */
     private static function getItemsAsVCalendars(array $criteria)
     {
 
-        /** @var \DBmysql $DB */
         global $DB;
 
         $item = new static();
-        $parent_item = getItemForItemtype($item->getItilObjectItemType());
+        $parent_item = getItemForItemtype($item::getItilObjectItemType());
         if (!$parent_item) {
-            return;
+            return false;
         }
 
         $query = [
@@ -1908,14 +2048,13 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
     public function getAsVCalendar()
     {
 
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (!$this->canViewItem()) {
             return null;
         }
 
-        $parent_item = getItemForItemtype($this->getItilObjectItemType());
+        $parent_item = getItemForItemtype(static::getItilObjectItemType());
         if (!$parent_item) {
             return null;
         }
@@ -1933,13 +2072,13 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
 
         $vcalendar = $this->getVCalendarForItem($this, $target_component);
 
-        $parent_fields = Html::entity_decode_deep($parent_item->fields);
-        $utc_tz = new \DateTimeZone('UTC');
+        $parent_fields = $parent_item->fields;
+        $utc_tz = new DateTimeZone('UTC');
 
         $vcomp = $vcalendar->getBaseComponent();
         $vcomp->SUMMARY           = $parent_fields['name'];
-        $vcomp->DTSTAMP           = (new \DateTime($parent_fields['date_mod']))->setTimeZone($utc_tz);
-        $vcomp->{'LAST-MODIFIED'} = (new \DateTime($parent_fields['date_mod']))->setTimeZone($utc_tz);
+        $vcomp->DTSTAMP           = (new DateTime($parent_fields['date_mod']))->setTimeZone($utc_tz);
+        $vcomp->{'LAST-MODIFIED'} = (new DateTime($parent_fields['date_mod']))->setTimeZone($utc_tz);
         $vcomp->URL               = $CFG_GLPI['url_base'] . $parent_item->getFormURLWithID($parent_id, false);
 
         return $vcalendar;
@@ -1951,7 +2090,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         $vtodo = $vcalendar->getBaseComponent();
 
         if (null !== $vtodo->RRULE) {
-            throw new \UnexpectedValueException('RRULE not yet implemented for ITIL tasks');
+            throw new UnexpectedValueException('RRULE not yet implemented for ITIL tasks');
         }
 
         $input = $this->getCommonInputFromVcomponent($vtodo, $this->isNewItem());
@@ -1960,7 +2099,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             // self::prepareInputForUpdate() expect these fields to be set in input.
             // We should be able to not pass these fields in input
             // but fixing self::prepareInputForUpdate() seems complex right now.
-            $itil_fkey = getForeignKeyFieldForItemType($this->getItilObjectItemType());
+            $itil_fkey = getForeignKeyFieldForItemType(static::getItilObjectItemType());
             $input[$itil_fkey] = $this->fields[$itil_fkey];
             $input['users_id_tech'] = $this->fields['users_id_tech'];
         }
@@ -1985,14 +2124,14 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      */
     public function countPlannedTasks(): int
     {
-        $parent_item = getItemForItemtype($this->getItilObjectItemType());
+        $parent_item = getItemForItemtype(static::getItilObjectItemType());
         if (!$parent_item) {
             return 0;
         }
         $parent_fkey = $parent_item->getForeignKeyField();
         $planned = $this->find([
             $parent_fkey => $this->fields[$parent_fkey],
-            'state' => \Planning::TODO,
+            'state' => Planning::TODO,
             'NOT' => ['begin' => null],
         ]);
         return count($planned);

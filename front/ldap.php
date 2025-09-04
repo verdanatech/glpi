@@ -33,19 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Application\View\TemplateRenderer;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Application\View\TemplateRenderer;
 
 Session::checkRight("user", User::IMPORTEXTAUTHUSERS);
 
-Html::header(__('LDAP directory link'), $_SERVER['PHP_SELF'], "admin", "user", "ldap");
-
-if (isset($_SESSION["ldap_sortorder"])) {
-    unset($_SESSION["ldap_sortorder"]);
-}
-
-AuthLDAP::manageValuesInSession([], true);
+Html::header(__('LDAP directory link'), '', "admin", "user", "ldap");
 
 echo TemplateRenderer::getInstance()->render(
     'pages/admin/ldap.users.html.twig'

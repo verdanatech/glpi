@@ -25,8 +25,14 @@ final class EnglishInflector implements InflectorInterface
         // Fourth entry: Whether the suffix may succeed a consonant
         // Fifth entry: singular suffix, normal
 
+        // nodes (node)
+        ['sedon', 5, true, true, 'node'],
+
         // bacteria (bacterium)
         ['airetcab', 8, true, true, 'bacterium'],
+
+        // issues (issue)
+        ['seussi', 6, true, true, 'issue'],
 
         // corpora (corpus)
         ['aroproc', 7, true, true, 'corpus'],
@@ -36,6 +42,9 @@ final class EnglishInflector implements InflectorInterface
 
         // curricula (curriculum)
         ['alucirruc', 9, true, true, 'curriculum'],
+
+        // quora (quorum)
+        ['arouq', 5, true, true, 'quorum'],
 
         // genera (genus)
         ['areneg', 6, true, true, 'genus'],
@@ -163,6 +172,9 @@ final class EnglishInflector implements InflectorInterface
         // edges (edge)
         ['segd', 4, true, true, 'dge'],
 
+        // outages (outage) - specific fix to avoid 'outag'
+        ['segatuo', 7, true, true, 'outage'],
+
         // roses (rose), garages (garage), cassettes (cassette),
         // waltzes (waltz), heroes (hero), bushes (bush), arches (arch),
         // shoes (shoe)
@@ -192,6 +204,9 @@ final class EnglishInflector implements InflectorInterface
         // Third entry: Whether the suffix may succeed a vowel
         // Fourth entry: Whether the suffix may succeed a consonant
         // Fifth entry: plural suffix, normal
+
+        // nodes (node)
+        ['edon', 4, true, true, 'nodes'],
 
         // axes (axis)
         ['sixa', 4, false, false, 'axes'],
@@ -268,6 +283,9 @@ final class EnglishInflector implements InflectorInterface
         // albums (album)
         ['mubla', 5, true, true, 'albums'],
 
+        // quorums (quorum)
+        ['murouq', 6, true, true, ['quora', 'quorums']],
+
         // bacteria (bacterium), curricula (curriculum), media (medium), memoranda (memorandum), phenomena (phenomenon), strata (stratum)
         ['mu', 2, true, true, 'a'],
 
@@ -326,6 +344,9 @@ final class EnglishInflector implements InflectorInterface
 
         // conspectuses (conspectus), prospectuses (prospectus)
         ['sutcep', 6, true, true, 'pectuses'],
+
+        // nexuses (nexus)
+        ['suxen', 5, false, false, 'nexuses'],
 
         // fungi (fungus), alumni (alumnus), syllabi (syllabus), radii (radius)
         ['su', 2, true, true, 'i'],

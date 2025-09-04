@@ -33,10 +33,14 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
 /// Class Manufacturer
 /// @todo study if we should integrate getHTMLTableHeader and getHTMLTableCellsForItem ...
 class Manufacturer extends CommonDropdown
 {
+    use Clonable;
+
     public $can_be_translated = false;
 
 
@@ -51,6 +55,7 @@ class Manufacturer extends CommonDropdown
 
         switch ($field['type']) {
             case 'registeredIDChooser':
+                RegisteredID::showAddChildButtonForItemForm($this, '_registeredID');
                 RegisteredID::showChildsForItemForm($this, '_registeredID');
                 break;
         }
@@ -60,16 +65,12 @@ class Manufacturer extends CommonDropdown
     public function getAdditionalFields()
     {
 
-        return [['name'  => 'none',
-            'label' => RegisteredID::getTypeName(Session::getPluralNumber()) .
-                                       RegisteredID::showAddChildButtonForItemForm(
-                                           $this,
-                                           '_registeredID',
-                                           null,
-                                           false
-                                       ),
-            'type'  => 'registeredIDChooser',
-        ],
+        return [
+            [
+                'name'  => 'none',
+                'label' => RegisteredID::getTypeName(Session::getPluralNumber()),
+                'type'  => 'registeredIDChooser',
+            ],
         ];
     }
 
@@ -134,9 +135,9 @@ class Manufacturer extends CommonDropdown
 
 
     /**
-     * @param null|string $old_name  Old name (need to be addslashes)
+     * @param null|string $old_name  Old name
      *
-     * @return null|string new addslashes name
+     * @return null|string new name
      **/
     public static function processName($old_name)
     {
@@ -148,14 +149,11 @@ class Manufacturer extends CommonDropdown
         $rulecollection = new RuleDictionnaryManufacturerCollection();
         $output         = [];
         $output         = $rulecollection->processAllRules(
-            ["name" => stripslashes($old_name)],
+            ["name" => $old_name],
             $output,
             []
         );
-        if (isset($output["name"])) {
-            return $output["name"];
-        }
-        return $old_name;
+        return $output["name"] ?? $old_name;
     }
 
 
@@ -183,13 +181,13 @@ class Manufacturer extends CommonDropdown
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
-        $base->addHeader($column_name, Manufacturer::getTypeName(1), $super, $father);
+        $base->addHeader($column_name, htmlescape(Manufacturer::getTypeName(1)), $super, $father);
     }
 
 
@@ -208,7 +206,7 @@ class Manufacturer extends CommonDropdown
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         if (isset($options['dont_display'][$column_name])) {
             return;
@@ -217,12 +215,14 @@ class Manufacturer extends CommonDropdown
         if (!empty($item->fields["manufacturers_id"])) {
             $row->addCell(
                 $row->getHeaderByName($column_name),
-                Dropdown::getDropdownName(
-                    "glpi_manufacturers",
-                    $item->fields["manufacturers_id"]
-                ),
+                htmlescape(Dropdown::getDropdownName("glpi_manufacturers", $item->fields["manufacturers_id"])),
                 $father
             );
         }
+    }
+
+    public function getCloneRelations(): array
+    {
+        return [];
     }
 }

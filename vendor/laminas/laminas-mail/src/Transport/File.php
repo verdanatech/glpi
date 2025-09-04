@@ -4,6 +4,11 @@ namespace Laminas\Mail\Transport;
 
 use Laminas\Mail\Message;
 
+use function file_put_contents;
+use function sprintf;
+
+use const DIRECTORY_SEPARATOR;
+
 /**
  * File transport
  *
@@ -11,9 +16,7 @@ use Laminas\Mail\Message;
  */
 class File implements TransportInterface
 {
-    /**
-     * @var FileOptions
-     */
+    /** @var FileOptions */
     protected $options;
 
     /**
@@ -46,8 +49,6 @@ class File implements TransportInterface
 
     /**
      * Sets options
-     *
-     * @param  FileOptions $options
      */
     public function setOptions(FileOptions $options)
     {
@@ -57,9 +58,7 @@ class File implements TransportInterface
     /**
      * Saves e-mail message to a file
      *
-     * @param Message $message
-     * @throws Exception\RuntimeException on not writable target directory or
-     * on file_put_contents() failure
+     * @throws Exception\RuntimeException On not writable target directory or on file_put_contents() failure.
      */
     public function send(Message $message)
     {

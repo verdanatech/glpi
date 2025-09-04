@@ -37,7 +37,9 @@
      data-itemtype="{{ item.getType() }}" data-items-id="{{ item.fields['id'] }}">
    <div class="row">
       <div class="col-auto d-flex flex-column ">
+    {% if users_id %}
          {{ include('components/user/picture.html.twig', {'users_id': users_id}, with_context = false) }}
+    {% endif %}
       </div>
       <div class="col-12 col-sm">
          <div class="mt-2 timeline-content left card">
@@ -49,7 +51,8 @@
                         'date_creation': item.fields['date_creation'],
                         'date_mod': item.fields['date_mod'],
                         'users_id_editor': item.fields['users_id_lastupdater'],
-                        'anonym_user': anonym_user,
+                        'anonym_user': anonym_user ?? false,
+                        'anchor': get_class(item) ~ '_' ~ item.getID(),
                      }, with_context = false) }}
                   </div>
 
@@ -60,7 +63,7 @@
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="more-actions-{{ entry_rand }}">
                             <li><a class="dropdown-item edit-timeline-item" href="#">
-                            <i class="fa-fw ti ti-edit"></i>
+                            <i class="ti ti-edit"></i>
                             <span>{{ __('Edit') }}</span>
                             </a></li>
                         </ul>
@@ -75,11 +78,11 @@
                <div class="read-only-content">
                   {% if not itiltemplate.isHiddenField('name') %}
                      <div class="card-title card-header mx-n3 mt-n3">
-                        {{ item.fields['name']|verbatim_value }}
+                        {{ item.fields['name'] }}
                      </div>
                   {% endif %}
                   {% if not itiltemplate.isHiddenField('content') %}
-                     <div class="rich_text_container">
+                     <div class="rich_text_container" data-testid="content">
                         {{ item.fields['content']|enhanced_html({
                            'user_mentions': true,
                            'images_gallery': true

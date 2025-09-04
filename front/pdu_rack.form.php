@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
 
 Session::checkCentralAccess();
 
-$pra  = new \PDU_Rack();
+$pra  = new PDU_Rack();
 $rack = new Rack();
 
 if (isset($_POST['update'])) {
@@ -56,7 +56,7 @@ if (isset($_POST['update'])) {
     Html::redirect($url);
 } elseif (isset($_POST['purge'])) {
     $pra->check($_POST['id'], PURGE);
-    $pra->delete($_POST, 1);
+    $pra->delete($_POST, true);
     $url = $rack->getFormURLWithID($_POST['racks_id']);
     Html::redirect($url);
 }
@@ -72,11 +72,11 @@ if (isset($_GET['id'])) {
 
 $_SESSION['glpilisturl'][PDU_Rack::getType()] = $rack->getSearchURL();
 
-$ajax = isset($_REQUEST['ajax']) ? true : false;
+$ajax = isset($_REQUEST['ajax']);
 
 if ($ajax) {
     $pra->display($params);
 } else {
     $menus = ["assets", "rack"];
-    PDU_Rack::displayFullPageForItem($_GET['id'] ?? 0, $menus, $params);
+    PDU_Rack::displayFullPageForItem((int) ($_GET['id'] ?? 0), $menus, $params);
 }

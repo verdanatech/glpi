@@ -33,7 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
 
 Session::checkCentralAccess();
 
@@ -55,7 +55,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $notiftpl->check($_POST["id"], PURGE);
-    $notiftpl->delete($_POST, 1);
+    $notiftpl->delete($_POST, true);
     Html::redirect(Notification::getFormURLWithID($notiftpl->fields['notifications_id']));
 } elseif (isset($_POST["update"])) {
     $notiftpl->check($_POST["id"], UPDATE);
@@ -68,7 +68,7 @@ if (isset($_POST["add"])) {
         $params['notifications_id'] = $_GET['notifications_id'];
     }
 
-    $menus = ["config", "notification", "notifications_notificationtemplates"];
+    $menus = ["config", "notification", "Notification_NotificationTemplate"];
     Notification_NotificationTemplate::displayFullPageForItem(
         $_GET['id'],
         $menus,

@@ -33,13 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\PlanningEvent;
+
 /**
  * Template for PlanningExternalEvent
  * @since 9.5
  **/
 class PlanningExternalEventTemplate extends CommonDropdown
 {
-    use Glpi\Features\PlanningEvent {
+    use PlanningEvent {
         prepareInputForAdd as protected prepareInputForAddTrait;
         prepareInputForUpdate as protected prepareInputForUpdateTrait;
         rawSearchOptions as protected trait_rawSearchOptions;
@@ -143,7 +145,12 @@ class PlanningExternalEventTemplate extends CommonDropdown
 
         switch ($field) {
             case 'state':
-                return Planning::dropdownState($name, $values[$field], $options);
+                return Planning::dropdownState(
+                    name: $name,
+                    value: $values[$field],
+                    display: false,
+                    options: $options
+                );
         }
 
         return parent::getSpecificValueToSelect($field, $name, $values, $options);
@@ -194,6 +201,6 @@ class PlanningExternalEventTemplate extends CommonDropdown
 
     public static function getIcon()
     {
-        return "fas fa-layer-group";
+        return "ti ti-stack-2-filled";
     }
 }

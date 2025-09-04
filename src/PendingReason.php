@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
+
 /**
  * ITILCategory class
  **/
@@ -56,8 +58,27 @@ class PendingReason extends CommonDropdown
     {
         return [
             [
+                'name' => 'is_default',
+                'label' => __('Default pending reason'),
+                'type' => '',
+            ],
+            [
+                'name' => 'is_pending_per_default',
+                'label' => __('Pending per default'),
+                'type' => 'bool',
+                'form_params' => [
+                    'disabled' => !$this->fields['is_default'],
+                ],
+            ],
+            [
+                'name' => 'calendars_id',
+                'label' => Calendar::getTypeName(1),
+                'type' => 'dropdownValue',
+                'list' => true,
+            ],
+            [
                 'name'  => 'followup_frequency',
-                'label' => __('Automatic follow-up frequency'),
+                'label' => __('Automatic follow-up/solution frequency'),
                 'type'  => '',
                 'list'  => true,
             ],
@@ -178,17 +199,18 @@ class PendingReason extends CommonDropdown
      */
     public static function getFollowupFrequencyValues(): array
     {
+        $formatter = new NumberFormatter($_SESSION['glpilanguage'], NumberFormatter::SPELLOUT);
         return [
             DAY_TIMESTAMP      => __("Every day"),
-            2 * DAY_TIMESTAMP  => __("Every two days"),
-            3 * DAY_TIMESTAMP  => __("Every three days"),
-            4 * DAY_TIMESTAMP  => __("Every four days"),
-            5 * DAY_TIMESTAMP  => __("Every five days"),
-            6 * DAY_TIMESTAMP  => __("Every six days"),
+            2 * DAY_TIMESTAMP  => sprintf(__("Every %s days"), $formatter->format(2)),
+            3 * DAY_TIMESTAMP  => sprintf(__("Every %s days"), $formatter->format(3)),
+            4 * DAY_TIMESTAMP  => sprintf(__("Every %s days"), $formatter->format(4)),
+            5 * DAY_TIMESTAMP  => sprintf(__("Every %s days"), $formatter->format(5)),
+            6 * DAY_TIMESTAMP  => sprintf(__("Every %s days"), $formatter->format(6)),
             WEEK_TIMESTAMP     => __("Every week"),
-            2 * WEEK_TIMESTAMP => __("Every two weeks"),
-            3 * WEEK_TIMESTAMP => __("Every three weeks"),
-            4 * WEEK_TIMESTAMP => __("Every four weeks"),
+            2 * WEEK_TIMESTAMP => sprintf(__("Every %s weeks"), $formatter->format(2)),
+            3 * WEEK_TIMESTAMP => sprintf(__("Every %s weeks"), $formatter->format(3)),
+            4 * WEEK_TIMESTAMP => sprintf(__("Every %s weeks"), $formatter->format(4)),
         ];
     }
 
@@ -236,12 +258,42 @@ class PendingReason extends CommonDropdown
     }
 
     /**
+     * Display specific "is_default" field
+     *
+     * @param $value
+     * @param $name
+     * @param $options
+     */
+    private function displayIsDefaultPendingReasonField(bool $value): string
+    {
+        $defaultPendingReason = self::getDefault();
+
+        $out = Dropdown::showYesNo('is_default', $value, params: ['display' => false]);
+        $out .= TemplateRenderer::getInstance()->render('components/form/pending_reason_is_default.html.twig', [
+            'show_warning' => $defaultPendingReason && $defaultPendingReason->getID() != $this->getID(),
+            'tooltip' => $defaultPendingReason ? Html::showToolTip(
+                sprintf(
+                    __s('If you set this as the default pending reason, the previous default pending reason (%s) will no longer be the default value.'),
+                    '<a href="' . htmlescape(PendingReason::getFormURLWithID($defaultPendingReason->getID())) . '">' . htmlescape($defaultPendingReason->fields['name']) . '</a>'
+                ),
+                [
+                    'display' => false,
+                    'awesome-class' => 'ti ti-alert-triangle fs-2',
+                ]
+            ) : '',
+        ]);
+
+        return $out;
+    }
+
+    /**
      * Get possibles values for 'followups_before_resolution' field of pending reasons
      * @return array number of bump before resolution => label
      */
     public static function getFollowupsBeforeResolutionValues(): array
     {
         return [
+            -1 => __("No follow-up"),
             1 => __("After one follow-up"),
             2 => __("After two follow-ups"),
             3 => __("After three follow-ups"),
@@ -252,9 +304,11 @@ class PendingReason extends CommonDropdown
     {
 
         if ($field['name'] == 'followup_frequency') {
-            echo self::displayFollowupFrequencyfield($this->fields['followup_frequency'], "", [], false);
+            echo self::displayFollowupFrequencyfield($this->fields['followup_frequency']);
         } elseif ($field['name'] == 'followups_before_resolution') {
-            echo self::displayFollowupsNumberBeforeResolutionField($this->fields['followups_before_resolution'], "", [], false);
+            echo self::displayFollowupsNumberBeforeResolutionField($this->fields['followups_before_resolution']);
+        } elseif ($field['name'] == 'is_default') {
+            echo self::displayIsDefaultPendingReasonField((bool) $this->fields['is_default']);
         }
     }
 
@@ -294,5 +348,64 @@ class PendingReason extends CommonDropdown
                 PendingReason_Item::class,
             ]
         );
+    }
+
+    public static function getDefault(): ?PendingReason
+    {
+        $pending_reason = new PendingReason();
+        if (
+            $pending_reason->getFromDBByCrit([
+                'is_default' => 1,
+            ])
+        ) {
+            return $pending_reason;
+        }
+
+        return null;
+    }
+
+    public static function isDefaultPending()
+    {
+        $default_pending = self::getDefault();
+
+        return $default_pending && $default_pending->fields['is_pending_per_default'];
+    }
+
+    public function updateDefaultPendingReason()
+    {
+        if (isset($this->input['is_default']) && $this->input['is_default']) {
+            $previous_default = self::getDefault();
+            if ($previous_default !== null) {
+                $previous_default->update(['id' => $previous_default->getId()] + ['is_default' => 0]);
+            }
+        }
+    }
+
+    public function pre_addInDB()
+    {
+        $this->updateDefaultPendingReason();
+    }
+
+    public function pre_updateInDB()
+    {
+        $this->updateDefaultPendingReason();
+    }
+
+    public function prepareInput($input)
+    {
+        $input['is_pending_per_default'] = isset($input['is_default']) && $input['is_default']
+            ? ($input['is_pending_per_default'] ?? 0) : 0;
+
+        return $input;
+    }
+
+    public function prepareInputForAdd($input)
+    {
+        return $this->prepareInput($input);
+    }
+
+    public function prepareInputForUpdate($input)
+    {
+        return $this->prepareInput($input);
     }
 }

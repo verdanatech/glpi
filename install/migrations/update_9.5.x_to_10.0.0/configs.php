@@ -31,12 +31,9 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \Migration $migration
+ * @var Migration $migration
  */
-
-$migration->displayMessage('Add new configurations / user preferences');
 $migration->addConfig([
     'default_central_tab'   => 0,
     'page_layout'           => 'vertical',
@@ -64,8 +61,7 @@ $migration->addField('glpi_users', 'richtext_layout', 'char(20) DEFAULT NULL', [
 $migration->addField("glpi_users", "timeline_order", "char(20) DEFAULT NULL", ['after' => 'savedsearches_pinned']);
 $migration->addField('glpi_users', 'itil_layout', 'text', ['after' => 'timeline_order']);
 
-$migration->displayMessage('Drop old configurations / user preferences');
 $migration->dropField('glpi_users', 'layout');
-Config::deleteConfigurationValues('core', ['layout']);
-Config::deleteConfigurationValues('core', ['use_ajax_autocompletion']);
-Config::deleteConfigurationValues('core', ['transfers_id_auto']);
+$migration->removeConfig(['layout']);
+$migration->removeConfig(['use_ajax_autocompletion']);
+$migration->removeConfig(['transfers_id_auto']);

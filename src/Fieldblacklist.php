@@ -49,15 +49,12 @@ class Fieldblacklist extends CommonDropdown
     }
 
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return static::canUpdate();
     }
 
-    /**
-     * @since 0.85
-     **/
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         return static::canUpdate();
     }
@@ -142,7 +139,7 @@ class Fieldblacklist extends CommonDropdown
                 if (isset($values['itemtype']) && !empty($values['itemtype'])) {
                     $target       = getItemForItemtype($values['itemtype']);
                     $searchOption = $target->getSearchOptionByField('field', $values[$field]);
-                    return $searchOption['name'];
+                    return htmlescape($searchOption['name']);
                 }
                 break;
 
@@ -246,14 +243,13 @@ class Fieldblacklist extends CommonDropdown
      **/
     public function showItemtype()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if ($this->fields['id'] > 0) {
             if ($item = getItemForItemtype($this->fields['itemtype'])) {
-                echo $item->getTypeName(1);
+                echo htmlescape($item->getTypeName(1));
             }
-            echo "<input type='hidden' name='itemtype' value='" . $this->fields['itemtype'] . "'>";
+            echo "<input type='hidden' name='itemtype' value='" . htmlescape($this->fields['itemtype']) . "'>";
         } else {
             //Add criteria : display dropdown
             $options = [];
@@ -288,7 +284,6 @@ class Fieldblacklist extends CommonDropdown
 
     public function selectCriterias()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         echo "<span id='span_fields' name='span_fields'>";
@@ -332,7 +327,6 @@ class Fieldblacklist extends CommonDropdown
      **/
     public static function dropdownField($itemtype, $options = [])
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $p['name']    = 'field';
@@ -403,11 +397,10 @@ class Fieldblacklist extends CommonDropdown
      * @param string $field         the field to check
      * @param string $value         the field's value
      *
-     * @return true is value if blacklisted, false otherwise
+     * @return bool true is value if blacklisted, false otherwise
      **/
     public static function isFieldBlacklisted($itemtype, $entities_id, $field, $value)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $result = $DB->request([

@@ -44,6 +44,8 @@ return array(
 		'else' => 'toutes les %{interval} secondes'
 	),
 	'dtstart' => ', à partir du %{date}',
+	'timeofday' => ' à %{date}',
+	'startingtimeofday' => ' à partir du %{date}',
 	'infinite' => ', indéfiniment',
 	'until' => ', jusqu\'au %{date}',
 	'count' => array(
@@ -67,7 +69,7 @@ return array(
 		8 => 'août',
 		9 => 'septembre',
 		10 => 'octobre',
-		11 => 'november',
+		11 => 'novembre',
 		12 => 'décembre',
 	),
 	'byweekday' => ' le %{weekdays}',

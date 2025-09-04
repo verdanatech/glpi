@@ -43,10 +43,8 @@ class DeviceDrive extends CommonDevice
         return _n('Drive', 'Drives', $nb);
     }
 
-
     public function getAdditionalFields()
     {
-
         return array_merge(
             parent::getAdditionalFields(),
             [['name'  => 'is_writer',
@@ -69,14 +67,13 @@ class DeviceDrive extends CommonDevice
         );
     }
 
-
     public function rawSearchOptions()
     {
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'                 => '12',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'is_writer',
             'name'               => __('Writing ability'),
             'datatype'           => 'bool',
@@ -84,7 +81,7 @@ class DeviceDrive extends CommonDevice
 
         $tab[] = [
             'id'                 => '13',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'speed',
             'name'               => __('Speed'),
             'datatype'           => 'string',
@@ -109,7 +106,6 @@ class DeviceDrive extends CommonDevice
         return $tab;
     }
 
-
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
@@ -126,14 +122,13 @@ class DeviceDrive extends CommonDevice
 
         switch ($itemtype) {
             case 'Computer':
-                Manufacturer::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-                $base->addHeader('devicedrive_writer', __('Writing ability'), $super, $father);
-                $base->addHeader('devicedrive_speed', __('Speed'), $super, $father);
-                InterfaceType::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
+                Manufacturer::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+                $base->addHeader('devicedrive_writer', __s('Writing ability'), $super, $father);
+                $base->addHeader('devicedrive_speed', __s('Speed'), $super, $father);
+                InterfaceType::getHTMLTableHeader(self::class, $base, $super, $father, $options);
                 break;
         }
     }
-
 
     public function getHTMLTableCellForItem(
         ?HTMLTableRow $row = null,
@@ -141,20 +136,19 @@ class DeviceDrive extends CommonDevice
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableCellForItem($row, $item, $father, $options);
 
         if ($column == $father) {
             return $father;
         }
 
-        switch ($item->getType()) {
+        switch ($item::class) {
             case 'Computer':
                 Manufacturer::getHTMLTableCellsForItem($row, $this, null, $options);
                 if ($this->fields["is_writer"]) {
                     $row->addCell(
                         $row->getHeaderByName('devicedrive_writer'),
-                        Dropdown::getYesNo($this->fields["is_writer"]),
+                        htmlescape(Dropdown::getYesNo($this->fields["is_writer"])),
                         $father
                     );
                 }
@@ -162,35 +156,27 @@ class DeviceDrive extends CommonDevice
                 if ($this->fields["speed"]) {
                     $row->addCell(
                         $row->getHeaderByName('devicedrive_speed'),
-                        $this->fields["speed"],
+                        htmlescape($this->fields["speed"]),
                         $father
                     );
                 }
 
                 InterfaceType::getHTMLTableCellsForItem($row, $this, null, $options);
         }
+        return null;
     }
 
-
-    /**
-     * Criteria used for import function
-     *
-     * @see CommonDevice::getImportCriteria()
-     *
-     * @since 0.84
-     **/
     public function getImportCriteria()
     {
-
-        return ['designation'       => 'equal',
+        return [
+            'designation'       => 'equal',
             'manufacturers_id'  => 'equal',
             'interfacetypes_id' => 'equal',
         ];
     }
 
-
     public static function getIcon()
     {
-        return "fas fa-hdd";
+        return "ti ti-server-2";
     }
 }

@@ -32,26 +32,24 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+
 /**
  * Update from 9.5.6 to 9.5.7
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update956to957()
 {
     /**
      * @var array $CFG_GLPI
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration, $CFG_GLPI;
 
-    $current_config   = Config::getConfigurationValues('core');
     $updateresult     = true;
-    $ADDTODISPLAYPREF = [];
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.5.7'));
     $migration->setVersion('9.5.7');
 
     /* Fix null `date` in ITIL tables */

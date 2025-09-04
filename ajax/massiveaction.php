@@ -37,26 +37,19 @@
  * @since 0.84
  */
 
-use Glpi\Toolbox\Sanitizer;
-
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
-include('../inc/includes.php');
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 try {
     $ma = new MassiveAction($_POST, $_GET, 'initial');
-} catch (\Throwable $e) {
-    echo "<div class='center'><img src='" . $CFG_GLPI["root_doc"] . "/pics/warning.png' alt='" .
-                              __s('Warning') . "'><br><br>";
-    echo "<span class='b'>" . $e->getMessage() . "</span><br>";
+} catch (Throwable $e) {
+    echo "<div class='center'><img src='" . htmlescape($CFG_GLPI["root_doc"]) . "/pics/warning.png' alt='"
+                              . __s('Warning') . "'><br><br>";
+    echo "<span class='b'>" . htmlescape($e->getMessage()) . "</span><br>";
     echo "</div>";
-    exit();
+    return;
 }
 
 echo "<div class='center massiveactions'>";
@@ -64,9 +57,7 @@ Html::openMassiveActionsForm();
 $params = ['action' => '__VALUE__'];
 $input  = $ma->getInput();
 foreach ($input as $key => $val) {
-    // Value will be sanitized again when massive action form will be submitted.
-    // It have to be unsanitized here to prevent double sanitization.
-    $params[$key] = Sanitizer::unsanitize($val);
+    $params[$key] = $val;
 }
 
 $actions = $params['actions'];
@@ -77,11 +68,13 @@ if (count($actions)) {
             echo Html::hidden($key, ['value' => $val]);
         }
     }
-    echo _n('Action', 'Actions', 1);
+    $rand = mt_rand();
+
+    echo "<label for=\"dropdown_massiveaction$rand\">" . _sn('Action', 'Actions', 1) . "</label>";
     echo "&nbsp;";
 
     $actions = ['-1' => Dropdown::EMPTY_VALUE] + $actions;
-    $rand    = Dropdown::showFromArray('massiveaction', $actions);
+    Dropdown::showFromArray('massiveaction', $actions, ['rand' => $rand]);
 
     echo "<br><br>";
 

@@ -1,5 +1,35 @@
 # Change Log
 
+## 1.3.0 - Jul 29, 2025
+**BC change:** Increased minimal PHP version to 7.1.0! (#47)
+
+## 1.2.1 - Jun 27, 2025
+- Fixed bugs in:
+  - AlchemyZippy::getLastModifiedDate (#44 by @rotdrop)
+  - LzwStreamWrapper (#46 by @cod3beat)
+- Enhancements:
+  - Improved performance in one-file drivers extraction (gzip - #49, bzip - #50 by @iasjennen)
+- Docs:
+  - Specified supported **php versions**: 5.5.0-8.3.x, deprecations in 8.4.x (#47 by @cedric-anne)
+  - Fixed support status for `xz` in matrix: SevenZip does not support it (#45 by @rotdrop)
+
+## 1.2.0 - Jun 30, 2023
+- Deprecate few functions:
+  - _Formats::checkFormatSupportAbility()_ marked deprecated, use `can()` instead.
+  - _UnifiedArchive: addFile() and addDirectory()_ marked deprecated, use `add()` instead.
+- Changed behaviour:
+  - _UnifiedArchive: add() and create()_ changed `fileOrFiles` handling: if passed string, then file/directory will be archived with full its original name (as opposed to relative name before).
+  - _Formats: detectArchiveFormat() and getFormatMimeType()_ returns **null** instead of **false** in case of failed type detection.
+  - _UnifiedArchive::getMimeType()_ returns **null** instead of **false**.
+- New:
+  - Improved `test()` functionality - returns list of mismatched hashes.
+
+## 1.1.10 - Jan 17, 2023
+- Fixed invalid initialization of `TarByPear` driver (from 1.1.8)
+
+## 1.1.9 - Jan 17, 2023
+- Fixed archive type detection when filename is not lower-cased (#40)
+
 ## 1.1.8 - Nov 20, 2022
 Fixed:
 - Fixed opening an archive with password (#37)
@@ -41,10 +71,10 @@ New functions:
 **New features**:
 - Added passing needed abilities to **UnifiedArchive::open()** to select a better driver:
     ```php
-    use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
+    use wapmorgan\UnifiedArchive\Abilities;use wapmorgan\UnifiedArchive\Drivers\Basic\BasicDriver;
 
     # opens an array with driver, that supports content streaming and appending
-    $archive = \wapmorgan\UnifiedArchive\UnifiedArchive::open('archive.7z', [BasicDriver::STREAM_CONTENT, BasicDriver::APPEND]);
+    $archive = \wapmorgan\UnifiedArchive\UnifiedArchive::open('archive.7z', [Abilities::STREAM_CONTENT, Abilities::APPEND]);
     # if not specified, uses OPEN or OPEN_ENCRYPTED check, if password passed
     ```
 - Added `UnifiedArchive::test($files = [])` (and `cam files:test` command) to test archive contents (compare actual control sum with stored crc32).

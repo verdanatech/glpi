@@ -34,26 +34,27 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+use Glpi\RichText\UserMention;
 
-include('../inc/includes.php');
-
-Session::checkLoginUser();
+use function Safe\json_encode;
 
 if (($_POST['action'] ?? null) === 'change_task_state') {
     header("Content-Type: application/json; charset=UTF-8");
 
-    if (
-        !isset($_POST['tasks_id'], $_POST['parenttype']) || ($parent = getItemForItemtype($_POST['parenttype'])) === false
-    ) {
-        exit();
+    if (!isset($_POST['tasks_id'], $_POST['parenttype'])) {
+        return;
     }
 
-    $taskClass = $parent::getType() . "Task";
-    /** @var CommonITILTask $task */
-    $task = new $taskClass();
+    $parent = getItemForItemtype($_POST['parenttype']);
+    if (!($parent instanceof CommonITILObject)) {
+        return;
+    }
+
+    $task = $parent::getTaskClassInstance();
     if (!$task->getFromDB((int) $_POST['tasks_id']) || !$task->canUpdateItem()) {
-        http_response_code(403);
-        die();
+        throw new AccessDeniedHttpException();
     }
     if (!in_array($task->fields['state'], [0, Planning::INFO])) {
         $new_state = ($task->fields['state'] == Planning::DONE)
@@ -75,45 +76,31 @@ if (($_POST['action'] ?? null) === 'change_task_state') {
 } elseif (($_REQUEST['action'] ?? null) === 'viewsubitem') {
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
-    if (!isset($_REQUEST['type'])) {
-        exit();
-    }
-    if (!isset($_REQUEST['parenttype'])) {
-        exit();
+    if (!isset($_REQUEST['type'], $_REQUEST['parenttype'])) {
+        throw new BadRequestHttpException();
     }
 
-    $denied = false;
     $item = getItemForItemtype($_REQUEST['type']);
 
     if (!$item->canView()) {
-        $denied = true;
+        throw new AccessDeniedHttpException();
     }
     $parent = getItemForItemtype($_REQUEST['parenttype']);
 
     if (!$parent instanceof CommonITILObject) {
-        trigger_error(
-            sprintf('%s is not a valid item type.', $_REQUEST['parenttype']),
-            E_USER_WARNING
-        );
-        exit();
+        throw new BadRequestHttpException();
     }
 
     if (
         isset($_REQUEST[$parent::getForeignKeyField()])
         && !$parent->can($_REQUEST[$parent::getForeignKeyField()], READ)
     ) {
-        $denied = true;
+        throw new AccessDeniedHttpException();
     }
 
     $id = isset($_REQUEST['id']) && (int) $_REQUEST['id'] > 0 ? $_REQUEST['id'] : null;
     if (!$item->can($id, READ)) {
-        $denied = true;
-    }
-
-    if ($denied) {
-        echo __('Access denied');
-        Html::ajaxFooter();
-        exit();
+        throw new AccessDeniedHttpException();
     }
 
     $twig = TemplateRenderer::getInstance();
@@ -125,16 +112,20 @@ if (($_POST['action'] ?? null) === 'change_task_state') {
     if ($id) {
         $item->getFromDB($id);
     }
+
+    $mention_options = UserMention::getMentionOptions($parent);
+
     $params = [
-        'item'      => $parent,
-        'subitem'   => $item,
+        'item'            => $parent,
+        'subitem'         => $item,
+        'mention_options' => $mention_options,
+        'has_pending_reason' => PendingReason_Item::getForItem($parent) !== false,
     ];
 
     if ($_REQUEST['type'] === ITILFollowup::class) {
         $template = 'form_followup';
     } elseif ($_REQUEST['type'] === ITILSolution::class) {
         $template = 'form_solution';
-        $params['kb_id_toload'] = $_REQUEST['load_kb_sol'] ?? 0;
     } elseif (is_subclass_of($_REQUEST['type'], CommonITILTask::class)) {
         $template = 'form_task';
     } elseif (is_subclass_of($_REQUEST['type'], CommonITILValidation::class)) {
@@ -148,13 +139,10 @@ if (($_POST['action'] ?? null) === 'change_task_state') {
         $foreignKey = $parent->getForeignKeyField();
         $params[$foreignKey] = $_REQUEST[$foreignKey];
         $parent::showSubForm($item, $_REQUEST["id"], ['parent' => $parent, $foreignKey => $_REQUEST[$foreignKey]]);
-        Html::ajaxFooter();
-        exit();
+        return;
     }
     if ($template === null) {
-        echo __('Access denied');
-        Html::ajaxFooter();
-        exit();
+        throw new AccessDeniedHttpException();
     }
     $twig->display("components/itilobject/timeline/{$template}.html.twig", $params);
 }

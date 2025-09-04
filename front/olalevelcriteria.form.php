@@ -33,12 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 9.2
  */
-include('../inc/includes.php');
-
-
 $criteria = new OlaLevelCriteria();
 
 if (isset($_POST["add"])) {
@@ -53,7 +52,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $criteria->check($_POST['id'], PURGE);
-    $criteria->delete($_POST, 1);
+    $criteria->delete($_POST, true);
 
     Html::back();
 }

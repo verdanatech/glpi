@@ -105,7 +105,6 @@ class NotificationTargetObjectLock extends NotificationTarget
 
     public function addDataForTemplate($event, $options = [])
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $events = $this->getEvents();
@@ -132,9 +131,9 @@ class NotificationTargetObjectLock extends NotificationTarget
                                               = $_SESSION['glpirealname'];
         $this->data['##objectlock.requester.firstname##']
                                               = $_SESSION['glpifirstname'];
-        $this->data['##objectlock.url##']      = $CFG_GLPI['url_base'] . "/?redirect=" .
-                                                   $options['item']->fields['itemtype'] . "_" .
-                                                   $options['item']->fields['items_id'];
+        $this->data['##objectlock.url##']      = $CFG_GLPI['url_base'] . "/?redirect="
+                                                   . $options['item']->fields['itemtype'] . "_"
+                                                   . $options['item']->fields['items_id'];
 
         $this->getTags();
         foreach ($this->tag_descriptions[NotificationTarget::TAG_LANGUAGE] as $tag => $values) {

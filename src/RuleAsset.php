@@ -37,7 +37,6 @@ class RuleAsset extends Rule
 {
     // From Rule
     public static $rightname = 'rule_asset';
-    public $can_sort  = true;
 
     public const ONADD    = 1;
     public const ONUPDATE = 2;
@@ -49,29 +48,30 @@ class RuleAsset extends Rule
         return __('Business rules for assets');
     }
 
+    public static function getIcon()
+    {
+        return "ti ti-package";
+    }
 
     public function maybeRecursive()
     {
         return true;
     }
 
-
     public function isEntityAssign()
     {
         return true;
     }
-
 
     public function canUnrecurs()
     {
         return true;
     }
 
-
     public static function getConditionsArray()
     {
-
-        return [static::ONADD                   => __('Add'),
+        return [
+            static::ONADD                   => __('Add'),
             static::ONUPDATE                => __('Update'),
             static::ONADD | static::ONUPDATE  => sprintf(
                 __('%1$s / %2$s'),
@@ -81,15 +81,16 @@ class RuleAsset extends Rule
         ];
     }
 
-
     public function getCriterias()
     {
-
         static $criterias = [];
 
         if (count($criterias)) {
             return $criterias;
         }
+
+        $criterias['name']['name']              = __('Name');
+        $criterias['name']['type']              = 'text';
 
         $criterias['_auto']['name']            = __('Automatic inventory');
         $criterias['_auto']['type']            = 'yesno';
@@ -109,7 +110,7 @@ class RuleAsset extends Rule
         $criterias['states_id']['name']             = __('Status');
         $criterias['states_id']['type']             = 'dropdown';
 
-        $criterias['comment']['name']               = __('Comments');
+        $criterias['comment']['name']               = _n('Comment', 'Comments', Session::getPluralNumber());
 
         $criterias['contact']['name']               = __('Alternate username');
 
@@ -150,13 +151,34 @@ class RuleAsset extends Rule
         $criterias['_groups_id_of_user']['linkfield']    = '_groups_id_of_user';
         $criterias['_groups_id_of_user']['type']         = 'dropdown';
 
+        $criterias['last_inventory_update']['name']            = __('Last inventory update');
+        $criterias['last_inventory_update']['type']            = 'datetime';
+        $criterias['last_inventory_update']['table']           = '';
+        $criterias['last_inventory_update']['allow_condition'] = [
+            Rule::PATTERN_DATE_IS_BEFORE,
+            Rule::PATTERN_DATE_IS_AFTER,
+            Rule::PATTERN_DATE_IS_EQUAL,
+            Rule::PATTERN_DATE_IS_NOT_EQUAL,
+        ];
+
+        $criterias['_inventory_users']['name']            = __('User from inventory');
+        $criterias['_inventory_users']['allow_condition'] = [
+            Rule::REGEX_MATCH,
+            Rule::REGEX_NOT_MATCH,
+            Rule::PATTERN_EXISTS,
+            Rule::PATTERN_DOES_NOT_EXISTS,
+            Rule::PATTERN_BEGIN,
+            Rule::PATTERN_END,
+            Rule::PATTERN_IS_EMPTY,
+            Rule::PATTERN_CONTAIN,
+            Rule::PATTERN_NOT_CONTAIN,
+        ];
+
         return $criterias;
     }
 
-
     public function getActions()
     {
-
         $actions                                = parent::getActions();
 
         $actions['states_id']['name']           = __('Status');
@@ -194,37 +216,54 @@ class RuleAsset extends Rule
 
         $actions['comment']['table']            = '';
         $actions['comment']['field']            = 'comment';
-        $actions['comment']['name']             = __('Comments');
+        $actions['comment']['name']             = _n('Comment', 'Comments', Session::getPluralNumber());
         $actions['comment']['force_actions']    = ['assign', 'regex_result'];
 
         $actions['otherserial']['name']              = __('Inventory number');
         $actions['otherserial']['type']              = 'text';
         $actions['otherserial']['force_actions']     = ['regex_result'];
 
+        $actions['_affect_user_by_name_and_regex']['name']              = __('Assign user from name');
+        $actions['_affect_user_by_name_and_regex']['type']              = 'text';
+        $actions['_affect_user_by_name_and_regex']['force_actions']     = ['regex_result'];
+
+        $actions['_affect_user_by_email_and_regex']['name']              = __('Assign user from email');
+        $actions['_affect_user_by_email_and_regex']['type']              = 'text';
+        $actions['_affect_user_by_email_and_regex']['force_actions']     = ['regex_result'];
+
+        $actions['_affect_user_by_registration_number_and_regex']['name']              = __('Assign user from registration number');
+        $actions['_affect_user_by_registration_number_and_regex']['type']              = 'text';
+        $actions['_affect_user_by_registration_number_and_regex']['force_actions']     = ['regex_result'];
+
+        $actions['_affect_user_by_sync_field_and_regex']['name']              = __('Assign user from sync field');
+        $actions['_affect_user_by_sync_field_and_regex']['type']              = 'text';
+        $actions['_affect_user_by_sync_field_and_regex']['force_actions']     = ['regex_result'];
+
         return $actions;
     }
 
-
     public function getRights($interface = 'central')
     {
-
         $values = parent::getRights();
-        $values[self::PARENT] = ['short' => __('Parent business'),
+        $values[self::PARENT] = [
+            'short' => __('Parent business'),
             'long'  => __('Business rules (entity parent)'),
         ];
 
         return $values;
     }
 
-
     public function executeActions($output, $params, array $input = [])
     {
-
         if (count($this->actions)) {
             foreach ($this->actions as $action) {
                 switch ($action->fields["action_type"]) {
                     case "assign":
-                        $output[$action->fields["field"]] = $action->fields["value"];
+                        if (in_array($action->fields['field'], ['groups_id', 'groups_id_tech'])) {
+                            $output['_' . $action->fields["field"]] = [$action->fields["value"]];
+                        } else {
+                            $output[$action->fields["field"]] = $action->fields["value"];
+                        }
                         break;
 
                     case "append":
@@ -244,16 +283,48 @@ class RuleAsset extends Rule
                     case "regex_result":
                         switch ($action->fields["field"]) {
                             case "_affect_user_by_regex":
+                            case "_affect_user_by_name_and_regex":
                                 foreach ($this->regex_results as $regex_result) {
                                     $res = RuleAction::getRegexResultById(
                                         $action->fields["value"],
                                         $regex_result
                                     );
-                                    if ($res != null) {
-                                        $user = User::getIdByName(addslashes($res));
-                                        if ($user) {
-                                            $output['users_id'] = $user;
-                                        }
+                                    if ($res != null && $user = User::getIdByName($res)) {
+                                        $output['users_id'] = $user;
+                                    }
+                                }
+                                break;
+                            case "_affect_user_by_email_and_regex":
+                                foreach ($this->regex_results as $regex_result) {
+                                    $res = RuleAction::getRegexResultById(
+                                        $action->fields["value"],
+                                        $regex_result
+                                    );
+                                    $user = new User();
+                                    if ($res != null && $user->getFromDBbyEmail($res)) {
+                                        $output['users_id'] = $user->fields['id'];
+                                    }
+                                }
+                                break;
+                            case "_affect_user_by_registration_number_and_regex":
+                                foreach ($this->regex_results as $regex_result) {
+                                    $res = RuleAction::getRegexResultById(
+                                        $action->fields["value"],
+                                        $regex_result
+                                    );
+                                    if ($res != null && $user = User::getIdByField('registration_number', $res)) {
+                                        $output['users_id'] = $user;
+                                    }
+                                }
+                                break;
+                            case "_affect_user_by_sync_field_and_regex":
+                                foreach ($this->regex_results as $regex_result) {
+                                    $res = RuleAction::getRegexResultById(
+                                        $action->fields["value"],
+                                        $regex_result
+                                    );
+                                    if ($res != null && $user = User::getIdByField('sync_field', $res)) {
+                                        $output['users_id'] = $user;
                                     }
                                 }
                                 break;
@@ -286,7 +357,7 @@ class RuleAsset extends Rule
                             ($action->fields['field'] == 'groups_id')
                              && isset($input['_default_groups_id_of_user'])
                         ) {
-                            $output['groups_id'] = $input['_default_groups_id_of_user'];
+                            $output['_groups_id'] = [$input['_default_groups_id_of_user']];
                         }
                         break;
 
@@ -295,7 +366,7 @@ class RuleAsset extends Rule
                             ($action->fields['field'] == 'groups_id')
                             && isset($input['_groups_id_of_user'])
                         ) {
-                            $output['groups_id'] = (int) reset($input['_groups_id_of_user']);
+                            $output['_groups_id'] = count($input['_groups_id_of_user']) > 0 ? [(int) reset($input['_groups_id_of_user'])] : [];
                         }
                         break;
 

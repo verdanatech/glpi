@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QuerySubQuery;
+
 /**
  * @since 10.0.0
  */
@@ -191,7 +193,6 @@ class CleanSoftwareCron extends CommonDBTM
         CommonDBTM $em,
         int $max
     ): int {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $total = 0;

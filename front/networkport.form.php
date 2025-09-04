@@ -33,16 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 0.84
  */
 
 use Glpi\Event;
 
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
-include('../inc/includes.php');
 
 Session::checkRight("networking", READ);
 
@@ -82,6 +81,15 @@ if (isset($_POST["add"])) {
         unset($input['from_logical_number']);
         unset($input['to_logical_number']);
 
+        if ($_POST["to_logical_number"] < $_POST["from_logical_number"]) {
+            Session::addMessageAfterRedirect(
+                __s("'To' should not be smaller than 'From'"),
+                false,
+                ERROR
+            );
+            Html::back();
+        }
+
         for ($i = $_POST["from_logical_number"]; $i <= $_POST["to_logical_number"]; $i++) {
             $add = "";
             if ($i < 10) {
@@ -107,7 +115,7 @@ if (isset($_POST["add"])) {
     }
 } elseif (isset($_POST["purge"])) {
     $np->check($_POST['id'], PURGE);
-    $np->delete($_POST, 1);
+    $np->delete($_POST, true);
     Event::log(
         $_POST['id'],
         "networkport",
@@ -123,7 +131,7 @@ if (isset($_POST["add"])) {
     Html::redirect($CFG_GLPI["root_doc"] . "/front/central.php");
 } elseif (isset($_POST["delete"])) {
     $np->check($_POST['id'], DELETE);
-    $np->delete($_POST, 0);
+    $np->delete($_POST);
     Event::log(
         $_POST['id'],
         "networkport",

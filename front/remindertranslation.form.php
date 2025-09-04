@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 9.5
  */
-
-include('../inc/includes.php');
 
 $translation = new ReminderTranslation();
 

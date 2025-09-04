@@ -33,19 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-// Direct access to file
-if (strpos($_SERVER['PHP_SELF'], "ruleactionvalue.php")) {
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-} elseif (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
-
-use Glpi\Toolbox\Sanitizer;
-
-Session::checkLoginUser();
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 $ra = new RuleAction();
 
-$ra->displayActionSelectPattern(Sanitizer::dbUnescapeRecursive($_POST));
+$ra->displayActionSelectPattern($_POST);

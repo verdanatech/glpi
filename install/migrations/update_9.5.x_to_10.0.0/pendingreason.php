@@ -31,12 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -60,7 +58,7 @@ if (!$DB->tableExists('glpi_pendingreasons')) {
          KEY `is_recursive` (`is_recursive`),
          KEY `solutiontemplates_id` (`solutiontemplates_id`)
       ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = $default_charset COLLATE = $default_collation;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_pendingreasons");
+    $DB->doQuery($query);
 }
 
 // Add pending reason items table
@@ -79,7 +77,7 @@ if (!$DB->tableExists('glpi_pendingreasons_items')) {
          KEY `pendingreasons_id` (`pendingreasons_id`),
          KEY `item` (`itemtype`,`items_id`)
       ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = $default_charset COLLATE = $default_collation;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_pendingreasons_items");
+    $DB->doQuery($query);
 }
 
 // Add pendingreason right
@@ -100,30 +98,20 @@ if (empty($config['system_user'])) {
         'password'      => '',
         'authtype'      => 1,
     ];
-    $DB->insertOrDie('glpi_users', $system_user_params, "Can't add 'glpi-system' user");
+    $DB->insert('glpi_users', $system_user_params);
 
     $migration->addConfig(['system_user' => $DB->insertId()], 'core');
 }
 
 // Add crontask for auto bump and auto solve
-$crontask = new CronTask();
-if (empty($crontask->find(['itemtype' => 'PendingReasonCron']))) {
-    $cron_added = CronTask::register(
-        'PendingReasonCron',
-        'pendingreason_autobump_autosolve',
-        30 * MINUTE_TIMESTAMP,
-        [
-            'state'         => 1,
-            'mode'          => 2,
-            'allowmode'     => 3,
-            'logs_lifetime' => 60,
-        ]
-    );
-
-    if (!$cron_added) {
-        die("Can't add PendingReasonCron");
-    }
-}
+$migration->addCrontask(
+    'PendingReasonCron',
+    'pendingreason_autobump_autosolve',
+    30 * MINUTE_TIMESTAMP,
+    options: [
+        'logs_lifetime' => 60,
+    ]
+);
 
 // Name change, might be needed for a few user who used the feature before release
 if ($DB->fieldExists('glpi_pendingreasons_items', 'auto_bump')) {

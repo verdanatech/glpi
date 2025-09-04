@@ -33,23 +33,16 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Application\ErrorHandler;
-use Glpi\Event;
-use Glpi\Mail\SMTP\OauthConfig;
-use Glpi\Toolbox\Sanitizer;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Error\ErrorHandler;
+use Glpi\Event;
+use Glpi\Http\RedirectResponse;
+use Glpi\Mail\SMTP\OauthConfig;
 
 Session::checkRight("config", UPDATE);
 
-if (isset($_POST["test_smtp_send"])) {
-    NotificationMailing::testNotification();
-    Html::back();
-} elseif (isset($_POST["update"])) {
-    if (array_key_exists('smtp_passwd', $_POST)) {
-        // Password must not be altered, it will be encrypted and never displayed, so sanitize is not necessary.
-        $_POST['smtp_passwd'] = Sanitizer::unsanitize($_POST['smtp_passwd']);
-    }
+if (isset($_POST["update"])) {
     $config = new Config();
     $config->update($_POST);
     Event::log(0, "system", 3, "setup", sprintf(
@@ -66,11 +59,11 @@ if (isset($_POST["test_smtp_send"])) {
             try {
                 $auth_url = $provider->getAuthorizationUrl();
                 $_SESSION['smtp_oauth2_state'] = $provider->getState();
-                Html::redirect($auth_url);
-            } catch (\Throwable $e) {
-                ErrorHandler::getInstance()->handleException($e, true);
+                return new RedirectResponse($auth_url);
+            } catch (Throwable $e) {
+                ErrorHandler::logCaughtException($e);
                 Session::addMessageAfterRedirect(
-                    sprintf(_x('oauth', 'Authorization failed with error: %s'), $e->getMessage()),
+                    htmlescape(sprintf(_x('oauth', 'Authorization failed with error: %s'), $e->getMessage())),
                     false,
                     ERROR
                 );

@@ -44,11 +44,11 @@
             <tr class="tab_bg_1">
                <td class="text-start">
                   {% if not requirement.isOptional() %}
-                     <span class="badge bg-warning">{{ __('Required') }}</span>
+                     <span class="badge bg-warning-lt">{{ __('Required') }}</span>
                   {% elseif requirement.isRecommendedForSecurity() %}
-                     <span class="badge bg-danger">{{ __('Security') }}</span>
+                     <span class="badge bg-danger-lt">{{ __('Security') }}</span>
                   {% else %}
-                     <span class="badge bg-secondary">{{ __('Suggested') }}</span>
+                     <span class="badge bg-secondary text-secondary-fg">{{ __('Suggested') }}</span>
                   {% endif %}
                   <strong>{{ requirement.getTitle() }}</strong>
                   {% set description = requirement.getDescription() %}
@@ -73,7 +73,7 @@
                         data-bs-html="true"
                         data-bs-custom-class="validation-messages"
                         data-bs-content="{{ requirement.getValidationMessages()|join('<br />') }}">
-                     <i class="{{ requirement.isValidated() ? 'fas fa-check' : (requirement.isOptional() ? 'fas fa-exclamation-triangle' : 'ti ti-x') }}"></i>
+                     <i class="{{ requirement.isValidated() ? 'ti ti-check' : (requirement.isOptional() ? 'ti ti-alert-triangle' : 'ti ti-x') }}"></i>
                   </span>
                </td>
             </tr>

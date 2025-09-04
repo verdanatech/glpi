@@ -33,8 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-/// Class FQDN : Fully Qualified Domain Name
-/// since version 0.84
+/**
+ * Fully Qualified Domain Name
+ * @since 0.84
+ */
 class FQDN extends CommonDropdown
 {
     public $dohistory = true;
@@ -82,7 +84,7 @@ class FQDN extends CommonDropdown
         ) {
             // Check that FQDN is not empty
             if (empty($input['fqdn'])) {
-                Session::addMessageAfterRedirect(__('FQDN must not be empty'), false, ERROR);
+                Session::addMessageAfterRedirect(__s('FQDN must not be empty'), false, ERROR);
                 return false;
             }
 
@@ -91,7 +93,7 @@ class FQDN extends CommonDropdown
 
             // Then check its validity
             if (!self::checkFQDN($input["fqdn"])) {
-                Session::addMessageAfterRedirect(__('FQDN is not valid'), false, ERROR);
+                Session::addMessageAfterRedirect(__s('FQDN is not valid'), false, ERROR);
                 return false;
             }
         }
@@ -115,9 +117,9 @@ class FQDN extends CommonDropdown
     {
 
         $ong = [];
-        $this->addStandardTab('NetworkName', $ong, $options);
-        $this->addStandardTab('NetworkAlias', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(NetworkName::class, $ong, $options);
+        $this->addStandardTab(NetworkAlias::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -148,7 +150,6 @@ class FQDN extends CommonDropdown
      **/
     public static function getFQDNIDByFQDN($fqdn, $wildcard_search = false)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (empty($fqdn)) {
@@ -243,6 +244,6 @@ class FQDN extends CommonDropdown
 
     public static function getIcon()
     {
-        return "fas fa-globe";
+        return "ti ti-world";
     }
 }

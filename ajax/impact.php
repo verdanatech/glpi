@@ -33,20 +33,21 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
 
 const DELTA_ACTION_ADD    = 1;
 const DELTA_ACTION_UPDATE = 2;
 const DELTA_ACTION_DELETE = 3;
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
+global $CFG_GLPI;
 
 // Send UTF8 Headers
 header("Content-Type: application/json; charset=UTF-8");
 Html::header_nocache();
-
-Session::checkLoginUser();
 
 switch ($_SERVER['REQUEST_METHOD']) {
     // GET request: build the impact graph for a given asset
@@ -56,12 +57,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $itemtype = $_GET["itemtype"] ?? "";
         // Check required params
         if (empty($itemtype)) {
-            Response::sendError(400, "Missing itemtype");
+            throw new BadRequestHttpException("Missing itemtype");
         }
 
         $item = getItemForItemtype($itemtype);
         if (!$item->canView()) {
-            Response::sendError(403, "Not allowed");
+            throw new AccessDeniedHttpException();
         }
 
         switch ($action) {
@@ -70,8 +71,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 $filter   = $_GET["filter"]   ?? "";
                 $page     = $_GET["page"]     ?? 0;
 
+
                 // Execute search
                 $assets = Impact::searchAsset($itemtype, json_decode($used), $filter, $page);
+                foreach ($assets['items'] as $index => $item) {
+                    $item['image'] = Impact::getImpactIcon($itemtype, $item['id']);
+
+                    $assets['items'][$index] = $item;
+                }
                 header('Content-Type: application/json');
                 echo json_encode($assets);
                 break;
@@ -82,16 +89,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                 // Check required params
                 if (empty($items_id)) {
-                    Response::sendError(400, "Missing items_id");
+                    throw new BadRequestHttpException("Missing itemtype or items_id");
                 }
 
                 if (!$item->can($items_id, READ)) {
-                    Response::sendError(403, "Not allowed");
+                    throw new AccessDeniedHttpException();
                 }
 
                 // Check that the target asset exists
                 if (!Impact::assetExist($itemtype, $items_id)) {
-                    Response::sendError(400, "Object[class=$itemtype, id=$items_id] doesn't exist");
+                    throw new BadRequestHttpException("Object[class=$itemtype, id=$items_id] doesn't exist");
                 }
 
                 // Prepare graph
@@ -116,8 +123,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             default:
-                Response::sendError(400, "Missing or invalid 'action' parameter");
-                break;
+                throw new BadRequestHttpException("Missing or invalid 'action' parameter");
         }
         break;
 
@@ -125,35 +131,34 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'POST':
         // Check required params
         if (!isset($_POST['impacts'])) {
-            Response::sendError(400, "Missing 'impacts' payload");
+            throw new BadRequestHttpException("Missing 'impacts' payload");
         }
 
         // Decode data (should be json)
         $data = Toolbox::jsonDecode($_POST['impacts'], true);
         if (!is_array($data)) {
-            Response::sendError(400, "Payload should be an array");
+            throw new BadRequestHttpException("Payload should be an array");
         }
-        $data = Toolbox::addslashes_deep($data);
 
         $readonly = true;
 
         // Handle context for the starting node
-        $context_em = new \ImpactContext();
+        $context_em = new ImpactContext();
         $context_data = $data['context'];
 
         // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4])
         $start_node_details = explode(Impact::NODE_ID_DELIMITER, $context_data['node_id']);
 
         // Get impact_item for this node
-        $item = new $start_node_details[0]();
+        $item = getItemForItemtype($start_node_details[0]);
         $item->getFromDB($start_node_details[1]);
-        $impact_item = \ImpactItem::findForItem($item);
+        $impact_item = ImpactItem::findForItem($item);
         $start_node_impact_item_id = $impact_item->fields['id'];
         $readonly = !$item->can($item->fields['id'], UPDATE);
 
         // Stop here if readonly graph
         if ($readonly) {
-            Response::sendError(403, "Missing rights");
+            throw new AccessDeniedHttpException("Missing rights");
         }
 
         $context_id = 0;
@@ -186,6 +191,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
             switch ($action) {
                 case DELTA_ACTION_ADD:
                     $em->add($impact);
+                    break;
+
+                case DELTA_ACTION_UPDATE:
+                    $edge['id']   = ImpactRelation::getIDFromInput($impact);
+                    $edge['name'] = $impact['name'];
+                    $em->update($edge);
                     break;
 
                 case DELTA_ACTION_DELETE:
@@ -261,6 +272,5 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         header('Content-Type: application/javascript');
-        http_response_code(200);
         break;
 }

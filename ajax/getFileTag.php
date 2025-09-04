@@ -37,14 +37,10 @@
  * @since 0.85
  */
 
-$AJAX_INCLUDE = 1;
+use function Safe\json_encode;
 
-include('../inc/includes.php');
-
-header('Content-type: application/json');
+header('Content-type: application/json; charset=UTF-8');
 Html::header_nocache();
-
-Session::checkLoginUser();
 
 if (isset($_POST['data'])) {
     $response = [];

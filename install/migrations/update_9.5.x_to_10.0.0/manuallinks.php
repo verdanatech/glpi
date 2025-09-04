@@ -31,11 +31,9 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
+ * @var DBmysql $DB
  */
-
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -58,5 +56,5 @@ if (!$DB->tableExists('glpi_manuallinks')) {
       KEY `date_creation` (`date_creation`),
       KEY `date_mod` (`date_mod`)
       ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation};";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_manuallinks");
+    $DB->doQuery($query);
 }
