@@ -1,0 +1,308 @@
+[2025-09-10 12:38:06] glpiphplog.WARNING: Test logger  
+[2025-09-10 12:38:19] glpiphplog.WARNING: Test logger  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vreports" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "applicationinterface" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "kcs" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vera" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "chat" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "messengerintegrator" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "formcreator" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vauth" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vservices" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "skins" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "pdfbuilder" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "utilsdashboards" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vterm" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "fields" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "onebridge" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:19] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vpm" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING: Test logger  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vreports" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "applicationinterface" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "kcs" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vera" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "chat" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "messengerintegrator" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "formcreator" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vauth" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vservices" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "skins" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "pdfbuilder" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "utilsdashboards" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vterm" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "fields" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "onebridge" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:21] glpiphplog.WARNING:   *** PHP User Warning (512): Unable to load plugin "vpm" information. in /var/www/html/glpi/src/Plugin.php at line 654
+  Backtrace :
+  src/Plugin.php:654                                 trigger_error()
+  src/Plugin.php:538                                 Plugin->checkPluginState()
+  src/Plugin.php:279                                 Plugin->checkStates()
+  inc/includes.php:98                                Plugin->init()
+  front/locale.php:49                                include()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:38:46] glpiphplog.DEBUG: Html::compileScss() in /var/www/html/glpi/src/Html.php line 6866
+Compile css/palettes/auror.scss  {"user":"@PEVTCMTNB3360"} 
+[2025-09-10 12:38:59] glpiphplog.WARNING:   *** PHP Warning (2): Undefined array key "glpiextauth" in /var/www/html/glpi/src/User.php at line 3545
+  Backtrace :
+  src/CommonDBTM.php:1697                            User->pre_updateInDB()
+  src/Auth.php:1031                                  CommonDBTM->update()
+  front/login.php:93                                 Auth->login()
+  public/index.php:82                                require()
+  
+[2025-09-10 12:39:00] glpiphplog.DEBUG: Html::compileScss() in /var/www/html/glpi/src/Html.php line 6866
+Compile css/standalone/reservations.scss  {"user":"2@PEVTCMTNB3360"} 
+[2025-09-10 12:39:06] glpiphplog.DEBUG: Html::compileScss() in /var/www/html/glpi/src/Html.php line 6866
+Compile css/standalone/dashboard.scss  {"user":"2@PEVTCMTNB3360"} 
+[2025-09-10 12:39:06] glpiphplog.DEBUG: Html::compileScss() in /var/www/html/glpi/src/Html.php line 6866
+Compile css/standalone/gridstack-grids.scss  {"user":"2@PEVTCMTNB3360"} 
+[2025-09-10 12:39:08] glpiphplog.DEBUG: Html::compileScss() in /var/www/html/glpi/src/Html.php line 6866
+Compile css/standalone/chartist.scss  {"user":"2@PEVTCMTNB3360"} 

@@ -206,9 +206,9 @@
             'dev_requirement' => false,
         ),
         'league/oauth2-client' => array(
-            'pretty_version' => '2.8.0',
-            'version' => '2.8.0.0',
-            'reference' => '3d5cf8d0543731dfb725ab30e4d7289891991e13',
+            'pretty_version' => '2.8.1',
+            'version' => '2.8.1.0',
+            'reference' => '9df2924ca644736c835fc60466a3a60390d334f9',
             'type' => 'library',
             'install_path' => __DIR__ . '/../league/oauth2-client',
             'aliases' => array(),

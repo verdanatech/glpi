@@ -514,7 +514,11 @@ abstract class CommonITILObject extends CommonDBTM
         // load existing actors (from existing itilobject)
         if (isset($this->users[$actortype])) {
             foreach ($this->users[$actortype] as $user) {
-                $name = getUserName($user['users_id']);
+                $name = getUserName(
+                    $user['users_id'],
+                    0,
+                    in_array($actortype, [CommonITILActor::REQUESTER, CommonITILActor::OBSERVER])
+                );
                 $fn_add_actor('User', $user['users_id'], [
                     'id'                => $user['id'],
                     'text'              => $name,
@@ -7918,8 +7922,7 @@ abstract class CommonITILObject extends CommonDBTM
                 ],
                 'ORDERBY'            => "$table.date_mod DESC"
             ];
-        }
-            else{
+        } else {
             $criteria = [
                 'SELECT'          => [
                     "$table.*",
@@ -7979,7 +7982,6 @@ abstract class CommonITILObject extends CommonDBTM
         }
         return $criteria;
     }
-
 
     public function getForbiddenSingleMassiveActions()
     {

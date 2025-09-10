@@ -36,7 +36,7 @@
 use Glpi\SocketModel;
 
 // Current version of GLPI
-define('GLPI_VERSION', '10.0.19');
+define('GLPI_VERSION', '10.0.20');
 
 $schema_file = sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT);
 define(
@@ -49,7 +49,7 @@ if (!defined('GLPI_MARKETPLACE_PRERELEASES')) {
 }
 
 define('GLPI_MIN_PHP', '7.4.0'); // Must also be changed in top of index.php
-define('GLPI_MAX_PHP', '8.5.0'); // (Exclusive) Must also be changed in top of index.php
+define('GLPI_MAX_PHP', '8.6.0'); // (Exclusive) Must also be changed in top of index.php
 define('GLPI_YEAR', '2025');
 
 //Define a global recipient address for email notifications
@@ -115,6 +115,7 @@ $CFG_GLPI['languages'] = [
     'ru_RU'  => ['Русский',                   'ru_RU.mo',    'ru',    'ru', 'russian',              2],
     'sk_SK'  => ['Slovenčina',                'sk_SK.mo',    'sk',    'sk', 'slovak',               10],
     'sl_SI'  => ['Slovenščina',               'sl_SI.mo',    'sl',    'sl', 'slovenian slovene',    2],
+    'sq_AL'  => ['Shqip',                     'sq_AL.mo',    'sq',    'sq', 'albanian',             2],
     'sr_RS'  => ['Srpski',                    'sr_RS.mo',    'sr',    'sr', 'serbian',              2],
     'fi_FI'  => ['Suomi',                     'fi_FI.mo',    'fi',    'fi', 'finish',               2],
     'sv_SE'  => ['Svenska',                   'sv_SE.mo',    'sv',    'sv', 'swedish',              2],

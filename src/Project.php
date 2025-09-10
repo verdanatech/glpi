@@ -2727,6 +2727,7 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
 
         return $tab;
     }
+
     function post_clone($source, $history)
     {
        
@@ -2743,7 +2744,6 @@ class Project extends CommonDBTM implements ExtraVisibilityCriteria
               'projecttasks_id' => 0
            ]
         ]);
- 
  
         foreach($findProjetTaskWithAncestors AS $currentTask){
  

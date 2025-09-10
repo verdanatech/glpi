@@ -45,8 +45,6 @@ if (isset($_GET['ajax']) && $_GET['ajax']) {
 
 include('../inc/includes.php');
 
-Session::checkRight("reservation", ReservationItem::RESERVEANITEM);
-
 $rr = new Reservation();
 
 if (isset($_REQUEST['ajax'])) {
@@ -85,7 +83,7 @@ if (isset($_POST["update"])) {
 
     [$begin_year, $begin_month] = explode("-", $rr->fields["begin"]);
     Html::redirect($CFG_GLPI["root_doc"] . "/front/reservation.php?reservationitems_id=" .
-                  "$reservationitems_id&mois_courant=$begin_month&annee_courante=$begin_year");
+        "$reservationitems_id&mois_courant=$begin_month&annee_courante=$begin_year");
 } elseif (isset($_POST["add"])) {
     Reservation::handleAddForm($_POST);
     Html::back();

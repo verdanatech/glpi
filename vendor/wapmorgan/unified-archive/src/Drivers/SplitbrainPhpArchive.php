@@ -75,8 +75,8 @@ class SplitbrainPhpArchive extends BasicPureDriver
         switch ($format) {
             case Formats::ZIP:
             case Formats::TAR:
-            case Formats::TAR_GZIP;
-            case Formats::TAR_BZIP;
+            case Formats::TAR_GZIP:
+            case Formats::TAR_BZIP:
                 return [
                     BasicDriver::OPEN,
 //                    BasicDriver::EXTRACT_CONTENT,

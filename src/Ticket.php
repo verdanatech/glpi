@@ -1639,6 +1639,21 @@ class Ticket extends CommonITILObject
         return 0;
     }
 
+    private function handleContractInputs()
+    {
+        $contracts_id = $this->input['_contracts_id'] ?? 0;
+        if (!is_array($contracts_id)) {
+            $contracts_id = [$contracts_id];
+        }
+        $contracts_id = array_filter($contracts_id, static fn($val) => ((int) $val > 0));
+        $ticketcontract = new Ticket_Contract();
+        foreach ($contracts_id as $contract_id) {
+            $ticketcontract->add([
+                'contracts_id' => $contract_id,
+                'tickets_id'   => $this->getID(),
+            ]);
+        }
+    }
 
     public function post_updateItem($history = true)
     {
@@ -1787,6 +1802,9 @@ class Ticket extends CommonITILObject
                 ]
             );
         }
+
+        // Add linked contract
+        $this->handleContractInputs();
 
         // Add linked project
         $projects_ids = $this->input['_projects_id'] ?? [];
@@ -2196,14 +2214,7 @@ class Ticket extends CommonITILObject
         }
 
         // Add linked contract
-        $contracts_id = $this->input['_contracts_id'] ?? 0;
-        if ($contracts_id) {
-            $ticketcontract = new Ticket_Contract();
-            $ticketcontract->add([
-                'contracts_id' => $this->input['_contracts_id'],
-                'tickets_id'   => $this->getID(),
-            ]);
-        }
+        $this->handleContractInputs();
 
         // Add linked project
         $projects_ids = $this->input['_projects_id'] ?? [];
@@ -5413,6 +5424,7 @@ JAVASCRIPT;
         $criteria = self::getCommonCriteria();
         $restrict = self::getListForItemRestrict($item);
         $criteria['WHERE'] = $restrict + getEntitiesRestrictCriteria(self::getTable());
+        $criteria = array_merge_recursive($criteria, self::getCriteriaFromProfile());
         $criteria['WHERE']['glpi_tickets.is_deleted'] = 0;
         $criteria['LIMIT'] = (int) $_SESSION['glpilist_limit'];
 
@@ -7054,27 +7066,29 @@ JAVASCRIPT;
                 break;
 
             default:
-            if ($item->getType() === 'PluginFormcreatorFormAnswer' && self::getValidations($item->getID())) {
-                $restrict['glpi_items_tickets.items_id'] = $item->getID();
-                $restrict['glpi_items_tickets.itemtype'] = $item->getType();
-                $restrict['glpi_ticketvalidations.users_id_validate'] =    Session::getLoginUserID();
-                if (!Session::haveRight(self::$rightname, self::READALL)) {
-                    $or = [
-                        'glpi_tickets.users_id_recipient'   => Session::getLoginUserID(),
-                        [
-                            'OR' => [
-                                'glpi_tickets_users.tickets_id'  => new \QueryExpression('glpi_tickets.id'),
-                                'glpi_tickets_users.users_id'    => Session::getLoginUserID()
+
+                if ($item->getType() === 'PluginFormcreatorFormAnswer' && self::getValidations($item->getID())) {
+                    $restrict['glpi_items_tickets.items_id'] = $item->getID();
+                    $restrict['glpi_items_tickets.itemtype'] = $item->getType();
+                    $restrict['glpi_ticketvalidations.users_id_validate'] =    Session::getLoginUserID();
+                    if (!Session::haveRight(self::$rightname, self::READALL)) {
+                        $or = [
+                            'glpi_tickets.users_id_recipient'   => Session::getLoginUserID(),
+                            [
+                                'OR' => [
+                                    'glpi_tickets_users.tickets_id'  => new \QueryExpression('glpi_tickets.id'),
+                                    'glpi_tickets_users.users_id'    => Session::getLoginUserID()
+                                ]
                             ]
-                        ]
-                    ];
-                    if (count($_SESSION['glpigroups'])) {
-                        $or['glpi_groups_tickets.groups_id'] = $_SESSION['glpigroups'];
+                        ];
+                        if (count($_SESSION['glpigroups'])) {
+                            $or['glpi_groups_tickets.groups_id'] = $_SESSION['glpigroups'];
+                        }
+                        $restrict[] = ['OR' => $or];
                     }
-                    $restrict[] = ['OR' => $or];
+                    break;
                 }
-                break;
-            }
+
                 $restrict['glpi_items_tickets.items_id'] = $item->getID();
                 $restrict['glpi_items_tickets.itemtype'] = $item->getType();
                 // you can only see your tickets
@@ -7169,22 +7183,21 @@ JAVASCRIPT;
 
         return $options;
     }
+
     public static function getValidations($id)
     {
         $user_id = Session::getLoginUserID();
         global $DB;
-        $query = $DB->query("SELECT 
-    *
-FROM
-    glpi_plugin_formcreator_formanswers AS fa
-        LEFT JOIN
-    glpi_items_tickets AS it ON (fa.id = it.items_id)
-        INNER JOIN
-    glpi_ticketvalidations AS tv ON (it.tickets_id = tv.tickets_id)
-WHERE
-    items_id = {$id}
-		AND tv.users_id_validate = {$user_id}
-        AND itemtype = 'PluginFormcreatorFormAnswer'");
+        $query = $DB->query(
+            "SELECT 
+                * 
+            FROM glpi_plugin_formcreator_formanswers AS fa 
+            LEFT JOIN glpi_items_tickets AS it ON (fa.id = it.items_id) 
+            INNER JOIN glpi_ticketvalidations AS tv ON (it.tickets_id = tv.tickets_id) 
+            WHERE items_id = {$id} 
+            AND tv.users_id_validate = {$user_id} 
+            AND itemtype = 'PluginFormcreatorFormAnswer'"
+        );
         if ($query->num_rows > 0) {
             return true;
         }
