@@ -65,7 +65,7 @@ if (isset($_POST['add'])) {
     Html::back();
 } elseif (isset($_POST["update"])) {
     $ic->check($_POST["id"], UPDATE);
-
+    $_POST = array_filter($_POST);
     $ic->update($_POST);
     Event::log(
         $_POST["id"],
