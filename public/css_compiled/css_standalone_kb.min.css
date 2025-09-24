@@ -1,0 +1,140 @@
+/*!
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2025 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+.comments {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+  position: relative;
+}
+.comments ul {
+  margin: 0 0 0 2em;
+  padding: 0;
+  list-style: none;
+  position: relative;
+  clear: both;
+}
+.comments::before,
+.comments ul::before {
+  content: "";
+  display: block;
+  width: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 85px;
+  border-left: 1px solid #CECECE;
+}
+.comments ul.has_sub_answers::before {
+  bottom: inherit;
+  height: 105px;
+}
+.comments li {
+  margin: 0;
+  padding: 0;
+  line-height: 2em;
+  position: relative;
+  clear: left;
+}
+.comments li.has_answers:last-child::before {
+  height: auto;
+  top: 7.5em;
+  bottom: 0;
+}
+.comments li:not(.has_answers) ul::before {
+  display: none;
+}
+.comments li .timeline-content {
+  min-width: auto;
+  width: 100%;
+}
+.comments li .newcomment {
+  width: 100%;
+  max-width: 820px;
+}
+.comments .h_content {
+  position: relative;
+}
+
+.forcomments.timeline_history {
+  border: none;
+}
+
+.comments hr {
+  border: none;
+  border-top: 1px #222 dotted;
+  margin-top: 2px;
+}
+
+.comment_form textarea {
+  width: 100%;
+  min-height: 70px;
+}
+
+input[type=checkbox].toggle_comments {
+  display: none;
+}
+input[type=checkbox].toggle_comments + .toggle_label {
+  cursor: pointer;
+  position: absolute;
+  left: -6px;
+  top: calc(7.5em - 8px);
+  background: #FFF url("../pics/expand.png") no-repeat;
+  width: 14px;
+  height: 14px;
+}
+input[type=checkbox].toggle_comments + .toggle_label::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 0;
+  border-top: 1px solid #CECECE;
+  margin-top: -1px;
+  position: absolute;
+  top: 8px;
+  left: 13px;
+}
+input[type=checkbox].toggle_comments:checked + .toggle_label {
+  background: #FFF url("../pics/collapse.png") no-repeat;
+}
+input[type=checkbox].toggle_comments:checked ~ ul {
+  display: block;
+}
+input[type=checkbox].toggle_comments:not(:checked) + .toggle_label::before {
+  content: "...";
+  border: none;
+  top: -12px;
+  left: 20px;
+}
+input[type=checkbox].toggle_comments:not(:checked) ~ ul {
+  display: none;
+}
