@@ -33,7 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Application\View\TemplateRenderer;
+
+use function Safe\mktime;
 
 Html::header(__('Statistics'), '', "helpdesk", "stat");
 
@@ -47,8 +51,8 @@ if (isset($_GET["date2"])) {
 }
 
 if (empty($_POST["date1"]) && empty($_POST["date2"])) {
-    $year           = date("Y") - 1;
-    $_POST["date1"] = date("Y-m-d", mktime(1, 0, 0, date("m"), date("d"), $year));
+    $year           = ((int) date("Y")) - 1;
+    $_POST["date1"] = date("Y-m-d", mktime(1, 0, 0, (int) date("m"), (int) date("d"), $year));
     $_POST["date2"] = date("Y-m-d");
 }
 
@@ -68,19 +72,13 @@ if (!isset($_GET["start"])) {
 
 Stat::title();
 
-echo "<div class='center'><form method='post' name='form' action='stat.item.php'>";
-echo "<table class='tab_cadre'><tr class='tab_bg_2'>";
-echo "<td class='right'>" . __('Start date') . "</td><td>";
-Html::showDateField("date1", ['value' => $_POST["date1"]]);
-echo "</td><td rowspan='2' class='center'>";
-echo "<input type='submit' class='btn btn-primary' name='submit' value='" . __s('Display report') . "'></td></tr>";
-echo "<tr class='tab_bg_2'><td class='right'>" . __('End date') . "</td><td>";
-Html::showDateField("date2", ['value' => $_POST["date2"]]);
-echo "</td></tr>";
-echo "</table>";
-Html::closeForm();
-echo "</div>";
+TemplateRenderer::getInstance()->display('pages/assistance/stats/form.html.twig', [
+    'target'    => 'stat.item.php',
+    'itemtype'  => $_GET['itemtype'],
+    'date1'     => $_POST["date1"],
+    'date2'     => $_POST["date2"],
+]);
 
-Stat::showItems($_SERVER['PHP_SELF'], $_POST["date1"], $_POST["date2"], $_GET['start']);
+Stat::showItems('stat.item.php', $_POST["date1"], $_POST["date2"], $_GET['start'], $_GET["itemtype"] ?? 'Ticket');
 
 Html::footer();

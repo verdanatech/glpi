@@ -31,20 +31,23 @@
  #}
 
 <!DOCTYPE html>
-<html lang="{{ lang }}" {% if high_contrast %}data-high-contrast="1"{% endif %}
-      {{ glpi_request_id is defined ? 'data-glpi-request-id=' ~ glpi_request_id : '' }}>
+<html lang="{{ lang ?? 'en' }}"
+    {% if session('glpiisrtl') %}
+        dir="rtl"
+    {% endif %}
+    {% if session('glpihighcontrast_css') %}
+        data-high-contrast="1"
+    {% endif %}
+    {% if theme is defined %}
+        data-glpi-theme="{{ theme.getKey() }}"
+        data-glpi-theme-dark="{{ theme.isDarkTheme() ? '1' : '0' }}"
+    {% endif %}
+    {% if glpi_request_id is defined %}
+        data-glpi-request-id="{{ glpi_request_id }}"
+    {% endif %}
+>
 <head>
-   <title>{{ title }} - Verdanadesk</title>
-
-   <!-- Google tag (gtag.js) -->
-   <script async src="https://www.googletagmanager.com/gtag/js?id=G-91BJ3NG8VN"></script>
-   <script>
-   window.dataLayer = window.dataLayer || [];
-   function gtag(){dataLayer.push(arguments);}
-   gtag('js', new Date());
-
-   gtag('config', 'G-91BJ3NG8VN');
-   </script>
+   <title>{% if title is defined %}{{ title }} - {% endif %}{{ config('app_name') }}</title>
 
    <meta charset="utf-8" />
 
@@ -71,6 +74,10 @@
    {{ custom_css() }}
 
    <link rel="shortcut icon" type="images/x-icon" href="{{ asset_path('/pics/favicon.ico') }}" />
+
+   {{ importmap() }}
+
+   {{ config_js() }}
 
    {% for js_file in js_files %}
       <script type="text/javascript" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>

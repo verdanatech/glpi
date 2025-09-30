@@ -31,6 +31,10 @@
  * ---------------------------------------------------------------------
  */
 
+/* eslint no-var: 0 */
+
+/* global _ */
+
 var GLPI = GLPI || {};
 GLPI.Forms = GLPI.Forms || {};
 
@@ -38,6 +42,7 @@ GLPI.Forms = GLPI.Forms || {};
  * Font-Awesome icon selector component.
  *
  * @since 10.0.0
+ * @deprecated 11.0.0 Use `modules/Form/WebIconSelector.js` instead.
  */
 GLPI.Forms.FaIconSelector = class {
 
@@ -86,7 +91,7 @@ GLPI.Forms.FaIconSelector = class {
                 // Split them to handle the separately.
                 const selectors = rule.selectorText.split(',');
                 for(let k = 0; k < selectors.length; k++) {
-                    let matches = selectors[k].trim().match(/^\.(fa-[a-z-]+)::before$/);
+                    const matches = selectors[k].trim().match(/^\.(fa-[a-z-]+)::before$/);
                     if (matches !== null) {
                         const cls = matches[1];
                         const entry = {
@@ -114,8 +119,8 @@ GLPI.Forms.FaIconSelector = class {
     renderIcon(option) {
         // Forces font family values to fallback on ".fab" family font if char is not available in ".fas" family.
         const faFontFamilies = '\'Font Awesome 6 Free\', \'Font Awesome 6 Brands\'';
-        let container = document.createElement('span');
-        container.innerHTML = `<i class="fa-lg fa-fw fa ${option.id}" style="font-family:${faFontFamilies};"></i> ${option.id}`;
+        const container = document.createElement('span');
+        container.innerHTML = `<i class="fa-lg fa-fw fa ${_.escape(option.id)}" style="font-family:${faFontFamilies};"></i> ${_.escape(option.id)}`;
         return container;
     }
 };

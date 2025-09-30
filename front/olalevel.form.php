@@ -33,14 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 9.2
  */
 
 use Glpi\Event;
-
-include('../inc/includes.php');
-
 
 $item = new OlaLevel();
 
@@ -79,7 +78,7 @@ if (isset($_POST["update"])) {
 } elseif (isset($_POST["purge"])) {
     if (isset($_POST['id'])) {
         $item->check($_POST['id'], PURGE);
-        if ($item->delete($_POST, 1)) {
+        if ($item->delete($_POST, true)) {
             Event::log(
                 $_POST["id"],
                 "olas",
@@ -93,20 +92,7 @@ if (isset($_POST["update"])) {
     }
 
     Html::back();
-} elseif (isset($_POST["add_action"])) {
-    $item->check($_POST['olalevels_id'], UPDATE);
-
-    $action = new OlaLevelAction();
-    $action->add($_POST);
-
-    Html::back();
-} elseif (isset($_POST["add_criteria"])) {
-    $item->check($_POST['olalevels_id'], UPDATE);
-    $criteria = new OlaLevelCriteria();
-    $criteria->add($_POST);
-
-    Html::back();
 } elseif (isset($_GET["id"]) && ($_GET["id"] > 0)) {
-    $menus = ["config", "slm", "olalevel"];
+    $menus = ["config", "slm", "OlaLevel"];
     OlaLevel::displayFullPageForItem($_GET["id"], $menus);
 }

@@ -35,10 +35,9 @@
 use Glpi\Socket;
 
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -55,7 +54,7 @@ if (!$DB->tableExists('glpi_cabletypes')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_cabletypes");
+    $DB->doQuery($query);
 }
 
 if (!$DB->tableExists('glpi_cablestrands')) {
@@ -70,7 +69,7 @@ if (!$DB->tableExists('glpi_cablestrands')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_cablestrands");
+    $DB->doQuery($query);
 }
 
 if (!$DB->tableExists('glpi_socketmodels')) {
@@ -85,7 +84,7 @@ if (!$DB->tableExists('glpi_socketmodels')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET= {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_socketmodels");
+    $DB->doQuery($query);
 }
 
 if (!$DB->tableExists('glpi_cables')) {
@@ -130,7 +129,7 @@ if (!$DB->tableExists('glpi_cables')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_cables");
+    $DB->doQuery($query);
 }
 $migration->addField('glpi_states', 'is_visible_cable', 'bool', [
     'value' => 1,
@@ -163,7 +162,7 @@ if (!$DB->tableExists('glpi_sockets')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_sockets");
+    $DB->doQuery($query);
 }
 
 if ($DB->tableExists('glpi_netpoints')) {
@@ -242,7 +241,7 @@ if (!$DB->tableExists('glpi_networkportfiberchanneltypes')) {
       KEY `date_mod` (`date_mod`),
       KEY `date_creation` (`date_creation`)
       ) ENGINE = InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;";
-    $DB->doQueryOrDie($query, "10.0 add table glpi_networkportfiberchanneltypes");
+    $DB->doQuery($query);
 }
 
 $migration->addField('glpi_networkportfiberchannels', 'networkportfiberchanneltypes_id', "int {$default_key_sign} NOT NULL DEFAULT '0'", ['after' => 'items_devicenetworkcards_id']);

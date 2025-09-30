@@ -55,12 +55,12 @@ class APIClient extends CommonDBTM
         'app_token',
     ];
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return Session::haveRight(static::$rightname, UPDATE);
     }
 
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         return Session::haveRight(static::$rightname, UPDATE);
     }
@@ -70,12 +70,22 @@ class APIClient extends CommonDBTM
         return _n("API client", "API clients", $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ["config", Config::class, self::class];
+    }
+
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'setup';
+    }
+
     public function defineTabs($options = [])
     {
 
         $ong = [];
         $this->addDefaultFormTab($ong)
-           ->addStandardTab('Log', $ong, $options);
+           ->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -169,27 +179,19 @@ class APIClient extends CommonDBTM
         switch ($field) {
             case 'dolog_method':
                 $methods = self::getLogMethod();
-                return $methods[$values[$field]];
+                return htmlescape($methods[$values[$field]]);
 
             case 'ipv4_range_start':
             case 'ipv4_range_end':
                 if (empty($values[$field])) {
                     return '';
                 }
-                return long2ip((int) $values[$field]);
+                return htmlescape(long2ip((int) $values[$field]));
         }
 
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
 
-    /**
-     * Show form
-     *
-     * @param integer $ID      Item ID
-     * @param array   $options Options
-     *
-     * @return void
-     */
     public function showForm($ID, $options = [])
     {
         $this->initForm($ID, $options);
@@ -271,14 +273,10 @@ class APIClient extends CommonDBTM
      */
     public static function getUniqueAppToken()
     {
-
-        $ok = false;
         do {
-            $key    = Toolbox::getRandomString(40);
-            if (countElementsInTable(self::getTable(), ['app_token' => $key]) == 0) {
-                return $key;
-            }
-        } while (!$ok);
+            $key = Toolbox::getRandomString(40);
+        } while (countElementsInTable(self::getTable(), ['app_token' => $key]) != 0);
+        return $key;
     }
 
     public static function getIcon()

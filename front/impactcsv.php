@@ -33,25 +33,25 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Csv\CsvResponse;
 use Glpi\Csv\ImpactCsvExport;
-
-include('../inc/includes.php');
+use Glpi\Exception\Http\BadRequestHttpException;
 
 $itemtype = $_GET['itemtype'] ?? '';
 $items_id = $_GET['items_id'] ?? '';
 
 // Check for mandatory params
 if (empty($itemtype) || empty($items_id)) {
-    http_response_code(400);
-    die();
+    throw new BadRequestHttpException();
 }
 
 // Check right
 Session::checkRight($itemtype::$rightname, READ);
 
 // Load item
-$item = new $itemtype();
+$item = getItemForItemtype($itemtype);
 $item->getFromDB($items_id);
 
 CsvResponse::output(new ImpactCsvExport($item));

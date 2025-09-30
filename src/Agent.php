@@ -33,14 +33,20 @@
  *
  * ---------------------------------------------------------------------
  */
-
-use Glpi\Application\ErrorHandler;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryFunction;
+use Glpi\Error\ErrorHandler;
 use Glpi\Inventory\Conf;
+use Glpi\Inventory\Inventory;
 use Glpi\Plugin\Hooks;
-use Glpi\Toolbox\Sanitizer;
-use GuzzleHttp\Client as Guzzle_Client;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Psr7\Response;
+use Safe\DateTime;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 /**
  * @since 10.0.0
@@ -56,10 +62,6 @@ class Agent extends CommonDBTM
     /** @var string */
     public const ACTION_INVENTORY = 'inventory';
 
-
-    /** @var integer */
-    protected const TIMEOUT  = 5;
-
     /** @var boolean */
     public $dohistory = true;
 
@@ -74,6 +76,16 @@ class Agent extends CommonDBTM
     public static function getTypeName($nb = 0)
     {
         return _n('Agent', 'Agents', $nb);
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', Inventory::class, self::class];
+    }
+
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'inventory';
     }
 
     public function rawSearchOptions()
@@ -248,11 +260,11 @@ class Agent extends CommonDBTM
         switch ($field) {
             case 'items_id':
                 $itemtype = $values[str_replace('items_id', 'itemtype', $field)] ?? null;
-                if ($itemtype !== null && class_exists($itemtype)) {
+                if ($itemtype !== null && class_exists($itemtype) && is_a($itemtype, CommonDBTM::class, true)) {
                     if ($values[$field] > 0) {
                         $item = new $itemtype();
                         $item->getFromDB($values[$field]);
-                        return "<a href='" . $item->getLinkURL() . "'>" . $item->fields['name'] . "</a>";
+                        return "<a href='" . htmlescape($item->getLinkURL()) . "'>" . htmlescape($item->fields['name']) . "</a>";
                     }
                 } else {
                     return ' ';
@@ -332,19 +344,13 @@ class Agent extends CommonDBTM
         return $tab;
     }
 
-    /**
-     * Define tabs to display on form page
-     *
-     * @param array $options
-     * @return array containing the tabs name
-     */
     public function defineTabs($options = [])
     {
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('RuleMatchedLog', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(RuleMatchedLog::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -359,7 +365,6 @@ class Agent extends CommonDBTM
      */
     public function showForm($id, array $options = [])
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (!empty($id)) {
@@ -391,13 +396,12 @@ class Agent extends CommonDBTM
      */
     public function handleAgent($metadata)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $deviceid = $metadata['deviceid'];
 
         $aid = false;
-        if ($this->getFromDBByCrit(Sanitizer::dbEscapeRecursive(['deviceid' => $deviceid]))) {
+        if ($this->getFromDBByCrit(['deviceid' => $deviceid])) {
             $aid = $this->fields['id'];
         }
 
@@ -468,7 +472,6 @@ class Agent extends CommonDBTM
             return 0;
         }
 
-        $input = Sanitizer::sanitize($input);
         if ($aid) {
             $input['id'] = $aid;
             // We should not update itemtype in db if not an expected one
@@ -499,8 +502,8 @@ class Agent extends CommonDBTM
      */
     public function prepareInputs(array $input)
     {
-        if ($this->isNewItem() && (!isset($input['deviceid']) || empty($input['deviceid']))) {
-            Session::addMessageAfterRedirect(__('"deviceid" is mandatory!'), false, ERROR);
+        if ($this->isNewItem() && empty($input['deviceid'])) {
+            Session::addMessageAfterRedirect(__s('"deviceid" is mandatory!'), false, ERROR);
             return false;
         }
         return $input;
@@ -508,7 +511,6 @@ class Agent extends CommonDBTM
 
     public function prepareInputForAdd($input)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (isset($CFG_GLPI['threads_networkdiscovery']) && !isset($input['threads_networkdiscovery'])) {
@@ -540,7 +542,7 @@ class Agent extends CommonDBTM
     public function getLinkedItem(): CommonDBTM
     {
         $itemtype = $this->fields['itemtype'];
-        $item = new $itemtype();
+        $item = getItemForItemtype($itemtype);
         $item->getFromDB($this->fields['items_id']);
         return $item;
     }
@@ -552,7 +554,6 @@ class Agent extends CommonDBTM
      */
     public function guessAddresses(): array
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $addresses = [];
@@ -689,9 +690,6 @@ class Agent extends CommonDBTM
      */
     public function requestAgent($endpoint): Response
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
         if (self::$found_address !== false) {
             $addresses = [self::$found_address];
         } else {
@@ -703,28 +701,15 @@ class Agent extends CommonDBTM
         foreach ($addresses as $address) {
             $options = [
                 'base_uri'        => $address,
-                'connect_timeout' => self::TIMEOUT,
             ];
 
-            // add proxy string if configured in glpi
-            if (!empty($CFG_GLPI["proxy_name"])) {
-                $proxy_creds      = !empty($CFG_GLPI["proxy_user"])
-                ? $CFG_GLPI["proxy_user"] . ":" . (new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]) . "@"
-                : "";
-                $proxy_string     = "http://{$proxy_creds}" . $CFG_GLPI['proxy_name'] . ":" . $CFG_GLPI['proxy_port'];
-                $options['proxy'] = $proxy_string;
-            }
-
             // init guzzle client with base options
-            $httpClient = new Guzzle_Client($options);
+            $httpClient = Toolbox::getGuzzleClient($options);
             try {
                 $response = $httpClient->request('GET', $endpoint, []);
                 self::$found_address = $address;
                 break;
-            } catch (\GuzzleHttp\Exception\RequestException $exception) {
-                // got an error response, we don't need to try other addresses
-                break;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 // many addresses will be incorrect
             }
         }
@@ -734,7 +719,7 @@ class Agent extends CommonDBTM
             throw $exception;
         }
 
-        return $response;
+        return $response; // @phpstan-ignore return.type
     }
 
     /**
@@ -748,11 +733,11 @@ class Agent extends CommonDBTM
         try {
             $response = $this->requestAgent('status');
             return $this->handleAgentResponse($response, self::ACTION_STATUS);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            ErrorHandler::getInstance()->handleException($e);
+        } catch (ClientException $e) {
+            ErrorHandler::logCaughtException($e);
             // not authorized
             return ['answer' => __('Not allowed')];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // no response
             return ['answer' => __('Unknown')];
         }
@@ -769,11 +754,11 @@ class Agent extends CommonDBTM
         try {
             $this->requestAgent('now');
             return $this->handleAgentResponse(new Response(), self::ACTION_INVENTORY);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            ErrorHandler::getInstance()->handleException($e);
+        } catch (ClientException $e) {
+            ErrorHandler::logCaughtException($e);
             // not authorized
             return ['answer' => __('Not allowed')];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // no response
             return ['answer' => __('Unknown')];
         }
@@ -795,7 +780,7 @@ class Agent extends CommonDBTM
 
         switch ($request) {
             case self::ACTION_STATUS:
-                $data['answer'] = Sanitizer::encodeHtmlSpecialChars(preg_replace('/status: /', '', $raw_content));
+                $data['answer'] = preg_replace('/status: /', '', $raw_content);
                 break;
             case self::ACTION_INVENTORY:
                 $now = new DateTime();
@@ -805,7 +790,7 @@ class Agent extends CommonDBTM
                 );
                 break;
             default:
-                throw new \RuntimeException(sprintf('Unknown request type %s', $request));
+                throw new RuntimeException(sprintf('Unknown request type %s', $request));
         }
 
         return $data;
@@ -828,13 +813,9 @@ class Agent extends CommonDBTM
      */
     public static function cronCleanoldagents($task = null)
     {
-        /**
-         * @var \DBmysql $DB
-         * @var array $PLUGIN_HOOKS
-         */
         global $DB, $PLUGIN_HOOKS;
 
-        $config = \Config::getConfigurationValues('inventory');
+        $config = Config::getConfigurationValues('inventory');
 
         $retention_time = $config['stale_agents_delay'] ?? 0;
         if ($retention_time <= 0) {
@@ -848,7 +829,13 @@ class Agent extends CommonDBTM
             'SELECT' => ['id'],
             'FROM' => self::getTable(),
             'WHERE' => [
-                'last_contact' => ['<', new QueryExpression("date_add(now(), interval -" . $retention_time . " day)")],
+                'last_contact' => ['<',
+                    QueryFunction::dateSub(
+                        date: QueryFunction::now(),
+                        interval: $retention_time,
+                        interval_unit: 'DAY'
+                    ),
+                ],
             ],
         ]);
 
@@ -884,17 +871,31 @@ class Agent extends CommonDBTM
                         break;
                     case Conf::STALE_AGENT_ACTION_STATUS:
                         if (isset($config['stale_agents_status']) && $item !== null) {
-                            //change status of agents linked assets
-                            $input = [
-                                'id'        => $item->fields['id'],
-                                'states_id' => $config['stale_agents_status'],
-                                'is_dynamic' => 1,
-                            ];
-                            if ($item->update($input)) {
-                                $task->addVolume(1);
-                                $total++;
+                            $should_update = false;
+                            if (
+                                isset($config['stale_agents_status_condition'])
+                                && $config['stale_agents_status_condition'] != json_encode(['all']) // all status
+                            ) {
+                                $old_state_list = json_decode($config['stale_agents_status_condition']);
+                                if (in_array($item->fields['states_id'], $old_state_list)) {
+                                    $should_update = true;
+                                }
                             } else {
-                                $errors++;
+                                $should_update = true;
+                            }
+                            if ($should_update) {
+                                //change status of agents linked assets
+                                $input = [
+                                    'id'        => $item->fields['id'],
+                                    'states_id' => $config['stale_agents_status'],
+                                    'is_dynamic' => 1,
+                                ];
+                                if ($item->update($input)) {
+                                    $task->addVolume(1);
+                                    $total++;
+                                } else {
+                                    $errors++;
+                                }
                             }
                         }
                         break;

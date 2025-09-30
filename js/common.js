@@ -31,11 +31,28 @@
  * ---------------------------------------------------------------------
  */
 
+/* eslint no-var: 0 */
+/* eslint prefer-arrow-callback: 0 */
+/* eslint prefer-template: 0 */
+
 /* global bootstrap */
 /* global L */
+/* global fuzzy */
 /* global glpi_html_dialog */
+/* global glpi_toast_info, glpi_toast_warning, glpi_toast_error */
+/* global _ */
 
 var timeoutglobalvar;
+
+// Store configuration of tinymce editors
+// This is needed if an editor need to be destroyed and recreated as tinymce
+// api does not provide any method to get the current configuration
+var tinymce_editor_configs = {};
+
+// Store select2 configurations
+// This is needed if a select2 need to be destroyed and recreated as select2
+// api does not provide any method to get the current configuration
+var select2_configs = {};
 
 /**
  * modifier la propriete display d'un element
@@ -211,7 +228,7 @@ $.fn.shiftSelectable = function() {
  * @param img_src_close    url of the close img
  * @param img_src_open     url of the open img
 **/
-function showHideDiv(id, img_name, img_src_close, img_src_open) {
+function showHideDiv(id, img_name = '', img_src_close = '', img_src_open = '') {
     var _elt = $('#' + id);
 
     if (img_name !== '') {
@@ -504,10 +521,6 @@ var switchFoldMenu = function() {
 };
 
 $(function() {
-    if ($('html').hasClass('loginpage')) {
-        return;
-    }
-
     $("body").delegate('td','mouseover mouseleave', function(e) {
         var col = $(this).closest('tr').children().index($(this));
         var tr = $(this).closest('tr');
@@ -678,30 +691,32 @@ var stopEvent = function(event) {
     event.stopPropagation();
 };
 
-/**
- * Back to top implementation
- */
-if ($('#backtotop').length) {
-    var scrollTrigger = 100, // px
-        backToTop = function () {
-            var scrollTop = $(window).scrollTop();
-            if (scrollTop > scrollTrigger) {
-                $('#backtotop').addClass('d-md-block');
-            } else {
-                $('#backtotop').removeClass('d-md-block');
-            }
-        };
-    backToTop();
-    $(window).on('scroll', function () {
+$(() => {
+    /**
+     * Back to top implementation
+     */
+    if ($('#backtotop').length) {
+        var scrollTrigger = 100, // px
+            backToTop = function () {
+                var scrollTop = $(window).scrollTop();
+                if (scrollTop > scrollTrigger) {
+                    $('#backtotop').addClass('d-md-block');
+                } else {
+                    $('#backtotop').removeClass('d-md-block');
+                }
+            };
         backToTop();
-    });
-    $('#backtotop').on('click', function (e) {
-        e.preventDefault();
-        $('html,body').animate({
-            scrollTop: 0
-        }, 700);
-    });
-}
+        $(window).on('scroll', function () {
+            backToTop();
+        });
+        $('#backtotop').on('click', function (e) {
+            e.preventDefault();
+            $('html,body').animate({
+                scrollTop: 0
+            }, 700);
+        });
+    }
+});
 
 /**
  * Returns element height, including margins
@@ -807,22 +822,22 @@ function markMatch (text, term) {
 
     // If there is no match, move on
     if (match < 0) {
-        _result.append(escapeMarkupText(text));
+        _result.append(_.escape(text));
         return _result.html();
     }
 
     // Put in whatever text is before the match
-    _result.html(escapeMarkupText(text.substring(0, match)));
+    _result.html(_.escape(text.substring(0, match)));
 
     // Mark the match
     var _match = $('<span class=\'select2-rendered__match\'></span>');
-    _match.html(escapeMarkupText(text.substring(match, match + term.length)));
+    _match.html(_.escape(text.substring(match, match + term.length)));
 
     // Append the matching text
     _result.append(_match);
 
     // Put in whatever is after the match
-    _result.append(escapeMarkupText(text.substring(match + term.length)));
+    _result.append(_.escape(text.substring(match + term.length)));
 
     return _result.html();
 }
@@ -844,7 +859,7 @@ var templateResult = function(result) {
         var text = result.text;
         if (!result.id) {
             // If result has no id, then it is used as an optgroup and is not used for matches
-            _elt.html(escapeMarkupText(text));
+            _elt.html(_.escape(text));
             return _elt;
         }
 
@@ -894,7 +909,7 @@ var templateSelection = function (selection) {
         text = selection.text;
     }
     var _elt = $('<span></span>');
-    _elt.html(escapeMarkupText(text));
+    _elt.html(_.escape(text));
     return _elt;
 };
 
@@ -908,50 +923,50 @@ var templateItilStatus = function(option) {
     var classes = "";
     switch (parseInt(status)) {
         case 1 :
-            classes = 'new fas fa-circle';
+            classes = 'new ti ti-circle-filled';
             break;
         case 2 :
-            classes = 'assigned far fa-circle';
+            classes = 'assigned ti ti-circle';
             break;
         case 3 :
-            classes = 'planned far fa-calendar';
+            classes = 'planned ti ti-calendar';
             break;
         case 4 :
-            classes = 'waiting fas fa-circle';
+            classes = 'waiting ti ti-circle-filled';
             break;
         case 5 :
-            classes = 'solved far fa-circle';
+            classes = 'solved ti ti-circle';
             break;
         case 6 :
-            classes = 'closed fas fa-circle';
+            classes = 'closed ti ti-circle-filled';
             break;
         case 7:
-            classes = 'accepted fas fa-check-circle';
+            classes = 'accepted ti ti-circle-check-filled';
             break;
         case 8 :
-            classes = 'observe fas fa-eye';
+            classes = 'observe ti ti-eye';
             break;
         case 9 :
-            classes = 'eval far fa-circle';
+            classes = 'eval ti ti-circle';
             break;
         case 10 :
-            classes = 'approval fas fa-question-circle';
+            classes = 'approval ti ti-help-circle';
             break;
         case 11 :
-            classes = 'test fas fa-question-circle';
+            classes = 'test ti ti-help-circle';
             break;
         case 12 :
-            classes = 'qualif far fa-circle';
+            classes = 'qualif ti ti-circle';
             break;
         case 13 :
-            classes = 'refused far fa-times-circle';
+            classes = 'refused ti ti-circle-x';
             break;
         case 14 :
-            classes = 'canceled fas fa-ban';
+            classes = 'canceled ti ti-ban';
             break;
     }
 
-    return $(`<span><i class="itilstatus ${classes}"></i> ${option.text}</span>`);
+    return $(`<span><i class="itilstatus ${classes}"></i> ${_.escape(option.text)}</span>`);
 };
 
 var templateValidation = function(option) {
@@ -965,17 +980,17 @@ var templateValidation = function(option) {
     var classes = "";
     switch (parseInt(status)) {
         case 2 : // WAITING
-            classes = 'waiting far fa-clock';
+            classes = 'waiting ti ti-clock';
             break;
         case 3 : // ACCEPTED
-            classes = 'accepted fas fa-check';
+            classes = 'accepted ti ti-circle-check-filled';
             break;
         case 4 : // REFUSED
-            classes = 'refused fas fa-times';
+            classes = 'refused ti ti-circle-x';
             break;
     }
 
-    return $(`<span><i class="validationstatus ${classes}"></i> ${option.text}</span>`);
+    return $(`<span><i class="validationstatus ${classes}"></i> ${_.escape(option.text)}</span>`);
 };
 
 var templateItilPriority = function(option) {
@@ -989,10 +1004,10 @@ var templateItilPriority = function(option) {
     var color_badge = "";
 
     if (priority_color.length > 0) {
-        color_badge += `<i class='fas fa-circle' style='color: ${priority_color}'></i>`;
+        color_badge += `<i class='ti ti-circle-filled' style='color: ${_.escape(priority_color)}'></i>`;
     }
 
-    return $(`<span>${color_badge}&nbsp;${option.text}</span>`);
+    return $(`<span>${color_badge}&nbsp;${_.escape(option.text)}</span>`);
 };
 
 /**
@@ -1020,14 +1035,13 @@ var getTextWithoutDiacriticalMarks = function (text) {
  * @return {string}
  */
 var escapeMarkupText = function (text) {
+    // TODO in GLPI 11.1: console.warn('`escapeMarkupText()` is deprecated, use `_.escape()` instead.');
+
     if (typeof(text) !== 'string') {
         return text;
     }
-    if (text.indexOf('>') !== -1 || text.indexOf('<') !== -1) {
-        // escape text, if it contains chevrons (can already be escaped prior to this point :/)
-        text = jQuery.fn.select2.defaults.defaults.escapeMarkup(text);
-    }
-    return text;
+
+    return _.escape(text);
 };
 
 /**
@@ -1049,50 +1063,6 @@ function updateProgress(progressid) {
             j_item.prop('title', new_title);
         }
     });
-}
-
-/**
- * Get RGB object from an hexadecimal color code
- *
- * @param {*} hex
- * @returns {Object} {r, g, b}
- */
-function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
-
-/**
- * Get luminance for a color
- * https://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
- *
- * @param {Array} rgb [r, g, b] array
- * @returns {Number}
- */
-function luminance(rgb) {
-    var a = rgb.map(function (v) {
-        v /= 255;
-        return v <= 0.03928
-            ? v / 12.92
-            : Math.pow( (v + 0.055) / 1.055, 2.4 );
-    });
-    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-}
-
-/**
- * Get contrast ratio between two colors
- * https://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef
- *
- * @param {Array} rgb1 [r, g, b] array
- * @param {Array} rgb2 [r, g, b] array
- * @returns {Number}
- */
-function contrast(rgb1, rgb2) {
-    return (luminance(rgb1) + 0.05) / (luminance(rgb2) + 0.05);
 }
 
 // fullscreen api
@@ -1127,28 +1097,43 @@ function getUuidV4() {
     });
 }
 
+function setHasUnsavedChanges(has_unsaved_changes) {
+    window.glpiUnsavedFormChanges = has_unsaved_changes;
+    document.dispatchEvent(new CustomEvent("glpiFormChangeEvent", {
+        has_unsaved_changes: has_unsaved_changes
+    }));
+}
+
+function hasUnsavedChanges() {
+    return window.glpiUnsavedFormChanges;
+}
+
 /** Track input changes and warn the user of unsaved changes if they try to navigate away */
-window.glpiUnsavedFormChanges = false;
+setHasUnsavedChanges(false);
 $(document).ready(function() {
     // Forms must have the data-track-changes attribute set to true.
     // Form fields may have their data-track-changes attribute set to empty (false) to override the tracking on that input.
     $(document).on('input', 'form[data-track-changes="true"] input:not([data-track-changes=""]),' +
       'form[data-track-changes="true"] textarea:not([data-track-changes="false"])', function() {
-        window.glpiUnsavedFormChanges = true;
+        setHasUnsavedChanges(true);
     });
     $(document).on('change', 'form[data-track-changes="true"] select:not([data-track-changes=""])', function() {
-        window.glpiUnsavedFormChanges = true;
+        setHasUnsavedChanges(true);
     });
     $(window).on('beforeunload', function(e) {
-        if (window.glpiUnsavedFormChanges) {
+        if (hasUnsavedChanges()) {
             e.preventDefault();
             // All supported browsers will show a localized message
             return '';
         }
     });
 
-    $(document).on('submit', 'form', function() {
-        window.glpiUnsavedFormChanges = false;
+    $(document).on('submit', 'form', (e) => {
+        // if the submitter has a data-block-on-unsaved attribute, do not clear the unsaved changes flag
+        if (e.originalEvent && $(e.originalEvent.submitter).attr('data-block-on-unsaved') === 'true') {
+            return;
+        }
+        setHasUnsavedChanges(false);
     });
 });
 
@@ -1156,7 +1141,7 @@ function onTinyMCEChange(e) {
     var editor = $(e.target)[0];
     if ($(editor.targetElm).data('trackChanges') !== false) {
         if ($(editor.formElement).data('trackChanges') === true) {
-            window.glpiUnsavedFormChanges = true;
+            setHasUnsavedChanges(true);
         }
     }
 }
@@ -1243,7 +1228,7 @@ function updateItemOnEvent(dropdown_ids, target, url, params = {}, events = ['ch
 
                 const doLoad = () => {
                     // Resolve params to another array to avoid overriding dynamic params like "__VALUE__"
-                    let resolved_params = {};
+                    const resolved_params = {};
                     $.each(params, (k, v) => {
                         if (typeof v === "string") {
                             const reqs = v.match(/^__VALUE(\d+)__$/);
@@ -1452,6 +1437,22 @@ function blockFormSubmit(form, e) {
     form.attr('data-submitted', 'true');
 }
 
+window.validateFormWithBootstrap = function (event) {
+    const form = $(event.target).closest('form');
+    const valid = form[0].checkValidity();
+
+    if (form.hasClass('needs-validation')) {
+        if (!valid) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        form.addClass('was-validated');
+    }
+
+    return valid;
+};
+
 $(() => {
     $(document.body).on('submit', 'form[data-submit-once]', (e) => {
         const form = $(e.target).closest('form');
@@ -1459,7 +1460,60 @@ $(() => {
             e.preventDefault();
             return false;
         } else {
+            let submitter = null;
+            if (e.originalEvent && e.originalEvent.submitter) {
+                submitter = $(e.originalEvent.submitter);
+            }
+            if ((submitter === null || submitter.attr('formnovalidate') === undefined) && !window.validateFormWithBootstrap(e)) {
+                return false;
+            }
+            if (submitter !== null && submitter.is('button') && submitter.attr('data-block-on-unsaved') === 'true' && hasUnsavedChanges()) {
+                // This submit may be cancelled by the unsaved changes warning so we cannot permanently block it
+                // We fall back to a timed block
+                const block = function(e) {
+                    e.preventDefault();
+                };
+                submitter.on('click', block);
+                submitter.data('original_html', submitter.html());
+                submitter.html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`);
+                window.setTimeout(() => {
+                    submitter.off('click', block);
+                    submitter.html(submitter.data('original_html'));
+                }, 100);
+                return;
+            }
             blockFormSubmit(form, e);
+        }
+    });
+
+    // Clear focus on content-editable-tinymce items when clicking outside of their content
+    $(document).on('click focus', 'body', function(e) {
+        if (
+            // Event must be outside of our simulate-focus item
+            $(e.target).closest('.simulate-focus').length == 0
+            // Special case when target is part of tinymce toolbar/aux, must NOT drop focus in this case
+            && $(e.target).closest('.tox-toolbar__overflow').length == 0
+            && $(e.target).closest('.tox-tinymce-aux').length == 0
+        ) {
+            $('.content-editable-tinymce').removeClass('simulate-focus');
+        }
+    });
+
+    // General "copy to clipboard" handler.
+    // TODO: refactorate existing code to use this unique handler.
+    $(document).on('click', '[data-glpi-clipboard-text]', function() {
+        const text = $(this).data('glpi-clipboard-text');
+        if (navigator.clipboard === undefined) {
+            // The clipboard is not available in non secure environements.
+            // See: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard
+            // See: https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
+            // This rarely happens in production but we can still add a specific
+            // error message to identify this issue in our support and/or help
+            // system administrator fix it themselves.
+            glpi_toast_error(__("Unable to copy to clipboard (insecure context)."));
+        } else {
+            navigator.clipboard.writeText(text);
+            glpi_toast_info(__("Copied to clipboard"));
         }
     });
 });
@@ -1517,14 +1571,19 @@ function hideDisclosablePasswordField(item) {
  * @param {string} item The ID of the field to be copied
  */
 function copyDisclosablePasswordFieldToClipboard(item) {
-    showDisclosablePasswordField(item);
+    const is_password_input = $("#" + item).prop("type") === "password";
+    if (is_password_input) {
+        showDisclosablePasswordField(item);
+    }
     $("#" + item).select();
     try {
         document.execCommand("copy");
-    } catch (e) {
+    } catch {
         alert("Copy to clipboard failed'");
     }
-    hideDisclosablePasswordField(item);
+    if (is_password_input) {
+        hideDisclosablePasswordField(item);
+    }
 }
 
 /**
@@ -1537,19 +1596,19 @@ function initSortableTable(element_id) {
         const current_sort = element.data('sort');
         element.data('sort', column_index);
         const current_order = element.data('order');
-        const new_order = current_sort === column_index && current_order === 'asc' ? 'desc' : 'asc';
+        const new_order = current_sort === column_index && current_order === 'up' ? 'down' : 'up';
         element.data('order', new_order);
         const sortable_header = element.find('thead').first();
         const col = sortable_header.find('th').eq(column_index);
         // Remove all sort icon classes
-        sortable_header.find('th i[class*="fa-sort"]').removeClass('fa-sort fa-sort-asc fa-sort-desc');
+        sortable_header.find('th i[class*="ti ti-caret"]').removeClass('ti-caret-down-filled ti-caret-up-filled');
 
         const sort_icon = col.find('i');
         if (sort_icon.length === 0) {
             // Add sort icon
-            col.eq(0).append(`<i class="fas fa-sort-${new_order}"></i>`);
+            col.eq(0).append(`<i class="ti ti-caret-${new_order}-filled"></i>`);
         } else {
-            sort_icon.addClass(new_order === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc');
+            sort_icon.addClass(new_order === 'up' ? 'ti-caret-up-filled' : 'ti-caret-down-filled');
         }
 
         const rows = element.find('tbody tr');
@@ -1574,7 +1633,7 @@ function initSortableTable(element_id) {
             if (a_value === b_value) {
                 return 0;
             }
-            if (new_order === 'asc') {
+            if (new_order === 'up') {
                 return a_value < b_value ? -1 : 1;
             }
             return a_value > b_value ? -1 : 1;
@@ -1592,3 +1651,337 @@ function initSortableTable(element_id) {
         });
     });
 }
+
+/**
+ * Wait for an element to be available in the DOM
+ * @param {string} selector The selector to wait for
+ */
+function waitForElement(selector) {
+    return new Promise(resolve => {
+        if (document.querySelector(selector)) {
+            return resolve(document.querySelector(selector));
+        }
+
+        const observer = new MutationObserver(() => {
+            if (document.querySelector(selector)) {
+                resolve(document.querySelector(selector));
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
+/**
+ * Get UUID using crypto.randomUUID() if possible
+ * Else fallback to uniqid()
+ */
+function getUUID() {
+    // crypto functions are only available when using secure context
+    if (typeof crypto === "undefined" || typeof crypto.randomUUID === "undefined") {
+        // Fallback to another method that is always available but collisions
+        // are not totally impossible.
+        return uniqid();
+    }
+
+    return crypto.randomUUID();
+}
+
+// Init the AJAX controller
+/* global GlpiCommonAjaxController */
+if (typeof GlpiCommonAjaxController == "function") {
+    new GlpiCommonAjaxController();
+}
+
+function setupAjaxDropdown(config) {
+    // Field ID is used as a selector, so we need to escape special characters
+    // to avoid issues with jQuery.
+    const field_id = $.escapeSelector(config.field_id);
+
+    const select2_el = $('#' + field_id).select2({
+        containerCssClass: config.container_css_class,
+        width: config.width,
+        multiple: config.multiple,
+        placeholder: config.placeholder,
+        allowClear: config.allowclear,
+        minimumInputLength: 0,
+        quietMillis: 100,
+        dropdownAutoWidth: true,
+        dropdownParent: $('#' + field_id).closest('div.modal, div.dropdown-menu, body'),
+        minimumResultsForSearch: config.ajax_limit_count,
+        ajax: {
+            url: config.url,
+            dataType: 'json',
+            type: 'POST',
+            data: function (params) {
+                query = params;
+                var data = $.extend({}, config.params, {
+                    searchText: params.term,
+                });
+
+                if (config.parent_id_field !== '') {
+                    data.parent_id = document.getElementById(config.parent_id_field).value;
+                }
+
+                data.page_limit = config.dropdown_max; // page size
+                data.page = params.page || 1; // page number
+
+                /** convert data false and true values to int **/
+                Object.keys(data).forEach(function(key) {
+                    if (data[key] === false) {
+                        data[key] = 0;
+                    } else if (data[key] === true) {
+                        data[key] = 1;
+                    }
+                });
+
+                return data;
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                var more = (data.count >= config.dropdown_max);
+
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: more
+                    }
+                };
+            }
+        },
+        templateResult: config.templateResult,
+        templateSelection: config.templateSelection
+    })
+        .bind('setValue', function (e, value) {
+            $.ajax(config.url, {
+                data: $.extend({}, config.params, {
+                    _one_id: value,
+                }),
+                dataType: 'json',
+                type: 'POST',
+            }).done(function (data) {
+
+                var iterate_options = function (options, value) {
+                    var to_return = false;
+                    $.each(options, function (index, option) {
+                        if (Object.prototype.hasOwnProperty.call(option, 'id') && option.id == value) {
+                            to_return = option;
+                            return false; // act as break;
+                        }
+
+                        if (Object.prototype.hasOwnProperty.call(option, 'children')) {
+                            to_return = iterate_options(option.children, value);
+                        }
+                    });
+
+                    return to_return;
+                };
+
+                var option = iterate_options(data.results, value);
+                if (option !== false) {
+                    var newOption = new Option(option.text, option.id, true, true);
+                    $('#' + field_id).append(newOption).trigger('change');
+                }
+            });
+        });
+
+    if (config.on_change !== '') {
+        // eslint-disable-next-line no-eval
+        $('#' + field_id).on('change', function () { eval(config.on_change); });
+    }
+
+    $('label[for=' + field_id + ']').on('click', function () { $('#' + field_id).select2('open'); });
+    $('#' + field_id).on('select2:open', function (e) {
+        const search_input = document.querySelector(`.select2-search__field[aria-controls='select2-${e.target.id}-results']`);
+        if (search_input) {
+            search_input.focus();
+        }
+    });
+
+    return select2_el;
+}
+
+function setupAdaptDropdown(config)
+{
+    // Field ID is used as a selector, so we need to escape special characters
+    // to avoid issues with jQuery.
+    const field_id = $.escapeSelector(config.field_id);
+
+    const options = {
+        width: config.width,
+        dropdownAutoWidth: true,
+        dropdownCssClass: config.dropdown_css_class,
+        dropdownParent: $('#' + field_id).closest('div.modal, div.dropdown-menu, body'),
+        quietMillis: 100,
+        minimumResultsForSearch: config.ajax_limit_count,
+        matcher: function (params, data) {
+            // store last search in the global var
+            query = params;
+
+            // If there are no search terms, return all of the data
+            if ($.trim(params.term) === '') {
+                return data;
+            }
+
+            const pre_marker = '#-#-#-#-#';
+            const post_marker = '#+#+#+#+#';
+
+            const renderResults = function (text) {
+                return _.escape(text)
+                    .replaceAll(pre_marker, '<span class="select2-rendered__match">')
+                    .replaceAll(post_marker, '</span>');
+            };
+
+            var searched_term = getTextWithoutDiacriticalMarks(params.term);
+            var data_text = typeof (data.text) === 'string'
+                ? getTextWithoutDiacriticalMarks(data.text)
+                : '';
+            var select2_fuzzy_opts = {
+                pre: pre_marker,
+                post: post_marker,
+            };
+
+            // Skip if there is no 'children' property
+            if (typeof data.children === 'undefined') {
+                var match = fuzzy.match(searched_term, data_text, select2_fuzzy_opts);
+                if (match == null) {
+                    return false;
+                }
+                data.rendered_text = renderResults(match.rendered);
+                data.score = match.score;
+                return data;
+            }
+
+            // `data.children` contains the actual options that we are matching against
+            // also check in `data.text` (optgroup title)
+            var filteredChildren = [];
+
+            $.each(data.children, function (idx, child) {
+                var child_text = typeof (child.text) === 'string'
+                    ? getTextWithoutDiacriticalMarks(child.text)
+                    : '';
+
+                var match_child = fuzzy.match(searched_term, child_text, select2_fuzzy_opts);
+                var match_text = fuzzy.match(searched_term, data_text, select2_fuzzy_opts);
+                if (match_child !== null || match_text !== null) {
+                    if (match_text !== null) {
+                        data.score = match_text.score;
+                        data.rendered_text = renderResults(match_text.rendered);
+                    }
+
+                    if (match_child !== null) {
+                        child.score = match_child.score;
+                        child.rendered_text = renderResults(match_child.rendered);
+                    }
+                    filteredChildren.push(child);
+                }
+            });
+
+            // If we matched any of the group's children, then set the matched children on the group
+            // and return the group object
+            if (filteredChildren.length) {
+                var modifiedData = $.extend({}, data, true);
+                modifiedData.children = filteredChildren;
+
+                // You can return modified objects from here
+                // This includes matching the `children` how you want in nested data sets
+                return modifiedData;
+            }
+
+            // Return `null` if the term should not be displayed
+            return null;
+        },
+        templateResult: config.templateresult,
+        templateSelection: config.templateselection,
+    };
+    if (config.placeholder !== undefined && config.placeholder !== '') {
+        options.placeholder = config.placeholder;
+    }
+    const select2_el = $('#' + field_id).select2(options);
+
+    select2_el.bind('setValue', (e, value) => {
+        $('#' + field_id).val(value).trigger('change');
+    });
+    $('label[for=' + field_id + ']').on('click', function () {
+        $('#' + field_id).select2('open');
+    });
+    $('#' + field_id).on('select2:open', function () {
+        const search_input = document.querySelector(`.select2-search__field[aria-controls='select2-\${e.target.id}-results']`);
+        if (search_input) {
+            search_input.focus();
+        }
+    });
+
+    return select2_el;
+}
+
+window.displaySessionMessages = () => {
+    $.ajax({
+        method: 'GET',
+        url: (CFG_GLPI.root_doc + "/ajax/displayMessageAfterRedirect.php"),
+        data: {
+            'get_raw': true
+        }
+    }).then((messages) => {
+        $.each(messages, (level, level_messages) => {
+            $.each(level_messages, (index, message) => {
+                switch (parseInt(level)) {
+                    case 1:
+                        glpi_toast_error(message);
+                        break;
+                    case 2:
+                        glpi_toast_warning(message);
+                        break;
+                    default:
+                        glpi_toast_info(message);
+                }
+            });
+        });
+    });
+};
+
+// Add/remove a special data attribute to bootstrap's modals when they are
+// displayed/hidden.
+// This is needed for e2e testing as bootstrap have some compatibility issues
+// with cypress.
+// See https://github.com/cypress-io/cypress/issues/25202.
+document.addEventListener('shown.bs.modal', (e) => {
+    const modal = e.target.closest('.modal');
+    if (modal) {
+        modal.setAttribute('data-cy-shown', 'true');
+    }
+});
+document.addEventListener('hidden.bs.modal', (e) => {
+    const modal = e.target.closest('.modal');
+    if (modal) {
+        modal.setAttribute('data-cy-shown', 'false');
+    }
+});
+
+// Tinymce on click loading
+$(document).on('click', 'div[data-glpi-tinymce-init-on-demand-render]', function() {
+    const div = $(this);
+    const textarea_id = div.attr('data-glpi-tinymce-init-on-demand-render');
+    div.removeAttr('data-glpi-tinymce-init-on-demand-render');
+    const textarea = $("#" + textarea_id);
+
+    const loadingOverlay = $(`
+        <div class="glpi-form-editor-loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-75">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                <span class="visually-hidden">${__('Loading...')}</span>
+            </div>
+        </div>
+    `);
+
+    textarea.show();
+    div.css('position', 'relative').append(loadingOverlay);
+    tinyMCE.init(tinymce_editor_configs[textarea_id]).then((editors) => {
+        editors[0].focus();
+        div.remove();
+    });
+});
+

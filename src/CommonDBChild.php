@@ -33,14 +33,23 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
 use Glpi\Plugin\Hooks;
 
-/// Common DataBase Relation Table Manager Class
+use function Safe\ob_get_clean;
+use function Safe\ob_start;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+
+/**
+ * Common DataBase Relation Table Manager Class
+ */
 abstract class CommonDBChild extends CommonDBConnexity
 {
     // Mapping between DB fields
     // * definition
-    public static $itemtype; // Class name or field name (start with itemtype) for link to Parent
+    /** @var class-string<CommonDBTM>|string $itemtype Class name or field name (start with itemtype) for link to Parent */
+    public static $itemtype;
     public static $items_id; // Field name
     // * rights
     public static $checkParentRights  = self::HAVE_SAME_RIGHT_ON_ITEM;
@@ -86,7 +95,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             $criteria['WHERE'][$table . '.' . static::$itemtype] = $itemtype;
             $request = true;
         } else {
-            $criteria['SELECT'][] = new \QueryExpression("'" . static::$itemtype . "' AS itemtype");
+            $criteria['SELECT'][] = new QueryExpression("'" . static::$itemtype . "' AS itemtype");
             if (
                 ($itemtype ==  static::$itemtype)
                 || is_subclass_of($itemtype, static::$itemtype)
@@ -100,11 +109,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         return null;
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public static function canCreate()
+    public static function canCreate(): bool
     {
 
         if ((static::$rightname) && (!Session::haveRight(static::$rightname, CREATE))) {
@@ -113,11 +118,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         return static::canChild('canUpdate');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public static function canView()
+    public static function canView(): bool
     {
         if ((static::$rightname) && (!Session::haveRight(static::$rightname, READ))) {
             return false;
@@ -125,11 +126,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         return static::canChild('canView');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public static function canUpdate()
+    public static function canUpdate(): bool
     {
         if ((static::$rightname) && (!Session::haveRight(static::$rightname, UPDATE))) {
             return false;
@@ -137,11 +134,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         return static::canChild('canUpdate');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public static function canDelete()
+    public static function canDelete(): bool
     {
         if ((static::$rightname) && (!Session::haveRight(static::$rightname, DELETE))) {
             return false;
@@ -149,11 +142,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         return static::canChild('canUpdate');
     }
 
-
-    /**
-     * @since 0.85
-     **/
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         if ((static::$rightname) && (!Session::haveRight(static::$rightname, PURGE))) {
             return false;
@@ -161,38 +150,27 @@ abstract class CommonDBChild extends CommonDBConnexity
         return static::canChild('canUpdate');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
         return $this->canChildItem('canUpdateItem', 'canUpdate');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public function canViewItem()
+    public function canViewItem(): bool
     {
         return $this->canChildItem('canViewItem', 'canView');
     }
 
-
-    /**
-     * @since 0.84
-     **/
-    public function canUpdateItem()
+    public function canUpdateItem(): bool
     {
         return $this->canChildItem('canUpdateItem', 'canUpdate');
     }
 
+    public function canDeleteItem(): bool
+    {
+        return $this->canChildItem('canUpdateItem', 'canUpdate');
+    }
 
-    /**
-     * @since 0.84
-     **/
-    public function canDeleteItem()
+    public function canPurgeItem(): bool
     {
         return $this->canChildItem('canUpdateItem', 'canUpdate');
     }
@@ -248,11 +226,10 @@ abstract class CommonDBChild extends CommonDBConnexity
      * @param $getFromDB   (true by default)
      * @param $getEmpty    (true by default)
      *
-     * @return CommonDBTM|false of the concerned item or false on error
+     * @return CommonDBTM|false object of the concerned item or false on error
      **/
     public function getItem($getFromDB = true, $getEmpty = true)
     {
-
         return $this->getConnexityItem(
             static::$itemtype,
             static::$items_id,
@@ -263,7 +240,7 @@ abstract class CommonDBChild extends CommonDBConnexity
 
 
     /**
-     * \brief recursively display the items of this
+     * Recursively display the items of this
      *
      * @param array  $recursiveItems    items of the current elements (see recursivelyGetItems())
      * @param string $elementToDisplay  what to display : 'Type', 'Name', 'Link'
@@ -272,18 +249,19 @@ abstract class CommonDBChild extends CommonDBConnexity
     public static function displayRecursiveItems(array $recursiveItems, $elementToDisplay, bool $display = true)
     {
 
-        if ((!is_array($recursiveItems)) || (count($recursiveItems) == 0)) {
-            echo __('Item not linked to an object');
-            return;
+        if ($recursiveItems === []) {
+            echo __s('Item not linked to an object');
+            return false;
         }
 
         switch ($elementToDisplay) {
             case 'Type':
                 $masterItem = $recursiveItems[count($recursiveItems) - 1];
+                $out = htmlescape($masterItem->getTypeName(1));
                 if ($display) {
-                    echo $masterItem->getTypeName(1);
+                    echo $out;
                 } else {
-                    return $masterItem->getTypeName(1);
+                    return $out;
                 }
                 break;
 
@@ -292,18 +270,23 @@ abstract class CommonDBChild extends CommonDBConnexity
                 $items_elements  = [];
                 foreach ($recursiveItems as $item) {
                     if ($elementToDisplay == 'Name') {
-                        $items_elements[] = $item->getName();
+                        $items_elements[] = htmlescape($item->getName());
                     } else {
                         $items_elements[] = $item->getLink();
                     }
                 }
+
+                $out = implode(' &lt; ', $items_elements);
+
                 if ($display) {
-                    echo implode(' &lt; ', $items_elements);
+                    echo $out;
                 } else {
-                    return implode(' &lt; ', $items_elements);
+                    return $out;
                 }
                 break;
         }
+
+        return true;
     }
 
 
@@ -430,7 +413,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             ) {
                 if (
                     ($itemToGetEntity instanceof CommonDBTM)
-                    && $itemToGetEntity->isEntityForwardTo(get_called_class())
+                    && $itemToGetEntity->isEntityForwardTo(static::class)
                 ) {
                     $input['entities_id']  = $itemToGetEntity->getEntityID();
                     $input['is_recursive'] = intval($itemToGetEntity->isRecursive());
@@ -597,7 +580,7 @@ abstract class CommonDBChild extends CommonDBConnexity
                     && $prevItem->dohistory
                 ) {
                     $changes[0] = '0';
-                    $changes[1] = addslashes($this->getHistoryNameForItem($prevItem, 'update item previous'));
+                    $changes[1] = $this->getHistoryNameForItem($prevItem, 'update item previous');
                     $changes[2] = '';
                     Log::history(
                         $prevItem->getID(),
@@ -614,7 +597,7 @@ abstract class CommonDBChild extends CommonDBConnexity
                 ) {
                     $changes[0] = '0';
                     $changes[1] = '';
-                    $changes[2] = addslashes($this->getHistoryNameForItem($newItem, 'update item next'));
+                    $changes[2] = $this->getHistoryNameForItem($newItem, 'update item next');
                     Log::history(
                         $newItem->getID(),
                         $newItem->getType(),
@@ -656,9 +639,9 @@ abstract class CommonDBChild extends CommonDBConnexity
 
             if (static::$log_history_delete == Log::HISTORY_LOG_SIMPLE_MESSAGE) {
                 $changes[1] = '';
-                $changes[2] = addslashes($this->getHistoryNameForItem($item, 'delete'));
+                $changes[2] = $this->getHistoryNameForItem($item, 'delete');
             } else {
-                $changes[1] = addslashes($this->getHistoryNameForItem($item, 'delete'));
+                $changes[1] = $this->getHistoryNameForItem($item, 'delete');
                 $changes[2] = '';
             }
             Log::history(
@@ -701,7 +684,7 @@ abstract class CommonDBChild extends CommonDBConnexity
             ) {
                 $changes = [
                     '0',
-                    addslashes($this->getHistoryNameForItem($item, 'lock')),
+                    $this->getHistoryNameForItem($item, 'lock'),
                     '',
                 ];
                 Log::history(
@@ -746,7 +729,7 @@ abstract class CommonDBChild extends CommonDBConnexity
                 $changes = [
                     '0',
                     '',
-                    addslashes($this->getHistoryNameForItem($item, 'unlock')),
+                    $this->getHistoryNameForItem($item, 'unlock'),
                 ];
                 Log::history(
                     $item->getID(),
@@ -761,7 +744,10 @@ abstract class CommonDBChild extends CommonDBConnexity
 
 
     /**
-     * get the Javascript "code" to add to the form when clicking on "+"
+     * Get the Javascript "code" to add to the form when clicking on "+".
+     *
+     * The output will be encapsulated in a JS string (i.e. `row.append('{$output}')`) and must therefore be escaped
+     * for JS context.
      *
      * @since 0.84
      *
@@ -775,8 +761,13 @@ abstract class CommonDBChild extends CommonDBConnexity
      **/
     public static function getJSCodeToAddForItemChild($field_name, $child_count_js_var)
     {
-        return "<input type=\'text\' size=\'40\' " . "name=\'" . $field_name .
-             "[-'+$child_count_js_var+']\'>";
+        $html = "<input type='text' size='40' name='" . htmlescape($field_name) . "[-__JS_PLACEHOLDER__]'>";
+
+        return str_replace(
+            '__JS_PLACEHOLDER__',
+            "'+{$child_count_js_var}+'", // string closing, + operator, JS variable name, + operator, string reopening
+            jsescape($html)
+        );
     }
 
 
@@ -799,9 +790,10 @@ abstract class CommonDBChild extends CommonDBConnexity
         if ($this->isNewID($this->getID())) {
             $value = '';
         } else {
-            $value = $this->getName();
+            $value = htmlescape($this->getName());
         }
-        $field_name = $field_name . "[$id]";
+        $field_name = htmlescape($field_name . "[$id]");
+
         if ($canedit) {
             $out = "<input type='text' size='40' name='$field_name' value='$value' class='form-select'>";
         } else {
@@ -826,7 +818,7 @@ abstract class CommonDBChild extends CommonDBConnexity
      * @todo study if we cannot use these methods for the user emails
      * @see showChildsForItemForm(CommonDBTM $item, $field_name)
      *
-     * @param CommonDBTM   $item        the item on which to add the current CommenDBChild
+     * @param CommonDBTM   $item        the item on which to add the current CommonDBChild
      * @param string       $field_name  the name of the HTML field inside Item's form
      * @param boolean|null $canedit     boolean to force rights, NULL to use default behaviour
      * @param boolean      $display     true display or false to return the button HTML code
@@ -861,17 +853,17 @@ abstract class CommonDBChild extends CommonDBConnexity
         $result = '';
 
         if ($canedit) {
-            $lower_name         = strtolower(get_called_class());
+            $lower_name         = preg_replace('/[^\w]/', '_', strtolower(static::class));
             $child_count_js_var = 'nb' . $lower_name . 's';
-            $div_id             = "add_" . $lower_name . "_to_" . $item->getType() . "_" . $items_id;
+            $div_id             = "add_" . $lower_name . "_to_" . preg_replace('/[^\w]/', '_', strtolower($item::class)) . "_" . $items_id;
+            $add_label          = htmlescape(sprintf(__('Add a new %s'), static::getTypeName()));
 
             // Beware : -1 is for the first element added ...
             $result = "&nbsp;<script type='text/javascript'>var $child_count_js_var=2; </script>";
-            $result .= "<span id='add" . $lower_name . "button' class='fa fa-plus pointer'" .
-              " title=\"" . __s('Add') . "\"" .
-                "\" onClick=\"var row = " . Html::jsGetElementByID($div_id) . ";
-                             row.append('<br>" .
-               static::getJSCodeToAddForItemChild($field_name, $child_count_js_var) . "');
+            $result .= "<span id='add" . $lower_name . "button' class='ti ti-plus cursor-pointer'"
+              . " title=\"" . __s('Add') . "\"" . "aria-label=\"" . $add_label . "\""
+                . "\" onClick=\"var row = $('#" . $div_id . "');
+                             row.append('" . static::getJSCodeToAddForItemChild($field_name, $child_count_js_var) . "');
                             $child_count_js_var++;\"
                ><span class='sr-only'>" . __s('Add') . "</span></span>";
         }
@@ -893,15 +885,14 @@ abstract class CommonDBChild extends CommonDBConnexity
      * @todo study if we cannot use these methods for the user emails
      * @see showAddChildButtonForItemForm()
      *
-     * @param CommonDBTM   $item        the item on which to add the current CommenDBChild
+     * @param CommonDBTM   $item        the item on which to add the current CommonDBChild
      * @param string       $field_name  the name of the HTML field inside Item's form
      * @param boolean|null $canedit     boolean to force rights, NULL to use default behaviour
      *
-     * @return void|boolean (display) Returns false if there is a rights error.
+     * @return void|boolean|string (display) Returns false if there is a right error.
      **/
     public static function showChildsForItemForm(CommonDBTM $item, $field_name, $canedit = null, bool $display = true)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $items_id = $item->getID();
@@ -921,8 +912,8 @@ abstract class CommonDBChild extends CommonDBConnexity
             }
         }
 
-        $lower_name = strtolower(get_called_class());
-        $div_id     = "add_" . $lower_name . "_to_" . $item->getType() . "_" . $items_id;
+        $lower_name = preg_replace('/[^\w]/', '_', strtolower(static::class));
+        $div_id     = "add_" . $lower_name . "_to_" . preg_replace('/[^\w]/', '_', strtolower($item::class)) . "_" . $items_id;
 
         $query = [
             'FROM'   => static::getTable(),
@@ -955,7 +946,7 @@ abstract class CommonDBChild extends CommonDBConnexity
         }
 
         if ($canedit) {
-            $result .= "<div id='$div_id'>";
+            $result .= "<div id='$div_id' class='d-flex flex-column'>";
             // No Child display field
             if ($count == 0) {
                 $current_item->getEmpty();
@@ -1001,31 +992,31 @@ abstract class CommonDBChild extends CommonDBConnexity
             $itemtype = 'Rule';
         }
 
-        if (isset(static::$items_id) && getItemtypeForForeignKeyField(static::$items_id) == $itemtype) {
+        if (getItemtypeForForeignKeyField(static::$items_id) == $itemtype) {
             return static::$items_id;
         }
 
-        if (isset(static::$itemtype) && preg_match('/^itemtype/', static::$itemtype)) {
+        if (preg_match('/^itemtype/', static::$itemtype)) {
             return static::$items_id;
         }
 
-        throw new \RuntimeException('Cannot guess field for itemtype ' . $itemtype . ' on ' . static::class);
+        throw new RuntimeException('Cannot guess field for itemtype ' . $itemtype . ' on ' . static::class);
     }
 
     protected function autoinventoryInformation()
     {
-        echo "<td>" . __('Automatic inventory') . "</td>";
+        echo "<td>" . __s('Automatic inventory') . "</td>";
         echo "<td>";
         if ($this->fields['id'] && $this->fields['is_dynamic']) {
             ob_start();
             Plugin::doHook(Hooks::AUTOINVENTORY_INFORMATION, $this);
             $info = ob_get_clean();
             if (empty($info)) {
-                $info = __('Yes');
+                $info = __s('Yes');
             }
             echo $info;
         } else {
-            echo __('No');
+            echo __s('No');
         }
         echo "</td>";
     }

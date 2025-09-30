@@ -33,8 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Console\Application;
-use Symfony\Component\Console\Output\OutputInterface;
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+use Glpi\Message\MessageType;
+use Glpi\Progress\AbstractProgressIndicator;
+
+use function Safe\preg_replace;
 
 /**
  * Migration Class
@@ -48,10 +52,8 @@ class Migration
     private $uniques   = [];
     private $search_opts = [];
     protected $version;
-    private $deb;
     private $lastMessage;
     private $log_errors = 0;
-    private $current_message_area_id;
     private $queries = [
         'pre'    => [],
         'post'   => [],
@@ -72,29 +74,19 @@ class Migration
     public const PRE_QUERY = 'pre';
     public const POST_QUERY = 'post';
 
-    /**
-     * Output handler to use. If not set, output will be directly echoed on a format depending on
-     * execution context (Web VS CLI).
-     *
-     * @var OutputInterface|null
-     */
-    protected $output_handler;
+    private ?AbstractProgressIndicator $progress_indicator;
+
+    protected DBmysql $db;
 
     /**
      * @param string $ver Version number
      **/
-    public function __construct($ver)
+    public function __construct($ver, ?AbstractProgressIndicator $progress_indicator = null)
     {
-
-        $this->deb = time();
+        global $DB;
+        $this->db = $DB;
         $this->version = $ver;
-
-        /** @var \Glpi\Console\Application $application */
-        global $application;
-        if ($application instanceof Application) {
-            // $application global variable will be available if Migration is called from a CLI console command
-            $this->output_handler = $application->getOutput();
-        }
+        $this->progress_indicator = $progress_indicator;
     }
 
     /**
@@ -108,11 +100,8 @@ class Migration
      **/
     public function setVersion($ver)
     {
-
         $this->version = $ver;
-        $this->addNewMessageArea("migration_message_$ver");
     }
-
 
     /**
      * Add new message
@@ -122,18 +111,13 @@ class Migration
      * @param string $id Area ID
      *
      * @return void
-     **/
+     *
+     * @deprecated 11.0.0
+     */
     public function addNewMessageArea($id)
     {
-
-        if (!isCommandLine() && $id != $this->current_message_area_id) {
-            $this->current_message_area_id = $id;
-            echo "<div id='" . $this->current_message_area_id . "'></div>";
-        }
-
-        $this->displayMessage(__('Work in progress...'));
+        Toolbox::deprecated();
     }
-
 
     /**
      * Flush previous displayed message in log file
@@ -144,14 +128,12 @@ class Migration
      **/
     public function flushLogDisplayMessage()
     {
-
         if (isset($this->lastMessage)) {
             $tps = Html::timestampToString(time() - $this->lastMessage['time']);
             $this->log($tps . ' for "' . $this->lastMessage['msg'] . '"', false);
             unset($this->lastMessage);
         }
     }
-
 
     /**
      * Additional message in global message
@@ -162,19 +144,15 @@ class Migration
      **/
     public function displayMessage($msg)
     {
-
         $this->flushLogDisplayMessage();
 
-        $now = time();
-        $tps = Html::timestampToString($now - $this->deb);
+        $this->progress_indicator?->setProgressBarMessage($msg);
 
-        $this->outputMessage("{$msg} ({$tps})", null, $this->current_message_area_id);
-
-        $this->lastMessage = ['time' => time(),
+        $this->lastMessage = [
+            'time' => time(),
             'msg'  => $msg,
         ];
     }
-
 
     /**
      * Log message for this migration
@@ -188,7 +166,6 @@ class Migration
      **/
     public function log($message, $warning)
     {
-
         if ($warning) {
             $log_file_name = 'warning_during_migration_to_' . $this->version;
         } else {
@@ -198,12 +175,11 @@ class Migration
         // Do not log if more than 3 log error
         if (
             $this->log_errors < 3
-            && !Toolbox::logInFile($log_file_name, $message . "\n", true)
+            && !Toolbox::logInFile($log_file_name, $message . "\n", true, output: false)
         ) {
             $this->log_errors++;
         }
     }
-
 
     /**
      * Display a title
@@ -211,14 +187,17 @@ class Migration
      * @param string $title Title to display
      *
      * @return void
-     **/
-    public function displayTitle($title)
+     *
+     * @deprecated 11.0.0
+     */
+    public function displayTitle($title): void
     {
+        Toolbox::deprecated();
+
         $this->flushLogDisplayMessage();
 
-        $this->outputMessage($title, 'title');
+        $this->progress_indicator?->setProgressBarMessage($title);
     }
-
 
     /**
      * Display a Warning
@@ -227,13 +206,15 @@ class Migration
      * @param boolean $red Displays with red class (false by default)
      *
      * @return void
-     **/
-    public function displayWarning($msg, $red = false)
+     *
+     * @deprecated 11.0.0
+     */
+    public function displayWarning($msg, $red = false): void
     {
-        $this->outputMessage($msg, $red ? 'warning' : 'strong');
-        $this->log($msg, true);
-    }
+        Toolbox::deprecated();
 
+        $this->addMessage($red ? MessageType::Warning : MessageType::Notice, (string) $msg);
+    }
 
     /**
      * Display an error
@@ -241,29 +222,82 @@ class Migration
      * @param string  $message Message to display
      *
      * @return void
-     **/
+     *
+     * @deprecated 11.0.0
+     */
     public function displayError(string $message): void
     {
-        $this->outputMessage($message, 'error');
-        $this->log($message, true);
+        Toolbox::deprecated();
+
+        $this->addMessage(MessageType::Error, $message);
     }
 
+    /**
+     * Add a message.
+     * This message will be added to the progress indicator and will be written in the logs.
+     */
+    final public function addMessage(MessageType $type, string $message): void
+    {
+        $this->progress_indicator?->addMessage($type, $message);
+
+        $this->log($message, in_array($type, [MessageType::Error, MessageType::Warning], true));
+    }
 
     /**
-     * Define field's format
+     * Add a success message.
+     */
+    final public function addSuccessMessage(string $message): void
+    {
+        $this->addMessage(MessageType::Success, $message);
+    }
+
+    /**
+     * Add an error message.
+     */
+    final public function addErrorMessage(string $message): void
+    {
+        $this->addMessage(MessageType::Error, $message);
+    }
+
+    /**
+     * Add a warning message.
+     */
+    final public function addWarningMessage(string $message): void
+    {
+        $this->addMessage(MessageType::Warning, $message);
+    }
+
+    /**
+     * Add an informative message.
+     */
+    final public function addInfoMessage(string $message): void
+    {
+        $this->addMessage(MessageType::Notice, $message);
+    }
+
+    /**
+     * Add a debug message.
+     */
+    final public function addDebugMessage(string $message): void
+    {
+        $this->addMessage(MessageType::Debug, $message);
+    }
+
+    /**
+     * Get formated SQL field
      *
-     * @param string  $type          can be bool, char, string, integer, date, datetime, text, longtext or autoincrement
+     * @param string  $type          can be "bool"|"boolean", "char"|"character", "str"|"string", "int"|"integer", "date", "time", "timestamp"|"datetime", "text"|"mediumtext"|"longtext", "autoincrement", "fkey", "json", or a complete type definition like "decimal(20,4) NOT NULL DEFAULT '0.0000'"
      * @param string  $default_value new field's default value,
      *                               if a specific default value needs to be used
      * @param boolean $nodefault     No default value (false by default)
      *
      * @return string
      **/
-    private function fieldFormat($type, $default_value, $nodefault = false)
+    private function fieldFormat($type, $default_value, $nodefault = false): string
     {
 
         $format = '';
-        $collate = DBConnection::getDefaultCollation();
+        $collate = $this->getDefaultCollation();
         switch ($type) {
             case 'bool':
             case 'boolean':
@@ -274,7 +308,7 @@ class Migration
                     } elseif (in_array($default_value, ['0', '1'])) {
                         $format .= " DEFAULT '$default_value'";
                     } else {
-                        throw new \LogicException('Default value must be 0 or 1.');
+                        throw new LogicException('Default value must be 0 or 1.');
                     }
                 }
                 break;
@@ -312,7 +346,7 @@ class Migration
                     } elseif (is_numeric($default_value)) {
                         $format .= " DEFAULT '$default_value'";
                     } else {
-                        throw new \LogicException('Default value must be numeric.');
+                        throw new LogicException('Default value must be numeric.');
                     }
                 }
                 break;
@@ -370,21 +404,23 @@ class Migration
 
                 // for plugins
             case 'autoincrement':
-                $format = "INT " . DBConnection::getDefaultPrimaryKeySignOption() . " NOT NULL AUTO_INCREMENT";
+                $format = "INT " . $this->getDefaultPrimaryKeySignOption() . " NOT NULL AUTO_INCREMENT";
                 break;
 
             case 'fkey':
-                $format = "INT " . DBConnection::getDefaultPrimaryKeySignOption() . " NOT NULL DEFAULT 0";
+                $format = "INT " . $this->getDefaultPrimaryKeySignOption() . " NOT NULL DEFAULT 0";
+                break;
+
+            case 'json':
+                $format = "JSON NOT NULL";
                 break;
 
             default:
-                // for compatibility with old 0.80 migrations
                 $format = $type;
                 break;
         }
         return $format;
     }
-
 
     /**
      * Add a new GLPI normalized field
@@ -392,9 +428,9 @@ class Migration
      * @param string $table   Table name
      * @param string $field   Field name
      * @param string $type    Field type, @see Migration::fieldFormat()
-     * @param array  $options Options:
-     *                         - update    : if not empty = value of $field (must be protected)
-     *                         - condition : if needed
+     * @param array{update?: string|int, condition?: string, value?: string|int|null, nodefault?: bool, comment?: string, first?: string, after?: string, null?: bool} $options
+     *                         - update    : value to set after field creation (update query)
+     *                         - condition : sql condition to apply for update query
      *                         - value     : default_value new field's default value, if a specific default value needs to be used
      *                         - nodefault : do not define default value (default false)
      *                         - comment   : comment to be added during field creation
@@ -406,9 +442,6 @@ class Migration
      **/
     public function addField($table, $field, $type, $options = [])
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         $params['update']    = '';
         $params['condition'] = '';
         $params['value']     = null;
@@ -418,16 +451,12 @@ class Migration
         $params['first']     = '';
         $params['null']      = false;
 
-        if (is_array($options) && count($options)) {
-            foreach ($options as $key => $val) {
-                $params[$key] = $val;
-            }
-        }
+        $params = array_merge($params, $options);
 
         $format = $this->fieldFormat($type, $params['value'], $params['nodefault']);
 
         if (!empty($params['comment'])) {
-            $params['comment'] = " COMMENT '" . addslashes($params['comment']) . "'";
+            $params['comment'] = " COMMENT " . $this->db->quote($params['comment']);
         }
 
         if (!empty($params['after'])) {
@@ -441,23 +470,22 @@ class Migration
         }
 
         if ($format) {
-            if (!$DB->fieldExists($table, $field, false)) {
-                $this->change[$table][] = "ADD `$field` $format " . $params['comment'] . " " .
-                                      $params['null'] . $params['first'] . $params['after'];
+            if (!$this->db->fieldExists($table, $field, false)) {
+                $this->change[$table][] = "ADD `$field` $format " . $params['comment'] . " "
+                                      . $params['null'] . $params['first'] . $params['after'];
 
                 if ($params['update'] !== '') {
                     $this->migrationOneTable($table);
                     $query = "UPDATE `$table`
-                        SET `$field` = " . $params['update'] . " " .
-                        $params['condition'] . "";
-                    $DB->doQueryOrDie($query, $this->version . " set $field in $table");
+                        SET `$field` = " . $params['update'] . " "
+                        . $params['condition'] . "";
+                    $this->db->doQuery($query);
                 }
                 return true;
             }
         }
         return false;
     }
-
 
     /**
      * Modify field for migration
@@ -478,9 +506,6 @@ class Migration
      **/
     public function changeField($table, $oldfield, $newfield, $type, $options = [])
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         $params['value']     = null;
         $params['nodefault'] = false;
         $params['comment']   = '';
@@ -497,7 +522,7 @@ class Migration
         $format = $this->fieldFormat($type, $params['value'], $params['nodefault']);
 
         if ($params['comment']) {
-            $params['comment'] = " COMMENT '" . addslashes($params['comment']) . "'";
+            $params['comment'] = " COMMENT " . $this->db->quote($params['comment']);
         }
 
         if (!empty($params['after'])) {
@@ -510,26 +535,25 @@ class Migration
             $params['null'] = 'NULL ';
         }
 
-        if ($DB->fieldExists($table, $oldfield, false)) {
+        if ($this->db->fieldExists($table, $oldfield, false)) {
             // in order the function to be replayed
             // Drop new field if name changed
             if (
-                ($oldfield != $newfield)
-                && $DB->fieldExists($table, $newfield)
+                ($oldfield !== $newfield)
+                && $this->db->fieldExists($table, $newfield)
             ) {
-                $this->change[$table][] = $DB->buildDrop($newfield, 'FIELD');
+                $this->change[$table][] = $this->db->buildDrop($newfield, 'FIELD');
             }
 
             if ($format) {
-                $this->change[$table][] = "CHANGE `$oldfield` `$newfield` $format " . $params['comment'] . " " .
-                                      $params['null'] . $params['first'] . $params['after'];
+                $this->change[$table][] = "CHANGE `$oldfield` `$newfield` $format " . $params['comment'] . " "
+                                      . $params['null'] . $params['first'] . $params['after'];
             }
             return true;
         }
 
         return false;
     }
-
 
     /**
      * Drop field for migration
@@ -541,14 +565,10 @@ class Migration
      **/
     public function dropField($table, $field)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if ($DB->fieldExists($table, $field, false)) {
-            $this->change[$table][] = $DB->buildDrop($field, 'FIELD');
+        if ($this->db->fieldExists($table, $field, false)) {
+            $this->change[$table][] = $this->db->buildDrop($field, 'FIELD');
         }
     }
-
 
     /**
      * Drop immediately a table if it exists
@@ -559,14 +579,10 @@ class Migration
      **/
     public function dropTable($table)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if ($DB->tableExists($table)) {
-            $DB->dropTable($table);
+        if ($this->db->tableExists($table)) {
+            $this->db->dropTable($table);
         }
     }
-
 
     /**
      * Add index for migration
@@ -577,12 +593,13 @@ class Migration
      * @param string       $type      Index type (index or unique - default 'INDEX')
      * @param integer      $len       Field length (default 0)
      *
+     * The table must exist before calling this function.
+     *
      * @return void
      **/
     public function addKey($table, $fields, $indexname = '', $type = 'INDEX', $len = 0)
     {
-
-        // si pas de nom d'index, on prend celui du ou des champs
+        // if no index name, we take that of the field(s)
         if (!$indexname) {
             if (is_array($fields)) {
                 $indexname = implode("_", $fields);
@@ -591,7 +608,7 @@ class Migration
             }
         }
 
-        if (!isIndex($table, $indexname)) {
+        if (!$this->hasKey($table, $indexname)) {
             if (is_array($fields)) {
                 if ($len) {
                     $fields = "`" . implode("`($len), `", $fields) . "`($len)";
@@ -604,9 +621,9 @@ class Migration
                 $fields = "`$fields`";
             }
 
-            if ($type == 'FULLTEXT') {
+            if ($type === 'FULLTEXT') {
                 $this->fulltexts[$table][] = "ADD $type `$indexname` ($fields)";
-            } elseif ($type == 'UNIQUE') {
+            } elseif ($type === 'UNIQUE') {
                 $this->uniques[$table][] = "ADD $type `$indexname` ($fields)";
             } else {
                 $this->change[$table][] = "ADD $type `$indexname` ($fields)";
@@ -614,6 +631,18 @@ class Migration
         }
     }
 
+    /**
+     * Mockable function to check if a key already exists
+     * @param string $table Table name
+     * @param string $indexname Index name
+     * @return bool
+     * @see isIndex()
+     * @note Could be removed when using dependency injection or some other refactoring
+     */
+    protected function hasKey($table, $indexname): bool
+    {
+        return isIndex($table, $indexname);
+    }
 
     /**
      * Drop index for migration
@@ -625,13 +654,10 @@ class Migration
      **/
     public function dropKey($table, $indexname)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-        if (isIndex($table, $indexname)) {
-            $this->change[$table][] = $DB->buildDrop($indexname, 'INDEX');
+        if ($this->hasKey($table, $indexname)) {
+            $this->change[$table][] = $this->db->buildDrop($indexname, 'INDEX');
         }
     }
-
 
     /**
      * Drop foreign key for migration
@@ -643,13 +669,10 @@ class Migration
      **/
     public function dropForeignKeyContraint($table, $keyname)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
         if (isForeignKeyContraint($table, $keyname)) {
-            $this->change[$table][] = $DB->buildDrop($keyname, 'FOREIGN KEY');
+            $this->change[$table][] = $this->db->buildDrop($keyname, 'FOREIGN KEY');
         }
     }
-
 
     /**
      * Rename table for migration
@@ -661,17 +684,14 @@ class Migration
      **/
     public function renameTable($oldtable, $newtable)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if (!$DB->tableExists("$newtable") && $DB->tableExists("$oldtable")) {
+        if (!$this->db->tableExists("$newtable") && $this->db->tableExists("$oldtable")) {
             $query = "RENAME TABLE `$oldtable` TO `$newtable`";
-            $DB->doQueryOrDie($query, $this->version . " rename $oldtable");
+            $this->db->doQuery($query);
 
             // Clear possibly forced value of table name.
             // Actually the only forced value in core is for config table.
             $itemtype = getItemTypeForTable($newtable);
-            if (class_exists($itemtype)) {
+            if ($itemtype !== null && class_exists($itemtype)) {
                 $itemtype::forceTable($newtable);
             }
 
@@ -698,19 +718,13 @@ class Migration
             $message = sprintf(
                 __('Unable to rename table %1$s (%2$s) to %3$s (%4$s)!'),
                 $oldtable,
-                ($DB->tableExists($oldtable) ? __('ok') : __('nok')),
+                ($this->db->tableExists($oldtable) ? __('ok') : __('nok')),
                 $newtable,
-                ($DB->tableExists($newtable) ? __('nok') : __('ok'))
+                ($this->db->tableExists($newtable) ? __('nok') : __('ok'))
             );
-            if (isCommandLine()) {
-                throw new \RuntimeException($message);
-            } else {
-                echo $message . "\n";
-                die(1);
-            }
+            throw new RuntimeException($message);
         }
     }
-
 
     /**
      * Copy table for migration
@@ -725,28 +739,24 @@ class Migration
      **/
     public function copyTable($oldtable, $newtable, bool $insert = true)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if (
-            !$DB->tableExists($newtable)
-            && $DB->tableExists($oldtable)
+            !$this->db->tableExists($newtable)
+            && $this->db->tableExists($oldtable)
         ) {
             // Try to do a flush tables if RELOAD privileges available
             // $query = "FLUSH TABLES `$oldtable`, `$newtable`";
-            // $DB->query($query);
+            // $this->db->doQuery($query);
 
             $query = "CREATE TABLE `$newtable` LIKE `$oldtable`";
-            $DB->doQueryOrDie($query, $this->version . " create $newtable");
+            $this->db->doQuery($query);
 
             if ($insert) {
                 //needs DB::insert to support subqueries to get migrated
                 $query = "INSERT INTO `$newtable` (SELECT * FROM `$oldtable`)";
-                $DB->doQueryOrDie($query, $this->version . " copy from $oldtable to $newtable");
+                $this->db->doQuery($query);
             }
         }
     }
-
 
     /**
      * Insert an entry inside a table
@@ -760,28 +770,24 @@ class Migration
      **/
     public function insertInTable($table, array $input)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if (
-            $DB->tableExists("$table")
-            && is_array($input) && (count($input) > 0)
+            $this->db->tableExists("$table")
+            && (count($input) > 0)
         ) {
             $values = [];
             foreach ($input as $field => $value) {
-                if ($DB->fieldExists($table, $field)) {
+                if ($this->db->fieldExists($table, $field)) {
                     $values[$field] = $value;
                 }
             }
 
-            $DB->insertOrDie($table, $values, $this->version . " insert in $table");
+            $this->db->insert($table, $values);
 
-            return $DB->insertId();
+            return $this->db->insertId();
         }
 
         return null;
     }
-
 
     /**
      * Execute migration for only one table
@@ -792,35 +798,31 @@ class Migration
      **/
     public function migrationOneTable($table)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if (isset($this->change[$table])) {
             $query = "ALTER TABLE `$table` " . implode(" ,\n", $this->change[$table]) . " ";
-            $this->displayMessage(sprintf(__('Change of the database layout - %s'), $table));
-            $DB->doQueryOrDie($query, $this->version . " multiple alter in $table");
+            $this->addDebugMessage(sprintf(__('Change of the database layout - %s'), $table));
+            $this->db->doQuery($query);
             unset($this->change[$table]);
         }
 
         if (isset($this->fulltexts[$table])) {
-            $this->displayMessage(sprintf(__('Adding fulltext indices - %s'), $table));
+            $this->addDebugMessage(sprintf(__('Adding fulltext indices - %s'), $table));
             foreach ($this->fulltexts[$table] as $idx) {
                 $query = "ALTER TABLE `$table` " . $idx;
-                $DB->doQueryOrDie($query, $this->version . " $idx");
+                $this->db->doQuery($query);
             }
             unset($this->fulltexts[$table]);
         }
 
         if (isset($this->uniques[$table])) {
-            $this->displayMessage(sprintf(__('Adding unicity indices - %s'), $table));
+            $this->addDebugMessage(sprintf(__('Adding unicity indices - %s'), $table));
             foreach ($this->uniques[$table] as $idx) {
                 $query = "ALTER TABLE `$table` " . $idx;
-                $DB->doQueryOrDie($query, $this->version . " $idx");
+                $this->db->doQuery($query);
             }
             unset($this->uniques[$table]);
         }
     }
-
 
     /**
      * Execute global migration
@@ -829,11 +831,8 @@ class Migration
      **/
     public function executeMigration()
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         foreach ($this->queries[self::PRE_QUERY] as $query) {
-            $DB->doQueryOrDie($query['query'], $query['message']);
+            $this->db->doQuery($query['query']);
         }
         $this->queries[self::PRE_QUERY] = [];
 
@@ -847,7 +846,7 @@ class Migration
         }
 
         foreach ($this->queries[self::POST_QUERY] as $query) {
-            $DB->doQueryOrDie($query['query'], $query['message']);
+            $this->db->doQuery($query['query']);
         }
         $this->queries[self::POST_QUERY] = [];
 
@@ -855,9 +854,8 @@ class Migration
         $this->migrateSearchOptions();
 
         // end of global message
-        $this->displayMessage(__('Task completed.'));
+        $this->addSuccessMessage(sprintf(__('Update to %s version completed.'), $this->version));
     }
-
 
     /**
      * Register a new rule
@@ -872,17 +870,17 @@ class Migration
      **/
     public function createRule(array $rule, array $criteria, array $actions)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         // Avoid duplicate - Need to be improved using a rule uuid of other
-        if (countElementsInTable('glpi_rules', ['name' => $DB->escape($rule['name'])])) {
+        if (countElementsInTable('glpi_rules', ['name' => $rule['name']])) {
             return 0;
         }
         $rule['comment']     = sprintf(__('Automatically generated by GLPI %s'), $this->version);
         $rule['description'] = '';
 
         // Compute ranking
+        if (!is_a($rule['sub_type'], Rule::class)) {
+            return 0;
+        }
         $ruleinst = new $rule['sub_type']();
         $ranking = $ruleinst->getNextRanking();
         if (!$ranking) {
@@ -894,8 +892,8 @@ class Migration
         foreach ($rule as $field => $value) {
             $values[$field] = $value;
         }
-        $DB->insertOrDie('glpi_rules', $values);
-        $rid = $DB->insertId();
+        $this->db->insert('glpi_rules', $values);
+        $rid = $this->db->insertId();
 
         // The rule criteria
         foreach ($criteria as $criterion) {
@@ -903,7 +901,7 @@ class Migration
             foreach ($criterion as $field => $value) {
                 $values[$field] = $value;
             }
-            $DB->insertOrDie('glpi_rulecriterias', $values);
+            $this->db->insert('glpi_rulecriterias', $values);
         }
 
         // The rule criteria actions
@@ -912,12 +910,11 @@ class Migration
             foreach ($action as $field => $value) {
                 $values[$field] = $value;
             }
-            $DB->insertOrDie('glpi_ruleactions', $values);
+            $this->db->insert('glpi_ruleactions', $values);
         }
 
         return $rid;
     }
-
 
     /**
      * Update display preferences
@@ -932,11 +929,8 @@ class Migration
      **/
     public function updateDisplayPrefs($toadd = [], $todel = [], bool $only_default = false)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         //TRANS: %s is the table or item to migrate
-        $this->displayMessage(sprintf(__('Data migration - %s'), 'glpi_displaypreferences'));
+        $this->addDebugMessage(sprintf(__('Data migration - %s'), 'glpi_displaypreferences'));
         foreach ($toadd as $itemtype => $searchoptions_ids) {
             $criteria = [
                 'SELECT'   => 'users_id',
@@ -948,14 +942,16 @@ class Migration
                 $criteria['WHERE']['users_id'] = 0;
             }
 
-            $iterator = $DB->request($criteria);
+            $iterator = $this->db->request($criteria);
 
             if (count($iterator) > 0) {
                 // There are already existing display preferences for this itemtype.
                 // Add new search options with an higher rank.
                 foreach ($iterator as $data) {
-                    $max_rank = $DB->request([
-                        'SELECT' => ['MAX' => 'rank AS max_rank'],
+                    $max_rank = $this->db->request([
+                        'SELECT' => [
+                            QueryFunction::max('rank', 'max_rank'),
+                        ],
                         'FROM'   => 'glpi_displaypreferences',
                         'WHERE'  => [
                             'users_id' => $data['users_id'],
@@ -976,7 +972,7 @@ class Migration
                         ) > 0;
 
                         if (!$exists) {
-                            $DB->insert(
+                            $this->db->insert(
                                 'glpi_displaypreferences',
                                 [
                                     'itemtype'  => $itemtype,
@@ -993,7 +989,7 @@ class Migration
                 // Add new search options with a rank starting to 1.
                 $rank = 1;
                 foreach ($searchoptions_ids as $searchoption_id) {
-                    $DB->insert(
+                    $this->db->insert(
                         'glpi_displaypreferences',
                         [
                             'itemtype'  => $itemtype,
@@ -1009,7 +1005,7 @@ class Migration
         // delete display preferences
         foreach ($todel as $itemtype => $searchoptions_ids) {
             if (count($searchoptions_ids) > 0) {
-                $DB->delete(
+                $this->db->delete(
                     'glpi_displaypreferences',
                     [
                         'itemtype'  => $itemtype,
@@ -1073,15 +1069,12 @@ class Migration
      */
     public function backupTables($tables)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         $backup_tables = false;
         foreach ($tables as $table) {
             // rename new tables if exists ?
-            if ($DB->tableExists($table)) {
+            if ($this->db->tableExists($table)) {
                 $this->dropTable("backup_$table");
-                $this->displayWarning(sprintf(
+                $this->addInfoMessage(sprintf(
                     __('%1$s table already exists. A backup have been done to %2$s'),
                     $table,
                     "backup_$table"
@@ -1091,7 +1084,7 @@ class Migration
             }
         }
         if ($backup_tables) {
-            $this->displayWarning("You can delete backup tables if you have no need of them.", true);
+            $this->addInfoMessage("You can delete backup tables if you have no need of them.");
         }
         return $backup_tables;
     }
@@ -1117,7 +1110,34 @@ class Migration
     }
 
     /**
-     * Store configuration values that does not exists
+     * Remove configuration value(s) to current context; @see Migration::removeConfig()
+     *
+     * @since 11.0.0
+     *
+     * @param array  $values  Value(s) to remove
+     * @param ?string $context Context to remove on. Defaults to the context of this migration instance.
+     *
+     * @return Migration
+     */
+    public function removeConfig(array $values, ?string $context = null)
+    {
+        if ($values === []) {
+            return $this;
+        }
+
+        $context ??= $this->context;
+        $this->db->delete(
+            'glpi_configs',
+            [
+                'context' => $context,
+                'name'    => $values,
+            ]
+        );
+        return $this;
+    }
+
+    /**
+     * Store configuration values that does not exist
      *
      * @since 9.2
      *
@@ -1125,24 +1145,30 @@ class Migration
      */
     private function storeConfig()
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         foreach ($this->configs as $context => $config) {
             if (count($config)) {
-                $existing = $DB->request(
-                    "glpi_configs",
-                    [
+                $existing = $this->db->request([
+                    'FROM' => 'glpi_configs',
+                    'WHERE' => [
                         'context'   => $context,
                         'name'      => array_keys($config),
-                    ]
-                );
+                    ],
+                ]);
                 foreach ($existing as $conf) {
                     unset($config[$conf['name']]);
                 }
                 if (count($config)) {
-                    Config::setConfigurationValues($context, $config);
-                    $this->displayMessage(sprintf(
+                    foreach ($config as $name => $value) {
+                        $this->db->insert(
+                            'glpi_configs',
+                            [
+                                'context' => $context,
+                                'name'    => $name,
+                                'value'   => $value,
+                            ]
+                        );
+                    }
+                    $this->addDebugMessage(sprintf(
                         __('Configuration values added for %1$s (%2$s).'),
                         implode(', ', array_keys($config)),
                         $context
@@ -1152,7 +1178,6 @@ class Migration
             unset($this->configs[$context]);
         }
     }
-
 
     /**
      * Add new right to profiles that match rights requirements
@@ -1169,11 +1194,8 @@ class Migration
      */
     public function addRight($name, $rights = ALLSTANDARDRIGHT, $requiredrights = ['config' => READ | UPDATE])
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         // Get all profiles where new rights has not been added yet
-        $prof_iterator = $DB->request(
+        $prof_iterator = $this->db->request(
             [
                 'SELECT'    => 'glpi_profiles.id',
                 'FROM'      => 'glpi_profiles',
@@ -1202,7 +1224,7 @@ class Migration
         foreach ($requiredrights as $reqright => $reqvalue) {
             $where['OR'][] = [
                 'name'   => $reqright,
-                new QueryExpression("{$DB->quoteName('rights')} & $reqvalue = $reqvalue"),
+                new QueryExpression("{$this->db::quoteName('rights')} & $reqvalue = $reqvalue"),
             ];
         }
 
@@ -1210,7 +1232,7 @@ class Migration
             if (empty($requiredrights)) {
                 $reqmet = true;
             } else {
-                $iterator = $DB->request([
+                $iterator = $this->db->request([
                     'SELECT' => [
                         'name',
                         'rights',
@@ -1219,27 +1241,27 @@ class Migration
                     'WHERE'  => $where + ['profiles_id' => $profile['id']],
                 ]);
 
-                $reqmet = (count($iterator) == count($requiredrights));
+                $reqmet = (count($iterator) === count($requiredrights));
             }
 
-            $DB->insertOrDie(
+            $this->db->insert(
                 'glpi_profilerights',
                 [
                     'id'           => null,
                     'profiles_id'  => $profile['id'],
                     'name'         => $name,
                     'rights'       => $reqmet ? $rights : 0,
-                ],
-                sprintf('%1$s add right for %2$s', $this->version, $name)
+                ]
             );
+
+            $this->updateProfileLastRightsUpdate($profile['id']);
         }
 
-        $this->displayWarning(
+        $this->addWarningMessage(
             sprintf(
                 'New rights has been added for %1$s, you should review ACLs after update',
                 $name
             ),
-            true
         );
     }
 
@@ -1254,10 +1276,7 @@ class Migration
      */
     public function addRightByInterface($name, $right, $interface = 'central')
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        $prof_iterator = $DB->request([
+        $prof_iterator = $this->db->request([
             'SELECT'    => [
                 'glpi_profiles.id',
                 'glpi_profilerights.rights',
@@ -1282,10 +1301,10 @@ class Migration
         ]);
 
         foreach ($prof_iterator as $profile) {
-            if (intval($profile['rights']) & $right) {
+            if ((int) $profile['rights'] & $right) {
                 continue;
             }
-            $DB->updateOrInsert(
+            $this->db->updateOrInsert(
                 'glpi_profilerights',
                 [
                     'rights'       => $profile['rights'] | $right,
@@ -1294,22 +1313,22 @@ class Migration
                     'profiles_id'  => $profile['id'],
                     'name'         => $name,
                 ],
-                sprintf('%1$s update right for %2$s', $this->version, $name)
             );
+
+            $this->updateProfileLastRightsUpdate($profile['id']);
         }
 
-        $this->displayWarning(
+        $this->addWarningMessage(
             sprintf(
                 'Rights has been updated for %1$s, you should review ACLs after update',
                 $name
             ),
-            true
         );
     }
 
     /**
-     * Update right to profiles that match rights requirements
-     *    Default is to update rights of profiles with READ and UPDATE rights on config
+     * Replace right to profiles that match rights requirements.
+     * Default is to update rights of profiles with READ and UPDATE rights on config.
      *
      * @param string  $name   Right name
      * @param integer $rights Right to set
@@ -1320,13 +1339,9 @@ class Migration
      *
      * @return void
      */
-    public function updateRight($name, $rights, $requiredrights = ['config' => READ | UPDATE])
+    public function replaceRight($name, $rights, $requiredrights = ['config' => READ | UPDATE])
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         // Get all profiles with required rights
-
         $join = [];
         $i = 1;
         foreach ($requiredrights as $reqright => $reqvalue) {
@@ -1337,7 +1352,7 @@ class Migration
                     [
                         'AND' => [
                             "right$i.name"   => $reqright,
-                            new QueryExpression($DB->quoteName("right$i.rights") . " & $reqvalue = $reqvalue"),
+                            new QueryExpression($this->db::quoteName("right$i.rights") . " & $reqvalue = $reqvalue"),
                         ],
                     ],
                 ],
@@ -1345,7 +1360,7 @@ class Migration
             $i++;
         }
 
-        $prof_iterator = $DB->request(
+        $prof_iterator = $this->db->request(
             [
                 'SELECT'     => 'glpi_profiles.id',
                 'FROM'       => 'glpi_profiles',
@@ -1354,7 +1369,7 @@ class Migration
         );
 
         foreach ($prof_iterator as $profile) {
-            $DB->updateOrInsert(
+            $this->db->updateOrInsert(
                 'glpi_profilerights',
                 [
                     'rights'       => $rights,
@@ -1363,132 +1378,147 @@ class Migration
                     'profiles_id'  => $profile['id'],
                     'name'         => $name,
                 ],
-                sprintf('%1$s update right for %2$s', $this->version, $name)
             );
+
+            $this->updateProfileLastRightsUpdate($profile['id']);
         }
 
-        $this->displayWarning(
+        $this->addWarningMessage(
             sprintf(
                 'Rights has been updated for %1$s, you should review ACLs after update',
                 $name
             ),
-            true
         );
     }
 
-    public function setOutputHandler($output_handler)
-    {
-
-        $this->output_handler = $output_handler;
-    }
-
     /**
-     * Output a message.
+     * Give right to profiles that match rights requirements
+     *   Default is to give rights to profiles with READ and UPDATE rights on config
      *
-     * @param string $msg      Message to output.
-     * @param string $style    Style to use, value can be 'title', 'warning', 'strong' or null.
-     * @param string $area_id  Display area to use.
+     * @param string  $name   Right name
+     * @param integer $rights Right to set
+     * @param array   $requiredrights Array of right name => value
+     *                   A profile must have these rights in order to get its rights added.
+     *                   This array can be empty to add the right to every profile.
+     *                   Default is ['config' => READ | UPDATE].
      *
      * @return void
      */
-    protected function outputMessage($msg, $style = null, $area_id = null)
+    public function giveRight($name, $rights, $requiredrights = ['config' => READ | UPDATE])
     {
-        if (isCommandLine()) {
-            $this->outputMessageToCli($msg, $style);
-        } else {
-            $this->outputMessageToHtml($msg, $style, $area_id);
-        }
-    }
-
-    /**
-     * Output a message in console output.
-     *
-     * @param string $msg    Message to output.
-     * @param string $style  Style to use, see self::outputMessage() for possible values.
-     *
-     * @return void
-     */
-    private function outputMessageToCli($msg, $style = null)
-    {
-
-        $format = null;
-        $verbosity = OutputInterface::VERBOSITY_NORMAL;
-        switch ($style) {
-            case 'title':
-                $msg       = str_pad(" $msg ", 100, '=', STR_PAD_BOTH);
-                $format    = 'info';
-                $verbosity = OutputInterface::VERBOSITY_NORMAL;
-                break;
-            case 'warning':
-                $msg       = str_pad("** {$msg}", 100);
-                $format    = 'comment';
-                $verbosity = OutputInterface::VERBOSITY_NORMAL;
-                break;
-            case 'strong':
-                $msg       = str_pad($msg, 100);
-                $format    = 'comment';
-                $verbosity = OutputInterface::VERBOSITY_NORMAL;
-                break;
-            case 'error':
-                $msg       = str_pad("!! {$msg}", 100);
-                $format    = 'error';
-                $verbosity = OutputInterface::VERBOSITY_QUIET;
-                break;
-            default:
-                $msg       = str_pad($msg, 100);
-                $format    = 'comment';
-                $verbosity = OutputInterface::VERBOSITY_VERBOSE;
-                break;
+        // Build JOIN clause to get all profiles with required rights
+        $join = [];
+        $i = 1;
+        foreach ($requiredrights as $reqright => $reqvalue) {
+            $join["glpi_profilerights as right$i"] = [
+                'ON' => [
+                    "right$i"       => 'profiles_id',
+                    'glpi_profiles' => 'id',
+                    [
+                        'AND' => [
+                            "right$i.name"   => $reqright,
+                            new QueryExpression($this->db::quoteName("right$i.rights") . " & $reqvalue = $reqvalue"),
+                        ],
+                    ],
+                ],
+            ];
+            $i++;
         }
 
-        if ($this->output_handler instanceof OutputInterface) {
-            if (null !== $format) {
-                $msg = sprintf('<%1$s>%2$s</%1$s>', $format, $msg);
+        // Get all profiles with required rights
+        $prof_iterator = $this->db->request(
+            [
+                'SELECT'     => 'glpi_profiles.id',
+                'FROM'       => 'glpi_profiles',
+                'INNER JOIN' => $join,
+            ]
+        );
+
+        $added = false;
+        foreach ($prof_iterator as $profile) {
+            // Check if the right is already present
+            $existingRight = $this->db->request([
+                'FROM'  => 'glpi_profilerights',
+                'WHERE' => [
+                    'profiles_id' => $profile['id'],
+                    'name'        => $name,
+                ],
+            ]);
+
+            if ($existingRight->numrows() > 0) {
+                $profile_right = $existingRight->current();
+                // If the value specified is not already included, update the rights by adding the value
+                if (($profile_right['rights'] & $rights) !== $rights) {
+                    // Mettre à jour les droits en ajoutant la valeur spécifiée
+                    $newRights = $profile_right['rights'] | $rights;
+                    $this->db->update(
+                        'glpi_profilerights',
+                        ['rights' => $newRights],
+                        ['id' => $profile_right['id']]
+                    );
+                    $added = true;
+                }
+                // If the value specified is already included, do nothing
+            } else {
+                // If the right does not exist, add it
+                $this->db->insert(
+                    'glpi_profilerights',
+                    [
+                        'profiles_id'  => $profile['id'],
+                        'name'         => $name,
+                        'rights'       => $rights,
+                    ]
+                );
+                $added = true;
             }
-            $this->output_handler->writeln($msg, $verbosity);
-        } else {
-            echo $msg . PHP_EOL;
+
+            // Update last rights update for the profile
+            $this->updateProfileLastRightsUpdate($profile['id']);
+        }
+
+        // Display a warning message if rights have been given
+        if ($added) {
+            $this->addWarningMessage(
+                sprintf(
+                    'Rights have been given for %1$s, you should review ACLs after update',
+                    $name
+                ),
+            );
         }
     }
 
     /**
-     * Output a message in html page.
+     * Update last rights update for given profile.
      *
-     * @param string $msg      Message to output.
-     * @param string $style    Style to use, see self::outputMessage() for possible values.
-     * @param string $area_id  Display area to use.
-     *
+     * @param int $profile_id
      * @return void
      */
-    private function outputMessageToHtml($msg, $style = null, $area_id = null)
+    private function updateProfileLastRightsUpdate(int $profile_id): void
     {
-
-        $msg = Html::entities_deep($msg);
-
-        switch ($style) {
-            case 'title':
-                $msg = '<h3>' . $msg . '</h3>';
-                break;
-            case 'warning':
-            case 'error':
-                $msg = '<div class="migred"><p>' . $msg . '</p></div>';
-                break;
-            case 'strong':
-                $msg = '<p><span class="b">' . $msg . '</span></p>';
-                break;
-            default:
-                $msg = '<p class="center">' . $msg . '</p>';
-                break;
+        // Check if the 'last_rights_update' field exists before trying to update it.
+        // This field may not exist yet as it is added by a migration, and other migrations
+        // that add a right could be executed before the migration that adds this field.
+        if (!$this->db->fieldExists('glpi_profiles', 'last_rights_update')) {
+            return;
         }
 
-        if (null !== $area_id) {
-            echo "<script type='text/javascript'>
-                  document.getElementById('{$area_id}').innerHTML = '{$msg}';
-               </script>\n";
-            Html::glpi_flush();
-        } else {
-            echo $msg;
-        }
+        $this->db->update(
+            'glpi_profiles',
+            [
+                'last_rights_update' => Session::getCurrentTime(),
+            ],
+            [
+                'id' => $profile_id,
+            ]
+        );
+    }
+
+    /**
+     * @deprecated 11.0.0
+     */
+    public function setOutputHandler($output_handler): void
+    {
+        Toolbox::deprecated();
     }
 
     /**
@@ -1509,15 +1539,12 @@ class Migration
      */
     public function renameItemtype($old_itemtype, $new_itemtype, $update_structure = true)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if ($old_itemtype == $new_itemtype) {
             // Do nothing if new value is same as old one
             return;
         }
 
-        $this->displayMessage(sprintf(__('Renaming "%s" itemtype to "%s"...'), $old_itemtype, $new_itemtype));
+        $this->addDebugMessage(sprintf(__('Renaming "%s" itemtype to "%s"...'), $old_itemtype, $new_itemtype));
 
         $old_table = getTableForItemType($old_itemtype);
         $new_table = getTableForItemType($new_itemtype);
@@ -1526,16 +1553,16 @@ class Migration
             $new_fkey  = getForeignKeyFieldForTable($new_table);
 
             // Check prerequisites
-            if (!$DB->tableExists($old_table)) {
-                throw new \RuntimeException(
+            if (!$this->db->tableExists($old_table)) {
+                throw new RuntimeException(
                     sprintf(
                         'Table "%s" does not exists.',
                         $old_table
                     )
                 );
             }
-            if ($DB->tableExists($new_table)) {
-                throw new \RuntimeException(
+            if ($this->db->tableExists($new_table)) {
+                throw new RuntimeException(
                     sprintf(
                         'Table "%s" cannot be renamed as table "%s" already exists.',
                         $old_table,
@@ -1543,7 +1570,7 @@ class Migration
                     )
                 );
             }
-            $fkey_column_iterator = $DB->request(
+            $fkey_column_iterator = $this->db->request(
                 [
                     'SELECT' => [
                         'table_name AS TABLE_NAME',
@@ -1551,7 +1578,7 @@ class Migration
                     ],
                     'FROM'   => 'information_schema.columns',
                     'WHERE'  => [
-                        'table_schema' => $DB->dbdefault,
+                        'table_schema' => $this->db->dbdefault,
                         'table_name'   => ['LIKE', 'glpi\_%'],
                         'OR' => [
                             ['column_name'  => $old_fkey],
@@ -1566,8 +1593,8 @@ class Migration
                 $fkey_table   = $fkey_column['TABLE_NAME'];
                 $fkey_oldname = $fkey_column['COLUMN_NAME'];
                 $fkey_newname = preg_replace('/^' . preg_quote($old_fkey, '/') . '/', $new_fkey, $fkey_oldname);
-                if ($DB->fieldExists($fkey_table, $fkey_newname)) {
-                    throw new \RuntimeException(
+                if ($this->db->fieldExists($fkey_table, $fkey_newname)) {
+                    throw new RuntimeException(
                         sprintf(
                             'Field "%s" cannot be renamed in table "%s" as "%s" is field already exists.',
                             $fkey_oldname,
@@ -1579,11 +1606,11 @@ class Migration
             }
 
             //1. Rename itemtype table
-            $this->displayMessage(sprintf(__('Renaming "%s" table to "%s"...'), $old_table, $new_table));
+            $this->addDebugMessage(sprintf(__('Renaming "%s" table to "%s"...'), $old_table, $new_table));
             $this->renameTable($old_table, $new_table);
 
             //2. Rename foreign key fields
-            $this->displayMessage(
+            $this->addDebugMessage(
                 sprintf(__('Renaming "%s" foreign keys to "%s" in all tables...'), $old_fkey, $new_fkey)
             );
             foreach ($fkey_column_array as $fkey_column) {
@@ -1591,7 +1618,7 @@ class Migration
                 $fkey_oldname = $fkey_column['COLUMN_NAME'];
                 $fkey_newname = preg_replace('/^' . preg_quote($old_fkey, '/') . '/', $new_fkey, $fkey_oldname);
 
-                if ($fkey_table == $old_table) {
+                if ($fkey_table === $old_table) {
                     // Special case, foreign key is inside renamed table, use new name
                     $fkey_table = $new_table;
                 }
@@ -1600,16 +1627,16 @@ class Migration
                     $fkey_table,
                     $fkey_oldname,
                     $fkey_newname,
-                    "int " . DBConnection::getDefaultPrimaryKeySignOption() . " NOT NULL DEFAULT '0'" // assume that foreign key always uses GLPI conventions
+                    "int " . $this->getDefaultPrimaryKeySignOption() . " NOT NULL DEFAULT '0'" // assume that foreign key always uses GLPI conventions
                 );
             }
         }
 
         //3. Update "itemtype" values in all tables
-        $this->displayMessage(
+        $this->addDebugMessage(
             sprintf(__('Renaming "%s" itemtype to "%s" in all tables...'), $old_itemtype, $new_itemtype)
         );
-        $itemtype_column_iterator = $DB->request(
+        $itemtype_column_iterator = $this->db->request(
             [
                 'SELECT' => [
                     'table_name AS TABLE_NAME',
@@ -1617,7 +1644,7 @@ class Migration
                 ],
                 'FROM'   => 'information_schema.columns',
                 'WHERE'  => [
-                    'table_schema' => $DB->dbdefault,
+                    'table_schema' => $this->db->dbdefault,
                     'table_name'   => ['LIKE', 'glpi\_%'],
                     'OR' => [
                         ['column_name'  => 'itemtype'],
@@ -1628,12 +1655,10 @@ class Migration
             ]
         );
         foreach ($itemtype_column_iterator as $itemtype_column) {
-            $this->addPostQuery(
-                $DB->buildUpdate(
-                    $itemtype_column['TABLE_NAME'],
-                    [$itemtype_column['COLUMN_NAME'] => $new_itemtype],
-                    [$itemtype_column['COLUMN_NAME'] => $old_itemtype]
-                )
+            $this->db->update(
+                $itemtype_column['TABLE_NAME'],
+                [$itemtype_column['COLUMN_NAME'] => $new_itemtype],
+                [$itemtype_column['COLUMN_NAME'] => $old_itemtype]
             );
         }
     }
@@ -1662,6 +1687,25 @@ class Migration
     }
 
     /**
+     * Remove a search option from various locations in the database including display preferences and saved searches.
+     * The changes made by this function will only be applied when the migration is finalized through {@link Migration::executeMigration()}.
+     *
+     * @param string $itemtype The itemtype
+     * @param int $search_opt The search option ID to remove
+     * @return void
+     */
+    public function removeSearchOption(string $itemtype, int $search_opt)
+    {
+        if (!isset($this->search_opts[$itemtype])) {
+            $this->search_opts[$itemtype] = [];
+        }
+        $this->search_opts[$itemtype][] = [
+            'old' => $search_opt,
+            'new' => null,
+        ];
+    }
+
+    /**
      * Finalize search option migrations
      *
      * @return void
@@ -1669,9 +1713,6 @@ class Migration
      */
     private function migrateSearchOptions()
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if (empty($this->search_opts)) {
             return;
         }
@@ -1681,41 +1722,47 @@ class Migration
                 $old_search_opt = $p['old'];
                 $new_search_opt = $p['new'];
 
-                // Remove duplicates (a display preference exists for both old key and new key for a same user).
-                // Removes existing SO using new ID as they are probably corresponding to an ID that existed before and
-                // was not cleaned correctly.
-                $duplicates_iterator = $DB->request([
-                    'SELECT'     => ['new.id'],
-                    'FROM'       => DisplayPreference::getTable() . ' AS new',
-                    'INNER JOIN' => [
-                        DisplayPreference::getTable() . ' AS old' => [
-                            'ON' => [
-                                'new' => 'itemtype',
-                                'old' => 'itemtype',
-                                [
-                                    'AND' => [
-                                        'new.users_id' => new QueryExpression($DB->quoteName('old.users_id')),
-                                        'new.itemtype' => $itemtype,
-                                        'new.num'      => $new_search_opt,
-                                        'old.num'      => $old_search_opt,
+                if ($new_search_opt !== null) {
+                    // Remove duplicates (a display preference exists for both old key and new key for a same user).
+                    // Removes existing SO using new ID as they are probably corresponding to an ID that existed before and
+                    // was not cleaned correctly.
+                    $duplicates_iterator = $this->db->request([
+                        'SELECT' => ['new.id'],
+                        'FROM' => DisplayPreference::getTable() . ' AS new',
+                        'INNER JOIN' => [
+                            DisplayPreference::getTable() . ' AS old' => [
+                                'ON' => [
+                                    'new' => 'itemtype',
+                                    'old' => 'itemtype',
+                                    [
+                                        'AND' => [
+                                            'new.users_id' => new QueryExpression($this->db::quoteName('old.users_id')),
+                                            'new.itemtype' => $itemtype,
+                                            'new.num' => $new_search_opt,
+                                            'old.num' => $old_search_opt,
+                                        ],
                                     ],
                                 ],
                             ],
                         ],
-                    ],
-                ]);
-                if ($duplicates_iterator->count() > 0) {
-                    $ids = array_column(iterator_to_array($duplicates_iterator), 'id');
-                    $DB->deleteOrDie(DisplayPreference::getTable(), ['id' => $ids]);
+                    ]);
+                    if ($duplicates_iterator->count() > 0) {
+                        $ids = array_column(iterator_to_array($duplicates_iterator), 'id');
+                        $this->db->delete(DisplayPreference::getTable(), ['id' => $ids]);
+                    }
                 }
 
                 // Update display preferences
-                $DB->updateOrDie(DisplayPreference::getTable(), [
-                    'num' => $new_search_opt,
-                ], [
-                    'itemtype' => $itemtype,
-                    'num'      => $old_search_opt,
-                ]);
+                if ($new_search_opt === null) {
+                    $this->db->delete(DisplayPreference::getTable(), ['itemtype' => $itemtype, 'num' => $old_search_opt]);
+                } else {
+                    $this->db->update(DisplayPreference::getTable(), [
+                        'num' => $new_search_opt,
+                    ], [
+                        'itemtype' => $itemtype,
+                        'num' => $old_search_opt,
+                    ]);
+                }
 
                 // Update template fields
                 if (is_a($itemtype, 'CommonITILObject', true)) {
@@ -1725,21 +1772,25 @@ class Migration
                         'glpi_' . strtolower($itemtype) . 'templatepredefinedfields',
                     ];
                     foreach ($tables as $table) {
-                        if (!$DB->tableExists($table)) {
+                        if (!$this->db->tableExists($table)) {
                             continue;
                         }
-                        $DB->updateOrDie($table, [
-                            'num' => $new_search_opt,
-                        ], [
-                            'num' => $old_search_opt,
-                        ]);
+                        if ($new_search_opt === null) {
+                            $this->db->delete($table, ['num' => $old_search_opt]);
+                        } else {
+                            $this->db->update($table, [
+                                'num' => $new_search_opt,
+                            ], [
+                                'num' => $old_search_opt,
+                            ]);
+                        }
                     }
                 }
             }
         }
 
         // Update saved searches. We have to parse every query to account for the search option in meta criteria
-        $iterator = $DB->request([
+        $iterator = $this->db->request([
             'SELECT' => ['id', 'itemtype', 'query'],
             'FROM'   => SavedSearch::getTable(),
         ]);
@@ -1757,7 +1808,11 @@ class Migration
                     if ($data['itemtype'] === $itemtype) {
                         // Fix sort
                         if (isset($query['sort']) && (int) $query['sort'] === $old_search_opt) {
-                            $query['sort'] = $new_search_opt;
+                            if ($new_search_opt === null) {
+                                unset($query['sort']);
+                            } else {
+                                $query['sort'] = $new_search_opt;
+                            }
                             $is_changed = true;
                         }
                     }
@@ -1767,16 +1822,20 @@ class Migration
                         foreach ($query['criteria'] as $cid => $criterion) {
                             $is_meta = isset($criterion['meta']) && (int) $criterion['meta'] === 1;
                             if (
-                                ($is_meta &&
-                                 isset($criterion['itemtype'], $criterion['field']) &&
-                                 $criterion['itemtype'] === $itemtype &&
-                                 (int) $criterion['field'] === $old_search_opt) ||
-                                 (!$is_meta &&
-                                 $data['itemtype'] === $itemtype &&
-                                 isset($criterion['field']) &&
-                                 (int) $criterion['field'] === $old_search_opt)
+                                ($is_meta
+                                 && isset($criterion['itemtype'], $criterion['field'])
+                                 && $criterion['itemtype'] === $itemtype
+                                 && (int) $criterion['field'] === $old_search_opt)
+                                 || (!$is_meta
+                                 && $data['itemtype'] === $itemtype
+                                 && isset($criterion['field'])
+                                 && (int) $criterion['field'] === $old_search_opt)
                             ) {
-                                $query['criteria'][$cid]['field'] = $new_search_opt;
+                                if ($new_search_opt === null) {
+                                    unset($query['criteria'][$cid]);
+                                } else {
+                                    $query['criteria'][$cid]['field'] = $new_search_opt;
+                                }
                                 $is_changed = true;
                             }
                         }
@@ -1786,7 +1845,7 @@ class Migration
 
             // Write changes if any were made
             if ($is_changed) {
-                $DB->updateOrDie(SavedSearch::getTable(), [
+                $this->db->update(SavedSearch::getTable(), [
                     'query'  => http_build_query($query),
                 ], [
                     'id'     => $data['id'],
@@ -1803,28 +1862,26 @@ class Migration
      * - foreign key 2 (second itemtype)
      *
      * @param string $table Table name
-     * @param string $class_1 First itemtype (CommonDBTM)
-     * @param string $class_2 Second itemtype (CommonDBTM)
+     * @param class-string<CommonDBTM> $class_1 First itemtype (CommonDBTM)
+     * @param class-string<CommonDBTM> $class_2 Second itemtype (CommonDBTM)
      */
     public function createLinkTable(
         string $table,
         string $class_1,
         string $class_2
     ) {
-        /** @var \DBmysql $DB */
-        global $DB;
-        if ($DB->tableExists($table)) {
+        if ($this->db->tableExists($table)) {
             return;
         }
 
         $fk_1 = $class_1::getForeignKeyField();
         $fk_2 = $class_2::getForeignKeyField();
 
-        $default_charset = DBConnection::getDefaultCharset();
-        $default_collation = DBConnection::getDefaultCollation();
-        $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
+        $default_charset = $this->getDefaultCharset();
+        $default_collation = $this->getDefaultCollation();
+        $default_key_sign = $this->getDefaultPrimaryKeySignOption();
 
-        $DB->doQueryOrDie("
+        $this->db->doQuery("
             CREATE TABLE `$table` (
                 `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
                 `$fk_1` int {$default_key_sign} NOT NULL DEFAULT '0',
@@ -1833,6 +1890,89 @@ class Migration
                 KEY `$fk_1` (`$fk_1`),
                 KEY `$fk_2` (`$fk_2`)
             ) ENGINE=InnoDB DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation} ROW_FORMAT=DYNAMIC;
-        ", "Create link table between $class_1 and $class_2");
+        ");
+    }
+
+    /**
+     * Add a crontask to register.
+     *
+     * @since 11.0.0
+     *
+     * @param string $itemtype Usually a class-string<CommonDBTM> but may be an itemtype that doesn't exist anymore for old migrations
+     * @param string $name
+     * @param int $frequency
+     * @param int|null $param
+     * @param array{mode?: int, state?: int, hourmin?: int, hourmax?: int, logs_lifetime?: int, allowmode?: int} $options
+     */
+    public function addCrontask(string $itemtype, string $name, int $frequency, ?int $param = null, array $options = []): void
+    {
+        $existing_task = $this->db->request([
+            'FROM' => 'glpi_crontasks',
+            'WHERE' => [
+                'itemtype' => $itemtype,
+                'name'     => $name,
+            ],
+        ]);
+        if ($existing_task->count() !== 0) {
+            // Cron task is already registered, do nothing.
+            return;
+        }
+
+        $defaults = [
+            'mode'          => 2, // CronTask::MODE_EXTERNAL
+            'state'         => 1, // CronTask::STATE_WAITING
+            'hourmin'       => 0,
+            'hourmax'       => 24,
+            'logs_lifetime' => 30,
+            'allowmode'     => 3, // CronTask::MODE_INTERNAL | CronTask::MODE_EXTERNAL
+            'comment'       => '',
+        ];
+
+        $input = [
+            'itemtype'      => $itemtype,
+            'name'          => $name,
+            'frequency'     => $frequency,
+            'param'         => $param,
+            'date_creation' => new QueryExpression('NOW()'),
+            'date_mod'      => new QueryExpression('NOW()'),
+        ];
+        foreach ($defaults as $key => $default_value) {
+            $input[$key] = $options[$key] ?? $default_value;
+        }
+
+        $this->db->insert('glpi_crontasks', $input);
+    }
+
+    /**
+     * Mockable method to get the default collation of the database.
+     * @return string
+     * @see DBConnection::getDefaultCollation()
+     * @note Could be removed when using dependency injection or some other refactoring
+     */
+    protected function getDefaultCollation(): string
+    {
+        return DBConnection::getDefaultCollation();
+    }
+
+    /**
+     * Mockable method to get the default charset of the database.
+     * @return string
+     * @see DBConnection::getDefaultCharset()
+     * @note Could be removed when using dependency injection or some other refactoring
+     */
+    protected function getDefaultCharset(): string
+    {
+        return DBConnection::getDefaultCharset();
+    }
+
+    /**
+     * Mockable method to get the default key sign of the database.
+     * @return string
+     * @see DBConnection::getDefaultPrimaryKeySignOption()
+     * @note Could be removed when using dependency injection or some other refactoring
+     */
+    protected function getDefaultPrimaryKeySignOption(): string
+    {
+        return DBConnection::getDefaultPrimaryKeySignOption();
     }
 }

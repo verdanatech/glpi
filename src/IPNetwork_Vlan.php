@@ -92,10 +92,6 @@ class IPNetwork_Vlan extends CommonDBRelation
      **/
     public static function showForIPNetwork(IPNetwork $port)
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $ID = $port->getID();
@@ -132,28 +128,28 @@ class IPNetwork_Vlan extends CommonDBRelation
         }
 
         if ($canedit) {
-            echo "<div class='firstbloc'>\n";
-            echo "<form method='post' action='" . static::getFormURL() . "'>\n";
-            echo "<table class='tab_cadre_fixe'>\n";
-            echo "<tr><th>" . __('Associate a VLAN') . "</th></tr>";
+            echo "<div class='firstbloc'>";
+            echo "<form method='post' action='" . htmlescape(static::getFormURL()) . "'>";
+            echo "<table class='tab_cadre_fixe'>";
+            echo "<tr><th>" . __s('Associate a VLAN') . "</th></tr>";
 
             echo "<tr class='tab_bg_1'><td class='center'>";
             echo "<input type='hidden' name='ipnetworks_id' value='$ID'>";
             Vlan::dropdown(['used' => $used]);
-            echo "&nbsp;<input type='submit' name='add' value='" . _sx('button', 'Associate') .
-                      "' class='btn btn-primary'>";
-            echo "</td></tr>\n";
+            echo "&nbsp;<input type='submit' name='add' value='" . _sx('button', 'Associate')
+                      . "' class='btn btn-primary'>";
+            echo "</td></tr>";
 
-            echo "</table>\n";
+            echo "</table>";
             Html::closeForm();
-            echo "</div>\n";
+            echo "</div>";
         }
 
         echo "<div class='spaced'>";
         if ($canedit && $number) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $rand);
+            Html::openMassiveActionsForm('mass' . self::class . $rand);
             $massiveactionparams = ['num_displayed' => min($_SESSION['glpilist_limit'], $number),
-                'container'     => 'mass' . __CLASS__ . $rand,
+                'container'     => 'mass' . self::class . $rand,
             ];
             Html::showMassiveActions($massiveactionparams);
         }
@@ -164,35 +160,33 @@ class IPNetwork_Vlan extends CommonDBRelation
         $header_bottom = '';
         $header_end    = '';
         if ($canedit && $number) {
-            $header_top    .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+            $header_top    .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
             $header_top    .= "</th>";
-            $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
+            $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $rand);
             $header_bottom .= "</th>";
         }
-        $header_end .= "<th>" . __('Name') . "</th>";
-        $header_end .= "<th>" . Entity::getTypeName(1) . "</th>";
-        $header_end .= "<th>" . __('ID TAG') . "</th>";
+        $header_end .= "<th>" . __s('Name') . "</th>";
+        $header_end .= "<th>" . htmlescape(Entity::getTypeName(1)) . "</th>";
+        $header_end .= "<th>" . __s('ID TAG') . "</th>";
         $header_end .= "</tr>";
         echo $header_begin . $header_top . $header_end;
-
-        $used = [];
         foreach ($vlans as $data) {
             echo "<tr class='tab_bg_1'>";
             if ($canedit) {
                 echo "<td>";
-                Html::showMassiveActionCheckBox(__CLASS__, $data["assocID"]);
+                Html::showMassiveActionCheckBox(self::class, $data["assocID"]);
                 echo "</td>";
             }
-            $name = $data["name"];
+            $name = htmlescape($data["name"]);
             if ($_SESSION["glpiis_ids_visible"] || empty($data["name"])) {
-                $name = sprintf(__('%1$s (%2$s)'), $name, $data["id"]);
+                $name = sprintf(__s('%1$s (%2$s)'), $name, (int) $data["id"]);
             }
             echo "<td class='center b'>
-               <a href='" . $CFG_GLPI["root_doc"] . "/front/vlan.form.php?id=" . $data["id"] . "'>" . $name .
-              "</a>";
+               <a href='" . htmlescape(Vlan::getFormURLWithID($data["id"])) . "'>" . $name
+              . "</a>";
             echo "</td>";
-            echo "<td class='center'>" . Dropdown::getDropdownName("glpi_entities", $data["entities_id"]);
-            echo "<td class='numeric'>" . $data["tag"] . "</td>";
+            echo "<td class='center'>" . htmlescape(Dropdown::getDropdownName("glpi_entities", $data["entities_id"])) . '</td>';
+            echo "<td class='numeric'>" . htmlescape($data["tag"]) . "</td>";
             echo "</tr>";
         }
         if ($number) {
@@ -213,7 +207,6 @@ class IPNetwork_Vlan extends CommonDBRelation
      **/
     public static function getVlansForIPNetwork($portID)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $vlans = [];
@@ -235,16 +228,15 @@ class IPNetwork_Vlan extends CommonDBRelation
 
         if (!$withtemplate) {
             $nb = 0;
-            switch ($item->getType()) {
-                case 'IPNetwork':
-                    /** @var IPNetwork $item */
+            switch (true) {
+                case $item instanceof IPNetwork:
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nb =  countElementsInTable(
                             $this->getTable(),
                             ['ipnetworks_id' => $item->getID()]
                         );
                     }
-                    return self::createTabEntry(Vlan::getTypeName(), $nb);
+                    return self::createTabEntry(Vlan::getTypeName(), $nb, $item::getType());
             }
         }
         return '';
@@ -254,7 +246,7 @@ class IPNetwork_Vlan extends CommonDBRelation
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
 
-        if ($item->getType() == 'IPNetwork') {
+        if ($item instanceof IPNetwork) {
             self::showForIPNetwork($item);
         }
         return true;

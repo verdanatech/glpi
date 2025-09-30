@@ -33,8 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
+use Safe\Exceptions\PcreException;
+
+use function Safe\preg_match;
+
 /**
- * Create an abstration layer for any kind of internet label
+ * Create an abstraction layer for any kind of internet label
  */
 
 
@@ -55,6 +59,10 @@ abstract class FQDNLabel extends CommonDBChild
         );
     }
 
+    public static function getIcon()
+    {
+        return 'ti ti-signature';
+    }
 
     /**
      * Get the internet name from a label and a domain ID
@@ -84,22 +92,24 @@ abstract class FQDNLabel extends CommonDBChild
      **/
     public static function checkFQDNLabel($label)
     {
-
-        if (strlen($label) == 1) {
-            if (!preg_match("/^[0-9A-Za-z]$/", $label, $regs)) {
-                return false;
-            }
-        } else {
-            $fqdn_regex = "/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$/";
-            if (!preg_match($fqdn_regex, $label, $regs)) {
-                //check also Internationalized domain name
-                $idn = idn_to_ascii($label);
-                if (!preg_match($fqdn_regex, $idn, $regs)) {
+        try {
+            if (strlen($label) == 1) {
+                if (!preg_match("/^[0-9A-Za-z]$/", $label, $regs)) {
                     return false;
                 }
+            } else {
+                $fqdn_regex = "/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$/";
+                if (!preg_match($fqdn_regex, $label, $regs)) {
+                    //check also Internationalized domain name
+                    $idn = idn_to_ascii($label);
+                    if (!preg_match($fqdn_regex, $idn, $regs)) {
+                        return false;
+                    }
+                }
             }
+        } catch (PcreException $e) {
+            return false;
         }
-
         return true;
     }
 
@@ -116,10 +126,10 @@ abstract class FQDNLabel extends CommonDBChild
 
             // Before adding a name, we must unsure its is valid : it conforms to RFC
             if (!self::checkFQDNLabel($input['name'])) {
-                Session::addMessageAfterRedirect(sprintf(
+                Session::addMessageAfterRedirect(htmlescape(sprintf(
                     __('Invalid internet name: %s'),
                     $input['name']
-                ), false, ERROR);
+                )), false, ERROR);
                 return false;
             }
         }
@@ -182,7 +192,6 @@ abstract class FQDNLabel extends CommonDBChild
      **/
     public static function getIDsByLabelAndFQDNID($label, $fqdns_id, $wildcard_search = false)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $label = strtolower($label);

@@ -37,10 +37,9 @@
  * @since 0.84
  */
 
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
+use Glpi\DBAL\QuerySubQuery;
 
-include('../inc/includes.php');
+global $CFG_GLPI;
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
@@ -67,7 +66,7 @@ if (class_exists($_POST["itemtype"])) {
         'name'      => "items",
         'entity'    => $_POST["entity_restrict"],
         'condition' => [
-            'id' => new \QuerySubQuery([
+            'id' => new QuerySubQuery([
                 'SELECT' => 'items_id',
                 'FROM'   => 'glpi_networkports',
                 'WHERE'  => [
@@ -82,5 +81,5 @@ if (class_exists($_POST["itemtype"])) {
     Dropdown::show($_POST['itemtype'], $params);
 
     echo "<span id='results_item_$rand'>";
-    echo "</span>\n";
+    echo "</span>";
 }

@@ -39,21 +39,17 @@
 /**
  * Update from 9.3.0 to 9.3.1
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update930to931()
 {
     /**
-     * @var \Migration $migration
+     * @var Migration $migration
      */
     global $migration;
 
-    $current_config   = Config::getConfigurationValues('core');
     $updateresult     = true;
-    $ADDTODISPLAYPREF = [];
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.3.1'));
     $migration->setVersion('9.3.1');
 
     /** Change field type */

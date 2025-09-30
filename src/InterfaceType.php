@@ -62,13 +62,13 @@ class InterfaceType extends CommonDropdown
         array $options = []
     ) {
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
-        $base->addHeader($column_name, __('Interface'), $super, $father);
+        $base->addHeader($column_name, __s('Interface'), $super, $father);
     }
 
 
@@ -86,7 +86,7 @@ class InterfaceType extends CommonDropdown
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-        $column_name = __CLASS__;
+        $column_name = self::class;
 
         if (isset($options['dont_display'][$column_name])) {
             return;
@@ -95,10 +95,7 @@ class InterfaceType extends CommonDropdown
         if ($item->fields["interfacetypes_id"]) {
             $row->addCell(
                 $row->getHeaderByName($column_name),
-                Dropdown::getDropdownName(
-                    "glpi_interfacetypes",
-                    $item->fields["interfacetypes_id"]
-                )
+                htmlescape(Dropdown::getDropdownName("glpi_interfacetypes", $item->fields["interfacetypes_id"]))
             );
         }
     }

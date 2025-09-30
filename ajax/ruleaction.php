@@ -33,19 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
-// Direct access to file
-if (strpos($_SERVER['PHP_SELF'], "ruleaction.php")) {
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-} elseif (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
-
-Session::checkLoginUser();
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 // Non define case
 if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
@@ -53,11 +44,11 @@ if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
         $_POST["field"] = key(Rule::getActionsByType($_POST["sub_type"]));
     }
     if (!($item = getItemForItemtype($_POST["sub_type"]))) {
-        exit();
+        return;
     }
     /** @var Rule $item */
     if (!isset($_POST[$item->getRuleIdField()])) {
-        exit();
+        return;
     }
 
     // Existing action
@@ -72,20 +63,16 @@ if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
         $already_used = in_array($_POST["field"], $used);
     }
 
-    echo "<table class='w-100'><tr><td style='width: 30%'>";
-
     $action_type = $_POST["action_type"] ?? '';
 
-    $randaction = RuleAction::dropdownActions(['subtype'     => $_POST["sub_type"],
+    $randaction = (int) RuleAction::dropdownActions(['subtype'     => $_POST["sub_type"],
         'name'        => "action_type",
         'field'       => $_POST["field"],
         'value'       => $action_type,
         'alreadyused' => $already_used,
     ]);
 
-    echo "</td><td>";
-    echo "<span id='action_type_span$randaction'>\n";
-    echo "</span>\n";
+    echo "<span id='action_type_span$randaction' class='d-inline-block'></span>";
 
     $paramsaction = ['action_type'                   => '__VALUE__',
         'field'                         => $_POST["field"],
@@ -101,7 +88,7 @@ if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
     );
 
     if (isset($_POST['value'])) {
-        $paramsaction['value'] = stripslashes($_POST['value']);
+        $paramsaction['value'] = $_POST['value'];
     }
 
     Ajax::updateItem(
@@ -110,5 +97,4 @@ if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
         $paramsaction,
         "dropdown_action_type$randaction"
     );
-    echo "</td></tr></table>";
 }

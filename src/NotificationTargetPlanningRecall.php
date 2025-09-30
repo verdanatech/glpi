@@ -90,7 +90,9 @@ class NotificationTargetPlanningRecall extends NotificationTarget
      */
     public function addTaskAssignGroup()
     {
-        $item = new $this->obj->fields['itemtype']();
+        if (!($item = getItemForItemtype($this->obj->fields['itemtype']))) {
+            return false;
+        }
         if (
             $item->getFromDB($this->obj->fields['items_id'])
             && $item->isField('groups_id_tech')
@@ -105,7 +107,10 @@ class NotificationTargetPlanningRecall extends NotificationTarget
      **/
     public function addTaskAssignUser()
     {
-        $item = new $this->obj->fields['itemtype']();
+        if (!($item = getItemForItemtype($this->obj->fields['itemtype']))) {
+            return false;
+        }
+
         if ($item->getFromDB($this->obj->fields['items_id'])) {
             $user = new User();
             $field = '';
@@ -133,7 +138,9 @@ class NotificationTargetPlanningRecall extends NotificationTarget
      **/
     public function addGuests()
     {
-        $item = new $this->obj->fields['itemtype']();
+        if (!($item = getItemForItemtype($this->obj->fields['itemtype']))) {
+            return false;
+        }
         if ($item->getFromDB($this->obj->fields['items_id'])) {
             $user = new User();
             if ($item->isField('users_id_guests')) {
@@ -175,8 +182,8 @@ class NotificationTargetPlanningRecall extends NotificationTarget
             $this->data['##recall.item.url##']
                   = $this->formatURL(
                       $options['additionnaloption']['usertype'],
-                      $target_object->getType() .
-                      "_" . $target_object->getID()
+                      $target_object->getType()
+                      . "_" . $target_object->getID()
                   );
         }
         $this->data['##recall.item.name##'] = '';

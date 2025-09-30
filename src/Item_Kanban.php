@@ -33,6 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\KanbanInterface;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\strtotime;
+
 class Item_Kanban extends CommonDBRelation
 {
     public static $itemtype_1 = 'itemtype';
@@ -41,32 +47,44 @@ class Item_Kanban extends CommonDBRelation
     public static $items_id_2 = 'users_id';
     public static $checkItem_1_Rights = self::DONT_CHECK_ITEM_RIGHTS;
 
+    public static function getKanbanItemForItemtype(string $itemtype): KanbanInterface&CommonDBTM
+    {
+        $item = getItemForItemtype($itemtype);
+
+        if (!$item instanceof KanbanInterface) {
+            $message = "Given itemtype do not implement KanbanInterface: " . $itemtype;
+            throw new RuntimeException($message);
+        }
+
+        if (!$item instanceof CommonDBTM) {
+            $message = "Given itemtype do not extends CommonDBTM: " . $itemtype;
+            throw new RuntimeException($message);
+        }
+
+        return $item;
+    }
+
     /**
      * Save the state of a Kanban's columns for a specific item for the current user or globally.
      * @since 9.5.0
      * @param string $itemtype Type of the item.
      * @param int $items_id ID of the item.
      * @param array $state Array of Kanban column state data.
+     * @param array $columns Array of columns to save state for. If empty, all columns are saved.
      * @return bool
      */
-    public static function saveStateForItem($itemtype, $items_id, $state)
+    public static function saveStateForItem($itemtype, $items_id, $state, array $columns = [])
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
+        $item = self::getKanbanItemForItemtype($itemtype);
         $item->getFromDB($items_id);
         $force_global = false;
-        if (method_exists($item, 'forceGlobalState')) {
-            $force_global = $item->forceGlobalState();
-        }
+        $force_global = $item->forceGlobalState();
 
         $oldstate = self::loadStateForItem($itemtype, $items_id);
         $users_id = $force_global ? 0 : Session::getLoginUserID();
-        if (method_exists($item, 'prepareKanbanStateForUpdate')) {
-            $state = $item->prepareKanbanStateForUpdate($oldstate, $state, $users_id);
-        }
+        $state = $item->prepareKanbanStateForUpdate($oldstate, $state, $users_id);
 
         if ($state === null || $state === 'null' || $state === false) {
             // Save was probably denied in prepareKanbanStateForUpdate or an invalid state was given
@@ -98,27 +116,48 @@ class Item_Kanban extends CommonDBRelation
     }
 
     /**
+     * Check if a state is saved for a specific item.
+     * @param class-string<CommonDBTM> $itemtype
+     * @param int $items_id
+     * @return bool
+     */
+    public static function hasStateForItem(string $itemtype, int $items_id): bool
+    {
+        global $DB;
+
+        $item = self::getKanbanItemForItemtype($itemtype);
+        $item->getFromDB($items_id);
+        $force_global = $item->forceGlobalState();
+
+        return $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_items_kanbans',
+            'WHERE'  => [
+                'users_id' => $force_global ? 0 : Session::getLoginUserID(),
+                'itemtype' => $itemtype,
+                'items_id' => $items_id,
+            ],
+        ])->count() > 0;
+    }
+
+    /**
      * Load the state of a Kanban's columns for a specific item for the current user or globally.
      * @since 9.5.0
      * @param string $itemtype Type of the item.
      * @param int $items_id ID of the item.
      * @param string $timestamp Timestamp string of last check or null to always get the state.
-     * @return array Array of Kanban column state data.
+     * @return ?array Array of Kanban column state data.
      *       Null is returned if $timestamp is specified, but no changes have been made to the state since then
      *       An empty array is returned if the state is not in the DB.
      */
     public static function loadStateForItem($itemtype, $items_id, $timestamp = null)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
+        $item = self::getKanbanItemForItemtype($itemtype);
         $item->getFromDB($items_id);
         $force_global = false;
-        if (method_exists($item, 'forceGlobalState')) {
-            $force_global = $item->forceGlobalState();
-        }
+        $force_global = $item->forceGlobalState();
 
         $iterator = $DB->request([
             'SELECT' => ['date_mod', 'state'],
@@ -132,7 +171,7 @@ class Item_Kanban extends CommonDBRelation
 
         if (count($iterator)) {
             $data = $iterator->current();
-            if ($timestamp !== null) {
+            if (!empty($timestamp)) {
                 if (strtotime($timestamp) < strtotime($data['date_mod'])) {
                     return json_decode($data['state'], true);
                 } else {
@@ -144,6 +183,32 @@ class Item_Kanban extends CommonDBRelation
         } else {
             // State is not saved
             return [];
+        }
+    }
+
+    /**
+     * Clear the state of a Kanban's columns for a specific item for the current user or globally.
+     * @since 11.0.0
+     * @param string $itemtype Type of the item.
+     * @param int $items_id ID of the item.
+     * @return bool True if successful
+     */
+    public static function clearStateForItem(string $itemtype, int $items_id)
+    {
+        global $DB;
+
+        try {
+            $item = self::getKanbanItemForItemtype($itemtype);
+            $item->getFromDB($items_id);
+            $force_global = $item->forceGlobalState();
+
+            return (bool) $DB->delete('glpi_items_kanbans', [
+                'users_id' => $force_global ? 0 : Session::getLoginUserID(),
+                'itemtype' => $itemtype,
+                'items_id' => $items_id,
+            ]);
+        } catch (Throwable $e) {
+            return false;
         }
     }
 
@@ -168,21 +233,16 @@ class Item_Kanban extends CommonDBRelation
             }
         }
 
-        /** @var CommonDBTM $item */
-        $item = new $itemtype();
+        $item = self::getKanbanItemForItemtype($itemtype);
         $item->getFromDB($items_id);
         $all_columns = [];
-        if (method_exists($item, 'getAllKanbanColumns')) {
-            $all_columns = $item->getAllKanbanColumns();
-        }
-        $new_column_index = array_keys(array_filter($state, function ($c, $k) use ($column) {
-            return $c['column'] === $column;
-        }, ARRAY_FILTER_USE_BOTH));
+        $all_columns = $item->getAllKanbanColumns();
+        $new_column_index = array_keys(array_filter($state, fn($c, $k) => $c['column'] === $column, ARRAY_FILTER_USE_BOTH));
         if (count($new_column_index)) {
             $new_column_index = reset($new_column_index);
-            if (isset($all_columns[$new_column_index])) {
-                $drop_only = $all_columns[$new_column_index]['drop_only'] ?? false;
-                if (isset($all_columns[$new_column_index]) && !$drop_only) {
+            if (isset($all_columns[(int) $column])) {
+                $drop_only = $all_columns[(int) $column]['drop_only'] ?? false;
+                if (isset($all_columns[(int) $column]) && !$drop_only) {
                     array_splice($state[$new_column_index]['cards'], $position, 0, $card);
                 }
             }

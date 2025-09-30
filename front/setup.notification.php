@@ -33,16 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+global $CFG_GLPI;
 
 Session::checkSeveralRightsOr(['notification' => READ,
     'config'       => UPDATE,
 ]);
 
-Html::header(_n('Notification', 'Notifications', Session::getPluralNumber()), $_SERVER['PHP_SELF'], "config", "notification");
+Html::header(_n('Notification', 'Notifications', Session::getPluralNumber()), '', "config", "notification");
 
 if (
     !Session::haveRight("config", READ)

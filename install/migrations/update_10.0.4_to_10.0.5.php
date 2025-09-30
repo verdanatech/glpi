@@ -32,16 +32,19 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\preg_match;
+use function Safe\scandir;
+
 /**
  * Update from 10.0.4 to 10.0.5
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update1004to1005()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
@@ -50,8 +53,6 @@ function update1004to1005()
     $DELFROMDISPLAYPREF = [];
     $update_dir = __DIR__ . '/update_10.0.4_to_10.0.5/';
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '10.0.5'));
     $migration->setVersion('10.0.5');
 
     $update_scripts = scandir($update_dir);
@@ -63,35 +64,7 @@ function update1004to1005()
     }
 
     // ************ Keep it at the end **************
-    foreach ($ADDTODISPLAYPREF as $type => $tab) {
-        $rank = 1;
-        foreach ($tab as $newval) {
-            $DB->updateOrInsert(
-                "glpi_displaypreferences",
-                [
-                    'rank'      => $rank++,
-                ],
-                Toolbox::addslashes_deep(
-                    [
-                        'users_id'  => "0",
-                        'itemtype'  => $type,
-                        'num'       => $newval,
-                    ]
-                )
-            );
-        }
-    }
-    foreach ($DELFROMDISPLAYPREF as $type => $tab) {
-        $DB->deleteOrDie(
-            'glpi_displaypreferences',
-            Toolbox::addslashes_deep(
-                [
-                    'itemtype'  => $type,
-                    'num'       => $tab,
-                ]
-            )
-        );
-    }
+    $migration->updateDisplayPrefs($ADDTODISPLAYPREF, $DELFROMDISPLAYPREF);
 
     $migration->executeMigration();
 

@@ -69,7 +69,7 @@ class NotificationSettingConfig extends CommonDBTM
 
         $config = new Config();
         foreach ($input as $k => $v) {
-            if (substr($k, 0, strlen('notifications_')) === 'notifications_') {
+            if (str_starts_with($k, 'notifications_')) {
                 $tmp = [
                     'id' => $config_id,
                     $k    => $v,
@@ -90,7 +90,6 @@ class NotificationSettingConfig extends CommonDBTM
      */
     public function showConfigForm($options = [])
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (!isset($options['display'])) {
@@ -100,7 +99,7 @@ class NotificationSettingConfig extends CommonDBTM
         $modes = Notification_NotificationTemplate::getModes();
         foreach ($modes as $mode_key => &$mode) {
             $settings_class = Notification_NotificationTemplate::getModeClass($mode_key, 'setting');
-            $settings = new $settings_class();
+            $settings = getItemForItemtype($settings_class);
             $mode['label']          = $settings->getEnableLabel();
             $mode['label_settings'] = $settings->getTypeName();
             $mode['is_active']      = (bool) $CFG_GLPI["notifications_$mode_key"];

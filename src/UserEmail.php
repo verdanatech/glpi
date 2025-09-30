@@ -33,8 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Toolbox\Sanitizer;
-
 /**
  * UserEmail class
  **/
@@ -98,7 +96,6 @@ class UserEmail extends CommonDBChild
      **/
     public static function getDefaultForUser($users_id)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // Get default one
@@ -128,7 +125,6 @@ class UserEmail extends CommonDBChild
      **/
     public static function getAllForUser($users_id)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $emails = [];
@@ -158,7 +154,6 @@ class UserEmail extends CommonDBChild
      **/
     public static function isEmailForUser($users_id, $email)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -177,22 +172,20 @@ class UserEmail extends CommonDBChild
         return false;
     }
 
-
-    /**
-     * @since 0.84
-     *
-     * @param $field_name
-     * @param $child_count_js_var
-     *
-     * @return string
-     **/
+    #[Override()]
     public static function getJSCodeToAddForItemChild($field_name, $child_count_js_var)
     {
+        $html = "<div class='d-flex'>"
+            . "<input title='" . __s('Default email') . "' type='radio' name='_default_email' value='-__JS_PLACEHOLDER__' aria-label='" . __s('Set as default email') . "'>"
+            . "&nbsp;"
+            . "<input type='text' size='30' class='form-control' " . "name='" . htmlescape($field_name) . "[-__JS_PLACEHOLDER__]'  aria-label='" . __s('Email address') . "'>"
+            . "</div>";
 
-        return "<input title=\'" . __s('Default email') . "\' type=\'radio\' name=\'_default_email\'" .
-             " value=\'-'+$child_count_js_var+'\'>&nbsp;" .
-             "<input type=\'text\' size=\'30\' class=\'form-control\' " . "name=\'" . $field_name .
-             "[-'+$child_count_js_var+']\'>";
+        return str_replace(
+            '__JS_PLACEHOLDER__',
+            "'+{$child_count_js_var}+'", // string closing, + operator, JS variable name, + operator, string reopening
+            jsescape($html)
+        );
     }
 
 
@@ -209,25 +202,25 @@ class UserEmail extends CommonDBChild
         if ($this->isNewID($this->getID())) {
             $value = '';
         } else {
-            $value = Html::entities_deep($this->fields['email']);
+            $value = htmlescape($this->fields['email']);
         }
         $result = "";
-        $field_name = $field_name . "[$id]";
+        $field_name = htmlescape($field_name . "[$id]");
         $result .= "<div class='d-flex align-items-center'>";
         $result .= "<input title='" . __s('Default email') . "' type='radio' name='_default_email'
-             value='" . $this->getID() . "'";
+             value='" . htmlescape($this->getID()) . "'";
         if (!$canedit) {
-            $result .= " disabled";
+            $result .= " disabled aria-disabled='true'";
         }
         if ($this->fields['is_default']) {
             $result .= " checked";
         }
-        $result .= ">&nbsp;";
+        $result .= " aria-label='" . __s('Set as default email') . "'>&nbsp;";
         if (!$canedit || $this->fields['is_dynamic']) {
             $result .= "<input type='hidden' name='$field_name' value='$value'>";
-            $result .= sprintf(__('%1$s %2$s'), $value, "<span class='b'>(" . __('D') . ")</span>");
+            $result .= sprintf('%s <span class="b">(%s)</span>', $value, __s('D'));
         } else {
-            $result .= "<input type='text' size=30 class='form-control' name='$field_name' value='$value' >";
+            $result .= "<input type='text' size=30 class='form-control' name='$field_name' value='$value' aria-label='" . __s('Email address') . "'>";
         }
         $result .= "</div>";
 
@@ -329,7 +322,7 @@ class UserEmail extends CommonDBChild
      */
     private function checkInputEmailValidity(array $input): bool
     {
-        return isset($input['email']) && !empty($input['email']) && GLPIMailer::validateAddress(Sanitizer::unsanitize($input['email']));
+        return isset($input['email']) && !empty($input['email']) && GLPIMailer::validateAddress($input['email']);
     }
 
 
@@ -348,7 +341,6 @@ class UserEmail extends CommonDBChild
 
     public function post_updateItem($history = true)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // if default is set : unsed others for the users
@@ -374,7 +366,6 @@ class UserEmail extends CommonDBChild
 
     public function post_addItem()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // if default is set : unset others for the users
@@ -397,7 +388,6 @@ class UserEmail extends CommonDBChild
 
     public function post_deleteFromDB()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // if default is set : set default to another one

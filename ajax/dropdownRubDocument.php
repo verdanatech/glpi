@@ -33,15 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var \DBmysql $DB */
+use function Safe\preg_match;
+
 global $DB;
 
-if (strpos($_SERVER['PHP_SELF'], "dropdownRubDocument.php")) {
-    $AJAX_INCLUDE = 1;
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-}
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 Session::checkCentralAccess();
 
@@ -66,7 +63,7 @@ if (isset($_POST["rubdoc"])) {
     }
 
     if (preg_match('/[^a-z_\-0-9]/i', $_POST['myname'])) {
-        throw new \RuntimeException('Invalid name provided!');
+        throw new RuntimeException('Invalid name provided!');
     }
 
     if (!isset($_POST['entity']) || $_POST['entity'] === '') {

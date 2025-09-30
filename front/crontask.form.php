@@ -33,17 +33,20 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * Form to edit Cron Task
  */
 
-include('../inc/includes.php');
-
-Session::checkRight("config", UPDATE);
+Session::checkRight("config", READ);
 
 $crontask = new CronTask();
 
 if (isset($_POST['execute'])) {
+    Session::checkRight("config", UPDATE);
     if (is_numeric($_POST['execute'])) {
         // Execute button from list.
         $name = CronTask::launch(CronTask::MODE_INTERNAL, intval($_POST['execute']));
@@ -53,7 +56,7 @@ if (isset($_POST['execute'])) {
     }
     if ($name) {
         //TRANS: %s is a task name
-        Session::addMessageAfterRedirect(sprintf(__('Task %s executed'), $name));
+        Session::addMessageAfterRedirect(htmlescape(sprintf(__('Task %s executed'), $name)));
     }
     Html::back();
 } elseif (isset($_POST["update"])) {
@@ -80,7 +83,7 @@ if (isset($_POST['execute'])) {
     Html::back();
 } else {
     if (!isset($_GET["id"]) || empty($_GET["id"])) {
-        exit();
+        throw new BadRequestHttpException();
     }
     $menus = ['config', 'crontask'];
     CronTask::displayFullPageForItem($_GET['id'], $menus);

@@ -33,10 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Csv\CsvResponse;
 use Glpi\Csv\PlanningCsv;
-
-include('../inc/includes.php');
 
 Session::checkRight("planning", READ);
 

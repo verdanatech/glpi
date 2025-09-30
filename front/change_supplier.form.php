@@ -33,26 +33,24 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.85
  */
 
-use Glpi\Event;
-
-if (!defined('GLPI_ROOT')) {
-    include('../inc/includes.php');
-}
-
 $link = new Change_Supplier();
 
-Session::checkLoginUser();
-Html::popHeader(__('Email followup'), $_SERVER['PHP_SELF']);
+Html::popHeader(__('Email followup'));
 
 if (isset($_POST["update"])) {
     $link->check($_POST["id"], UPDATE);
 
     $link->update($_POST);
-    echo "<script type='text/javascript' >\n";
+    echo "<script type='text/javascript' >";
     echo "window.parent.location.reload();";
     echo "</script>";
 } elseif (isset($_POST['delete'])) {
@@ -67,10 +65,8 @@ if (isset($_POST["update"])) {
         sprintf(__('%s deletes an actor'), $_SESSION["glpiname"])
     );
     Html::redirect(Change::getFormURLWithID($link->fields['changes_id']));
-} elseif (isset($_GET["id"])) {
-    $link->showSupplierNotificationForm($_GET["id"]);
 } else {
-    Html::displayErrorAndDie('Lost');
+    throw new BadRequestHttpException();
 }
 
 Html::popFooter();

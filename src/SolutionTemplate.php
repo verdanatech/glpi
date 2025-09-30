@@ -33,11 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
 /**
  * SolutionTemplate Class
  **/
 class SolutionTemplate extends AbstractITILChildTemplate
 {
+    use Clonable;
+
     // From CommonDBTM
     public $dohistory = true;
 
@@ -101,6 +105,11 @@ class SolutionTemplate extends AbstractITILChildTemplate
 
     public static function getIcon()
     {
-        return "fas fa-layer-group";
+        return "ti ti-stack-2-filled";
+    }
+
+    public function getCloneRelations(): array
+    {
+        return [];
     }
 }

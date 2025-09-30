@@ -33,12 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Event;
 
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
-include('../inc/includes.php');
 
 if (!isset($_GET["id"])) {
     $_GET["id"] = "";
@@ -57,7 +56,6 @@ if (!isset($_GET["modify"])) {
 $kb = new KnowbaseItem();
 
 if (isset($_POST["add"])) {
-    // ajoute un item dans la base de connaisssances
     $kb->check(-1, CREATE, $_POST);
     $newID = $kb->add($_POST);
     Event::log(
@@ -89,7 +87,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     // effacer un item dans la base de connaissances
     $kb->check($_POST["id"], PURGE);
-    $kb->delete($_POST, 1);
+    $kb->delete($_POST, true);
     Event::log(
         $_POST["id"],
         "knowbaseitem",
@@ -150,17 +148,17 @@ if (isset($_POST["add"])) {
     $kb->check($_GET["id"], UPDATE);
     if ($kb->revertTo($_GET['to_rev'])) {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
                 __('Knowledge base item has been reverted to revision %s'),
                 $_GET['to_rev']
-            )
+            ))
         );
     } else {
         Session::addMessageAfterRedirect(
-            sprintf(
+            htmlescape(sprintf(
                 __('Knowledge base item has not been reverted to revision %s'),
                 $_GET['to_rev']
-            ),
+            )),
             false,
             ERROR
         );
@@ -172,7 +170,7 @@ if (isset($_POST["add"])) {
     }
 
     if (isset($_GET["_in_modal"])) {
-        Html::popHeader(__('Knowledge base'), $_SERVER['PHP_SELF']);
+        Html::popHeader(__('Knowledge base'));
         if ($_GET['id']) {
             $kb->check($_GET["id"], READ);
             $kb->showFull();

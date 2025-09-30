@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkRight("group", READ);
 
@@ -68,16 +68,15 @@ if (isset($_POST["add"])) {
     ) {
         Html::header(
             $group->getTypeName(1),
-            $_SERVER['PHP_SELF'],
+            '',
             "admin",
-            "group",
-            str_replace('glpi_', '', $group->getTable())
+            "group"
         );
 
-        $group->showDeleteConfirmForm($_SERVER['PHP_SELF']);
+        $group->showDeleteConfirmForm();
         Html::footer();
     } else {
-        $group->delete($_POST, 1);
+        $group->delete($_POST, true);
         Event::log(
             $_POST["id"],
             "groups",
@@ -101,12 +100,12 @@ if (isset($_POST["add"])) {
     );
     Html::back();
 } elseif (isset($_GET['_in_modal'])) {
-    Html::popHeader(Group::getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], true);
+    Html::popHeader(Group::getTypeName(Session::getPluralNumber()), in_modal: true);
     $group->showForm($_GET["id"]);
     Html::popFooter();
 } elseif (isset($_POST["replace"])) {
     $group->check($_POST["id"], PURGE);
-    $group->delete($_POST, 1);
+    $group->delete($_POST, true);
 
     Event::log(
         $_POST["id"],

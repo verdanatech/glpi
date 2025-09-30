@@ -39,22 +39,18 @@
 /**
  * Update from 9.3.1 to 9.3.2
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update931to932()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
-    $current_config   = Config::getConfigurationValues('core');
     $updateresult     = true;
-    $ADDTODISPLAYPREF = [];
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.3.2'));
     $migration->setVersion('9.3.2');
 
     /** Clean rack/enclosure items corrupted relations */
@@ -64,8 +60,8 @@ function update931to932()
             'items_id' => 0,
         ],
     ];
-    $DB->deleteOrDie(Item_Rack::getTable(), $corrupted_criteria);
-    $DB->deleteOrDie(Item_Enclosure::getTable(), $corrupted_criteria);
+    $DB->delete(Item_Rack::getTable(), $corrupted_criteria);
+    $DB->delete(Item_Enclosure::getTable(), $corrupted_criteria);
     /** /Clean rack/enclosure items corrupted relations */
 
     // limit state visibility for enclosures and pdus

@@ -33,6 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+
 /// Class IPNetwork : Represent an IPv4 or an IPv6 network.
 /// It fully use IPAddress and IPNetmask to check validity and change representation from binary
 /// to textual values.
@@ -50,27 +53,27 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
     /**
      * Data used during add/update process to handle CommonImplicitTreeDropdown ancestors/sons.
-     * @var array
+     * @var ?array
      */
     private $data_for_implicit_update;
 
     /**
      * Computed address.
      * Used for caching purpose.
-     * @var IPAddress
+     * @var ?IPAddress
      */
     private $address;
 
     /**
      * Computed netmask.
      * Used for caching purpose.
-     * @var IPNetmask
+     * @var ?IPNetmask
      */
     private $netmask;
     /**
      * Computed gateway.
      * Used for caching purpose.
-     * @var IPAddress
+     * @var ?IPAddress
      */
     private $gateway;
 
@@ -80,52 +83,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
      * @var bool
      */
     private $networkUpdate;
-
-    public function __get(string $property)
-    {
-        // TODO Deprecate read access to all variables in GLPI 10.1.
-        $value = null;
-        switch ($property) {
-            case 'address':
-            case 'data_for_implicit_update':
-            case 'gateway':
-            case 'netmask':
-            case 'networkUpdate':
-                $value = $this->$property;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-        return $value;
-    }
-
-    public function __set(string $property, $value)
-    {
-        switch ($property) {
-            case 'address':
-            case 'data_for_implicit_update':
-            case 'gateway':
-            case 'netmask':
-                Toolbox::deprecated(sprintf('Writing private property %s::%s is deprecated', __CLASS__, $property));
-                // no break is intentionnal
-            case 'networkUpdate':
-                // TODO Deprecate write access to variable in GLPI 10.1.
-                $this->$property = $value;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-    }
 
     public static function getTypeName($nb = 0)
     {
@@ -379,7 +336,12 @@ class IPNetwork extends CommonImplicitTreeDropdown
             // TODO : what is the best way ? recursive or not ?
             $sameNetworks = self::searchNetworks("equals", $params, $entities_id, false);
             // Check unicity !
-            if ($sameNetworks && (count($sameNetworks) > 0)) {
+            if ($sameNetworks && count($sameNetworks) > 0) {
+                // Info: phpstan think $sameNetworks can't be empty for some reason,
+                // and thus warn us that the condition is always true (see baseline).
+                // This is probably a false positive due to some bad phpdoc somewhere,
+                // but I was not able to fint it.
+                // TODO: investigate.
                 return ['error' => __('Network already defined in visible entities'),
                     'input' => false,
                 ];
@@ -462,7 +424,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $preparedInput = $this->prepareInput($input);
 
         if (isset($preparedInput['error']) && !isset($input['_no_message'])) {
-            Session::addMessageAfterRedirect($preparedInput['error'], false, ERROR);
+            Session::addMessageAfterRedirect(htmlescape($preparedInput['error']), false, ERROR);
         }
 
         $input = $preparedInput['input'];
@@ -480,7 +442,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $preparedInput = $this->prepareInput($input);
 
         if (isset($preparedInput['error']) && !isset($input['_no_message'])) {
-            Session::addMessageAfterRedirect($preparedInput['error'], false, ERROR);
+            Session::addMessageAfterRedirect(htmlescape($preparedInput['error']), false, ERROR);
         }
 
         $input = $preparedInput['input'];
@@ -501,7 +463,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
         parent::post_addItem();
 
-        $this->networkUpdate = null;
+        $this->networkUpdate = false;
         $this->data_for_implicit_update = null;
     }
 
@@ -624,7 +586,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $recursive = true,
         $version = 0
     ) {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (empty($relation)) {
@@ -680,7 +641,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
             if ($relation == "equals") {
                 for ($i = $startIndex; $i < 4; ++$i) {
                     $WHERE[] = [
-                        new \QueryExpression("(" . $DB->quoteName($addressDB[$i]) . " & " . $DB->quoteValue($netmaskPa[$i]) . ") = (" . $DB->quoteValue($addressPa[$i]) . " & " . $DB->quoteValue($netmaskPa[$i]) . ")"),
+                        new QueryExpression("(" . $DB->quoteName($addressDB[$i]) . " & " . $DB->quoteValue($netmaskPa[$i]) . ") = (" . $DB->quoteValue($addressPa[$i]) . " & " . $DB->quoteValue($netmaskPa[$i]) . ")"),
                         $netmaskDB[$i]  => $netmaskPa[$i],
                     ];
                 }
@@ -693,8 +654,8 @@ class IPNetwork extends CommonImplicitTreeDropdown
                     }
 
                     $WHERE[] = [
-                        new \QueryExpression("(" . $DB->quoteName($addressDB[$i]) . " & $globalNetmask) = (" . $DB->quoteValue($addressPa[$i]) . " & $globalNetmask)"),
-                        new \QueryExpression("(" . $DB->quoteValue($netmaskPa[$i]) . " & " . $DB->quoteName($netmaskDB[$i]) . ")=$globalNetmask"),
+                        new QueryExpression("(" . $DB->quoteName($addressDB[$i]) . " & $globalNetmask) = (" . $DB->quoteValue($addressPa[$i]) . " & $globalNetmask)"),
+                        new QueryExpression("(" . $DB->quoteValue($netmaskPa[$i]) . " & " . $DB->quoteName($netmaskDB[$i]) . ")=$globalNetmask"),
                     ];
                 }
             }
@@ -748,11 +709,11 @@ class IPNetwork extends CommonImplicitTreeDropdown
         // the last should be 0.0.0.0/0.0.0.0 of x.y.z.a/255.255.255.255 regarding the interested
         // element)
         for ($i = $startIndex; $i < 4; ++$i) {
-            $ORDER[] = new \QueryExpression("BIT_COUNT(" . $DB->quoteName($netmaskDB[$i]) . ") $ORDER_ORIENTATION");
+            $ORDER[] = new QueryExpression(QueryFunction::bitCount($netmaskDB[$i]) . " $ORDER_ORIENTATION");
         }
 
         if (!empty($condition["where"])) {
-            $WHERE[] = new \QueryExpression($condition["where"]);
+            $WHERE[] = new QueryExpression($condition["where"]);
         }
 
         $iterator = $DB->request([
@@ -783,9 +744,9 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('IPNetwork_Vlan', $ong, $options);
-        $this->addStandardTab('IPAddress', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(IPNetwork_Vlan::class, $ong, $options);
+        $this->addStandardTab(IPAddress::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -806,7 +767,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
      **/
     public function getCriteriaForMatchingElement($tableName, $binaryFieldPrefix, $versionField)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $version = $this->fields["version"];
@@ -815,7 +775,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
         $result = [];
         for ($i = ($version == 4 ? 3 : 0); $i < 4; ++$i) {
-            $result[] = new \QueryExpression(
+            $result[] = new QueryExpression(
                 "({$DB->quoteName($tableName . '.' . $binaryFieldPrefix . '_' . $i)} & " . $this->fields["netmask_$i"] . ") = ({$start[$i]})"
             );
         }
@@ -1029,50 +989,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
 
     /**
-     * \brief Recreate network tree
-     * Among others, the migration create plan tree network. This method allows to recreate the tree.
-     * You can also use it if you suspect the network tree to be corrupted.
-     *
-     * First, reset the tree, then, update each network by its own field, letting
-     * CommonImplicitTreeDropdown working such as it would in case of standard update
-     *
-     * @return void
-     **/
-    public static function recreateTree()
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        // Reset the tree
-        $DB->update(
-            'glpi_ipnetworks',
-            [
-                'ipnetworks_id'   => 0,
-                'level'           => 1,
-                'completename'    => new \QueryExpression($DB->quoteName('name')),
-            ],
-            [true]
-        );
-
-        // Foreach IPNetwork ...
-        $iterator = $DB->request([
-            'SELECT' => 'id',
-            'FROM'   => self::getTable(),
-        ]);
-
-        $network = new self();
-
-        foreach ($iterator as $network_entry) {
-            if ($network->getFromDB($network_entry['id'])) {
-                $input = $network->fields;
-                // ... update it by its own entries
-                $network->update($input);
-            }
-        }
-    }
-
-
-    /**
      * @since 0.84
      *
      * @param $itemtype
@@ -1093,14 +1009,14 @@ class IPNetwork extends CommonImplicitTreeDropdown
             return;
         }
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
-        $content     = self::getTypeName();
+        $content     = htmlescape(self::getTypeName());
         $this_header = $base->addHeader($column_name, $content, $super, $father);
-        $this_header->setItemType(__CLASS__);
+        $this_header->setItemType(self::class);
     }
 
 
@@ -1129,12 +1045,12 @@ class IPNetwork extends CommonImplicitTreeDropdown
             return;
         }
 
-        $column_name = __CLASS__;
+        $column_name = self::class;
         if (isset($options['dont_display'][$column_name])) {
             return;
         }
 
-        $header = $row->getGroup()->getHeaderByName('Internet', __CLASS__);
+        $header = $row->getGroup()->getHeaderByName('Internet', self::class);
         if (!$header) {
             return;
         }
@@ -1158,16 +1074,18 @@ class IPNetwork extends CommonImplicitTreeDropdown
                 }
 
                 //TRANS: %1$s is address, %2$s is netmask
-                $content = sprintf(
-                    __('%1$s / %2$s'),
-                    $address->getTextual(),
-                    $netmask->getTextual()
+                $content = htmlescape(
+                    sprintf(
+                        __('%1$s / %2$s'),
+                        $address->getTextual(),
+                        $netmask->getTextual()
+                    )
                 );
 
                 if ($network->fields['addressable'] == 1) {
                     $content = "<span class='b'>" . $content . "</span>";
                 }
-                $content = sprintf(__('%1$s - %2$s'), $content, $network->getLink());
+                $content = sprintf(__s('%1$s - %2$s'), $content, $network->getLink());
                 $row->addCell($header, $content, $father, $network);
             }
         }
@@ -1182,7 +1100,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
      **/
     public static function showIPNetworkProperties($entities_id = -1, $value = 0)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $rand = mt_rand();
@@ -1209,35 +1126,6 @@ class IPNetwork extends CommonImplicitTreeDropdown
                 $CFG_GLPI["root_doc"] . "/ajax/dropdownShowIPNetwork.php",
                 $params
             );
-        }
-    }
-
-
-    /**
-     * Override title function to display the link to reinitialisation of the network tree
-     *
-     * @FIXME Deprecate this method in GLPI 10.1. It is not used anymore.
-     **/
-    public function title()
-    {
-        if (
-            Session::haveRight('internet', UPDATE)
-            && Session::canViewAllEntities()
-        ) {
-            echo "<div class='spaced' id='tabsbody'>";
-            echo "<table class='tab_cadre_fixe'>";
-
-            echo "<tr><td class='center'>";
-            Html::showSimpleForm(
-                IPNetwork::getFormURL(),
-                'reinit_network',
-                __('Reinit the network topology')
-            );
-
-            echo "</td></tr>";
-
-            echo "</table>";
-            echo "</div>";
         }
     }
 }

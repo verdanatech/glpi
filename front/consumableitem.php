@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-Session::checkRight("consumable", READ);
+Session::checkRightsOr(Consumable::$rightname, [READ, READ_ASSIGNED, READ_OWNED]);
 
-Html::header(Consumable::getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], "assets", "consumableitem");
+Html::header(Consumable::getTypeName(Session::getPluralNumber()), '', "assets", "consumableitem");
 
 if (isset($_GET["synthese"])) {
     Consumable::showSummary();

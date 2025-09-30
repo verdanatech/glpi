@@ -31,6 +31,8 @@
  * ---------------------------------------------------------------------
  */
 
+/* eslint prefer-arrow-callback: 0 */
+/* eslint no-var: 0 */
 /* global displayAjaxMessageAfterRedirect, marketplace_total_plugin */
 
 var current_page = 1;
@@ -38,43 +40,64 @@ var ajax_url;
 var ajax_done = false;
 
 $(document).ready(function() {
-    ajax_url = CFG_GLPI.root_doc+"/ajax/marketplace.php";
+    ajax_url = `${CFG_GLPI.root_doc}/ajax/marketplace.php`;
 
     // plugin actions (install, enable, etc)
     $(document).on('click', '.marketplace .modify_plugin', function() {
-        var button     = $(this);
-        var buttons    = button.closest('.buttons');
-        var li         = button.closest('li.plugin');
-        var icon       = button.children('i');
-        var installed  = button.closest('.marketplace').hasClass('installed');
-        var action     = button.data('action');
-        var plugin_key = li.data('key');
+        var button       = $(this);
+        var buttons      = button.closest('.buttons');
+        var li           = button.closest('li.plugin');
+        var icon         = button.children('i');
+        var installed    = button.closest('.marketplace').hasClass('installed');
+        var action       = button.data('action');
+        var plugin_key   = li.data('key');
+        var plugin_state = li.data('state');
 
         icon
             .removeClass()
-            .addClass('fas fa-spinner fa-spin');
+            .addClass('spinner-border');
 
-        if (action === 'download_plugin'
-          || action === 'update_plugin') {
-            followDownloadProgress(button);
-        }
-
-        ajax_done = false;
-        $.post(ajax_url, {
-            'action': action,
-            'key': plugin_key
-        }).done(function(html) {
-            ajax_done = true;
-
-            if (html.indexOf("cleaned") !== -1 && installed) {
-                li.remove();
-            } else {
-                html = html.replace('cleaned', '');
-                buttons.html(html);
-                displayAjaxMessageAfterRedirect();
-                addTooltips();
+        const executeAction = function () {
+            if (action === 'download_plugin'
+              || action === 'update_plugin') {
+                followDownloadProgress(button);
             }
-        });
+
+            ajax_done = false;
+            $.post(ajax_url, {
+                'action': action,
+                'key': plugin_key
+            }).done(function(html) {
+                ajax_done = true;
+
+                if (html.indexOf("cleaned") !== -1 && installed) {
+                    li.remove();
+                } else {
+                    html = html.replace('cleaned', '');
+                    buttons.html(html);
+                    displayAjaxMessageAfterRedirect();
+                    addTooltips();
+                }
+            });
+        };
+
+        if (
+            (action === 'download_plugin' || action === 'update_plugin')
+            && (plugin_state === 'activated' || plugin_state === 'tobeconfigured')
+        ) {
+            // Specific case for plugin code source replacement.
+            // The plugin execution must be suspended first to ensure that its `setup.php` file is not loaded before
+            // its new version is downloaded.
+            $.post(ajax_url, {
+                'action': 'disable_plugin',
+                'key': plugin_key
+            }).done(function() {
+                executeAction();
+            });
+            return;
+        } else {
+            executeAction();
+        }
     });
 
     // sort control
@@ -136,7 +159,7 @@ var filterPluginList = function(page, force) {
     }
 
     plugins_list
-        .append("<div class='loading-plugins'><i class='fas fa-spinner fa-pulse'></i></div>");
+        .append("<div class='loading-plugins'><div class='spinner-border'></div></div>");
     pagination.find('li.current').removeClass('current');
 
     var jqxhr = $.get(ajax_url, {
@@ -173,13 +196,13 @@ var refreshPlugins = function(page, force) {
     var icon = $('.marketplace:visible .refresh-plugin-list');
 
     icon
-        .removeClass('fa-sync-alt')
-        .addClass('fa-spinner fa-spin');
+        .removeClass('ti ti-refresh')
+        .addClass('spinner-border spinner-border-sm');
 
     $.when(filterPluginList(page, force)).then(function() {
         icon
-            .removeClass('fa-spinner fa-spin')
-            .addClass('fa-sync-alt');
+            .removeClass('spinner-border spinner-border-sm')
+            .addClass('ti ti-refresh');
         current_page = page;
 
         addTooltips();

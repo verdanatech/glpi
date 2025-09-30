@@ -33,37 +33,39 @@
  * ---------------------------------------------------------------------
  */
 
-$SECURITY_STRATEGY = 'no_check'; // CSS must be accessible also on public pages
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', dirname(__DIR__));
+use Glpi\Application\Environment;
+use Glpi\UI\ThemeManager;
+
+use function Safe\ini_set;
+use function Safe\preg_match;
+
+if (preg_match('~^css/glpi(\.scss)?$~', $_GET['file'] ?? '') === 1) {
+    // Ensure to have enough memory to not reach memory limit.
+    $max_memory = Html::MAIN_SCSS_COMPILATION_REQUIRED_MEMORY;
+    if (Toolbox::getMemoryLimit() < ($max_memory * 1024 * 1024)) {
+        ini_set('memory_limit', sprintf('%dM', $max_memory));
+    }
 }
 
-use Glpi\Application\ErrorHandler;
+// If a custom theme is requested, we need to get the real path of the theme
+if (isset($_GET['file']) && isset($_GET['is_custom_theme']) && $_GET['is_custom_theme']) {
+    $theme = ThemeManager::getInstance()->getTheme($_GET['file']);
 
-$_GET["donotcheckversion"]   = true;
-$dont_check_maintenance_mode = true;
-$skip_db_check               = true;
+    if (!$theme) {
+        trigger_error(sprintf('Unable to find theme `%s`.', $_GET['file']), E_USER_WARNING);
+        $theme = ThemeManager::getInstance()->getTheme(ThemeManager::DEFAULT_THEME);
+    }
 
-//std cache, with DB connection
-include_once GLPI_ROOT . "/inc/db.function.php";
-include_once GLPI_ROOT . '/inc/config.php';
-
-// Main CSS compilation requires about 140MB of memory on PHP 7.4 (110MB on PHP 8.2).
-// Ensure to have enough memory to not reach memory limit.
-$max_memory = 192;
-if (Toolbox::getMemoryLimit() < ($max_memory * 1024 * 1024)) {
-    ini_set('memory_limit', sprintf('%dM', $max_memory));
+    $_GET['file'] = $theme->getPath();
 }
-
-// Ensure warnings will not break CSS output.
-ErrorHandler::getInstance()->disableOutput();
 
 $css = Html::compileScss($_GET);
 
 header('Content-Type: text/css');
 
-$is_cacheable = !isset($_GET['debug']) && !isset($_GET['nocache']);
+$is_cacheable = !isset($_GET['nocache']) && Environment::get()->shouldForceExtraBrowserCache();
 if ($is_cacheable) {
     // Makes CSS cacheable by browsers and proxies
     $max_age = WEEK_TIMESTAMP;

@@ -54,20 +54,25 @@ class Item_OperatingSystem extends CommonDBRelation
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
+        if (!$item instanceof CommonDBTM) {
+            return '';
+        }
+
         $nb = 0;
         switch ($item->getType()) {
             default:
                 if ($_SESSION['glpishow_count_on_tabs']) {
                     $nb = self::countForItem($item);
                 }
-                return self::createTabEntry(OperatingSystem::getTypeName(Session::getPluralNumber()), $nb);
+                return self::createTabEntry(OperatingSystem::getTypeName(Session::getPluralNumber()), $nb, $item::getType());
         }
-        return '';
     }
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-
+        if (!$item instanceof CommonDBTM) {
+            return false;
+        }
         self::showForItem($item, $withtemplate);
         return true;
     }
@@ -83,7 +88,6 @@ class Item_OperatingSystem extends CommonDBRelation
      */
     public static function getFromItem(CommonDBTM $item, $sort = null, $order = null): DBmysqlIterator
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if ($sort === null) {
@@ -148,7 +152,6 @@ class Item_OperatingSystem extends CommonDBRelation
      **/
     public static function showForItem(CommonDBTM $item, $withtemplate = 0)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         //default options
@@ -191,16 +194,6 @@ class Item_OperatingSystem extends CommonDBRelation
 
         $canedit = $item->canEdit($item->getID());
 
-        //multi OS for an item is not an existing feature right now.
-        /*if ($canedit && $number >= 1
-           && !(!empty($withtemplate) && ($withtemplate == 2))) {
-          echo "<div class='center firstbloc'>".
-             "<a class='btn btn-primary' href='" . Toolbox::getItemTypeFormURL(self::getType()) . "?items_id=" . $item->getID() .
-             "&amp;itemtype=" . $item->getType() . "&amp;withtemplate=" . $withtemplate."'>";
-          echo __('Add an operating system');
-          echo "</a></div>\n";
-        }*/
-
         if ($number <= 1) {
             $id = -1;
             $instance = new self();
@@ -223,12 +216,11 @@ class Item_OperatingSystem extends CommonDBRelation
         echo "<div class='spaced'>";
         if (
             $canedit
-            && $number
             && ($withtemplate < 2)
         ) {
-            Html::openMassiveActionsForm('mass' . __CLASS__ . $params['rand']);
+            Html::openMassiveActionsForm('mass' . self::class . $params['rand']);
             $massiveactionparams = ['num_displayed'  => min($_SESSION['glpilist_limit'], $number),
-                'container'      => 'mass' . __CLASS__ . $params['rand'],
+                'container'      => 'mass' . self::class . $params['rand'],
             ];
             Html::showMassiveActions($massiveactionparams);
         }
@@ -241,55 +233,56 @@ class Item_OperatingSystem extends CommonDBRelation
         $header_end    = '';
         if (
             $canedit
-            && $number
             && ($withtemplate < 2)
         ) {
-            $header_top    .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $params['rand']);
+            $header_top    .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $params['rand']);
             $header_top    .= "</th>";
-            $header_bottom .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $params['rand']);
+            $header_bottom .= "<th width='11'>" . Html::getCheckAllAsCheckbox('mass' . self::class . $params['rand']);
             $header_bottom .= "</th>";
         }
 
         foreach ($columns as $key => $val) {
-            $header_end .= "<th" . ($sort == $key ? " class='order_$order'" : '') . ">" .
-                        "<a href='javascript:reloadTab(\"sort=$key&amp;order=" .
-                          (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a></th>";
+            $val = htmlescape($val);
+            $header_end .= "<th" . ($sort == $key ? " class='order_$order'" : '') . ">"
+                        . "<a href='javascript:reloadTab(\"sort=$key&amp;order="
+                          . (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a></th>";
         }
 
         $header_end .= "</tr>";
         echo $header_begin . $header_top . $header_end;
 
-        if ($number) {
-            foreach ($os as $data) {
-                $linkname = $data['name'];
-                if ($_SESSION["glpiis_ids_visible"] || empty($data["name"])) {
-                    $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["assocID"]);
-                }
-                $link = Toolbox::getItemTypeFormURL(self::getType());
-                $name = "<a href=\"" . $link . "?id=" . $data["assocID"] . "\">" . $linkname . "</a>";
-
-                echo "<tr class='tab_bg_1'>";
-                if (
-                    $canedit
-                    && ($withtemplate < 2)
-                ) {
-                    echo "<td width='10'>";
-                    Html::showMassiveActionCheckBox(__CLASS__, $data["assocID"]);
-                    echo "</td>";
-                }
-                echo "<td class='center'>{$name}</td>";
-                echo "<td class='center'>{$data['version']}</td>";
-                echo "<td class='center'>{$data['architecture']}</td>";
-                echo "<td class='center'>{$data['servicepack']}</td>";
-
-                echo "</tr>";
-                $i++;
+        foreach ($os as $data) {
+            $linkname = $data['name'];
+            if ($_SESSION["glpiis_ids_visible"] || empty($data["name"])) {
+                $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["assocID"]);
             }
-            echo $header_begin . $header_bottom . $header_end;
+            $link = Toolbox::getItemTypeFormURL(self::getType());
+            $name = "<a href=\"" . htmlescape($link) . "?id=" . (int) $data["assocID"] . "\">" . htmlescape($linkname) . "</a>";
+
+            echo "<tr class='tab_bg_1'>";
+            if (
+                $canedit
+                && ($withtemplate < 2)
+            ) {
+                echo "<td width='10'>";
+                Html::showMassiveActionCheckBox(self::class, $data["assocID"]);
+                echo "</td>";
+            }
+            $version = htmlescape($data['version']);
+            $architecture = htmlescape($data['architecture']);
+            $servicepack = htmlescape($data['servicepack']);
+            echo "<td class='center'>{$name}</td>";
+            echo "<td class='center'>{$version}</td>";
+            echo "<td class='center'>{$architecture}</td>";
+            echo "<td class='center'>{$servicepack}</td>";
+
+            echo "</tr>";
+            $i++;
         }
+        echo $header_begin . $header_bottom . $header_end;
 
         echo "</table>";
-        if ($canedit && $number && ($withtemplate < 2)) {
+        if ($canedit && ($withtemplate < 2)) {
             $massiveactionparams['ontop'] = false;
             Html::showMassiveActions($massiveactionparams);
             Html::closeForm();
@@ -553,7 +546,6 @@ class Item_OperatingSystem extends CommonDBRelation
 
     public static function getRelationMassiveActionsSpecificities()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $specificities              = parent::getRelationMassiveActionsSpecificities();
@@ -575,7 +567,6 @@ class Item_OperatingSystem extends CommonDBRelation
 
     public static function showFormMassiveUpdate($ma)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $rand = mt_rand();
@@ -598,8 +589,8 @@ class Item_OperatingSystem extends CommonDBRelation
         Ajax::updateItemOnSelectEvent(
             "dropdown_os_field$rand",
             "results_os_field$rand",
-            $CFG_GLPI["root_doc"] .
-            "/ajax/dropdownMassiveActionOs.php",
+            $CFG_GLPI["root_doc"]
+            . "/ajax/dropdownMassiveActionOs.php",
             [
                 'itemtype'  => '__VALUE__',
                 'rand'      => $rand,

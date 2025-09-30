@@ -93,7 +93,7 @@ class ProjectTaskTeam extends CommonDBRelation
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nb = $item->getTeamCount();
                     }
-                    return self::createTabEntry(self::getTypeName(1), $nb);
+                    return self::createTabEntry(self::getTypeName(1), $nb, $item::getType());
             }
         }
         return '';
@@ -135,7 +135,6 @@ class ProjectTaskTeam extends CommonDBRelation
      **/
     public static function getTeamFor($tasks_id, bool $expand = false)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $team = [];
@@ -167,12 +166,11 @@ class ProjectTaskTeam extends CommonDBRelation
 
     public function prepareInputForAdd($input)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (!isset($input['itemtype'])) {
             Session::addMessageAfterRedirect(
-                __('An item type is mandatory'),
+                __s('An item type is mandatory'),
                 false,
                 ERROR
             );
@@ -181,7 +179,7 @@ class ProjectTaskTeam extends CommonDBRelation
 
         if (!isset($input['items_id'])) {
             Session::addMessageAfterRedirect(
-                __('An item ID is mandatory'),
+                __s('An item ID is mandatory'),
                 false,
                 ERROR
             );
@@ -190,7 +188,7 @@ class ProjectTaskTeam extends CommonDBRelation
 
         if (!isset($input['projecttasks_id'])) {
             Session::addMessageAfterRedirect(
-                __('A project task is mandatory'),
+                __s('A project task is mandatory'),
                 false,
                 ERROR
             );
@@ -226,7 +224,7 @@ class ProjectTaskTeam extends CommonDBRelation
                 //only Users can be checked for planning conflicts
                 break;
             default:
-                throw new \RuntimeException($input['itemtype'] . " is not (yet?) handled.");
+                throw new RuntimeException($input['itemtype'] . " is not (yet?) handled.");
         }
 
         return $input;

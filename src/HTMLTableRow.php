@@ -38,12 +38,12 @@
  **/
 class HTMLTableRow extends HTMLTableEntity
 {
+    /** @var HTMLTableGroup */
     private $group;
     private $empty              = true;
     private $cells              = [];
     private $numberOfSubRows    = 1;
     private $linesWithAttributs = [];
-
 
     /**
      * @param $group
@@ -53,30 +53,25 @@ class HTMLTableRow extends HTMLTableEntity
         $this->group = $group;
     }
 
-
     public function getGroup()
     {
         return $this->group;
     }
-
 
     public function notEmpty()
     {
         return !$this->empty;
     }
 
-
     public function getNumberOfsubRows()
     {
         return $this->numberOfSubRows;
     }
 
-
     public function createAnotherRow()
     {
         return $this->group->createRow();
     }
-
 
     /**
      * @param $lineIndex
@@ -87,12 +82,11 @@ class HTMLTableRow extends HTMLTableEntity
         $this->linesWithAttributs[$lineIndex] = $attributs;
     }
 
-
     /**
-     * @param $header    HTMLTableHeader object
+     * @param HTMLTableHeader $header object
      * @param $content
-     * @param $father    HTMLTableCell object (default NULL)
-     * @param $item      CommonDBTM object: The item associated with the current cell (default NULL)
+     * @param ?HTMLTableCell $father object (default NULL)
+     * @param ?CommonDBTM $item object: The item associated with the current cell (default NULL)
      **/
     public function addCell(
         HTMLTableHeader $header,
@@ -102,10 +96,14 @@ class HTMLTableRow extends HTMLTableEntity
     ) {
 
         if (!$this->group->haveHeader($header)) {
-            throw new \Exception('Unavailable header!');
+            throw new Exception('Unavailable header!');
         }
 
-        $header_name = $header->getCompositeName();
+        if ($header instanceof HTMLCompositeTableInterface) {
+            $header_name = $header->getCompositeName();
+        } else {
+            $header_name = $header->getName();
+        }
         if (!isset($this->cells[$header_name])) {
             $this->cells[$header_name] = [];
         }
@@ -116,10 +114,8 @@ class HTMLTableRow extends HTMLTableEntity
         return $cell;
     }
 
-
     public function prepareDisplay()
     {
-
         if ($this->empty) {
             return false;
         }
@@ -162,13 +158,11 @@ class HTMLTableRow extends HTMLTableEntity
         return true;
     }
 
-
     /**
      * @param $headers
      **/
     public function displayRow($headers)
     {
-
         echo "\t<tbody";
         $this->displayEntityAttributs();
         echo ">\n";
@@ -187,12 +181,12 @@ class HTMLTableRow extends HTMLTableEntity
                         $display |= $cell->displayCell($i, $options);
                     }
                     if (!$display) {
-                        echo "\t\t\t<td colspan='" . $header->getColSpan() . "'";
+                        echo "\t\t\t<td colspan='" . ((int) $header->getColSpan()) . "'";
                         $header->displayEntityAttributs($options);
                         echo "></td>\n";
                     }
                 } else {
-                    echo "\t\t\t<td colspan='" . $header->getColSpan() . "'";
+                    echo "\t\t\t<td colspan='" . ((int) $header->getColSpan()) . "'";
                     $header->displayEntityAttributs($options);
                     echo "></td>\n";
                 }
@@ -201,7 +195,6 @@ class HTMLTableRow extends HTMLTableEntity
         }
         echo "\t</tbody>\n";
     }
-
 
     /**
      * @param $name

@@ -33,11 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $_UREQUEST */
-global $_UREQUEST;
-
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
 // Send UTF8 Headers
 header("Content-Type: text/html; charset=UTF-8");
@@ -58,11 +54,6 @@ if (isset($_REQUEST['action'])) {
 
             // Update fields with input values
             $input = $_REQUEST;
-            if (array_key_exists('passwd', $input)) {
-                // Password must not be altered, it will be encrypted and never displayed, so sanitize is not necessary.
-                $input['passwd'] = $_UREQUEST['passwd'];
-            }
-            $input['login'] = stripslashes($input['login']);
 
             if (isset($input["passwd"])) {
                 if (empty($input["passwd"])) {
@@ -75,9 +66,9 @@ if (isset($_REQUEST['action'])) {
             if (!empty($input['mail_server'])) {
                 $input["host"] = Toolbox::constructMailServerConfig($input);
                 if (!isset($input['passwd'])) {
-                    throw new \RuntimeException(
-                        __('Password is required to list mail folders.')
-                    );
+                    $exception = new AccessDeniedHttpException();
+                    $exception->setMessageToDisplay(__('Password is required to list mail folders.'));
+                    throw $exception;
                 }
             }
 

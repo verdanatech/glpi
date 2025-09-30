@@ -37,27 +37,22 @@
  * Only an HTMLTableMain can create an HTMLTableSuperHeader.
  * @since 0.84
  **/
-class HTMLTableSuperHeader extends HTMLTableHeader
+class HTMLTableSuperHeader extends HTMLTableHeader implements HTMLCompositeTableInterface
 {
-    /// The headers of each column
-    private $headerSets = [];
     /// The table that owns the current super header
     private $table;
 
-
     /**
-     * @param HTMLTableMain        $table    HTMLTableMain object: table owning the current header
-     * @param string               $name     the name of the header
-     * @param string               $content  see inc/HTMLTableEntity#__construct()
-     * @param HTMLTableSuperHeader $father   HTMLTableSuperHeader objet (default NULL)
+     * @param HTMLTableBase         $table    HTMLTableBase object: table owning the current header
+     * @param string                $name     the name of the header
+     * @param string                $content  see inc/HTMLTableEntity#__construct()
+     * @param ?HTMLTableHeader      $father   HTMLTableHeader objet (default NULL)
      **/
-    public function __construct(HTMLTableMain $table, $name, $content, ?HTMLTableSuperHeader $father = null)
+    public function __construct(HTMLTableBase $table, $name, $content, ?HTMLTableHeader $father = null)
     {
-
         $this->table = $table;
         parent::__construct($name, $content, $father);
     }
-
 
     /**
      * Compute the Least Common Multiple of two integers
@@ -69,12 +64,11 @@ class HTMLTableSuperHeader extends HTMLTableHeader
      **/
     private static function LCM($first, $second)
     {
-
         $result = $first * $second;
         while ($first > 1) {
             $reste = $first % $second;
-            if ($reste == 0) {
-                $result = $result / $second;
+            if ($reste === 0) {
+                $result /= $second;
                 break;  // leave when LCM is found
             }
             $first = $second;
@@ -83,16 +77,11 @@ class HTMLTableSuperHeader extends HTMLTableHeader
         return $result;
     }
 
-
     public function isSuperHeader()
     {
         return true;
     }
 
-
-    /**
-     * @see HTMLTableHeader::getHeaderAndSubHeaderName()
-     **/
     public function getHeaderAndSubHeaderName(&$header_name, &$subheader_name)
     {
 
@@ -100,18 +89,16 @@ class HTMLTableSuperHeader extends HTMLTableHeader
         $subheader_name = '';
     }
 
-
-    public function getCompositeName()
+    #[Override]
+    public function getCompositeName(): string
     {
         return $this->getName() . ':';
     }
-
 
     protected function getTable()
     {
         return $this->table;
     }
-
 
     /**
      * compute the total number of current super header colspan: it is the Least Common
@@ -123,7 +110,6 @@ class HTMLTableSuperHeader extends HTMLTableHeader
     {
         $this->setColSpan(self::LCM($number, $this->getColSpan()));
     }
-
 
     /**
      * The super headers always have to be displayed, conversely to sub headers

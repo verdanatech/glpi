@@ -72,13 +72,25 @@ vendor: c=dependencies install ## Install dependencies
 vendor: console
 .PHONY: vendor
 
-locales: c=locales:compile ## Compile locales
-locales: console
-.PHONY: locales
+locales-extract: ## Extract locales
+	@$(PHP) vendor/bin/extract-locales
+.PHONY: locales-extract
+
+locales-compile: c=locales:compile ## Compile locales
+locales-compile: console
+.PHONY: locales-compile
 
 cc: c=cache:clear ## Clear the cache
 cc: console
 .PHONY: cc
+
+license-headers-check: ## Verify that the license headers is present all files
+	@$(PHP) vendor/bin/licence-headers-check
+.PHONY: license-headers-check
+
+license-headers-fix: ## Add the missing license headers in all files
+	@$(PHP) vendor/bin/licence-headers-check --fix
+.PHONY: license-headers-fix
 
 ## —— Database —————————————————————————————————————————————————————————————————
 db-install: ## Install local development's database
@@ -111,7 +123,7 @@ test-db-install: ## Install testing's database
 		--db-password=glpi \
 		--no-interaction \
 		--no-telemetry \
-		--config-dir=./tests/config
+		--env=testing
 .PHONY: test-db-install
 
 test-db-update: ## Update testing's database
@@ -119,8 +131,9 @@ test-db-update: ## Update testing's database
 		-n \
 		--allow-unstable \
 		--force \
-		--skip-db-checks
-.PHONY: db-update
+		--skip-db-checks \
+		--env=testing
+.PHONY: test-db-update
 
 ## —— Dependencies —————————————————————————————————————————————————————————————
 composer: ## Run a composer command, example: make composer c='require mypackage/package'
@@ -134,14 +147,69 @@ npm: ## Run a npm command, example: make npm c='install mypackage/package'
 .PHONY: npm
 
 ## —— Testing and static analysis ——————————————————————————————————————————————
-phpunit: ## Run phpunits tests, example: make phpunit c='phpunit/functional/Glpi/MySpecificTest.php'
+phpunit: ## Run phpunits tests, example: make phpunit c='tests/functional/Glpi/MySpecificTest.php'
 	@$(eval c ?=)
 	@$(PHP) php vendor/bin/phpunit $(c)
 .PHONY: phpunit
 
 phpstan: ## Run phpstan
-	@$(PHP) php vendor/bin/phpstan --memory-limit=1G
+	@$(eval c ?=)
+	@$(PHP) php vendor/bin/phpstan --memory-limit=1G $(c)
 .PHONY: phpstan
+
+phpstan-generate-baseline: c=--generate-baseline=.phpstan-baseline.php analyze  ## Generate phpstan baseline file
+phpstan-generate-baseline: phpstan
+.PHONY: phpstan-generate-baseline
+
+parallel-lint:
+	@$(eval c ?=.)
+	$(PHP) php vendor/bin/parallel-lint \
+		--show-deprecated \
+		--colors \
+		--exclude ./files/ \
+		--exclude ./marketplace/ \
+		--exclude ./plugins/ \
+		--exclude ./vendor/ \
+		$(c)
+.PHONY: parallel-lint
+
+psalm: ## Run psalm analysis
+	@$(eval c ?=)
+	@$(PHP) php vendor/bin/psalm $(c)
+.PHONY: psalm
+
+rector-check: ## Run rector with dry run
+	@$(eval c ?=)
+	@$(PHP) php vendor/bin/rector --dry-run $(c)
+.PHONY: rector-check
+
+rector-apply: ## Run rector
+	@$(eval c ?=)
+	@$(PHP) php vendor/bin/rector $(c)
+.PHONY: rector-apply
+
+cypress: ## Run cypress tests
+	@$(eval c ?=)
+	@$(CONSOLE) config:set url_base http://localhost:8080 --env=testing
+	@$(PHP) bash -c 'node_modules/.bin/cypress verify || node_modules/.bin/cypress install'
+	@$(PHP) node_modules/.bin/cypress run --project tests $(c)
+.PHONY: cypress
+
+cypress-open: ## Open cypress UI
+	@$(eval c ?=)
+	@$(CONSOLE) config:set url_base http://localhost:8080 --env=testing
+	@$(PHP) bash -c 'node_modules/.bin/cypress verify || node_modules/.bin/cypress install'
+	@$(PHP) node_modules/.bin/cypress open --e2e --browser electron --project tests $(c)
+.PHONY: cypress-open
+
+## —— Coding standards —————————————————————————————————————————————————————————
+phpcsfixer-check: ## Check for php coding standards issues
+	@$(PHP) vendor/bin/php-cs-fixer check --diff -vvv
+.PHONY: phpcsfixer-check
+
+phpcsfixer-fix: ## Fix php coding standards issues
+	@$(PHP) vendor/bin/php-cs-fixer fix
+.PHONY: phpcsfixer-fix
 
 ## —— Linters ——————————————————————————————————————————————————————————————————
 lint: lint-php lint-scss lint-twig lint-js ## Run all linters

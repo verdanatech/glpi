@@ -32,12 +32,15 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Dashboard\Dashboard;
+use Glpi\Dashboard\Grid;
 use Glpi\Event;
+use Glpi\Form\AccessControl\FormAccessControlManager;
+use Glpi\Form\Migration\FormMigration;
+use Glpi\Migration\GenericobjectPluginMigration;
 use Glpi\Plugin\Hooks;
 use Glpi\System\Requirement\PhpSupportedVersion;
-use Glpi\System\Requirement\SafeDocumentRoot;
 use Glpi\System\Requirement\SessionsSecurityConfiguration;
 
 /**
@@ -57,7 +60,7 @@ class Central extends CommonGLPI
     {
 
         $ong = [];
-        $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(self::class, $ong, $options);
 
         return $ong;
     }
@@ -66,17 +69,17 @@ class Central extends CommonGLPI
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
 
-        if ($item->getType() == __CLASS__) {
+        if ($item->getType() == self::class) {
             $tabs = [
-                1 => __('Personal View'),
-                2 => __('Group View'),
-                3 => __('Global View'),
-                4 => _n('RSS feed', 'RSS feeds', Session::getPluralNumber()),
+                1 => self::createTabEntry(__('Personal View'), 0, null, User::getIcon()),
+                2 => self::createTabEntry(__('Group View'), 0, null, Group::getIcon()),
+                3 => self::createTabEntry(__('Global View'), 0, null, 'ti ti-world'),
+                4 => self::createTabEntry(_n('RSS feed', 'RSS feeds', Session::getPluralNumber()), 0, null, RSSFeed::getIcon()),
             ];
 
-            $grid = new Glpi\Dashboard\Grid('central');
+            $grid = new Grid('central');
             if ($grid::canViewOneDashboard()) {
-                array_unshift($tabs, __('Dashboard'));
+                array_unshift($tabs, self::createTabEntry(__('Dashboard'), 0, null, Dashboard::getIcon()));
             }
 
             return $tabs;
@@ -124,8 +127,8 @@ class Central extends CommonGLPI
             self::showMessages();
         }
 
-        $default   = Glpi\Dashboard\Grid::getDefaultDashboardForMenu('central');
-        $dashboard = new Glpi\Dashboard\Grid($default);
+        $default   = Grid::getDefaultDashboardForMenu('central');
+        $dashboard = new Grid($default);
         $dashboard->show();
     }
 
@@ -243,6 +246,13 @@ class Central extends CommonGLPI
             ];
         }
 
+        if (Session::haveRightsOr('changevalidation', ChangeValidation::getValidateRights())) {
+            $lists[] = [
+                'itemtype'  => Change::class,
+                'status'    => 'tovalidate',
+            ];
+        }
+
         if ($showchanges) {
             $lists[] = [
                 'itemtype'  => Change::class,
@@ -302,6 +312,28 @@ class Central extends CommonGLPI
                 'widget'    => 'central_list',
                 'params'    => [
                     'personal'     => 'false',
+                    '_idor_token'  => $idor,
+                ],
+            ];
+        }
+        $idor = Session::getNewIDORToken(Project::class);
+        if (Session::haveRight("project", Project::READMY)) {
+            $twig_params['cards'][] = [
+                'itemtype'  => Project::class,
+                'widget'    => 'central_list',
+                'params'    => $card_params + [
+                    'itemtype'      => User::getType(),
+                    '_idor_token'  => $idor,
+                ],
+            ];
+        }
+        $idor = Session::getNewIDORToken(ProjectTask::class);
+        if (Session::haveRight("projecttask", ProjectTask::READMY)) {
+            $twig_params['cards'][] = [
+                'itemtype'  => ProjectTask::class,
+                'widget'    => 'central_list',
+                'params'    => $card_params + [
+                    'itemtype'      => User::getType(),
                     '_idor_token'  => $idor,
                 ],
             ];
@@ -441,16 +473,36 @@ class Central extends CommonGLPI
                 ],
             ];
         }
+
+        $idor = Session::getNewIDORToken(Project::class);
+        if (Session::haveRight("project", Project::READMY)) {
+            $twig_params['cards'][] = [
+                'itemtype'  => Project::class,
+                'widget'    => 'central_list',
+                'params'    => [
+                    'itemtype'    => Group::getType(),
+                    '_idor_token' => $idor,
+                ],
+            ];
+        }
+        $idor = Session::getNewIDORToken(ProjectTask::class);
+        if (Session::haveRight("projecttask", ProjectTask::READMY)) {
+            $twig_params['cards'][] = [
+                'itemtype'  => ProjectTask::class,
+                'widget'    => 'central_list',
+                'params'    => [
+                    'itemtype'    => Group::getType(),
+                    '_idor_token' => $idor,
+                ],
+            ];
+        }
+
         TemplateRenderer::getInstance()->display('central/widget_tab.html.twig', $twig_params);
     }
 
 
     private static function getMessages(): array
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $messages = [];
@@ -459,10 +511,10 @@ class Central extends CommonGLPI
         $user->getFromDB(Session::getLoginUserID());
         $expiration_msg = $user->getPasswordExpirationMessage();
         if ($expiration_msg !== null) {
-            $messages['warnings'][] = $expiration_msg
+            $messages['warnings'][] = htmlescape($expiration_msg)
              . ' '
-             . '<a href="' . $CFG_GLPI['root_doc'] . '/front/updatepassword.php">'
-             . __('Update my password')
+             . '<a href="' . htmlescape($CFG_GLPI['root_doc']) . '/front/updatepassword.php">'
+             . __s('Update my password')
              . '</a>';
         }
 
@@ -476,56 +528,102 @@ class Central extends CommonGLPI
                     $accounts[] = $user->getLink();
                 }
                 $messages['warnings'][] = sprintf(
-                    __('For security reasons, please change the password for the default users: %s'),
+                    __s('For security reasons, please change the password for the default users: %s'),
                     implode(" ", $accounts)
                 );
             }
 
             if (($myisam_count = $DB->getMyIsamTables()->count()) > 0) {
-                $messages['warnings'][] = sprintf(__('%d tables are using the deprecated MyISAM storage engine.'), $myisam_count)
-                . ' '
-                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:myisam_to_innodb');
+                $messages['warnings'][] = sprintf(__s('%d tables are using the deprecated MyISAM storage engine.'), $myisam_count)
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:myisam_to_innodb');
             }
             if (($datetime_count = $DB->getTzIncompatibleTables()->count()) > 0) {
-                $messages['warnings'][] = sprintf(__('%1$s columns are using the deprecated datetime storage field type.'), $datetime_count)
-                . ' '
-                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:timestamps');
+                $messages['warnings'][] = sprintf(__s('%1$s columns are using the deprecated datetime storage field type.'), $datetime_count)
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:timestamps');
             }
-            /*
-             * FIXME: Remove `$exclude_plugins = true` condition in GLPI 10.1.
-             * This condition is here only to prevent having this message displayed after installation of plugins that
-             * may not have yet handle the switch to utf8mb4.
-             */
-            if (($non_utf8mb4_count = $DB->getNonUtf8mb4Tables(true)->count()) > 0) {
-                $messages['warnings'][] = sprintf(__('%1$s tables are using the deprecated utf8mb3 storage charset.'), $non_utf8mb4_count)
-                . ' '
-                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:utf8mb4');
+            if (($non_utf8mb4_count = $DB->getNonUtf8mb4Tables()->count()) > 0) {
+                $messages['warnings'][] = sprintf(__s('%1$s tables are using the deprecated utf8mb3 storage charset.'), $non_utf8mb4_count)
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:utf8mb4');
             }
+            if (($signed_keys_col_count = $DB->getSignedKeysColumns()->count()) > 0) {
+                $messages['warnings'][] = sprintf(__s('%d primary or foreign keys columns are using signed integers.'), $signed_keys_col_count)
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:unsigned_keys');
+            }
+
+            $form_migration = new FormMigration(
+                $DB,
+                FormAccessControlManager::getInstance(),
+            );
+            if (
+                !$form_migration->hasBeenExecuted()
+                && $form_migration->hasPluginData()
+            ) {
+                $messages['warnings'][] = __s("You have some forms from the 'Formcreator' plugin.")
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:formcreator_plugin_to_core');
+            }
+
+            $assets_migration = new GenericobjectPluginMigration($DB);
+            if (
+                !$assets_migration->hasBeenExecuted()
+                && $assets_migration->hasPluginData()
+            ) {
+                $messages['warnings'][] = __s("You have some assets from the 'Generic object' plugin.")
+                    . ' '
+                    . sprintf(__s('Run the "%1$s" command to migrate them.'), 'php bin/console migration:genericobject_plugin_to_core');
+            }
+
             /*
-             * FIXME: Remove `$exclude_plugins = true` condition in GLPI 10.1.
-             * This condition is here only to prevent having this message displayed after installation of plugins that
-             * may not have yet handle the switch to unsigned keys.
+             * Check if there are pending reasons items and the notification is not active
+             * If so, display a warning message
              */
-            if (($signed_keys_col_count = $DB->getSignedKeysColumns(true)->count()) > 0) {
-                $messages['warnings'][] = sprintf(__('%d primary or foreign keys columns are using signed integers.'), $signed_keys_col_count)
-                . ' '
-                . sprintf(__('Run the "%1$s" command to migrate them.'), 'php bin/console migration:unsigned_keys');
+            $notification = new Notification();
+            if (
+                Config::getConfigurationValue('core', 'use_notifications')
+                && countElementsInTable('glpi_pendingreasons_items') > 0
+                && !count($notification->find([
+                    'itemtype' => 'Ticket',
+                    'event'     => 'auto_reminder',
+                    'is_active'  => true,
+                ]))
+            ) {
+                $criteria = [
+                    'criteria' => [
+                        0 => [
+                            'link' => 'AND',
+                            'field' => 2,
+                            'searchtype' => 'equals',
+                            'value' => 'Ticket$#$auto_reminder',
+                        ],
+                    ],
+                ];
+                $link = '<a href="' . htmlescape(Notification::getSearchURL() . '?' . Toolbox::append_params($criteria)) . '">' . __s('notification') . '</a>';
+
+                $messages['warnings'][] = sprintf(
+                    __s('You have defined pending reasons without any respective active %s.'),
+                    $link
+                );
             }
 
             $security_requirements = [
                 new PhpSupportedVersion(),
-                new SafeDocumentRoot(),
                 new SessionsSecurityConfiguration(),
             ];
             foreach ($security_requirements as $requirement) {
                 if (!$requirement->isValidated()) {
-                    $messages['warnings'] = array_merge(($messages['warnings'] ?? []), $requirement->getValidationMessages());
+                    foreach ($requirement->getValidationMessages() as $message) {
+                        $messages['warnings'][] = htmlescape($message);
+                    }
                 }
             }
         }
 
         if ($DB->isSlave() && !$DB->first_connection) {
-            $messages['warnings'][] = __('SQL replica: read only');
+            $messages['warnings'][] = __s('SQL replica: read only');
         }
 
         return $messages;

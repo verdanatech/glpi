@@ -43,10 +43,8 @@ class DeviceGraphicCard extends CommonDevice
         return _n('Graphics card', 'Graphics cards', $nb);
     }
 
-
     public function getAdditionalFields()
     {
-
         return array_merge(
             parent::getAdditionalFields(),
             [
@@ -69,8 +67,7 @@ class DeviceGraphicCard extends CommonDevice
                 ],
                 [
                     'name'  => 'none',
-                    'label' => RegisteredID::getTypeName(Session::getPluralNumber())
-                        . RegisteredID::showAddChildButtonForItemForm($this, '_registeredID', null, false),
+                    'label' => RegisteredID::getTypeName(Session::getPluralNumber()),
                     'type'  => 'registeredIDChooser',
                 ],
                 [
@@ -82,14 +79,13 @@ class DeviceGraphicCard extends CommonDevice
         );
     }
 
-
     public function rawSearchOptions()
     {
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'                 => '11',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'chipset',
             'name'               => __('Chipset'),
             'datatype'           => 'string',
@@ -97,7 +93,7 @@ class DeviceGraphicCard extends CommonDevice
 
         $tab[] = [
             'id'                 => '12',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'memory_default',
             'name'               => __('Memory by default'),
             'datatype'           => 'integer',
@@ -122,16 +118,14 @@ class DeviceGraphicCard extends CommonDevice
         return $tab;
     }
 
-
     /**
      * @since 0.85
-     * @param  $input
+     * @param array $input
      *
-     * @return number
+     * @return array
      **/
     public function prepareInputForAddOrUpdate($input)
     {
-
         foreach (['memory_default'] as $field) {
             if (isset($input[$field]) && !is_numeric($input[$field])) {
                 $input[$field] = 0;
@@ -140,18 +134,15 @@ class DeviceGraphicCard extends CommonDevice
         return $input;
     }
 
-
     public function prepareInputForAdd($input)
     {
         return $this->prepareInputForAddOrUpdate($input);
     }
 
-
     public function prepareInputForUpdate($input)
     {
         return $this->prepareInputForAddOrUpdate($input);
     }
-
 
     public static function getHTMLTableHeader(
         $itemtype,
@@ -160,7 +151,6 @@ class DeviceGraphicCard extends CommonDevice
         ?HTMLTableHeader $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableHeader($itemtype, $base, $super, $father, $options);
 
         if ($column == $father) {
@@ -168,14 +158,13 @@ class DeviceGraphicCard extends CommonDevice
         }
 
         switch ($itemtype) {
-            case 'Computer':
-                Manufacturer::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-                InterfaceType::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-                $base->addHeader('devicegraphiccard_chipset', __('Chipset'), $super, $father);
+            case Computer::class:
+                Manufacturer::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+                InterfaceType::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+                $base->addHeader('devicegraphiccard_chipset', __s('Chipset'), $super, $father);
                 break;
         }
     }
-
 
     public function getHTMLTableCellForItem(
         ?HTMLTableRow $row = null,
@@ -183,33 +172,32 @@ class DeviceGraphicCard extends CommonDevice
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableCellForItem($row, $item, $father, $options);
 
         if ($column == $father) {
             return $father;
         }
 
-        switch ($item->getType()) {
-            case 'Computer':
+        $cell = null;
+        switch ($item::class) {
+            case Computer::class:
                 Manufacturer::getHTMLTableCellsForItem($row, $this, null, $options);
                 InterfaceType::getHTMLTableCellsForItem($row, $this, null, $options);
 
                 if (!empty($this->fields["chipset"])) {
-                    $row->addCell(
+                    $cell = $row->addCell(
                         $row->getHeaderByName('devicegraphiccard_chipset'),
-                        $this->fields["chipset"],
+                        htmlescape($this->fields["chipset"]),
                         $father
                     );
                 }
                 break;
         }
+        return $cell;
     }
-
 
     public function getImportCriteria()
     {
-
         return [
             'designation' => 'equal',
             'chipset'  => 'equal',
@@ -234,6 +222,30 @@ class DeviceGraphicCard extends CommonDevice
                     'joinparams'         => $main_joinparams,
                 ],
             ],
+        ];
+
+        $tab[] = [
+            'id'                 => '1322',
+            'table'              => 'glpi_items_devicegraphiccards',
+            'field'              => 'serial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Serial Number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
+        ];
+
+        $tab[] = [
+            'id'                 => '1323',
+            'table'              => 'glpi_items_devicegraphiccards',
+            'field'              => 'otherserial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Inventory number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
         ];
 
         return $tab;

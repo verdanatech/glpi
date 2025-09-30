@@ -33,15 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-// Direct access to file
-if (strpos($_SERVER['PHP_SELF'], "actorinformation.php")) {
-    $AJAX_INCLUDE = 1;
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-}
+use function Safe\preg_grep;
 
-Session::checkLoginUser();
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 // save value and force boolval for security of $_REQUEST['only_number]
 $only_number = boolval($_REQUEST['only_number'] ?? false);
@@ -58,8 +53,7 @@ $actor_id  = (int) $_REQUEST[$actor_key];
 
 // check if user is allowed to see the item (only if not current connected user)
 if ($actor_id != Session::getLoginUserID()) {
-    $itemtype = getItemtypeForForeignKeyField($actor_key);
-    $item     = new $itemtype();
+    $item = getItemForForeignKeyField($actor_key);
     if (!$item->getFromDB($actor_id) || !$item->canView()) {
         // Unable to get item or no rights to see the item
         return;
@@ -121,13 +115,20 @@ $options2 = [
 
 $ticket = new Ticket();
 
-$url = $ticket->getSearchURL() . "?" . Toolbox::append_params($options2, '&amp;');
-$nb  = $ticket->{$method}($actor_id);
+$url = $ticket->getSearchURL() . "?" . Toolbox::append_params($options2, '&');
+$nb  = (int) $ticket->{$method}($actor_id);
 
 if ($only_number) {
-    echo "<a href='$url'>" . $nb . "</a>";
+    echo sprintf(
+        '<a href="%s">%d</a>',
+        htmlescape($url),
+        $nb
+    );
 } else {
-    echo "&nbsp;<a href='$url' title=\"" . __s('Processing') . "\">(";
-    printf(__('%1$s: %2$s'), __('Processing'), $nb);
-    echo ")</a>";
+    echo sprintf(
+        '&nbsp;<a href="%s" title="%s">(%s)</a>',
+        htmlescape($url),
+        __s('Processing'),
+        sprintf(__s('%1$s: %2$s'), __s('Processing'), $nb)
+    );
 }

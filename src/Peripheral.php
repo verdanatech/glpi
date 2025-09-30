@@ -32,17 +32,28 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Asset\Asset_PeripheralAsset;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
+use Glpi\Features\DCBreadcrumb;
+use Glpi\Features\DCBreadcrumbInterface;
+use Glpi\Features\Inventoriable;
+use Glpi\Features\StateInterface;
 use Glpi\Socket;
 
 /**
  * Peripheral Class
  **/
-class Peripheral extends CommonDBTM
+class Peripheral extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface, StateInterface
 {
-    use Glpi\Features\DCBreadcrumb;
-    use Glpi\Features\Clonable;
-    use Glpi\Features\Inventoriable;
+    use DCBreadcrumb;
+    use Clonable;
+    use Inventoriable;
+    use Glpi\Features\State;
+    use AssignableItem {
+        prepareInputForAdd as prepareInputForAddAssignableItem;
+    }
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -63,21 +74,33 @@ class Peripheral extends CommonDBTM
             NetworkPort::class,
             Contract_Item::class,
             Document_Item::class,
-            Computer_Item::class,
+            Asset_PeripheralAsset::class,
             KnowbaseItem_Item::class,
+            Appliance_Item::class,
+            Certificate_Item::class,
+            Domain_Item::class,
+            Item_Project::class,
+            Item_SoftwareLicense::class,
+            Item_SoftwareVersion::class,
+            ManualLink::class,
+            Socket::class,
         ];
     }
 
-    /**
-     * Name of the type
-     *
-     * @param $nb : number of item in the type
-     **/
     public static function getTypeName($nb = 0)
     {
         return _n('Peripheral', 'Peripherals', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', self::class];
+    }
+
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'inventory';
+    }
 
     /**
      * @see CommonDBTM::useDeletedToLockIfDynamic()
@@ -96,28 +119,30 @@ class Peripheral extends CommonDBTM
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
-        $this->addStandardTab('Item_OperatingSystem', $ong, $options);
-        $this->addStandardTab('Item_SoftwareVersion', $ong, $options);
-        $this->addStandardTab('Item_Devices', $ong, $options);
-        $this->addStandardTab('Computer_Item', $ong, $options);
-        $this->addStandardTab('NetworkPort', $ong, $options);
+        $this->addStandardTab(Item_OperatingSystem::class, $ong, $options);
+        $this->addStandardTab(Item_SoftwareVersion::class, $ong, $options);
+        $this->addStandardTab(Item_Devices::class, $ong, $options);
+        $this->addStandardTab(Item_Line::class, $ong, $options);
+        $this->addStandardTab(Asset_PeripheralAsset::class, $ong, $options);
+        $this->addStandardTab(NetworkPort::class, $ong, $options);
         $this->addStandardTab(Socket::class, $ong, $options);
-        $this->addStandardTab('Infocom', $ong, $options);
-        $this->addStandardTab('Contract_Item', $ong, $options);
-        $this->addStandardTab('Document_Item', $ong, $options);
-        $this->addStandardTab('KnowbaseItem_Item', $ong, $options);
-        $this->addStandardTab('Ticket', $ong, $options);
-        $this->addStandardTab('Item_Problem', $ong, $options);
-        $this->addStandardTab('Change_Item', $ong, $options);
-        $this->addStandardTab('ManualLink', $ong, $options);
-        $this->addStandardTab('Lock', $ong, $options);
-        $this->addStandardTab('Notepad', $ong, $options);
-        $this->addStandardTab('Reservation', $ong, $options);
-        $this->addStandardTab('Certificate_Item', $ong, $options);
-        $this->addStandardTab('Domain_Item', $ong, $options);
-        $this->addStandardTab('Appliance_Item', $ong, $options);
-        $this->addStandardTab('RuleMatchedLog', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Infocom::class, $ong, $options);
+        $this->addStandardTab(Contract_Item::class, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(KnowbaseItem_Item::class, $ong, $options);
+        $this->addStandardTab(Item_Ticket::class, $ong, $options);
+        $this->addStandardTab(Item_Problem::class, $ong, $options);
+        $this->addStandardTab(Change_Item::class, $ong, $options);
+        $this->addStandardTab(Item_Project::class, $ong, $options);
+        $this->addStandardTab(ManualLink::class, $ong, $options);
+        $this->addStandardTab(Lock::class, $ong, $options);
+        $this->addStandardTab(Notepad::class, $ong, $options);
+        $this->addStandardTab(Reservation::class, $ong, $options);
+        $this->addStandardTab(Certificate_Item::class, $ong, $options);
+        $this->addStandardTab(Domain_Item::class, $ong, $options);
+        $this->addStandardTab(Appliance_Item::class, $ong, $options);
+        $this->addStandardTab(RuleMatchedLog::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -125,59 +150,56 @@ class Peripheral extends CommonDBTM
 
     public function prepareInputForAdd($input)
     {
-
         if (isset($input["id"]) && ($input["id"] > 0)) {
             $input["_oldID"] = $input["id"];
         }
         unset($input['id']);
         unset($input['withtemplate']);
+        $input = $this->prepareInputForAddAssignableItem($input);
         return $input;
     }
 
 
     /**
-     * Return the linked items (in computers_items)
+     * Return the linked items (`Asset_PeripheralAsset` relations)
      *
      * @return array of linked items  like array('Computer' => array(1,2), 'Printer' => array(5,6))
      * @since 0.84.4
      **/
     public function getLinkedItems()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
-            'SELECT' => 'computers_id',
-            'FROM'   => 'glpi_computers_items',
+            'SELECT' => [
+                'itemtype_asset',
+                'items_id_asset',
+            ],
+            'FROM'   => Asset_PeripheralAsset::getTable(),
             'WHERE'  => [
-                'itemtype'  => $this->getType(),
-                'items_id'  => $this->fields['id'],
+                'itemtype_peripheral' => $this->getType(),
+                'items_id_peripheral' => $this->fields['id'],
             ],
         ]);
         $tab = [];
         foreach ($iterator as $data) {
-            $tab['Computer'][$data['computers_id']] = $data['computers_id'];
+            $tab[$data['itemtype_asset']][$data['items_id_asset']] = $data['items_id_asset'];
         }
         return $tab;
     }
 
-
-    /**
-     * @see CommonDBTM::getSpecificMassiveActions()
-     **/
     public function getSpecificMassiveActions($checkitem = null)
     {
-
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if (static::canUpdate()) {
-            Computer_Item::getMassiveActionsForItemtype($actions, __CLASS__, 0, $checkitem);
+            Asset_PeripheralAsset::getMassiveActionsForItemtype($actions, self::class, false, $checkitem);
             $actions += [
                 'Item_SoftwareLicense' . MassiveAction::CLASS_ACTION_SEPARATOR . 'add'
-               => "<i class='ma-icon fas fa-key'></i>" .
-                  _x('button', 'Add a license'),
+               => "<i class='ti ti-key'></i>"
+                  . _sx('button', 'Add a license'),
             ];
-            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, __CLASS__, 0, $checkitem);
+            KnowbaseItem_Item::getMassiveActionsForItemtype($actions, self::class, false, $checkitem);
         }
 
         return $actions;
@@ -217,11 +239,11 @@ class Peripheral extends CommonDBTM
 
         $tab[] = [
             'id'                 => '31',
-            'table'              => 'glpi_states',
+            'table'              => State::getTable(),
             'field'              => 'completename',
             'name'               => __('Status'),
             'datatype'           => 'dropdown',
-            'condition'          => ['is_visible_peripheral' => 1],
+            'condition'          => $this->getStateVisibilityCriteria(),
         ];
 
         $tab[] = [
@@ -271,6 +293,17 @@ class Peripheral extends CommonDBTM
             'field'              => 'completename',
             'name'               => Group::getTypeName(1),
             'condition'          => ['is_itemgroup' => 1],
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => 'glpi_groups_items',
+                    'joinparams'         => [
+                        'jointype'           => 'itemtype_item',
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_NORMAL],
+                    ],
+                ],
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
             'datatype'           => 'dropdown',
         ];
 
@@ -296,7 +329,7 @@ class Peripheral extends CommonDBTM
             'id'                 => '16',
             'table'              => $this->getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -330,9 +363,20 @@ class Peripheral extends CommonDBTM
             'id'                 => '49',
             'table'              => 'glpi_groups',
             'field'              => 'completename',
-            'linkfield'          => 'groups_id_tech',
+            'linkfield'          => 'groups_id',
             'name'               => __('Group in charge'),
             'condition'          => ['is_assign' => 1],
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => 'glpi_groups_items',
+                    'joinparams'         => [
+                        'jointype'           => 'itemtype_item',
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_TECH],
+                    ],
+                ],
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
             'datatype'           => 'dropdown',
         ];
 
@@ -371,9 +415,10 @@ class Peripheral extends CommonDBTM
 
         $tab = array_merge($tab, Rack::rawSearchOptionsToAdd(get_class($this)));
 
-        $tab = array_merge($tab, Socket::rawSearchOptionsToAdd());
+        $tab = array_merge($tab, PeripheralModel::rawSearchOptionsToAdd());
 
         $tab = array_merge($tab, DCRoom::rawSearchOptionsToAdd());
+
         return $tab;
     }
 
@@ -393,7 +438,7 @@ class Peripheral extends CommonDBTM
 
         $tab[] = [
             'id'                 => '1430',
-            'table'              => 'glpi_computers_items',
+            'table'              => Asset_PeripheralAsset::getTable(),
             'field'              => 'id',
             'name'               => _x('quantity', 'Number of peripherals'),
             'forcegroupby'       => true,
@@ -401,14 +446,15 @@ class Peripheral extends CommonDBTM
             'datatype'           => 'count',
             'massiveaction'      => false,
             'joinparams'         => [
-                'jointype'           => 'child',
-                'condition'          => ['NEWTABLE.itemtype' => 'Peripheral'],
+                'jointype'                  => 'itemtype_item',
+                'specific_items_id_column'  => 'items_id_asset',
+                'specific_itemtype_column'  => 'itemtype_asset',
+                'condition'                 => ['NEWTABLE.' . 'itemtype_peripheral' => 'Peripheral'],
             ],
         ];
 
         return $tab;
     }
-
 
     public static function getIcon()
     {

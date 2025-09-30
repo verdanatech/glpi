@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkRight('database', READ);
 
@@ -94,7 +94,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $instance->check($_POST["id"], PURGE);
 
-    if ($instance->delete($_POST, 1)) {
+    if ($instance->delete($_POST, true)) {
         Event::log(
             $_POST['id'],
             "databaseinstance",
@@ -120,15 +120,7 @@ if (isset($_POST["add"])) {
     }
     Html::back();
 } else {
-    Html::header(
-        DatabaseInstance::getTypeName(Session::getPluralNumber()),
-        $_SERVER['PHP_SELF'],
-        "management",
-        "database",
-        "databaseinstance"
-    );
-
-    $menus = ["database", "databaseinstance"];
+    $menus = ["management", "database", "DatabaseInstance"];
     DatabaseInstance::displayFullPageForItem($_GET['id'], $menus, [
         'withtemplate' => $_GET['withtemplate'],
     ]);

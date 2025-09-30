@@ -119,7 +119,6 @@ class NotificationTargetProjectTask extends NotificationTarget
      **/
     public function addTeamUsers()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -151,7 +150,6 @@ class NotificationTargetProjectTask extends NotificationTarget
      **/
     public function addTeamGroups($manager)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -177,7 +175,6 @@ class NotificationTargetProjectTask extends NotificationTarget
      **/
     public function addProjectTeamGroups($manager)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -202,10 +199,6 @@ class NotificationTargetProjectTask extends NotificationTarget
      **/
     public function addTeamContacts()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $iterator = $DB->request([
@@ -237,10 +230,6 @@ class NotificationTargetProjectTask extends NotificationTarget
      **/
     public function addTeamSuppliers()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $iterator = $DB->request([
@@ -267,10 +256,6 @@ class NotificationTargetProjectTask extends NotificationTarget
 
     public function addDataForTemplate($event, $options = [])
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         //----------- Reservation infos -------------- //
@@ -441,9 +426,10 @@ class NotificationTargetProjectTask extends NotificationTarget
 
         $this->data['log'] = [];
         // Use list_limit_max or load the full history ?
-        foreach (Log::getHistoryData($item, 0, $CFG_GLPI['list_limit_max']) as $data) {
+        $log_data = Log::getHistoryData($item, 0, $CFG_GLPI['list_limit_max']);
+        foreach ($log_data as $data) {
             $tmp                                = [];
-            $tmp["##projecttask.log.date##"]    = $data['date_mod'];
+            $tmp["##projecttask.log.date##"]    = Html::convDateTime($data['date_mod']);
             $tmp["##projecttask.log.user##"]    = $data['user_name'];
             $tmp["##projecttask.log.field##"]   = $data['field'];
             $tmp["##projecttask.log.content##"] = $data['change'];
@@ -554,7 +540,7 @@ class NotificationTargetProjectTask extends NotificationTarget
             'projecttask.name'                => __('Name'),
             'projecttask.project'             => Project::getTypeName(1),
             'projecttask.description'         => __('Description'),
-            'projecttask.comments'            => __('Comments'),
+            'projecttask.comments'            => _n('Comment', 'Comments', Session::getPluralNumber()),
             'projecttask.creationdate'        => __('Creation date'),
             'projecttask.lastupdatedate'      => __('Last update'),
             'projecttask.planstartdate'       => __('Planned start date'),
@@ -575,7 +561,7 @@ class NotificationTargetProjectTask extends NotificationTarget
             'task.date'                       => __('Opening date'),
             'task.name'                       => __('Name'),
             'task.description'                => __('Description'),
-            'task.comments'                   => __('Comments'),
+            'task.comments'                   => _n('Comment', 'Comments', Session::getPluralNumber()),
             'task.creationdate'               => __('Creation date'),
             'task.lastupdatedate'             => __('Last update'),
             'task.type'                       => _n('Type', 'Types', 1),

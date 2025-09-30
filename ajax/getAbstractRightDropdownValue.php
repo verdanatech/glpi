@@ -33,14 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
-include(__DIR__ . '/../inc/includes.php');
+use function Safe\json_encode;
 
 header("Content-Type: application/json; charset=UTF-8");
 Html::header_nocache();
-Session::checkLoginUser();
-
-function show_rights_dropdown(string $class)
+function show_rights_dropdown(string $class, array $options = [])
 {
     $search = $_POST['searchText'] ?? "";
-    echo json_encode($class::fetchValues($search));
+    echo json_encode($class::fetchValues($search, $options));
 }

@@ -33,25 +33,25 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
+global $CFG_GLPI;
 
 $itemDevice = getItemForItemtype($_GET['itemtype']);
 if (!$itemDevice) {
-    throw new \RuntimeException(
+    throw new RuntimeException(
         'Missing or incorrect item device type called!'
     );
 }
 
 if (!$itemDevice->canView()) {
-    Session::redirectIfNotLoggedIn();
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
 if (in_array($itemDevice->getType(), $CFG_GLPI['devices_in_menu'])) {
-    Html::header($itemDevice->getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], "assets", strtolower($itemDevice->getType()));
+    Html::header($itemDevice->getTypeName(Session::getPluralNumber()), '', "assets", strtolower($itemDevice->getType()));
 } else {
     Html::header($itemDevice->getTypeName(Session::getPluralNumber()), '', "config", "commondevice", $itemDevice->getType());
 }

@@ -48,7 +48,6 @@ abstract class HTMLTableEntity
 
     private $content;
 
-
     /**
      * Constructor of an entity
      *
@@ -58,24 +57,23 @@ abstract class HTMLTableEntity
      *    of direct display function (for instance: Dropdown::showNumber). A function
      *    call is an array containing two elements : 'function', the name the function
      *    and 'parameters', an array of the parameters given to the function.
-     **/
+     *
+     * @psalm-taint-sink html $content (content will be sent to output without being escaped)
+     */
     public function __construct($content)
     {
         $this->content = $content;
     }
 
-
     /**
-     * @param $origin
-     **/
+     * @param HTMLTableEntity $origin
+     */
     public function copyAttributsFrom(HTMLTableEntity $origin)
     {
-
         $this->html_id    = $origin->html_id;
         $this->html_style = $origin->html_style;
         $this->html_class = $origin->html_class;
     }
-
 
     /**
      * @param $html_id
@@ -85,11 +83,10 @@ abstract class HTMLTableEntity
         $this->html_id = $html_id;
     }
 
-
     /**
      * userfull ? function never called
      *
-     * @param $html_style
+     * @param array|string $html_style
      **/
     public function setHTMLStyle($html_style)
     {
@@ -100,9 +97,8 @@ abstract class HTMLTableEntity
         }
     }
 
-
     /**
-     * @param $html_class
+     * @param array|string $html_class
      **/
     public function setHTMLClass($html_class)
     {
@@ -113,19 +109,14 @@ abstract class HTMLTableEntity
         }
     }
 
-
     /**
-     * @param $options   array
+     * @param array $options
      **/
     public function displayEntityAttributs(array $options = [])
     {
-
-        $id = $this->html_id;
-        if (isset($options['id'])) {
-            $id = $options['id'];
-        }
+        $id = $options['id'] ?? $this->html_id;
         if (!empty($id)) {
-            echo " id='$id'";
+            echo ' id="' . htmlescape($id) . '"';
         }
 
         $style = $this->html_style;
@@ -137,7 +128,7 @@ abstract class HTMLTableEntity
             }
         }
         if (count($style) > 0) {
-            echo " style='" . implode(';', $style) . "'";
+            echo " style='" . htmlescape(implode(';', $style)) . "'";
         }
 
         $class = $this->html_class;
@@ -149,42 +140,38 @@ abstract class HTMLTableEntity
             }
         }
         if (count($class) > 0) {
-            echo " class='" . implode(' ', $class) . "'";
+            echo " class='" . htmlescape(implode(' ', $class)) . "'";
         }
     }
 
-
     /**
      * @param $content
+     *
+     * @psalm-taint-specialize (to report each unsafe usage as a distinct error)
+     * @psalm-taint-sink html $content (string will be added to HTML source)
      **/
     public function setContent($content)
     {
         $this->content = $content;
     }
 
-
     public function displayContent()
     {
-
         if (is_array($this->content)) {
             foreach ($this->content as $content) {
                 if (is_string($content)) {
                     // Manage __RAND__ to be computed on display
-                    $content = str_replace('__RAND__', mt_rand(), $content);
+                    $content = str_replace('__RAND__', (string) mt_rand(), $content);
                     echo $content;
                 } elseif (isset($content['function'])) {
-                    if (isset($content['parameters'])) {
-                        $parameters = $content['parameters'];
-                    } else {
-                        $parameters = [];
-                    }
+                    $parameters = $content['parameters'] ?? [];
                     call_user_func_array($content['function'], $parameters);
                 }
             }
         } else {
             // Manage __RAND__ to be computed on display
             $content = $this->content ?? '';
-            $content = str_replace('__RAND__', mt_rand(), $content);
+            $content = str_replace('__RAND__', (string) mt_rand(), $content);
             echo $content;
         }
     }

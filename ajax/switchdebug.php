@@ -33,8 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
-
 if (Config::canUpdate()) {
     $mode = ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE ? Session::NORMAL_MODE : Session::DEBUG_MODE);
     $user = new User();
@@ -45,9 +43,9 @@ if (Config::canUpdate()) {
         ]
     );
     Session::addMessageAfterRedirect(
-        $_SESSION['glpi_use_mode'] == Session::DEBUG_MODE ?
-         __('Debug mode has been enabled!') :
-         __('Debug mode has been disabled!')
+        $_SESSION['glpi_use_mode'] == Session::DEBUG_MODE
+         ? __s('Debug mode has been enabled!')
+         : __s('Debug mode has been disabled!')
     );
 }
 

@@ -31,16 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -54,7 +48,7 @@ if (!$DB->tableExists('glpi_tickets_contracts')) {
       UNIQUE KEY `unicity` (`tickets_id`,`contracts_id`),
       KEY `contracts_id` (`contracts_id`)
    ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation};";
-    $DB->doQueryOrDie($query, "add table glpi_tickets_contracts");
+    $DB->doQuery($query);
 }
 
 if (!$DB->fieldExists("glpi_entities", "contracts_id_default")) {

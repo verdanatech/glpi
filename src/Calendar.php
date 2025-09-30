@@ -32,13 +32,16 @@
  *
  * ---------------------------------------------------------------------
  */
+use Glpi\Features\Clonable;
+
+use function Safe\strtotime;
 
 /**
  * Calendar Class
  **/
 class Calendar extends CommonDropdown
 {
-    use Glpi\Features\Clonable;
+    use Clonable;
 
     // From CommonDBTM
     public $dohistory                   = true;
@@ -80,8 +83,8 @@ class Calendar extends CommonDropdown
     {
 
         $ong = parent::defineTabs($options);
-        $this->addStandardTab('CalendarSegment', $ong, $options);
-        $this->addStandardTab('Calendar_Holiday', $ong, $options);
+        $this->addStandardTab(CalendarSegment::class, $ong, $options);
+        $this->addStandardTab(Calendar_Holiday::class, $ong, $options);
 
         return $ong;
     }
@@ -94,8 +97,8 @@ class Calendar extends CommonDropdown
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'duplicate'] = _x('button', 'Duplicate');
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'addholiday'] = __('Add a close time');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'duplicate'] = _sx('button', 'Duplicate');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'addholiday'] = __s('Add a close time');
         }
         return $actions;
     }
@@ -130,7 +133,7 @@ class Calendar extends CommonDropdown
 
         switch ($ma->getAction()) {
             case 'duplicate': // For calendar duplicate in another entity
-                if (Toolbox::hasTrait($item, \Glpi\Features\Clonable::class)) {
+                if (Toolbox::hasTrait($item, Clonable::class)) {
                     $input = $ma->getInput();
                     $options = [];
                     if ($item->isEntityAssign()) {
@@ -205,7 +208,7 @@ class Calendar extends CommonDropdown
     }
 
     /**
-     * @see Glpi\Features\Clonable::post_clone
+     * @see Clonable::post_clone
      */
     public function post_clone($source, $history)
     {
@@ -259,15 +262,17 @@ class Calendar extends CommonDropdown
 
 
     /**
-     * Get active time between to date time for the active calendar
+     * Seconds elapsed between two dates
+     *
+     * Taking opening hours into account unless param $include_inactive_time is true
      *
      * @param string $start                 begin datetime
      * @param string $end                   end datetime
      * @param bool   $include_inactive_time true to just get the time passed between start time and end time
      *
-     * @return int timestamp of delay
+     * @return int seconds elapsed between the two dates, taking opening hours into account.
      *
-     * @FIXME Remove `$include_inactive_time` parameter in GLPI 10.1. It does not seems to be used and makes no sense.
+     * @FIXME Remove `$include_inactive_time` parameter in GLPI 11.0. It does not seems to be used and makes no sense.
      */
     public function getActiveTimeBetween($start, $end, $include_inactive_time = false)
     {
@@ -408,7 +413,7 @@ class Calendar extends CommonDropdown
      **/
     public function computeEndDate($start, $delay, $additional_delay = 0, $work_in_days = false, $end_of_working_day = false)
     {
-        // TODO 10.1: parameter $work_in_day make calculation for duration exprimed
+        // TODO 11.0: parameter $work_in_day make calculation for duration exprimed
         // in days (e.g "+ 5 days") but we don't have anything for month.
         // +1 month will push the date 30 working day when it should get the next
         // valid calendar date at least one month away from the starting date.
@@ -709,6 +714,6 @@ class Calendar extends CommonDropdown
 
     public static function getIcon()
     {
-        return "far fa-calendar-alt";
+        return "ti ti-calendar";
     }
 }

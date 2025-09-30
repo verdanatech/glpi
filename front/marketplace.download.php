@@ -33,13 +33,17 @@
  * ---------------------------------------------------------------------
  */
 
-include("../inc/includes.php");
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Marketplace\Controller as MarketplaceController;
 
 Session::checkRight("config", UPDATE);
 
-use Glpi\Marketplace\Controller as MarketplaceController;
-
+if (!MarketplaceController::isWebAllowed()) {
+    throw new AccessDeniedHttpException();
+}
 if (isset($_REQUEST['key'])) {
     $marketplace_ctrl = new MarketplaceController($_REQUEST['key']);
-    $marketplace_ctrl->proxifyPluginArchive();
+    return $marketplace_ctrl->proxifyPluginArchive();
 }

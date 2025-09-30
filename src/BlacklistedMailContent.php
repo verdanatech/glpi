@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Features\Clonable;
+
 /**
  * BlacklistedMailContent Class
  *
@@ -40,6 +42,8 @@
  **/
 class BlacklistedMailContent extends CommonDropdown
 {
+    use Clonable;
+
     // From CommonDBTM
     public $dohistory       = false;
 
@@ -54,13 +58,13 @@ class BlacklistedMailContent extends CommonDropdown
     }
 
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return static::canUpdate();
     }
 
 
-    public static function canPurge()
+    public static function canPurge(): bool
     {
         return static::canUpdate();
     }
@@ -98,6 +102,11 @@ class BlacklistedMailContent extends CommonDropdown
 
     public static function getIcon()
     {
-        return "fas fa-envelope-square";
+        return "ti ti-mail-x";
+    }
+
+    public function getCloneRelations(): array
+    {
+        return [];
     }
 }

@@ -33,11 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Event;
-
-include('../inc/includes.php');
-
-Session::checkLoginUser();
 
 if (!isset($_GET["id"])) {
     $_GET["id"] = -1;
@@ -114,7 +112,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $doc->check($_POST["id"], PURGE);
 
-    if ($doc->delete($_POST, 1)) {
+    if ($doc->delete($_POST, true)) {
         Event::log(
             $_POST["id"],
             "documents",
