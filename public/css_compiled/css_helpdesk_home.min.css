@@ -1,0 +1,223 @@
+/*!
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2025 Teclib' and contributors.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+.page-body {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+}
+
+header.sticky-lg-top {
+  position: relative !important;
+}
+header .dropdown .animate__animated {
+  animation-duration: unset !important;
+}
+
+.home-search {
+  line-height: 26px;
+}
+.home-search::placeholder {
+  color: var(--glpi-mainmenu-bg);
+}
+
+.home-tickets-tabs {
+  border-bottom-color: white !important;
+}
+.home-tickets-tabs .active {
+  background-color: white !important;
+}
+.home-tickets-tabs .nav-link {
+  border-bottom-color: white !important;
+}
+
+#open-tickets-pane .search-card .table-responsive-lg {
+  overflow: scroll !important;
+}
+#open-tickets-pane .search-card .search-card {
+  border-top-left-radius: 0;
+}
+
+.helpdesk-home-container {
+  height: 100vh;
+}
+.helpdesk-home-container h1 {
+  font-size: 3.7rem;
+  line-height: unset !important;
+}
+.helpdesk-home-container .search-bar-container {
+  padding: 3rem 0;
+  z-index: 1025;
+}
+.helpdesk-home-container .search-bar-container-placeholder {
+  height: 130px;
+}
+
+.search-banner {
+  background-color: var(--glpi-helpdesk-header);
+  position: relative;
+}
+.search-banner .search-banner-content {
+  padding-top: 170px;
+  padding-bottom: 80px;
+}
+.search-banner .scene {
+  position: absolute;
+  bottom: 0;
+  width: 555px;
+  height: 90%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  z-index: 0;
+}
+.search-banner .scene svg {
+  height: 393px;
+}
+@media (max-width: 1600px) {
+  .search-banner .scene {
+    display: none;
+  }
+}
+.search-banner .scene-left {
+  left: 0;
+}
+.search-banner .scene-right {
+  right: 0;
+}
+.search-banner h1 {
+  z-index: 1;
+  position: relative;
+}
+
+.search-overlay {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  z-index: 1020;
+  transition: opacity 0.4s, visibility 0.4s;
+}
+
+.search-results {
+  box-shadow: var(--tblr-box-shadow-input);
+  border-radius: var(--tblr-border-radius);
+  border: var(--tblr-border-width) solid var(--tblr-border-color);
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-top: 0 !important;
+  z-index: 1025;
+}
+
+.richtext-strip-margin p:last-of-type {
+  margin-bottom: 0 !important;
+}
+
+.search-results-title {
+  font-size: 0.75rem;
+}
+
+.remove-bottom-border-radius {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.tiles-banner {
+  background: var(--glpi-helpdesk-tiles-section-bg);
+  padding-top: 70px;
+  padding-bottom: 70px;
+}
+
+.tickets-banner {
+  background: var(--glpi-helpdesk-tabs-section-bg);
+  padding-top: 70px;
+  padding-bottom: 70px;
+  flex-grow: 1;
+}
+
+#tabspanel {
+  border-right: 0 !important;
+  border-bottom: 1px solid transparent;
+}
+#tabspanel .nav-link {
+  border-bottom: 0 !important;
+  border-bottom-color: unset !important;
+}
+
+.tab-content {
+  border-top-right-radius: 0 !important;
+  border: 0 !important;
+}
+
+.tab-pane {
+  margin: -0.5rem !important;
+}
+
+.home-ticket-list .search-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.home-ticket-list td {
+  box-shadow: none !important;
+}
+.home-ticket-list .card-footer {
+  border-top: 0;
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+.home-ticket-list .search-results {
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+
+.search-result-container {
+  background-color: var(--glpi-tabs-bg);
+}
+
+.dashboard {
+  margin-top: 10px;
+}
+.dashboard .filter-dashboard {
+  display: none;
+}
+.dashboard .change-dashboard {
+  margin-left: 4px;
+}
+
+#tabspanel {
+  border-bottom: 1px solid var(--tblr-border-color) !important;
+}
+#tabspanel a.active {
+  border-bottom: 1px solid var(--tblr-border-color) !important;
+}
