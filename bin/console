@@ -1,0 +1,144 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2025 Teclib' and contributors.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+// Try detecting if we are running with the root user (Not available on Windows)
+if (!in_array('--allow-superuser', $_SERVER['argv'], true) && function_exists('posix_geteuid') && posix_geteuid() === 0) {
+    // Translation functions not available here
+    echo "\t" . 'WARNING: running as root is discouraged.' . "\n";
+    echo "\t" . 'You should run the script as the same user that your web server runs as to avoid file permissions being ruined.' . "\n";
+    echo "\t" . 'Use --allow-superuser option to bypass this limitation.' . "\n";
+    exit(1);
+}
+
+// Extract command line arguments
+$options = [];
+if (isset($_SERVER['argv'])) {
+   for ($i = 1; $i < count($_SERVER['argv']); $i++) {
+      $chunks = explode('=', $_SERVER['argv'][$i], 2);
+      $chunks[0] = preg_replace('/^--/', '', $chunks[0]);
+      $options[$chunks[0]] = (isset($chunks[1]) ? $chunks[1] : true);
+   }
+}
+
+//Handle specific dependencies update command that cannot be made upon symfony console
+if (isset($_SERVER['argv']) && ['dependencies', 'install'] === array_slice($_SERVER['argv'], 1, 2)) {
+   chdir(dirname(__FILE__, 2));
+
+   $exit_code = 0;
+
+   $composer_command = 'composer install --ansi --no-interaction';
+   if (array_key_exists('composer-options', $options) && is_string($options['composer-options'])) {
+      $composer_command .= ' ' . $options['composer-options'];
+   }
+   passthru($composer_command, $exit_code);
+   if ($exit_code > 0) {
+      exit($exit_code);
+   }
+
+   $exit_code = compileLocales();
+   if ($exit_code > 0) {
+      exit($exit_code);
+   }
+
+   $npm_command = 'npm install --no-save';
+   passthru($npm_command, $exit_code);
+   if ($exit_code > 0) {
+      exit($exit_code);
+   }
+
+   passthru('npm run-script build', $exit_code);
+   if ($exit_code > 0) {
+      exit($exit_code);
+   }
+
+   exit($exit_code);
+}
+
+// Handle specific "locales:compile" command that cannot be made upon symfony console
+if (isset($_SERVER['argv']) && ($_SERVER['argv'][1] ?? '') === 'locales:compile') {
+   $exit_code = compileLocales();
+
+   exit($exit_code);
+}
+
+function compileLocales(): int
+{
+   chdir(dirname(__FILE__, 2));
+
+   $exit_code = 0;
+
+   $po_files = preg_grep('/\.po$/', scandir('./locales'));
+   echo "Compiling MO files...";
+   foreach ($po_files as $po_file) {
+      $mo_file = preg_replace('/\.po$/', '.mo', $po_file);
+      passthru("cd ./locales && msgfmt -f -o {$mo_file} {$po_file}", $exit_code);
+      if ($exit_code > 0) {
+         exit($exit_code);
+      }
+   }
+   echo " Done.\n";
+
+   return $exit_code;
+}
+
+// Check the resources state before trying to instanciate the Kernel.
+// It must be done here as this check must be done even when the Kernel
+// cannot be instanciated due to missing dependencies.
+require_once dirname(__DIR__) . '/src/Glpi/Application/ResourcesChecker.php';
+(new \Glpi\Application\ResourcesChecker(dirname(__DIR__)))->checkResources();
+
+// If "config-dir" option is used in command line, defines GLPI_CONFIG_DIR with its value
+if (array_key_exists('config-dir', $options)) {
+   echo "\n" . 'Usage of the `--config-dir` option is deprecated. Please use the `--env` option instead.' . "\n\n";
+
+   $config_dir = $options['config-dir'];
+
+   if (false === $config_dir || !@is_dir($config_dir)) {
+      echo sprintf(
+         '--config-dir "%s" does not exists in "%s".' . "\n",
+         $config_dir,
+         getcwd()
+      );
+      exit(1);
+   }
+
+   define('GLPI_CONFIG_DIR', realpath($config_dir));
+}
+
+require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+$kernel = new \Glpi\Kernel\Kernel($options['env'] ?? null);
+$application = new \Glpi\Console\Application($kernel);
+$application->run();
