@@ -9,26 +9,38 @@ use Traversable;
 
 use function intl_get_error_message;
 use function is_array;
+use function is_bool;
 use function is_float;
 use function is_int;
+use function is_scalar;
 use function iterator_to_array;
 
+/**
+ * @psalm-type Options = array{
+ *    locale: string|null,
+ *    style: int,
+ *    type: NumberFormatter::TYPE_*,
+ *    ...
+ * }
+ * @extends AbstractLocale<Options>
+ */
 class NumberParse extends AbstractLocale
 {
-    /** @var array<string, int|string|null> */
+    /** @var Options */
     protected $options = [
         'locale' => null,
         'style'  => NumberFormatter::DEFAULT_STYLE,
         'type'   => NumberFormatter::TYPE_DOUBLE,
     ];
 
-    /** @var NumberFormatter */
+    /** @var NumberFormatter|null */
     protected $formatter;
 
     /**
      * @param array|Traversable|string|null $localeOrOptions
-     * @param int  $style
-     * @param int  $type
+     * @param int $style
+     * @param int $type
+     * @psalm-param NumberFormatter::TYPE_* $type
      */
     public function __construct(
         $localeOrOptions = null,
@@ -82,7 +94,8 @@ class NumberParse extends AbstractLocale
     }
 
     /**
-     * @param  int $type
+     * @param int $type
+     * @psalm-param NumberFormatter::TYPE_* $type
      * @return $this
      */
     public function setType($type)
@@ -92,7 +105,7 @@ class NumberParse extends AbstractLocale
     }
 
     /**
-     * @return int
+     * @return NumberFormatter::TYPE_*
      */
     public function getType()
     {
@@ -138,6 +151,10 @@ class NumberParse extends AbstractLocale
      */
     public function filter($value)
     {
+        if (! is_scalar($value) || is_bool($value)) {
+            return $value;
+        }
+
         if (
             ! is_int($value)
             && ! is_float($value)

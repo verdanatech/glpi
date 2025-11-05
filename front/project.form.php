@@ -33,13 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 0.85
  */
 
 use Glpi\Event;
-
-include('../inc/includes.php');
 
 if (empty($_GET["id"])) {
     $_GET["id"] = '';
@@ -47,8 +47,6 @@ if (empty($_GET["id"])) {
 if (!isset($_GET["withtemplate"])) {
     $_GET["withtemplate"] = '';
 }
-
-Session::checkLoginUser();
 
 $project = new Project();
 if (isset($_POST["add"])) {
@@ -96,7 +94,7 @@ if (isset($_POST["add"])) {
     $project->redirectToList();
 } elseif (isset($_POST["purge"])) {
     $project->check($_POST["id"], PURGE);
-    $project->delete($_POST, 1);
+    $project->delete($_POST, true);
 
     Event::log(
         $_POST["id"],
@@ -122,12 +120,12 @@ if (isset($_POST["add"])) {
 
     Html::back();
 } elseif (isset($_GET['_in_modal'])) {
-    Html::popHeader(Budget::getTypeName(1), $_SERVER['PHP_SELF'], true);
+    Html::popHeader(Budget::getTypeName(1), in_modal: true);
     $project->showForm($_GET["id"], ['withtemplate' => $_GET["withtemplate"]]);
     Html::popFooter();
 } else {
     if (isset($_GET['showglobalkanban']) && $_GET['showglobalkanban']) {
-        Html::header(Project::getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], "tools", "project");
+        Html::header(Project::getTypeName(Session::getPluralNumber()), '', "tools", "project");
         $project->showKanban(0);
         Html::footer();
     } else {
@@ -135,6 +133,7 @@ if (isset($_POST["add"])) {
         Project::displayFullPageForItem($_GET["id"], $menus, [
             'withtemplate' => $_GET["withtemplate"],
             'formoptions'  => "data-track-changes=true",
+            'projects_id' => ($_GET['projects_id'] ?? null),
         ]);
     }
 }

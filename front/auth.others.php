@@ -33,9 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
 Session::checkRight("config", UPDATE);
@@ -49,7 +48,7 @@ if (isset($_POST["update"])) {
     Html::redirect($CFG_GLPI["root_doc"] . "/front/auth.others.php");
 }
 
-Html::header(__('External authentication sources'), $_SERVER['PHP_SELF'], "config", "auth", "others");
+Html::header(__('External authentication sources'), '', "config", "auth", "others");
 
 Auth::showOtherAuthList();
 

@@ -41,6 +41,7 @@ class HTMLTableCell extends HTMLTableEntity
     private $row;
     private $header;
     private $father;
+    /** @var array<array<self>> */
     private $sons = [];
     private $item;
     private $numberOfLines;
@@ -50,11 +51,11 @@ class HTMLTableCell extends HTMLTableEntity
     private $attributForTheRow = false;
 
     /**
-     * @param HTMLTableHeader $row
+     * @param HTMLTableRow    $row
      * @param HTMLTableHeader $header
      * @param string          $content  see HTMLTableEntity#__construct()
-     * @param HTMLTableCell   $father   HTMLTableCell object (default NULL)
-     * @param CommonDBTM      $item     The item associated with the current cell (default NULL)
+     * @param ?HTMLTableCell  $father   HTMLTableCell object (default NULL)
+     * @param ?CommonDBTM     $item     The item associated with the current cell (default NULL)
      **/
     public function __construct(
         $row,
@@ -63,7 +64,6 @@ class HTMLTableCell extends HTMLTableEntity
         ?HTMLTableCell $father = null,
         ?CommonDBTM $item = null
     ) {
-
         parent::__construct($content);
         $this->row        = $row;
         $this->header     = $header;
@@ -85,19 +85,19 @@ class HTMLTableCell extends HTMLTableEntity
                     ($this->father->header instanceof HTMLTableHeader)
                     && ($this->header->getFather() instanceof HTMLTableHeader)
                 ) {
-                    throw new HTMLTableCellFatherCoherentHeader($this->header->getFather()->getName() .
-                                                            ' != ' .
-                                                            $this->father->header->getName());
+                    throw new HTMLTableCellFatherCoherentHeader($this->header->getFather()->getName()
+                                                            . ' != '
+                                                            . $this->father->header->getName());
                 }
 
                 if ($this->father->header instanceof HTMLTableHeader) {
-                    throw new HTMLTableCellFatherCoherentHeader('NULL != ' .
-                                                            $this->father->header->getName());
+                    throw new HTMLTableCellFatherCoherentHeader('NULL != '
+                                                            . $this->father->header->getName());
                 }
 
                 if ($this->header->getFather() instanceof HTMLTableHeader) {
-                    throw new HTMLTableCellFatherCoherentHeader($this->header->getFather()->getName() .
-                                                            ' != NULL');
+                    throw new HTMLTableCellFatherCoherentHeader($this->header->getFather()->getName()
+                                                            . ' != NULL');
                 }
 
                 throw new HTMLTableCellFatherCoherentHeader('NULL != NULL');
@@ -122,46 +122,6 @@ class HTMLTableCell extends HTMLTableEntity
         }
     }
 
-
-    public function __get(string $property)
-    {
-        // TODO Deprecate access to variables in GLPI 10.1.
-        $value = null;
-        switch ($property) {
-            case 'numberOfLines':
-            case 'start':
-                $value = $this->$property;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-        return $value;
-    }
-
-    public function __set(string $property, $value)
-    {
-        // TODO Deprecate access to variables in GLPI 10.1.
-        switch ($property) {
-            case 'numberOfLines':
-            case 'start':
-                $this->$property = $value;
-                break;
-            default:
-                $trace = debug_backtrace();
-                trigger_error(
-                    sprintf('Undefined property: %s::%s in %s on line %d', __CLASS__, $property, $trace[0]['file'], $trace[0]['line']),
-                    E_USER_WARNING
-                );
-                break;
-        }
-    }
-
-
     /**
      * @param $attributForTheRow
      **/
@@ -170,46 +130,38 @@ class HTMLTableCell extends HTMLTableEntity
         $this->attributForTheRow = $attributForTheRow;
     }
 
-
     public function getHeader()
     {
         return $this->header;
     }
 
-
     public function getItem()
     {
-
         if (!empty($this->item)) {
             return $this->item;
         }
         return false;
     }
 
-
     /**
-     * @param $son          HTMLTableCell object
-     * @param $sons_header  HTMLTableHeader object
+     * @param HTMLTableCell $son
+     * @param HTMLTableHeader $sons_header
      **/
     public function addSon(HTMLTableCell $son, HTMLTableHeader $sons_header)
     {
-
         if (!isset($this->sons[$sons_header->getName()])) {
             $this->sons[$sons_header->getName()] = [];
         }
         $this->sons[$sons_header->getName()][] = $son;
     }
 
-
     public function getNumberOfLines()
     {
         return $this->numberOfLines;
     }
 
-
     public function computeNumberOfLines()
     {
-
         if ($this->numberOfLines === null) {
             $this->numberOfLines = 1;
             if (count($this->sons) > 0) {
@@ -227,7 +179,6 @@ class HTMLTableCell extends HTMLTableEntity
         }
     }
 
-
     /**
      * @param $value
      **/
@@ -236,14 +187,12 @@ class HTMLTableCell extends HTMLTableEntity
         $this->numberOfLines += $value;
     }
 
-
     /**
-     * @param $cells                 array
+     * @param array<self> $cells
      * @param $totalNumberOflines
      **/
     public static function updateCellSteps(array $cells, $totalNumberOflines)
     {
-
         $numberOfLines = 0;
         foreach ($cells as $cell) {
             $numberOfLines += $cell->getNumberOfLines();
@@ -260,13 +209,11 @@ class HTMLTableCell extends HTMLTableEntity
         }
     }
 
-
     /**
      * @param &$start
      **/
     public function computeStartEnd(&$start)
     {
-
         if ($this->start === null) {
             if ($this->attributForTheRow !== false) {
                 $this->row->addAttributForLine($start, $this->attributForTheRow);
@@ -286,25 +233,23 @@ class HTMLTableCell extends HTMLTableEntity
         }
     }
 
-
     /**
      * @param $index
-     * @param $options   array
+     * @param array $options
      **/
     public function displayCell($index, array $options = [])
     {
-
         if (
             ($index >= $this->start)
             && ($index < ($this->start + $this->numberOfLines))
         ) {
             if ($index == $this->start) {
                 if ($this->item instanceof CommonDBTM) {
-                    Session::addToNavigateListItems($this->item->getType(), $this->item->getID());
+                    Session::addToNavigateListItems($this->item::class, $this->item->getID());
                 }
-                echo "\t\t\t<td colspan='" . $this->header->getColSpan() . "'";
+                echo "\t\t\t<td colspan='" . ((int) $this->header->getColSpan()) . "'";
                 if ($this->numberOfLines > 1) {
-                    echo " rowspan='" . $this->numberOfLines . "'";
+                    echo " rowspan='" . ((int) $this->numberOfLines) . "'";
                 }
                 $this->displayEntityAttributs($options);
                 echo ">";

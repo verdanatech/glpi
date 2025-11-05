@@ -34,6 +34,7 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Inventory\Inventory;
 
 /**
  * SNMP credentials
@@ -47,6 +48,11 @@ class SNMPCredential extends CommonDBTM
     public static function getTypeName($nb = 0)
     {
         return _n('SNMP credential', 'SNMP credentials', $nb);
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', Inventory::class, self::class];
     }
 
     public static function rawSearchOptionsToAdd()
@@ -95,24 +101,27 @@ class SNMPCredential extends CommonDBTM
         return $tab;
     }
 
-    /**
-     * Define tabs to display on form page
-     *
-     * @param array $options
-     * @return array containing the tabs name
-     */
     public function defineTabs($options = [])
     {
 
         $ong = [];
         $this->addDefaultFormTab($ong);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
 
     public function showForm($ID, array $options = [])
     {
+        // warning and no form if can't read keyfile,
+        // only version 3 is impacted but it's better to always show the warning & forbid form display
+        $glpi_encryption_key = new GLPIKey();
+        if ($glpi_encryption_key->hasReadErrors()) {
+            $glpi_encryption_key->showReadErrors();
+
+            return false;
+        }
+
         $this->initForm($ID, $options);
         TemplateRenderer::getInstance()->display('components/form/snmpcredential.html.twig', [
             'item'   => $this,
@@ -163,7 +172,6 @@ class SNMPCredential extends CommonDBTM
             default:
                 return '';
         }
-        return '';
     }
 
     /**
@@ -219,14 +227,14 @@ class SNMPCredential extends CommonDBTM
     {
         // Require a snmpversion
         if (!isset($input['snmpversion']) || $input['snmpversion'] == '0') {
-            Session::addMessageAfterRedirect(__('You must select an SNMP version'), false, ERROR);
+            Session::addMessageAfterRedirect(__s('You must select an SNMP version'), false, ERROR);
             return false;
         }
 
         // Require username if using version 3
         if ($input['snmpversion'] == 3) {
             if (empty($input['username'])) {
-                Session::addMessageAfterRedirect(__('You must enter a username'), false, ERROR);
+                Session::addMessageAfterRedirect(__s('You must enter a username'), false, ERROR);
                 return false;
             }
         }

@@ -33,6 +33,21 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+
+use function Safe\curl_exec;
+use function Safe\curl_getinfo;
+use function Safe\curl_init;
+use function Safe\curl_setopt;
+use function Safe\file_get_contents;
+use function Safe\ini_get;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_replace;
+
 class Telemetry extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
@@ -67,7 +82,6 @@ class Telemetry extends CommonGLPI
      */
     public static function grabGlpiInfos(bool $hide_sensitive_data = false)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $glpi = [
@@ -101,7 +115,7 @@ class Telemetry extends CommonGLPI
         }
 
         if ($CFG_GLPI['use_notifications']) {
-            foreach (array_keys(\Notification_NotificationTemplate::getModes()) as $mode) {
+            foreach (array_keys(Notification_NotificationTemplate::getModes()) as $mode) {
                 if ($CFG_GLPI['notifications_' . $mode]) {
                     $glpi['usage']['notifications'][] = $mode;
                 }
@@ -118,13 +132,17 @@ class Telemetry extends CommonGLPI
      */
     public static function grabDbInfos(bool $hide_sensitive_data = false)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $dbinfos = $DB->getInfo();
 
         $size_res = $DB->request([
-            'SELECT' => new \QueryExpression("ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) AS dbsize"),
+            'SELECT' => [
+                QueryFunction::round(
+                    expression: new QueryExpression(QueryFunction::sum(new QueryExpression('data_length + index_length')) . ' / 1024 / 1024'),
+                    alias: 'dbsize',
+                ),
+            ],
             'FROM'   => 'information_schema.tables',
             'WHERE'  => ['table_schema' => $DB->dbdefault],
         ])->current();
@@ -149,7 +167,6 @@ class Telemetry extends CommonGLPI
      */
     public static function grabWebserverInfos(bool $hide_sensitive_data = false)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $server = [
@@ -207,7 +224,6 @@ class Telemetry extends CommonGLPI
                 'max_execution_time'    => ini_get('max_execution_time'),
                 'memory_limit'          => ini_get('memory_limit'),
                 'post_max_size'         => ini_get('post_max_size'),
-                'safe_mode'             => ini_get('safe_mode'),
                 'session'               => ini_get('session.save_handler'),
                 'upload_max_filesize'   => ini_get('upload_max_filesize'),
             ],
@@ -280,10 +296,8 @@ class Telemetry extends CommonGLPI
      * Send telemetry information
      *
      * @param CronTask $task CronTask instance
-     *
-     * @return void
      */
-    public static function cronTelemetry($task)
+    public static function cronTelemetry($task): ?int
     {
         $data = self::getTelemetryInfos();
         $infos = json_encode(['data' => $data]);
@@ -358,18 +372,17 @@ class Telemetry extends CommonGLPI
      */
     public static function getViewLink()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $out = "<a id='view_telemetry' href='{$CFG_GLPI['root_doc']}/ajax/telemetry.php' class='btn btn-sm btn-info mt-2'>
-         " . __('See what would be sent...') . "
+        $out = "<a id='view_telemetry' href='" . htmlescape($CFG_GLPI['root_doc']) . "/ajax/telemetry.php' class='btn btn-sm btn-info'>
+         " . __s('See what would be sent...') . "
       </a>";
         $out .= Html::scriptBlock("
          $('#view_telemetry').on('click', function(e) {
             e.preventDefault();
 
             glpi_ajax_dialog({
-               title: __('Telemetry data'),
+               title: _.escape('" . jsescape(__('Telemetry data')) . "'),
                url: $('#view_telemetry').attr('href'),
                dialogclass: 'modal-lg'
             });
@@ -384,7 +397,6 @@ class Telemetry extends CommonGLPI
      */
     public static function enable()
     {
-        /** @var \DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_crontasks',
@@ -400,7 +412,6 @@ class Telemetry extends CommonGLPI
      */
     public static function disable(): void
     {
-        /** @var \DBmysql $DB */
         global $DB;
         $DB->update(
             'glpi_crontasks',
@@ -416,7 +427,6 @@ class Telemetry extends CommonGLPI
      */
     public static function isEnabled()
     {
-        /** @var \DBmysql $DB */
         global $DB;
         $iterator = $DB->request([
             'SELECT' => ['state'],
@@ -441,15 +451,15 @@ class Telemetry extends CommonGLPI
         $out = "<div class='form-check'>
          <input type='checkbox' class='form-check-input' checked='checked' value='1' name='send_stats' id='send_stats'/>
          <label for='send_stats' class='form-check-label'>
-            " . __('Send "usage statistics"') . "
+            " . __s('Send "usage statistics"') . "
          </label>
       </div>";
-        $out .= "<strong>" . __("We need your help to improve GLPI and the plugins ecosystem!") . "</strong><br><br>";
-        $out .= __("Since GLPI 9.2, we’ve introduced a new statistics feature called “Telemetry”, that anonymously with your permission, sends data to our telemetry website.") . "<br>";
-        $out .= __("Once sent, usage statistics are aggregated and made available to a broad range of GLPI developers.") . "<br><br>";
-        $out .= __("Let us know your usage to improve future versions of GLPI and its plugins!") . "<br>";
+        $out .= "<strong>" . __s("We need your help to improve GLPI and the plugins ecosystem!") . "</strong><br><br>";
+        $out .= __s("Since GLPI 9.2, we’ve introduced a new statistics feature called “Telemetry”, that anonymously with your permission, sends data to our telemetry website.") . "<br>";
+        $out .= __s("Once sent, usage statistics are aggregated and made available to a broad range of GLPI developers.") . "<br><br>";
+        $out .= __s("Let us know your usage to improve future versions of GLPI and its plugins!") . "<br>";
 
-        $out .= self::getViewLink();
+        $out .= '<span class="mt-2">' . self::getViewLink() . '</span>';
         return $out;
     }
 
@@ -460,17 +470,18 @@ class Telemetry extends CommonGLPI
      */
     public static function showReference()
     {
-        $out = "<h3>" . __('Reference your GLPI') . "</h3>";
+        $out = "<h3>" . __s('Reference your GLPI') . "</h3>";
         $out .= sprintf(
-            __("Besides, if you appreciate GLPI and its community, " .
-            "please take a minute to reference your organization by filling %1\$s"),
+            __s("Besides, if you appreciate GLPI and its community, please take a minute to reference your organization by filling %1\$s"),
             sprintf(
-                "<a href='" . GLPI_TELEMETRY_URI . "/reference?showmodal&uuid=" .
-                self::getRegistrationUuid() . "' class='btn btn-sm btn-info' target='_blank'>
-               <i class='fas fa-pen-alt me-1'></i>
-               %1\$s
-            </a>",
-                __('the registration form')
+                "
+                    <a href='" . htmlescape(GLPI_TELEMETRY_URI . "/reference?showmodal&uuid=" . self::getRegistrationUuid()) . "'
+                       class='btn btn-sm btn-info' target='_blank'>
+                        <i class='ti ti-writing-sign me-1'></i>
+                        %s
+                    </a>
+                ",
+                __s('the registration form')
             )
         );
         return $out;

@@ -32,18 +32,26 @@
  *
  * ---------------------------------------------------------------------
  */
-
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryFunction;
 use Glpi\Features\AssetImage;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\Clonable;
 
 /**
  * CartridgeItem Class
  * This class is used to manage the various types of cartridges.
- * \see Cartridge
+ * @see Cartridge
  **/
-class CartridgeItem extends CommonDBTM
+class CartridgeItem extends CommonDBTM implements AssignableItemInterface
 {
     use AssetImage;
+    use AssignableItem {
+        prepareInputForAdd as prepareInputForAddAssignableItem;
+        prepareInputForUpdate as prepareInputForUpdateAssignableItem;
+    }
+    use Clonable;
 
     // From CommonDBTM
     protected static $forward_entity_to = ['Cartridge', 'Infocom'];
@@ -52,31 +60,36 @@ class CartridgeItem extends CommonDBTM
 
     public static $rightname                   = 'cartridge';
 
+    public function getCloneRelations(): array
+    {
+        return [
+            Infocom::class,
+            ManualLink::class,
+        ];
+    }
+
     public static function getTypeName($nb = 0)
     {
         return _n('Cartridge model', 'Cartridge models', $nb);
     }
 
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'inventory';
+    }
 
-    /**
-     * @see CommonGLPI::getMenuName()
-     *
-     * @since 0.85
-     **/
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', self::class];
+    }
+
     public static function getMenuName()
     {
         return Cartridge::getTypeName(Session::getPluralNumber());
     }
 
-
-    /**
-     * @since 0.84
-     *
-     * @see CommonDBTM::getPostAdditionalInfosForName
-     **/
     public function getPostAdditionalInfosForName()
     {
-
         if (isset($this->fields["ref"]) && !empty($this->fields["ref"])) {
             return $this->fields["ref"];
         }
@@ -85,19 +98,24 @@ class CartridgeItem extends CommonDBTM
 
     public function prepareInputForAdd($input)
     {
-        $input = parent::prepareInputForAdd($input);
+        $input = $this->prepareInputForAddAssignableItem($input);
+        if ($input === false) {
+            return false;
+        }
         return $this->managePictures($input);
     }
 
     public function prepareInputForUpdate($input)
     {
-        $input = parent::prepareInputForUpdate($input);
+        $input = $this->prepareInputForUpdateAssignableItem($input);
+        if ($input === false) {
+            return false;
+        }
         return $this->managePictures($input);
     }
 
     public function cleanDBonPurge()
     {
-
         $this->deleteChildrenAndRelationsFromDb(
             [
                 Cartridge::class,
@@ -106,13 +124,11 @@ class CartridgeItem extends CommonDBTM
         );
 
         $class = new Alert();
-        $class->cleanDBonItemDelete($this->getType(), $this->fields['id']);
+        $class->cleanDBonItemDelete(static::class, $this->fields['id']);
     }
-
 
     public function post_getEmpty()
     {
-
         if (isset($_SESSION['glpiactive_entity'])) {
             $this->fields["alarm_threshold"] = Entity::getUsedConfig(
                 "cartridges_alert_repeat",
@@ -123,24 +139,21 @@ class CartridgeItem extends CommonDBTM
         }
     }
 
-
     public function defineTabs($options = [])
     {
-
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
-        $this->addStandardTab('Cartridge', $ong, $options);
-        $this->addStandardTab('CartridgeItem_PrinterModel', $ong, $options);
-        $this->addStandardTab('Infocom', $ong, $options);
-        $this->addStandardTab('Document_Item', $ong, $options);
-        $this->addStandardTab('ManualLink', $ong, $options);
-        $this->addStandardTab('Notepad', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Cartridge::class, $ong, $options);
+        $this->addStandardTab(CartridgeItem_PrinterModel::class, $ong, $options);
+        $this->addStandardTab(Infocom::class, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(ManualLink::class, $ong, $options);
+        $this->addStandardTab(Notepad::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
-
 
     ///// SPECIFIC FUNCTIONS
 
@@ -155,7 +168,6 @@ class CartridgeItem extends CommonDBTM
      **/
     public static function getCount($id)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $result = $DB->request([
@@ -166,7 +178,6 @@ class CartridgeItem extends CommonDBTM
         return $result['cpt'];
     }
 
-
     /**
      * Add a compatible printer type for a cartridge type
      *
@@ -175,9 +186,8 @@ class CartridgeItem extends CommonDBTM
      *
      * @return boolean : true for success
      **/
-    public function addCompatibleType($cartridgeitems_id, $printermodels_id)
+    public static function addCompatibleType($cartridgeitems_id, $printermodels_id)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (
@@ -197,14 +207,13 @@ class CartridgeItem extends CommonDBTM
         return false;
     }
 
-
     public function rawSearchOptions()
     {
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'                 => '2',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'id',
             'name'               => __('ID'),
             'massiveaction'      => false,
@@ -213,7 +222,7 @@ class CartridgeItem extends CommonDBTM
 
         $tab[] = [
             'id'                 => '34',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'ref',
             'name'               => __('Reference'),
             'datatype'           => 'string',
@@ -237,7 +246,7 @@ class CartridgeItem extends CommonDBTM
 
         $tab[] = [
             'id'                 => '9',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => '_virtual',
             'name'               => _n('Cartridge', 'Cartridges', Session::getPluralNumber()),
             'datatype'           => 'specific',
@@ -312,15 +321,26 @@ class CartridgeItem extends CommonDBTM
             'id'                 => '49',
             'table'              => 'glpi_groups',
             'field'              => 'completename',
-            'linkfield'          => 'groups_id_tech',
+            'linkfield'          => 'groups_id',
             'name'               => __('Group in charge'),
             'condition'          => ['is_assign' => 1],
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => 'glpi_groups_items',
+                    'joinparams'         => [
+                        'jointype'           => 'itemtype_item',
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_TECH],
+                    ],
+                ],
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
             'datatype'           => 'dropdown',
         ];
 
         $tab[] = [
             'id'                 => '8',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'alarm_threshold',
             'name'               => __('Alert threshold'),
             'datatype'           => 'number',
@@ -331,9 +351,9 @@ class CartridgeItem extends CommonDBTM
 
         $tab[] = [
             'id'                 => '16',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -369,35 +389,28 @@ class CartridgeItem extends CommonDBTM
         return $tab;
     }
 
-
     public static function cronInfo($name)
     {
         return ['description' => __('Send alarms on cartridges')];
     }
-
 
     /**
      * Cron action on cartridges : alert if a stock is behind the threshold
      *
      * @param CronTask $task CronTask for log, display information if NULL? (default NULL)
      *
-     * @return void
+     * @return int
+     * @used-by CronTask
      **/
     public static function cronCartridge($task = null)
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $cron_status = 1;
         if ($CFG_GLPI["use_notifications"]) {
-            $message = [];
             $alert   = new Alert();
 
             foreach (Entity::getEntitiesToNotify('cartridges_alert_repeat') as $entity => $repeat) {
-                // if you change this query, please don't forget to also change in showDebug()
                 $result = $DB->request(
                     [
                         'SELECT'    => [
@@ -427,25 +440,32 @@ class CartridgeItem extends CommonDBTM
                             'glpi_cartridgeitems.entities_id'     => $entity,
                             'OR'                                  => [
                                 ['glpi_alerts.date' => null],
-                                ['glpi_alerts.date' => ['<', new QueryExpression('CURRENT_TIMESTAMP() - INTERVAL ' . $repeat . ' second')]],
+                                [
+                                    'glpi_alerts.date' => ['<',
+                                        QueryFunction::dateSub(
+                                            date: QueryFunction::now(),
+                                            interval: $repeat,
+                                            interval_unit: 'SECOND'
+                                        ),
+                                    ],
+                                ],
                             ],
                         ],
                     ]
                 );
 
-                $message = "";
-                $items   = [];
+                $messages = [];
+                $items    = [];
 
                 foreach ($result as $cartridge) {
                     if (($unused = Cartridge::getUnusedNumber($cartridge["cartID"])) <= $cartridge["threshold"]) {
                         //TRANS: %1$s is the cartridge name, %2$s its reference, %3$d the remaining number
-                        $message .= sprintf(
+                        $messages[] = sprintf(
                             __('Threshold of alarm reached for the type of cartridge: %1$s - Reference %2$s - Remaining %3$d'),
                             $cartridge["name"],
                             $cartridge["ref"],
                             $unused
                         );
-                        $message .= '<br>';
 
                         $items[$cartridge["cartID"]] = $cartridge;
 
@@ -456,7 +476,7 @@ class CartridgeItem extends CommonDBTM
                     }
                 }
 
-                if (!empty($items)) {
+                if ($items !== []) {
                     $options = [
                         'entities_id' => $entity,
                         'items'       => $items,
@@ -465,13 +485,13 @@ class CartridgeItem extends CommonDBTM
                     $entityname = Dropdown::getDropdownName("glpi_entities", $entity);
                     if (NotificationEvent::raiseEvent('alert', new CartridgeItem(), $options)) {
                         if ($task) {
-                            $task->log(sprintf(__('%1$s: %2$s') . "\n", $entityname, $message));
+                            $task->log(sprintf(__('%1$s: %2$s') . "\n", $entityname, implode("\n", $messages)));
                             $task->addVolume(1);
                         } else {
                             Session::addMessageAfterRedirect(sprintf(
-                                __('%1$s: %2$s'),
-                                $entityname,
-                                $message
+                                __s('%1$s: %2$s'),
+                                htmlescape($entityname),
+                                implode('<br>', array_map('htmlescape', $messages))
                             ));
                         }
 
@@ -493,7 +513,7 @@ class CartridgeItem extends CommonDBTM
                             $task->log($msg);
                         } else {
                             //TRANS: %s is the entity
-                            Session::addMessageAfterRedirect($msg, false, ERROR);
+                            Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                         }
                     }
                 }
@@ -503,17 +523,15 @@ class CartridgeItem extends CommonDBTM
         return $cron_status;
     }
 
-
     /**
      * Print a select with compatible cartridge
      *
-     * @param $printer Printer object
+     * @param Printer $printer
      *
      * @return string|boolean
      **/
     public static function dropdownForPrinter(Printer $printer)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -571,31 +589,9 @@ class CartridgeItem extends CommonDBTM
         return false;
     }
 
-
     public function getEvents()
     {
         return ['alert' => __('Send alarms on cartridges')];
-    }
-
-
-    /**
-     * Display debug information for current object
-     **/
-    public function showDebug()
-    {
-
-        // see query_alert in cronCartridge()
-        $item = ['cartID'    => $this->fields['id'],
-            'entity'    => $this->fields['entities_id'],
-            'ref'       => $this->fields['ref'],
-            'name'      => $this->fields['name'],
-            'threshold' => $this->fields['alarm_threshold'],
-        ];
-
-        $options = [];
-        $options['entities_id'] = $this->getEntityID();
-        $options['items']       = [$item];
-        NotificationEvent::debugEvent($this, $options);
     }
 
     public function showForm($ID, array $options = [])

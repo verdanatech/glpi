@@ -147,7 +147,6 @@ class NotificationTargetProject extends NotificationTarget
      **/
     public function addTeamUsers()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -178,7 +177,6 @@ class NotificationTargetProject extends NotificationTarget
      **/
     public function addTeamGroups($manager)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
@@ -203,10 +201,6 @@ class NotificationTargetProject extends NotificationTarget
      **/
     public function addTeamContacts()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $iterator = $DB->request([
@@ -238,10 +232,6 @@ class NotificationTargetProject extends NotificationTarget
      **/
     public function addTeamSuppliers()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $iterator = $DB->request([
@@ -268,10 +258,6 @@ class NotificationTargetProject extends NotificationTarget
 
     public function addDataForTemplate($event, $options = [])
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         //----------- Reservation infos -------------- //
@@ -471,9 +457,10 @@ class NotificationTargetProject extends NotificationTarget
         // History infos
         $this->data['log'] = [];
         // Use list_limit_max or load the full history ?
-        foreach (Log::getHistoryData($item, 0, $CFG_GLPI['list_limit_max']) as $data) {
+        $log_data = Log::getHistoryData($item, 0, $CFG_GLPI['list_limit_max']);
+        foreach ($log_data as $data) {
             $tmp                            = [];
-            $tmp["##project.log.date##"]    = $data['date_mod'];
+            $tmp["##project.log.date##"]    = Html::convDateTime($data['date_mod']);
             $tmp["##project.log.user##"]    = $data['user_name'];
             $tmp["##project.log.field##"]   = $data['field'];
             $tmp["##project.log.content##"] = $data['change'];
@@ -645,7 +632,7 @@ class NotificationTargetProject extends NotificationTarget
             'project.name'                => __('Name'),
             'project.code'                => __('Code'),
             'project.description'         => __('Description'),
-            'project.comments'            => __('Comments'),
+            'project.comments'            => _n('Comment', 'Comments', Session::getPluralNumber()),
             'project.creationdate'        => __('Creation date'),
             'project.lastupdatedate'      => __('Last update'),
             'project.planstartdate'       => __('Planned start date'),
@@ -666,7 +653,7 @@ class NotificationTargetProject extends NotificationTarget
             'task.date'                   => __('Opening date'),
             'task.name'                   => __('Name'),
             'task.description'            => __('Description'),
-            'task.comments'               => __('Comments'),
+            'task.comments'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'task.creationdate'           => __('Creation date'),
             'task.lastupdatedate'         => __('Last update'),
             'task.type'                   => _n('Type', 'Types', 1),
@@ -743,7 +730,7 @@ class NotificationTargetProject extends NotificationTarget
             'ticket.title'         => sprintf(__('%1$s: %2$s'), Ticket::getTypeName(1), __('Title')),
             'ticket.content'       => sprintf(__('%1$s: %2$s'), Ticket::getTypeName(1), __('Description')),
             'cost.name'            => sprintf(__('%1$s: %2$s'), _n('Cost', 'Costs', 1), __('Name')),
-            'cost.comment'         => sprintf(__('%1$s: %2$s'), _n('Cost', 'Costs', 1), __('Comments')),
+            'cost.comment'         => sprintf(__('%1$s: %2$s'), _n('Cost', 'Costs', 1), _n('Comment', 'Comments', Session::getPluralNumber())),
             'cost.datebegin'       => sprintf(__('%1$s: %2$s'), _n('Cost', 'Costs', 1), __('Begin date')),
             'cost.dateend'         => sprintf(__('%1$s: %2$s'), _n('Cost', 'Costs', 1), __('End date')),
             'cost.cost'            => _n('Cost', 'Costs', 1),

@@ -33,18 +33,17 @@
  * ---------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    include('../inc/includes.php');
-}
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-Html::popHeader(__('List of available tags'), $_SERVER['PHP_SELF']);
+use Glpi\Exception\Http\BadRequestHttpException;
+
+Html::popHeader(__('List of available tags'));
 
 if (isset($_GET["sub_type"])) {
     Session::checkCentralAccess();
     NotificationTemplateTranslation::showAvailableTags($_GET["sub_type"]);
-    Html::ajaxFooter();
 } else {
-    Html::displayErrorAndDie("lost");
+    throw new BadRequestHttpException();
 }
 
 Html::popFooter();

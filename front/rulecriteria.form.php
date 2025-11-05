@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 0.85
  */
-include('../inc/includes.php');
-
 $rule = new Rule();
 $rule->getFromDB(intval($_POST['rules_id']));
 
@@ -55,7 +55,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $criteria->check($_POST['id'], PURGE);
-    $criteria->delete($_POST, 1);
+    $criteria->delete($_POST, true);
 
     Html::back();
 }

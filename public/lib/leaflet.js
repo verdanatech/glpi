@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 56:
+/***/ 1025:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -37,7 +37,7 @@ var defaults = {
     className: 'spinner',
     top: '50%',
     left: '50%',
-    shadow: '0 0 1px transparent',
+    shadow: '0 0 1px transparent', // prevent aliased lines
     position: 'absolute',
 };
 var Spinner = /** @class */ (function () {
@@ -55,14 +55,12 @@ var Spinner = /** @class */ (function () {
         this.el = document.createElement('div');
         this.el.className = this.opts.className;
         this.el.setAttribute('role', 'progressbar');
-        css(this.el, {
-            position: this.opts.position,
-            width: 0,
-            zIndex: this.opts.zIndex,
-            left: this.opts.left,
-            top: this.opts.top,
-            transform: "scale(" + this.opts.scale + ")",
-        });
+        this.el.style.position = this.opts.position;
+        this.el.style.width = "0";
+        this.el.style.zIndex = this.opts.zIndex.toString();
+        this.el.style.left = this.opts.left;
+        this.el.style.top = this.opts.top;
+        this.el.style.transform = "scale(".concat(this.opts.scale, ")");
         if (target) {
             target.insertBefore(this.el, target.firstChild || null);
         }
@@ -75,12 +73,6 @@ var Spinner = /** @class */ (function () {
      */
     Spinner.prototype.stop = function () {
         if (this.el) {
-            if (typeof requestAnimationFrame !== 'undefined') {
-                cancelAnimationFrame(this.animateId);
-            }
-            else {
-                clearTimeout(this.animateId);
-            }
             if (this.el.parentNode) {
                 this.el.parentNode.removeChild(this.el);
             }
@@ -91,15 +83,6 @@ var Spinner = /** @class */ (function () {
     return Spinner;
 }());
 
-/**
- * Sets multiple style properties at once.
- */
-function css(el, props) {
-    for (var prop in props) {
-        el.style[prop] = props[prop];
-    }
-    return el;
-}
 /**
  * Returns the line color from the given string or array.
  */
@@ -121,26 +104,24 @@ function drawLines(el, opts) {
     var shadows = parseBoxShadow(shadow);
     for (var i = 0; i < opts.lines; i++) {
         var degrees = ~~(360 / opts.lines * i + opts.rotate);
-        var backgroundLine = css(document.createElement('div'), {
-            position: 'absolute',
-            top: -opts.width / 2 + "px",
-            width: (opts.length + opts.width) + 'px',
-            height: opts.width + 'px',
-            background: getColor(opts.fadeColor, i),
-            borderRadius: borderRadius,
-            transformOrigin: 'left',
-            transform: "rotate(" + degrees + "deg) translateX(" + opts.radius + "px)",
-        });
+        var backgroundLine = document.createElement('div');
+        backgroundLine.style.position = 'absolute';
+        backgroundLine.style.top = "".concat(-opts.width / 2, "px");
+        backgroundLine.style.width = (opts.length + opts.width) + 'px';
+        backgroundLine.style.height = opts.width + 'px';
+        backgroundLine.style.background = getColor(opts.fadeColor, i);
+        backgroundLine.style.borderRadius = borderRadius;
+        backgroundLine.style.transformOrigin = 'left';
+        backgroundLine.style.transform = "rotate(".concat(degrees, "deg) translateX(").concat(opts.radius, "px)");
         var delay = i * opts.direction / opts.lines / opts.speed;
         delay -= 1 / opts.speed; // so initial animation state will include trail
-        var line = css(document.createElement('div'), {
-            width: '100%',
-            height: '100%',
-            background: getColor(opts.color, i),
-            borderRadius: borderRadius,
-            boxShadow: normalizeShadow(shadows, degrees),
-            animation: 1 / opts.speed + "s linear " + delay + "s infinite " + opts.animation,
-        });
+        var line = document.createElement('div');
+        line.style.width = '100%';
+        line.style.height = '100%';
+        line.style.background = getColor(opts.color, i);
+        line.style.borderRadius = borderRadius;
+        line.style.boxShadow = normalizeShadow(shadows, degrees);
+        line.style.animation = "".concat(1 / opts.speed, "s linear ").concat(delay, "s infinite ").concat(opts.animation);
         backgroundLine.appendChild(line);
         el.appendChild(backgroundLine);
     }
@@ -168,7 +149,7 @@ function parseBoxShadow(boxShadow) {
             continue; // units must match to use as coordinates
         }
         shadows.push({
-            prefix: matches[1] || '',
+            prefix: matches[1] || '', // could have value of 'inset' or undefined
             x: x,
             y: y,
             xUnits: xUnits,
@@ -203,20 +184,20 @@ function convertOffset(x, y, degrees) {
 
 /***/ }),
 
-/***/ 57:
+/***/ 1026:
 /***/ (function(__unused_webpack_module, exports) {
 
 /* @preserve
- * Leaflet 1.7.1, a JS library for interactive maps. http://leafletjs.com
- * (c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011 CloudMade
+ * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
+ * (c) 2010-2023 Vladimir Agafonkin, (c) 2010-2011 CloudMade
  */
 
 (function (global, factory) {
    true ? factory(exports) :
   0;
-}(this, (function (exports) { 'use strict';
+})(this, (function (exports) { 'use strict';
 
-  var version = "1.7.1";
+  var version = "1.9.4";
 
   /*
    * @namespace Util
@@ -240,7 +221,7 @@ function convertOffset(x, y, degrees) {
 
   // @function create(proto: Object, properties?: Object): Object
   // Compatibility polyfill for [Object.create](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/create)
-  var create = Object.create || (function () {
+  var create$2 = Object.create || (function () {
   	function F() {}
   	return function (proto) {
   		F.prototype = proto;
@@ -272,10 +253,10 @@ function convertOffset(x, y, degrees) {
   // @function stamp(obj: Object): Number
   // Returns the unique ID of an object, assigning it one if it doesn't have it.
   function stamp(obj) {
-  	/*eslint-disable */
-  	obj._leaflet_id = obj._leaflet_id || ++lastId;
+  	if (!('_leaflet_id' in obj)) {
+  		obj['_leaflet_id'] = ++lastId;
+  	}
   	return obj._leaflet_id;
-  	/* eslint-enable */
   }
 
   // @function throttle(fn: Function, time: Number, context: Object): Function
@@ -328,10 +309,13 @@ function convertOffset(x, y, degrees) {
   // Returns a function which always returns `false`.
   function falseFn() { return false; }
 
-  // @function formatNum(num: Number, digits?: Number): Number
-  // Returns the number `num` rounded to `digits` decimals, or to 6 decimals by default.
-  function formatNum(num, digits) {
-  	var pow = Math.pow(10, (digits === undefined ? 6 : digits));
+  // @function formatNum(num: Number, precision?: Number|false): Number
+  // Returns the number `num` rounded with specified `precision`.
+  // The default `precision` value is 6 decimal places.
+  // `false` can be passed to skip any processing (can be useful to avoid round-off errors).
+  function formatNum(num, precision) {
+  	if (precision === false) { return num; }
+  	var pow = Math.pow(10, precision === undefined ? 6 : precision);
   	return Math.round(num * pow) / pow;
   }
 
@@ -351,7 +335,7 @@ function convertOffset(x, y, degrees) {
   // Merges the given properties to the `options` of the `obj` object, returning the resulting options. See `Class options`. Has an `L.setOptions` shortcut.
   function setOptions(obj, options) {
   	if (!Object.prototype.hasOwnProperty.call(obj, 'options')) {
-  		obj.options = obj.options ? create(obj.options) : {};
+  		obj.options = obj.options ? create$2(obj.options) : {};
   	}
   	for (var i in options) {
   		obj.options[i] = options[i];
@@ -372,7 +356,7 @@ function convertOffset(x, y, degrees) {
   	return ((!existingUrl || existingUrl.indexOf('?') === -1) ? '?' : '&') + params.join('&');
   }
 
-  var templateRe = /\{ *([\w_-]+) *\}/g;
+  var templateRe = /\{ *([\w_ -]+) *\}/g;
 
   // @function template(str: String, data: Object): String
   // Simple templating facility, accepts a template string of the form `'Hello {a}, {b}'`
@@ -414,7 +398,7 @@ function convertOffset(x, y, degrees) {
   // mobile devices (by setting image `src` to this string).
   var emptyImageUrl = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
-  // inspired by http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+  // inspired by https://paulirish.com/2011/requestanimationframe-for-smart-animating/
 
   function getPrefixed(name) {
   	return window['webkit' + name] || window['moz' + name] || window['ms' + name];
@@ -457,11 +441,12 @@ function convertOffset(x, y, degrees) {
   	}
   }
 
-  var Util = ({
+  var Util = {
+    __proto__: null,
     extend: extend,
-    create: create,
+    create: create$2,
     bind: bind,
-    lastId: lastId,
+    get lastId () { return lastId; },
     stamp: stamp,
     throttle: throttle,
     wrapNum: wrapNum,
@@ -479,7 +464,7 @@ function convertOffset(x, y, degrees) {
     cancelFn: cancelFn,
     requestAnimFrame: requestAnimFrame,
     cancelAnimFrame: cancelAnimFrame
-  });
+  };
 
   // @class Class
   // @aka L.Class
@@ -498,6 +483,8 @@ function convertOffset(x, y, degrees) {
   	// Returns a Javascript function that is a class constructor (to be called with `new`).
   	var NewClass = function () {
 
+  		setOptions(this);
+
   		// call the constructor
   		if (this.initialize) {
   			this.initialize.apply(this, arguments);
@@ -509,7 +496,7 @@ function convertOffset(x, y, degrees) {
 
   	var parentProto = NewClass.__super__ = this.prototype;
 
-  	var proto = create(parentProto);
+  	var proto = create$2(parentProto);
   	proto.constructor = NewClass;
 
   	NewClass.prototype = proto;
@@ -524,23 +511,24 @@ function convertOffset(x, y, degrees) {
   	// mix static properties into the class
   	if (props.statics) {
   		extend(NewClass, props.statics);
-  		delete props.statics;
   	}
 
   	// mix includes into the prototype
   	if (props.includes) {
   		checkDeprecatedMixinEvents(props.includes);
   		extend.apply(null, [proto].concat(props.includes));
-  		delete props.includes;
-  	}
-
-  	// merge options
-  	if (proto.options) {
-  		props.options = extend(create(proto.options), props.options);
   	}
 
   	// mix given properties into the prototype
   	extend(proto, props);
+  	delete proto.statics;
+  	delete proto.includes;
+
+  	// merge options
+  	if (proto.options) {
+  		proto.options = parentProto.options ? create$2(parentProto.options) : {};
+  		extend(proto.options, props.options);
+  	}
 
   	proto._initHooks = [];
 
@@ -567,7 +555,12 @@ function convertOffset(x, y, degrees) {
   // @function include(properties: Object): this
   // [Includes a mixin](#class-includes) into the current class.
   Class.include = function (props) {
+  	var parentOptions = this.prototype.options;
   	extend(this.prototype, props);
+  	if (props.options) {
+  		this.prototype.options = parentOptions;
+  		this.mergeOptions(props.options);
+  	}
   	return this;
   };
 
@@ -593,6 +586,7 @@ function convertOffset(x, y, degrees) {
   };
 
   function checkDeprecatedMixinEvents(includes) {
+  	/* global L: true */
   	if (typeof L === 'undefined' || !L || !L.Mixin) { return; }
 
   	includes = isArray(includes) ? includes : [includes];
@@ -674,7 +668,7 @@ function convertOffset(x, y, degrees) {
   	 */
   	off: function (types, fn, context) {
 
-  		if (!types) {
+  		if (!arguments.length) {
   			// clear all listeners if called without arguments
   			delete this._events;
 
@@ -686,8 +680,13 @@ function convertOffset(x, y, degrees) {
   		} else {
   			types = splitWords(types);
 
+  			var removeAll = arguments.length === 1;
   			for (var i = 0, len = types.length; i < len; i++) {
-  				this._off(types[i], fn, context);
+  				if (removeAll) {
+  					this._off(types[i]);
+  				} else {
+  					this._off(types[i], fn, context);
+  				}
   			}
   		}
 
@@ -695,31 +694,30 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// attach listener (without syntactic sugar now)
-  	_on: function (type, fn, context) {
-  		this._events = this._events || {};
+  	_on: function (type, fn, context, _once) {
+  		if (typeof fn !== 'function') {
+  			console.warn('wrong listener type: ' + typeof fn);
+  			return;
+  		}
 
-  		/* get/init listeners for type */
-  		var typeListeners = this._events[type];
-  		if (!typeListeners) {
-  			typeListeners = [];
-  			this._events[type] = typeListeners;
+  		// check if fn already there
+  		if (this._listens(type, fn, context) !== false) {
+  			return;
   		}
 
   		if (context === this) {
   			// Less memory footprint.
   			context = undefined;
   		}
-  		var newListener = {fn: fn, ctx: context},
-  		    listeners = typeListeners;
 
-  		// check if fn already there
-  		for (var i = 0, len = listeners.length; i < len; i++) {
-  			if (listeners[i].fn === fn && listeners[i].ctx === context) {
-  				return;
-  			}
+  		var newListener = {fn: fn, ctx: context};
+  		if (_once) {
+  			newListener.once = true;
   		}
 
-  		listeners.push(newListener);
+  		this._events = this._events || {};
+  		this._events[type] = this._events[type] || [];
+  		this._events[type].push(newListener);
   	},
 
   	_off: function (type, fn, context) {
@@ -727,53 +725,50 @@ function convertOffset(x, y, degrees) {
   		    i,
   		    len;
 
-  		if (!this._events) { return; }
+  		if (!this._events) {
+  			return;
+  		}
 
   		listeners = this._events[type];
-
   		if (!listeners) {
   			return;
   		}
 
-  		if (!fn) {
-  			// Set all removed listeners to noop so they are not called if remove happens in fire
-  			for (i = 0, len = listeners.length; i < len; i++) {
-  				listeners[i].fn = falseFn;
+  		if (arguments.length === 1) { // remove all
+  			if (this._firingCount) {
+  				// Set all removed listeners to noop
+  				// so they are not called if remove happens in fire
+  				for (i = 0, len = listeners.length; i < len; i++) {
+  					listeners[i].fn = falseFn;
+  				}
   			}
   			// clear all listeners for a type if function isn't specified
   			delete this._events[type];
   			return;
   		}
 
-  		if (context === this) {
-  			context = undefined;
+  		if (typeof fn !== 'function') {
+  			console.warn('wrong listener type: ' + typeof fn);
+  			return;
   		}
 
-  		if (listeners) {
+  		// find fn and remove it
+  		var index = this._listens(type, fn, context);
+  		if (index !== false) {
+  			var listener = listeners[index];
+  			if (this._firingCount) {
+  				// set the removed listener to noop so that's not called if remove happens in fire
+  				listener.fn = falseFn;
 
-  			// find fn and remove it
-  			for (i = 0, len = listeners.length; i < len; i++) {
-  				var l = listeners[i];
-  				if (l.ctx !== context) { continue; }
-  				if (l.fn === fn) {
-
-  					// set the removed listener to noop so that's not called if remove happens in fire
-  					l.fn = falseFn;
-
-  					if (this._firingCount) {
-  						/* copy array in case events are being fired */
-  						this._events[type] = listeners = listeners.slice();
-  					}
-  					listeners.splice(i, 1);
-
-  					return;
-  				}
+  				/* copy array in case events are being fired */
+  				this._events[type] = listeners = listeners.slice();
   			}
+  			listeners.splice(index, 1);
   		}
   	},
 
   	// @method fire(type: String, data?: Object, propagate?: Boolean): this
-  	// Fires an event of the specified type. You can optionally provide an data
+  	// Fires an event of the specified type. You can optionally provide a data
   	// object — the first argument of the listener function will contain its
   	// properties. The event can optionally be propagated to event parents.
   	fire: function (type, data, propagate) {
@@ -787,12 +782,16 @@ function convertOffset(x, y, degrees) {
 
   		if (this._events) {
   			var listeners = this._events[type];
-
   			if (listeners) {
   				this._firingCount = (this._firingCount + 1) || 1;
   				for (var i = 0, len = listeners.length; i < len; i++) {
   					var l = listeners[i];
-  					l.fn.call(l.ctx || this, event);
+  					// off overwrites l.fn, so we need to copy fn to a var
+  					var fn = l.fn;
+  					if (l.once) {
+  						this.off(type, fn, l.ctx);
+  					}
+  					fn.call(l.ctx || this, event);
   				}
 
   				this._firingCount--;
@@ -807,42 +806,86 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	// @method listens(type: String): Boolean
+  	// @method listens(type: String, propagate?: Boolean): Boolean
+  	// @method listens(type: String, fn: Function, context?: Object, propagate?: Boolean): Boolean
   	// Returns `true` if a particular event type has any listeners attached to it.
-  	listens: function (type, propagate) {
+  	// The verification can optionally be propagated, it will return `true` if parents have the listener attached to it.
+  	listens: function (type, fn, context, propagate) {
+  		if (typeof type !== 'string') {
+  			console.warn('"string" type argument expected');
+  		}
+
+  		// we don't overwrite the input `fn` value, because we need to use it for propagation
+  		var _fn = fn;
+  		if (typeof fn !== 'function') {
+  			propagate = !!fn;
+  			_fn = undefined;
+  			context = undefined;
+  		}
+
   		var listeners = this._events && this._events[type];
-  		if (listeners && listeners.length) { return true; }
+  		if (listeners && listeners.length) {
+  			if (this._listens(type, _fn, context) !== false) {
+  				return true;
+  			}
+  		}
 
   		if (propagate) {
   			// also check parents for listeners if event propagates
   			for (var id in this._eventParents) {
-  				if (this._eventParents[id].listens(type, propagate)) { return true; }
+  				if (this._eventParents[id].listens(type, fn, context, propagate)) { return true; }
   			}
   		}
   		return false;
+  	},
+
+  	// returns the index (number) or false
+  	_listens: function (type, fn, context) {
+  		if (!this._events) {
+  			return false;
+  		}
+
+  		var listeners = this._events[type] || [];
+  		if (!fn) {
+  			return !!listeners.length;
+  		}
+
+  		if (context === this) {
+  			// Less memory footprint.
+  			context = undefined;
+  		}
+
+  		for (var i = 0, len = listeners.length; i < len; i++) {
+  			if (listeners[i].fn === fn && listeners[i].ctx === context) {
+  				return i;
+  			}
+  		}
+  		return false;
+
   	},
 
   	// @method once(…): this
   	// Behaves as [`on(…)`](#evented-on), except the listener will only get fired once and then removed.
   	once: function (types, fn, context) {
 
+  		// types can be a map of types/handlers
   		if (typeof types === 'object') {
   			for (var type in types) {
-  				this.once(type, types[type], fn);
+  				// we don't process space-separated events here for performance;
+  				// it's a hot path since Layer uses the on(obj) syntax
+  				this._on(type, types[type], fn, true);
   			}
-  			return this;
+
+  		} else {
+  			// types can be a string of space-separated words
+  			types = splitWords(types);
+
+  			for (var i = 0, len = types.length; i < len; i++) {
+  				this._on(types[i], fn, context, true);
+  			}
   		}
 
-  		var handler = bind(function () {
-  			this
-  			    .off(types, fn, context)
-  			    .off(types, handler, context);
-  		}, this);
-
-  		// add a listener that's executed once and removed after that
-  		return this
-  		    .on(types, fn, context)
-  		    .on(types, handler, context);
+  		return this;
   	},
 
   	// @method addEventParent(obj: Evented): this
@@ -1158,21 +1201,36 @@ function convertOffset(x, y, degrees) {
   Bounds.prototype = {
   	// @method extend(point: Point): this
   	// Extends the bounds to contain the given point.
-  	extend: function (point) { // (Point)
-  		point = toPoint(point);
+
+  	// @alternative
+  	// @method extend(otherBounds: Bounds): this
+  	// Extend the bounds to contain the given bounds
+  	extend: function (obj) {
+  		var min2, max2;
+  		if (!obj) { return this; }
+
+  		if (obj instanceof Point || typeof obj[0] === 'number' || 'x' in obj) {
+  			min2 = max2 = toPoint(obj);
+  		} else {
+  			obj = toBounds(obj);
+  			min2 = obj.min;
+  			max2 = obj.max;
+
+  			if (!min2 || !max2) { return this; }
+  		}
 
   		// @property min: Point
   		// The top left corner of the rectangle.
   		// @property max: Point
   		// The bottom right corner of the rectangle.
   		if (!this.min && !this.max) {
-  			this.min = point.clone();
-  			this.max = point.clone();
+  			this.min = min2.clone();
+  			this.max = max2.clone();
   		} else {
-  			this.min.x = Math.min(point.x, this.min.x);
-  			this.max.x = Math.max(point.x, this.max.x);
-  			this.min.y = Math.min(point.y, this.min.y);
-  			this.max.y = Math.max(point.y, this.max.y);
+  			this.min.x = Math.min(min2.x, this.min.x);
+  			this.max.x = Math.max(max2.x, this.max.x);
+  			this.min.y = Math.min(min2.y, this.min.y);
+  			this.max.y = Math.max(max2.y, this.max.y);
   		}
   		return this;
   	},
@@ -1180,7 +1238,7 @@ function convertOffset(x, y, degrees) {
   	// @method getCenter(round?: Boolean): Point
   	// Returns the center point of the bounds.
   	getCenter: function (round) {
-  		return new Point(
+  		return toPoint(
   		        (this.min.x + this.max.x) / 2,
   		        (this.min.y + this.max.y) / 2, round);
   	},
@@ -1188,13 +1246,13 @@ function convertOffset(x, y, degrees) {
   	// @method getBottomLeft(): Point
   	// Returns the bottom-left point of the bounds.
   	getBottomLeft: function () {
-  		return new Point(this.min.x, this.max.y);
+  		return toPoint(this.min.x, this.max.y);
   	},
 
   	// @method getTopRight(): Point
   	// Returns the top-right point of the bounds.
   	getTopRight: function () { // -> Point
-  		return new Point(this.max.x, this.min.y);
+  		return toPoint(this.max.x, this.min.y);
   	},
 
   	// @method getTopLeft(): Point
@@ -1274,9 +1332,40 @@ function convertOffset(x, y, degrees) {
   		return xOverlaps && yOverlaps;
   	},
 
+  	// @method isValid(): Boolean
+  	// Returns `true` if the bounds are properly initialized.
   	isValid: function () {
   		return !!(this.min && this.max);
-  	}
+  	},
+
+
+  	// @method pad(bufferRatio: Number): Bounds
+  	// Returns bounds created by extending or retracting the current bounds by a given ratio in each direction.
+  	// For example, a ratio of 0.5 extends the bounds by 50% in each direction.
+  	// Negative values will retract the bounds.
+  	pad: function (bufferRatio) {
+  		var min = this.min,
+  		max = this.max,
+  		heightBuffer = Math.abs(min.x - max.x) * bufferRatio,
+  		widthBuffer = Math.abs(min.y - max.y) * bufferRatio;
+
+
+  		return toBounds(
+  			toPoint(min.x - heightBuffer, min.y - widthBuffer),
+  			toPoint(max.x + heightBuffer, max.y + widthBuffer));
+  	},
+
+
+  	// @method equals(otherBounds: Bounds): Boolean
+  	// Returns `true` if the rectangle is equivalent to the given bounds.
+  	equals: function (bounds) {
+  		if (!bounds) { return false; }
+
+  		bounds = toBounds(bounds);
+
+  		return this.min.equals(bounds.getTopLeft()) &&
+  			this.max.equals(bounds.getBottomRight());
+  	},
   };
 
 
@@ -1682,7 +1771,7 @@ function convertOffset(x, y, degrees) {
    * Object that defines coordinate reference systems for projecting
    * geographical points into pixel (screen) coordinates and back (and to
    * coordinates in other units for [WMS](https://en.wikipedia.org/wiki/Web_Map_Service) services). See
-   * [spatial reference system](http://en.wikipedia.org/wiki/Coordinate_reference_system).
+   * [spatial reference system](https://en.wikipedia.org/wiki/Spatial_reference_system).
    *
    * Leaflet defines the most usual CRSs by default. If you want to use a
    * CRS not defined by default, take a look at the
@@ -1825,7 +1914,7 @@ function convertOffset(x, y, degrees) {
 
   	// Mean Earth Radius, as recommended for use by
   	// the International Union of Geodesy and Geophysics,
-  	// see http://rosettacode.org/wiki/Haversine_formula
+  	// see https://rosettacode.org/wiki/Haversine_formula
   	R: 6371000,
 
   	// distance between two geographical points using spherical law of cosines approximation
@@ -2009,7 +2098,7 @@ function convertOffset(x, y, degrees) {
   		}
 
   		// closes the ring for polygons; "x" is VML syntax
-  		str += closed ? (svg ? 'z' : 'x') : '';
+  		str += closed ? (Browser.svg ? 'z' : 'x') : '';
   	}
 
   	// SVG complains about empty path strings
@@ -2031,7 +2120,7 @@ function convertOffset(x, y, degrees) {
    * ```
    */
 
-  var style$1 = document.documentElement.style;
+  var style = document.documentElement.style;
 
   // @property ie: Boolean; `true` for all Internet Explorer versions (not Edge).
   var ie = 'ActiveXObject' in window;
@@ -2047,15 +2136,15 @@ function convertOffset(x, y, degrees) {
   var webkit = userAgentContains('webkit');
 
   // @property android: Boolean
-  // `true` for any browser running on an Android platform.
+  // **Deprecated.** `true` for any browser running on an Android platform.
   var android = userAgentContains('android');
 
-  // @property android23: Boolean; `true` for browsers running on Android 2 or Android 3.
+  // @property android23: Boolean; **Deprecated.** `true` for browsers running on Android 2 or Android 3.
   var android23 = userAgentContains('android 2') || userAgentContains('android 3');
 
   /* See https://stackoverflow.com/a/17961266 for details on detecting stock Android */
   var webkitVer = parseInt(/WebKit\/([0-9]+)|$/.exec(navigator.userAgent)[1], 10); // also matches AppleWebKit
-  // @property androidStock: Boolean; `true` for the Android stock browser (i.e. not Chrome)
+  // @property androidStock: Boolean; **Deprecated.** `true` for the Android stock browser (i.e. not Chrome)
   var androidStock = android && userAgentContains('Google') && webkitVer < 537 && !('AudioNode' in window);
 
   // @property opera: Boolean; `true` for the Opera browser
@@ -2074,19 +2163,19 @@ function convertOffset(x, y, degrees) {
 
   // @property opera12: Boolean
   // `true` for the Opera browser supporting CSS transforms (version 12 or later).
-  var opera12 = 'OTransition' in style$1;
+  var opera12 = 'OTransition' in style;
 
   // @property win: Boolean; `true` when the browser is running in a Windows platform
   var win = navigator.platform.indexOf('Win') === 0;
 
   // @property ie3d: Boolean; `true` for all Internet Explorer versions supporting CSS transforms.
-  var ie3d = ie && ('transition' in style$1);
+  var ie3d = ie && ('transition' in style);
 
   // @property webkit3d: Boolean; `true` for webkit-based browsers supporting CSS transforms.
   var webkit3d = ('WebKitCSSMatrix' in window) && ('m11' in new window.WebKitCSSMatrix()) && !android23;
 
   // @property gecko3d: Boolean; `true` for gecko-based browsers supporting CSS transforms.
-  var gecko3d = 'MozPerspective' in style$1;
+  var gecko3d = 'MozPerspective' in style;
 
   // @property any3d: Boolean
   // `true` for all browsers supporting CSS transforms.
@@ -2110,13 +2199,17 @@ function convertOffset(x, y, degrees) {
   // `true` for all browsers supporting [pointer events](https://msdn.microsoft.com/en-us/library/dn433244%28v=vs.85%29.aspx).
   var pointer = !!(window.PointerEvent || msPointer);
 
-  // @property touch: Boolean
+  // @property touchNative: Boolean
   // `true` for all browsers supporting [touch events](https://developer.mozilla.org/docs/Web/API/Touch_events).
-  // This does not necessarily mean that the browser is running in a computer with
+  // **This does not necessarily mean** that the browser is running in a computer with
   // a touchscreen, it only means that the browser is capable of understanding
   // touch events.
-  var touch = !window.L_NO_TOUCH && (pointer || 'ontouchstart' in window ||
-  		(window.DocumentTouch && document instanceof window.DocumentTouch));
+  var touchNative = 'ontouchstart' in window || !!window.TouchEvent;
+
+  // @property touch: Boolean
+  // `true` for all browsers supporting either [touch](#browser-touch) or [pointer](#browser-pointer) events.
+  // Note: pointer events will be preferred (if available), and processed for all `touch*` listeners.
+  var touch = !window.L_NO_TOUCH && (touchNative || pointer);
 
   // @property mobileOpera: Boolean; `true` for the Opera browser in a mobile device.
   var mobileOpera = mobile && opera;
@@ -2149,17 +2242,23 @@ function convertOffset(x, y, degrees) {
 
   // @property canvas: Boolean
   // `true` when the browser supports [`<canvas>`](https://developer.mozilla.org/docs/Web/API/Canvas_API).
-  var canvas = (function () {
+  var canvas$1 = (function () {
   	return !!document.createElement('canvas').getContext;
   }());
 
   // @property svg: Boolean
   // `true` when the browser supports [SVG](https://developer.mozilla.org/docs/Web/SVG).
-  var svg = !!(document.createElementNS && svgCreate('svg').createSVGRect);
+  var svg$1 = !!(document.createElementNS && svgCreate('svg').createSVGRect);
+
+  var inlineSvg = !!svg$1 && (function () {
+  	var div = document.createElement('div');
+  	div.innerHTML = '<svg/>';
+  	return (div.firstChild && div.firstChild.namespaceURI) === 'http://www.w3.org/2000/svg';
+  })();
 
   // @property vml: Boolean
   // `true` if the browser supports [VML](https://en.wikipedia.org/wiki/Vector_Markup_Language).
-  var vml = !svg && (function () {
+  var vml = !svg$1 && (function () {
   	try {
   		var div = document.createElement('div');
   		div.innerHTML = '<v:shape adj="1"/>';
@@ -2175,114 +2274,100 @@ function convertOffset(x, y, degrees) {
   }());
 
 
+  // @property mac: Boolean; `true` when the browser is running in a Mac platform
+  var mac = navigator.platform.indexOf('Mac') === 0;
+
+  // @property mac: Boolean; `true` when the browser is running in a Linux platform
+  var linux = navigator.platform.indexOf('Linux') === 0;
+
   function userAgentContains(str) {
   	return navigator.userAgent.toLowerCase().indexOf(str) >= 0;
   }
 
-  var Browser = ({
-    ie: ie,
-    ielt9: ielt9,
-    edge: edge,
-    webkit: webkit,
-    android: android,
-    android23: android23,
-    androidStock: androidStock,
-    opera: opera,
-    chrome: chrome,
-    gecko: gecko,
-    safari: safari,
-    phantom: phantom,
-    opera12: opera12,
-    win: win,
-    ie3d: ie3d,
-    webkit3d: webkit3d,
-    gecko3d: gecko3d,
-    any3d: any3d,
-    mobile: mobile,
-    mobileWebkit: mobileWebkit,
-    mobileWebkit3d: mobileWebkit3d,
-    msPointer: msPointer,
-    pointer: pointer,
-    touch: touch,
-    mobileOpera: mobileOpera,
-    mobileGecko: mobileGecko,
-    retina: retina,
-    passiveEvents: passiveEvents,
-    canvas: canvas,
-    svg: svg,
-    vml: vml
-  });
+
+  var Browser = {
+  	ie: ie,
+  	ielt9: ielt9,
+  	edge: edge,
+  	webkit: webkit,
+  	android: android,
+  	android23: android23,
+  	androidStock: androidStock,
+  	opera: opera,
+  	chrome: chrome,
+  	gecko: gecko,
+  	safari: safari,
+  	phantom: phantom,
+  	opera12: opera12,
+  	win: win,
+  	ie3d: ie3d,
+  	webkit3d: webkit3d,
+  	gecko3d: gecko3d,
+  	any3d: any3d,
+  	mobile: mobile,
+  	mobileWebkit: mobileWebkit,
+  	mobileWebkit3d: mobileWebkit3d,
+  	msPointer: msPointer,
+  	pointer: pointer,
+  	touch: touch,
+  	touchNative: touchNative,
+  	mobileOpera: mobileOpera,
+  	mobileGecko: mobileGecko,
+  	retina: retina,
+  	passiveEvents: passiveEvents,
+  	canvas: canvas$1,
+  	svg: svg$1,
+  	vml: vml,
+  	inlineSvg: inlineSvg,
+  	mac: mac,
+  	linux: linux
+  };
 
   /*
    * Extends L.DomEvent to provide touch support for Internet Explorer and Windows-based devices.
    */
 
-
-  var POINTER_DOWN =   msPointer ? 'MSPointerDown'   : 'pointerdown';
-  var POINTER_MOVE =   msPointer ? 'MSPointerMove'   : 'pointermove';
-  var POINTER_UP =     msPointer ? 'MSPointerUp'     : 'pointerup';
-  var POINTER_CANCEL = msPointer ? 'MSPointerCancel' : 'pointercancel';
-
+  var POINTER_DOWN =   Browser.msPointer ? 'MSPointerDown'   : 'pointerdown';
+  var POINTER_MOVE =   Browser.msPointer ? 'MSPointerMove'   : 'pointermove';
+  var POINTER_UP =     Browser.msPointer ? 'MSPointerUp'     : 'pointerup';
+  var POINTER_CANCEL = Browser.msPointer ? 'MSPointerCancel' : 'pointercancel';
+  var pEvent = {
+  	touchstart  : POINTER_DOWN,
+  	touchmove   : POINTER_MOVE,
+  	touchend    : POINTER_UP,
+  	touchcancel : POINTER_CANCEL
+  };
+  var handle = {
+  	touchstart  : _onPointerStart,
+  	touchmove   : _handlePointer,
+  	touchend    : _handlePointer,
+  	touchcancel : _handlePointer
+  };
   var _pointers = {};
   var _pointerDocListener = false;
 
   // Provides a touch events wrapper for (ms)pointer events.
-  // ref http://www.w3.org/TR/pointerevents/ https://www.w3.org/Bugs/Public/show_bug.cgi?id=22890
+  // ref https://www.w3.org/TR/pointerevents/ https://www.w3.org/Bugs/Public/show_bug.cgi?id=22890
 
-  function addPointerListener(obj, type, handler, id) {
+  function addPointerListener(obj, type, handler) {
   	if (type === 'touchstart') {
-  		_addPointerStart(obj, handler, id);
-
-  	} else if (type === 'touchmove') {
-  		_addPointerMove(obj, handler, id);
-
-  	} else if (type === 'touchend') {
-  		_addPointerEnd(obj, handler, id);
+  		_addPointerDocListener();
   	}
-
-  	return this;
+  	if (!handle[type]) {
+  		console.warn('wrong event specified:', type);
+  		return falseFn;
+  	}
+  	handler = handle[type].bind(this, handler);
+  	obj.addEventListener(pEvent[type], handler, false);
+  	return handler;
   }
 
-  function removePointerListener(obj, type, id) {
-  	var handler = obj['_leaflet_' + type + id];
-
-  	if (type === 'touchstart') {
-  		obj.removeEventListener(POINTER_DOWN, handler, false);
-
-  	} else if (type === 'touchmove') {
-  		obj.removeEventListener(POINTER_MOVE, handler, false);
-
-  	} else if (type === 'touchend') {
-  		obj.removeEventListener(POINTER_UP, handler, false);
-  		obj.removeEventListener(POINTER_CANCEL, handler, false);
+  function removePointerListener(obj, type, handler) {
+  	if (!pEvent[type]) {
+  		console.warn('wrong event specified:', type);
+  		return;
   	}
-
-  	return this;
-  }
-
-  function _addPointerStart(obj, handler, id) {
-  	var onDown = bind(function (e) {
-  		// IE10 specific: MsTouch needs preventDefault. See #2000
-  		if (e.MSPOINTER_TYPE_TOUCH && e.pointerType === e.MSPOINTER_TYPE_TOUCH) {
-  			preventDefault(e);
-  		}
-
-  		_handlePointer(e, handler);
-  	});
-
-  	obj['_leaflet_touchstart' + id] = onDown;
-  	obj.addEventListener(POINTER_DOWN, onDown, false);
-
-  	// need to keep track of what pointers and how many are active to provide e.touches emulation
-  	if (!_pointerDocListener) {
-  		// we listen document as any drags that end by moving the touch off the screen get fired there
-  		document.addEventListener(POINTER_DOWN, _globalPointerDown, true);
-  		document.addEventListener(POINTER_MOVE, _globalPointerMove, true);
-  		document.addEventListener(POINTER_UP, _globalPointerUp, true);
-  		document.addEventListener(POINTER_CANCEL, _globalPointerUp, true);
-
-  		_pointerDocListener = true;
-  	}
+  	obj.removeEventListener(pEvent[type], handler, false);
   }
 
   function _globalPointerDown(e) {
@@ -2299,7 +2384,22 @@ function convertOffset(x, y, degrees) {
   	delete _pointers[e.pointerId];
   }
 
-  function _handlePointer(e, handler) {
+  function _addPointerDocListener() {
+  	// need to keep track of what pointers and how many are active to provide e.touches emulation
+  	if (!_pointerDocListener) {
+  		// we listen document as any drags that end by moving the touch off the screen get fired there
+  		document.addEventListener(POINTER_DOWN, _globalPointerDown, true);
+  		document.addEventListener(POINTER_MOVE, _globalPointerMove, true);
+  		document.addEventListener(POINTER_UP, _globalPointerUp, true);
+  		document.addEventListener(POINTER_CANCEL, _globalPointerUp, true);
+
+  		_pointerDocListener = true;
+  	}
+  }
+
+  function _handlePointer(handler, e) {
+  	if (e.pointerType === (e.MSPOINTER_TYPE_MOUSE || 'mouse')) { return; }
+
   	e.touches = [];
   	for (var i in _pointers) {
   		e.touches.push(_pointers[i]);
@@ -2309,108 +2409,102 @@ function convertOffset(x, y, degrees) {
   	handler(e);
   }
 
-  function _addPointerMove(obj, handler, id) {
-  	var onMove = function (e) {
-  		// don't fire touch moves when mouse isn't down
-  		if ((e.pointerType === (e.MSPOINTER_TYPE_MOUSE || 'mouse')) && e.buttons === 0) {
-  			return;
-  		}
-
-  		_handlePointer(e, handler);
-  	};
-
-  	obj['_leaflet_touchmove' + id] = onMove;
-  	obj.addEventListener(POINTER_MOVE, onMove, false);
-  }
-
-  function _addPointerEnd(obj, handler, id) {
-  	var onUp = function (e) {
-  		_handlePointer(e, handler);
-  	};
-
-  	obj['_leaflet_touchend' + id] = onUp;
-  	obj.addEventListener(POINTER_UP, onUp, false);
-  	obj.addEventListener(POINTER_CANCEL, onUp, false);
+  function _onPointerStart(handler, e) {
+  	// IE10 specific: MsTouch needs preventDefault. See #2000
+  	if (e.MSPOINTER_TYPE_TOUCH && e.pointerType === e.MSPOINTER_TYPE_TOUCH) {
+  		preventDefault(e);
+  	}
+  	_handlePointer(handler, e);
   }
 
   /*
    * Extends the event handling code with double tap support for mobile browsers.
+   *
+   * Note: currently most browsers fire native dblclick, with only a few exceptions
+   * (see https://github.com/Leaflet/Leaflet/issues/7012#issuecomment-595087386)
    */
 
-  var _touchstart = msPointer ? 'MSPointerDown' : pointer ? 'pointerdown' : 'touchstart';
-  var _touchend = msPointer ? 'MSPointerUp' : pointer ? 'pointerup' : 'touchend';
-  var _pre = '_leaflet_';
+  function makeDblclick(event) {
+  	// in modern browsers `type` cannot be just overridden:
+  	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Getter_only
+  	var newEvent = {},
+  	    prop, i;
+  	for (i in event) {
+  		prop = event[i];
+  		newEvent[i] = prop && prop.bind ? prop.bind(event) : prop;
+  	}
+  	event = newEvent;
+  	newEvent.type = 'dblclick';
+  	newEvent.detail = 2;
+  	newEvent.isTrusted = false;
+  	newEvent._simulated = true; // for debug purposes
+  	return newEvent;
+  }
 
-  // inspired by Zepto touch code by Thomas Fuchs
-  function addDoubleTapListener(obj, handler, id) {
-  	var last, touch$$1,
-  	    doubleTap = false,
-  	    delay = 250;
+  var delay = 200;
+  function addDoubleTapListener(obj, handler) {
+  	// Most browsers handle double tap natively
+  	obj.addEventListener('dblclick', handler);
 
-  	function onTouchStart(e) {
-
-  		if (pointer) {
-  			if (!e.isPrimary) { return; }
-  			if (e.pointerType === 'mouse') { return; } // mouse fires native dblclick
-  		} else if (e.touches.length > 1) {
+  	// On some platforms the browser doesn't fire native dblclicks for touch events.
+  	// It seems that in all such cases `detail` property of `click` event is always `1`.
+  	// So here we rely on that fact to avoid excessive 'dblclick' simulation when not needed.
+  	var last = 0,
+  	    detail;
+  	function simDblclick(e) {
+  		if (e.detail !== 1) {
+  			detail = e.detail; // keep in sync to avoid false dblclick in some cases
   			return;
   		}
 
-  		var now = Date.now(),
-  		    delta = now - (last || now);
+  		if (e.pointerType === 'mouse' ||
+  			(e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents)) {
 
-  		touch$$1 = e.touches ? e.touches[0] : e;
-  		doubleTap = (delta > 0 && delta <= delay);
+  			return;
+  		}
+
+  		// When clicking on an <input>, the browser generates a click on its
+  		// <label> (and vice versa) triggering two clicks in quick succession.
+  		// This ignores clicks on elements which are a label with a 'for'
+  		// attribute (or children of such a label), but not children of
+  		// a <input>.
+  		var path = getPropagationPath(e);
+  		if (path.some(function (el) {
+  			return el instanceof HTMLLabelElement && el.attributes.for;
+  		}) &&
+  			!path.some(function (el) {
+  				return (
+  					el instanceof HTMLInputElement ||
+  					el instanceof HTMLSelectElement
+  				);
+  			})
+  		) {
+  			return;
+  		}
+
+  		var now = Date.now();
+  		if (now - last <= delay) {
+  			detail++;
+  			if (detail === 2) {
+  				handler(makeDblclick(e));
+  			}
+  		} else {
+  			detail = 1;
+  		}
   		last = now;
   	}
 
-  	function onTouchEnd(e) {
-  		if (doubleTap && !touch$$1.cancelBubble) {
-  			if (pointer) {
-  				if (e.pointerType === 'mouse') { return; }
-  				// work around .type being readonly with MSPointer* events
-  				var newTouch = {},
-  				    prop, i;
+  	obj.addEventListener('click', simDblclick);
 
-  				for (i in touch$$1) {
-  					prop = touch$$1[i];
-  					newTouch[i] = prop && prop.bind ? prop.bind(touch$$1) : prop;
-  				}
-  				touch$$1 = newTouch;
-  			}
-  			touch$$1.type = 'dblclick';
-  			touch$$1.button = 0;
-  			handler(touch$$1);
-  			last = null;
-  		}
-  	}
-
-  	obj[_pre + _touchstart + id] = onTouchStart;
-  	obj[_pre + _touchend + id] = onTouchEnd;
-  	obj[_pre + 'dblclick' + id] = handler;
-
-  	obj.addEventListener(_touchstart, onTouchStart, passiveEvents ? {passive: false} : false);
-  	obj.addEventListener(_touchend, onTouchEnd, passiveEvents ? {passive: false} : false);
-
-  	// On some platforms (notably, chrome<55 on win10 + touchscreen + mouse),
-  	// the browser doesn't fire touchend/pointerup events but does fire
-  	// native dblclicks. See #4127.
-  	// Edge 14 also fires native dblclicks, but only for pointerType mouse, see #5180.
-  	obj.addEventListener('dblclick', handler, false);
-
-  	return this;
+  	return {
+  		dblclick: handler,
+  		simDblclick: simDblclick
+  	};
   }
 
-  function removeDoubleTapListener(obj, id) {
-  	var touchstart = obj[_pre + _touchstart + id],
-  	    touchend = obj[_pre + _touchend + id],
-  	    dblclick = obj[_pre + 'dblclick' + id];
-
-  	obj.removeEventListener(_touchstart, touchstart, passiveEvents ? {passive: false} : false);
-  	obj.removeEventListener(_touchend, touchend, passiveEvents ? {passive: false} : false);
-  	obj.removeEventListener('dblclick', dblclick, false);
-
-  	return this;
+  function removeDoubleTapListener(obj, handlers) {
+  	obj.removeEventListener('dblclick', handlers.dblclick);
+  	obj.removeEventListener('click', handlers.simDblclick);
   }
 
   /*
@@ -2624,7 +2718,7 @@ function convertOffset(x, y, degrees) {
   	var pos = offset || new Point(0, 0);
 
   	el.style[TRANSFORM] =
-  		(ie3d ?
+  		(Browser.ie3d ?
   			'translate(' + pos.x + 'px,' + pos.y + 'px)' :
   			'translate3d(' + pos.x + 'px,' + pos.y + 'px,0)') +
   		(scale ? ' scale(' + scale + ')' : '');
@@ -2640,7 +2734,7 @@ function convertOffset(x, y, degrees) {
   	el._leaflet_pos = point;
   	/* eslint-enable */
 
-  	if (any3d) {
+  	if (Browser.any3d) {
   		setTransform(el, point);
   	} else {
   		el.style.left = point.x + 'px';
@@ -2720,8 +2814,8 @@ function convertOffset(x, y, degrees) {
   	if (!element.style) { return; }
   	restoreOutline();
   	_outlineElement = element;
-  	_outlineStyle = element.style.outline;
-  	element.style.outline = 'none';
+  	_outlineStyle = element.style.outlineStyle;
+  	element.style.outlineStyle = 'none';
   	on(window, 'keydown', restoreOutline);
   }
 
@@ -2729,7 +2823,7 @@ function convertOffset(x, y, degrees) {
   // Cancels the effects of a previous [`L.DomUtil.preventOutline`]().
   function restoreOutline() {
   	if (!_outlineElement) { return; }
-  	_outlineElement.style.outline = _outlineStyle;
+  	_outlineElement.style.outlineStyle = _outlineStyle;
   	_outlineElement = undefined;
   	_outlineStyle = undefined;
   	off(window, 'keydown', restoreOutline);
@@ -2758,7 +2852,8 @@ function convertOffset(x, y, degrees) {
   	};
   }
 
-  var DomUtil = ({
+  var DomUtil = {
+    __proto__: null,
     TRANSFORM: TRANSFORM,
     TRANSITION: TRANSITION,
     TRANSITION_END: TRANSITION_END,
@@ -2779,15 +2874,15 @@ function convertOffset(x, y, degrees) {
     setTransform: setTransform,
     setPosition: setPosition,
     getPosition: getPosition,
-    disableTextSelection: disableTextSelection,
-    enableTextSelection: enableTextSelection,
+    get disableTextSelection () { return disableTextSelection; },
+    get enableTextSelection () { return enableTextSelection; },
     disableImageDrag: disableImageDrag,
     enableImageDrag: enableImageDrag,
     preventOutline: preventOutline,
     restoreOutline: restoreOutline,
     getSizedParentNode: getSizedParentNode,
     getScale: getScale
-  });
+  };
 
   /*
    * @namespace DomEvent
@@ -2807,7 +2902,7 @@ function convertOffset(x, y, degrees) {
   // Adds a set of type/listener pairs, e.g. `{click: onClick, mousemove: onMouseMove}`
   function on(obj, types, fn, context) {
 
-  	if (typeof types === 'object') {
+  	if (types && typeof types === 'object') {
   		for (var type in types) {
   			addOne(obj, type, types[type], fn);
   		}
@@ -2832,32 +2927,48 @@ function convertOffset(x, y, degrees) {
   // @alternative
   // @function off(el: HTMLElement, eventMap: Object, context?: Object): this
   // Removes a set of type/listener pairs, e.g. `{click: onClick, mousemove: onMouseMove}`
+
+  // @alternative
+  // @function off(el: HTMLElement, types: String): this
+  // Removes all previously added listeners of given types.
+
+  // @alternative
+  // @function off(el: HTMLElement): this
+  // Removes all previously added listeners from given HTMLElement
   function off(obj, types, fn, context) {
 
-  	if (typeof types === 'object') {
+  	if (arguments.length === 1) {
+  		batchRemove(obj);
+  		delete obj[eventsKey];
+
+  	} else if (types && typeof types === 'object') {
   		for (var type in types) {
   			removeOne(obj, type, types[type], fn);
   		}
-  	} else if (types) {
+
+  	} else {
   		types = splitWords(types);
 
-  		for (var i = 0, len = types.length; i < len; i++) {
-  			removeOne(obj, types[i], fn, context);
+  		if (arguments.length === 2) {
+  			batchRemove(obj, function (type) {
+  				return indexOf(types, type) !== -1;
+  			});
+  		} else {
+  			for (var i = 0, len = types.length; i < len; i++) {
+  				removeOne(obj, types[i], fn, context);
+  			}
   		}
-  	} else {
-  		for (var j in obj[eventsKey]) {
-  			removeOne(obj, j, obj[eventsKey][j]);
-  		}
-  		delete obj[eventsKey];
   	}
 
   	return this;
   }
 
-  function browserFiresNativeDblClick() {
-  	// See https://github.com/w3c/pointerevents/issues/171
-  	if (pointer) {
-  		return !(edge || safari);
+  function batchRemove(obj, filterFn) {
+  	for (var id in obj[eventsKey]) {
+  		var type = id.split(/\d/)[0];
+  		if (!filterFn || filterFn(type)) {
+  			removeOne(obj, type, null, null, id);
+  		}
   	}
   }
 
@@ -2878,17 +2989,17 @@ function convertOffset(x, y, degrees) {
 
   	var originalHandler = handler;
 
-  	if (pointer && type.indexOf('touch') === 0) {
+  	if (!Browser.touchNative && Browser.pointer && type.indexOf('touch') === 0) {
   		// Needs DomEvent.Pointer.js
-  		addPointerListener(obj, type, handler, id);
+  		handler = addPointerListener(obj, type, handler);
 
-  	} else if (touch && (type === 'dblclick') && !browserFiresNativeDblClick()) {
-  		addDoubleTapListener(obj, handler, id);
+  	} else if (Browser.touch && (type === 'dblclick')) {
+  		handler = addDoubleTapListener(obj, handler);
 
   	} else if ('addEventListener' in obj) {
 
   		if (type === 'touchstart' || type === 'touchmove' || type === 'wheel' ||  type === 'mousewheel') {
-  			obj.addEventListener(mouseSubst[type] || type, handler, passiveEvents ? {passive: false} : false);
+  			obj.addEventListener(mouseSubst[type] || type, handler, Browser.passiveEvents ? {passive: false} : false);
 
   		} else if (type === 'mouseenter' || type === 'mouseleave') {
   			handler = function (e) {
@@ -2903,7 +3014,7 @@ function convertOffset(x, y, degrees) {
   			obj.addEventListener(type, originalHandler, false);
   		}
 
-  	} else if ('attachEvent' in obj) {
+  	} else {
   		obj.attachEvent('on' + type, handler);
   	}
 
@@ -2911,24 +3022,23 @@ function convertOffset(x, y, degrees) {
   	obj[eventsKey][id] = handler;
   }
 
-  function removeOne(obj, type, fn, context) {
-
-  	var id = type + stamp(fn) + (context ? '_' + stamp(context) : ''),
-  	    handler = obj[eventsKey] && obj[eventsKey][id];
+  function removeOne(obj, type, fn, context, id) {
+  	id = id || type + stamp(fn) + (context ? '_' + stamp(context) : '');
+  	var handler = obj[eventsKey] && obj[eventsKey][id];
 
   	if (!handler) { return this; }
 
-  	if (pointer && type.indexOf('touch') === 0) {
-  		removePointerListener(obj, type, id);
+  	if (!Browser.touchNative && Browser.pointer && type.indexOf('touch') === 0) {
+  		removePointerListener(obj, type, handler);
 
-  	} else if (touch && (type === 'dblclick') && !browserFiresNativeDblClick()) {
-  		removeDoubleTapListener(obj, id);
+  	} else if (Browser.touch && (type === 'dblclick')) {
+  		removeDoubleTapListener(obj, handler);
 
   	} else if ('removeEventListener' in obj) {
 
   		obj.removeEventListener(mouseSubst[type] || type, handler, false);
 
-  	} else if ('detachEvent' in obj) {
+  	} else {
   		obj.detachEvent('on' + type, handler);
   	}
 
@@ -2951,7 +3061,6 @@ function convertOffset(x, y, degrees) {
   	} else {
   		e.cancelBubble = true;
   	}
-  	skipped(e);
 
   	return this;
   }
@@ -2964,11 +3073,11 @@ function convertOffset(x, y, degrees) {
   }
 
   // @function disableClickPropagation(el: HTMLElement): this
-  // Adds `stopPropagation` to the element's `'click'`, `'doubleclick'`,
+  // Adds `stopPropagation` to the element's `'click'`, `'dblclick'`, `'contextmenu'`,
   // `'mousedown'` and `'touchstart'` events (plus browser variants).
   function disableClickPropagation(el) {
-  	on(el, 'mousedown touchstart dblclick', stopPropagation);
-  	addOne(el, 'click', fakeStop);
+  	on(el, 'mousedown touchstart dblclick contextmenu', stopPropagation);
+  	el['_leaflet_disable_click'] = true;
   	return this;
   }
 
@@ -2994,6 +3103,26 @@ function convertOffset(x, y, degrees) {
   	return this;
   }
 
+  // @function getPropagationPath(ev: DOMEvent): Array
+  // Compatibility polyfill for [`Event.composedPath()`](https://developer.mozilla.org/en-US/docs/Web/API/Event/composedPath).
+  // Returns an array containing the `HTMLElement`s that the given DOM event
+  // should propagate to (if not stopped).
+  function getPropagationPath(ev) {
+  	if (ev.composedPath) {
+  		return ev.composedPath();
+  	}
+
+  	var path = [];
+  	var el = ev.target;
+
+  	while (el) {
+  		path.push(el);
+  		el = el.parentNode;
+  	}
+  	return path;
+  }
+
+
   // @function getMousePosition(ev: DOMEvent, container?: HTMLElement): Point
   // Gets normalized mouse position from a DOM event relative to the
   // `container` (border excluded) or to the whole page if not specified.
@@ -3013,19 +3142,22 @@ function convertOffset(x, y, degrees) {
   	);
   }
 
-  // Chrome on Win scrolls double the pixels as in other platforms (see #4538),
-  // and Firefox scrolls device pixels, not CSS pixels
-  var wheelPxFactor =
-  	(win && chrome) ? 2 * window.devicePixelRatio :
-  	gecko ? window.devicePixelRatio : 1;
 
+  //  except , Safari and
+  // We need double the scroll pixels (see #7403 and #4538) for all Browsers
+  // except OSX (Mac) -> 3x, Chrome running on Linux 1x
+
+  var wheelPxFactor =
+  	(Browser.linux && Browser.chrome) ? window.devicePixelRatio :
+  	Browser.mac ? window.devicePixelRatio * 3 :
+  	window.devicePixelRatio > 0 ? 2 * window.devicePixelRatio : 1;
   // @function getWheelDelta(ev: DOMEvent): Number
   // Gets normalized wheel delta from a wheel DOM event, in vertical
   // pixels scrolled (negative if scrolling down).
   // Events from pointing devices without precise scrolling are mapped to
   // a best guess of 60 pixels.
   function getWheelDelta(e) {
-  	return (edge) ? e.wheelDeltaY / 2 : // Don't trust window-geometry-based delta
+  	return (Browser.edge) ? e.wheelDeltaY / 2 : // Don't trust window-geometry-based delta
   	       (e.deltaY && e.deltaMode === 0) ? -e.deltaY / wheelPxFactor : // Pixels
   	       (e.deltaY && e.deltaMode === 1) ? -e.deltaY * 20 : // Lines
   	       (e.deltaY && e.deltaMode === 2) ? -e.deltaY * 60 : // Pages
@@ -3034,20 +3166,6 @@ function convertOffset(x, y, degrees) {
   	       (e.detail && Math.abs(e.detail) < 32765) ? -e.detail * 20 : // Legacy Moz lines
   	       e.detail ? e.detail / -32765 * 60 : // Legacy Moz pages
   	       0;
-  }
-
-  var skipEvents = {};
-
-  function fakeStop(e) {
-  	// fakes stopPropagation by setting a special event flag, checked/reset with skipped(e)
-  	skipEvents[e.type] = true;
-  }
-
-  function skipped(e) {
-  	var events = skipEvents[e.type];
-  	// reset when checking, as it's only used in map container and propagates outside of the map
-  	skipEvents[e.type] = false;
-  	return events;
   }
 
   // check if element really left/entered the event target (for mouseenter/mouseleave)
@@ -3067,7 +3185,8 @@ function convertOffset(x, y, degrees) {
   	return (related !== el);
   }
 
-  var DomEvent = ({
+  var DomEvent = {
+    __proto__: null,
     on: on,
     off: off,
     stopPropagation: stopPropagation,
@@ -3075,14 +3194,13 @@ function convertOffset(x, y, degrees) {
     disableClickPropagation: disableClickPropagation,
     preventDefault: preventDefault,
     stop: stop,
+    getPropagationPath: getPropagationPath,
     getMousePosition: getMousePosition,
     getWheelDelta: getWheelDelta,
-    fakeStop: fakeStop,
-    skipped: skipped,
     isExternalTarget: isExternalTarget,
     addListener: on,
     removeListener: off
-  });
+  };
 
   /*
    * @class PosAnimation
@@ -3092,8 +3210,21 @@ function convertOffset(x, y, degrees) {
    *
    * @example
    * ```js
-   * var fx = new L.PosAnimation();
-   * fx.run(el, [300, 500], 0.5);
+   * var myPositionMarker = L.marker([48.864716, 2.294694]).addTo(map);
+   *
+   * myPositionMarker.on("click", function() {
+   * 	var pos = map.latLngToLayerPoint(myPositionMarker.getLatLng());
+   * 	pos.y -= 25;
+   * 	var fx = new L.PosAnimation();
+   *
+   * 	fx.once('end',function() {
+   * 		pos.y += 25;
+   * 		fx.run(myPositionMarker._icon, pos, 0.8);
+   * 	});
+   *
+   * 	fx.run(myPositionMarker._icon, pos, 0.3);
+   * });
+   *
    * ```
    *
    * @constructor L.PosAnimation()
@@ -3106,7 +3237,7 @@ function convertOffset(x, y, degrees) {
   	// @method run(el: HTMLElement, newPos: Point, duration?: Number, easeLinearity?: Number)
   	// Run an animation of a given element to a new position, optionally setting
   	// duration in seconds (`0.25` by default) and easing linearity factor (3rd
-  	// argument of the [cubic bezier curve](http://cubic-bezier.com/#0,0,.5,1),
+  	// argument of the [cubic bezier curve](https://cubic-bezier.com/#0,0,.5,1),
   	// `0.5` by default).
   	run: function (el, newPos, duration, easeLinearity) {
   		this.stop();
@@ -3326,7 +3457,7 @@ function convertOffset(x, y, degrees) {
   		this.callInitHooks();
 
   		// don't animate on browsers without hardware-accelerated transitions or old Android/Opera
-  		this._zoomAnimated = TRANSITION && any3d && !mobileOpera &&
+  		this._zoomAnimated = TRANSITION && Browser.any3d && !Browser.mobileOpera &&
   				this.options.zoomAnimation;
 
   		// zoom transitions run with the same duration for all layers, so if one of transitionend events
@@ -3373,7 +3504,7 @@ function convertOffset(x, y, degrees) {
   		}
 
   		// animation didn't start, just reset the map view
-  		this._resetView(center, zoom);
+  		this._resetView(center, zoom, options.pan && options.pan.noMoveStart);
 
   		return this;
   	},
@@ -3391,14 +3522,14 @@ function convertOffset(x, y, degrees) {
   	// @method zoomIn(delta?: Number, options?: Zoom options): this
   	// Increases the zoom of the map by `delta` ([`zoomDelta`](#map-zoomdelta) by default).
   	zoomIn: function (delta, options) {
-  		delta = delta || (any3d ? this.options.zoomDelta : 1);
+  		delta = delta || (Browser.any3d ? this.options.zoomDelta : 1);
   		return this.setZoom(this._zoom + delta, options);
   	},
 
   	// @method zoomOut(delta?: Number, options?: Zoom options): this
   	// Decreases the zoom of the map by `delta` ([`zoomDelta`](#map-zoomdelta) by default).
   	zoomOut: function (delta, options) {
-  		delta = delta || (any3d ? this.options.zoomDelta : 1);
+  		delta = delta || (Browser.any3d ? this.options.zoomDelta : 1);
   		return this.setZoom(this._zoom - delta, options);
   	},
 
@@ -3528,7 +3659,7 @@ function convertOffset(x, y, degrees) {
   	flyTo: function (targetCenter, targetZoom, options) {
 
   		options = options || {};
-  		if (options.animate === false || !any3d) {
+  		if (options.animate === false || !Browser.any3d) {
   			return this.setView(targetCenter, targetZoom, options);
   		}
 
@@ -3616,11 +3747,13 @@ function convertOffset(x, y, degrees) {
   	setMaxBounds: function (bounds) {
   		bounds = toLatLngBounds(bounds);
 
+  		if (this.listens('moveend', this._panInsideMaxBounds)) {
+  			this.off('moveend', this._panInsideMaxBounds);
+  		}
+
   		if (!bounds.isValid()) {
   			this.options.maxBounds = null;
-  			return this.off('moveend', this._panInsideMaxBounds);
-  		} else if (this.options.maxBounds) {
-  			this.off('moveend', this._panInsideMaxBounds);
+  			return this;
   		}
 
   		this.options.maxBounds = bounds;
@@ -3681,10 +3814,9 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	// @method panInside(latlng: LatLng, options?: options): this
+  	// @method panInside(latlng: LatLng, options?: padding options): this
   	// Pans the map the minimum amount to make the `latlng` visible. Use
-  	// `padding`, `paddingTopLeft` and `paddingTopRight` options to fit
-  	// the display to more restricted bounds, like [`fitBounds`](#map-fitbounds).
+  	// padding options to fit the display to more restricted bounds.
   	// If `latlng` is already within the (optionally padded) display bounds,
   	// the map will not be panned.
   	panInside: function (latlng, options) {
@@ -3692,35 +3824,19 @@ function convertOffset(x, y, degrees) {
 
   		var paddingTL = toPoint(options.paddingTopLeft || options.padding || [0, 0]),
   		    paddingBR = toPoint(options.paddingBottomRight || options.padding || [0, 0]),
-  		    center = this.getCenter(),
-  		    pixelCenter = this.project(center),
+  		    pixelCenter = this.project(this.getCenter()),
   		    pixelPoint = this.project(latlng),
   		    pixelBounds = this.getPixelBounds(),
-  		    halfPixelBounds = pixelBounds.getSize().divideBy(2),
-  		    paddedBounds = toBounds([pixelBounds.min.add(paddingTL), pixelBounds.max.subtract(paddingBR)]);
+  		    paddedBounds = toBounds([pixelBounds.min.add(paddingTL), pixelBounds.max.subtract(paddingBR)]),
+  		    paddedSize = paddedBounds.getSize();
 
   		if (!paddedBounds.contains(pixelPoint)) {
   			this._enforcingBounds = true;
-  			var diff = pixelCenter.subtract(pixelPoint),
-  			    newCenter = toPoint(pixelPoint.x + diff.x, pixelPoint.y + diff.y);
-
-  			if (pixelPoint.x < paddedBounds.min.x || pixelPoint.x > paddedBounds.max.x) {
-  				newCenter.x = pixelCenter.x - diff.x;
-  				if (diff.x > 0) {
-  					newCenter.x += halfPixelBounds.x - paddingTL.x;
-  				} else {
-  					newCenter.x -= halfPixelBounds.x - paddingBR.x;
-  				}
-  			}
-  			if (pixelPoint.y < paddedBounds.min.y || pixelPoint.y > paddedBounds.max.y) {
-  				newCenter.y = pixelCenter.y - diff.y;
-  				if (diff.y > 0) {
-  					newCenter.y += halfPixelBounds.y - paddingTL.y;
-  				} else {
-  					newCenter.y -= halfPixelBounds.y - paddingBR.y;
-  				}
-  			}
-  			this.panTo(this.unproject(newCenter), options);
+  			var centerOffset = pixelPoint.subtract(paddedBounds.getCenter());
+  			var offset = paddedBounds.extend(pixelPoint).getSize().subtract(paddedSize);
+  			pixelCenter.x += centerOffset.x < 0 ? -offset.x : offset.x;
+  			pixelCenter.y += centerOffset.y < 0 ? -offset.y : offset.y;
+  			this.panTo(this.unproject(pixelCenter), options);
   			this._enforcingBounds = false;
   		}
   		return this;
@@ -3851,6 +3967,8 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_handleGeolocationError: function (error) {
+  		if (!this._container._leaflet_id) { return; }
+
   		var c = error.code,
   		    message = error.message ||
   		            (c === 1 ? 'permission denied' :
@@ -3870,6 +3988,8 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_handleGeolocationResponse: function (pos) {
+  		if (!this._container._leaflet_id) { return; }
+
   		var lat = pos.coords.latitude,
   		    lng = pos.coords.longitude,
   		    latlng = new LatLng(lat, lng),
@@ -3922,7 +4042,7 @@ function convertOffset(x, y, degrees) {
   	remove: function () {
 
   		this._initEvents(true);
-  		this.off('moveend', this._panInsideMaxBounds);
+  		if (this.options.maxBounds) { this.off('moveend', this._panInsideMaxBounds); }
 
   		if (this._containerId !== this._container._leaflet_id) {
   			throw new Error('Map container is being reused by another instance');
@@ -4003,7 +4123,7 @@ function convertOffset(x, y, degrees) {
   		this._checkIfLoaded();
 
   		if (this._lastCenter && !this._moved()) {
-  			return this._lastCenter;
+  			return this._lastCenter.clone();
   		}
   		return this.layerPointToLatLng(this._getCenterLayerPoint());
   	},
@@ -4054,7 +4174,7 @@ function convertOffset(x, y, degrees) {
   		    se = bounds.getSouthEast(),
   		    size = this.getSize().subtract(padding),
   		    boundsSize = toBounds(this.project(se, zoom), this.project(nw, zoom)).getSize(),
-  		    snap = any3d ? this.options.zoomSnap : 1,
+  		    snap = Browser.any3d ? this.options.zoomSnap : 1,
   		    scalex = size.x / boundsSize.x,
   		    scaley = size.y / boundsSize.y,
   		    scale = inside ? Math.max(scalex, scaley) : Math.min(scalex, scaley);
@@ -4282,18 +4402,18 @@ function convertOffset(x, y, degrees) {
   	_initLayout: function () {
   		var container = this._container;
 
-  		this._fadeAnimated = this.options.fadeAnimation && any3d;
+  		this._fadeAnimated = this.options.fadeAnimation && Browser.any3d;
 
   		addClass(container, 'leaflet-container' +
-  			(touch ? ' leaflet-touch' : '') +
-  			(retina ? ' leaflet-retina' : '') +
-  			(ielt9 ? ' leaflet-oldie' : '') +
-  			(safari ? ' leaflet-safari' : '') +
+  			(Browser.touch ? ' leaflet-touch' : '') +
+  			(Browser.retina ? ' leaflet-retina' : '') +
+  			(Browser.ielt9 ? ' leaflet-oldie' : '') +
+  			(Browser.safari ? ' leaflet-safari' : '') +
   			(this._fadeAnimated ? ' leaflet-fade-anim' : ''));
 
   		var position = getStyle(container, 'position');
 
-  		if (position !== 'absolute' && position !== 'relative' && position !== 'fixed') {
+  		if (position !== 'absolute' && position !== 'relative' && position !== 'fixed' && position !== 'sticky') {
   			container.style.position = 'relative';
   		}
 
@@ -4327,11 +4447,11 @@ function convertOffset(x, y, degrees) {
   		// Pane for `GridLayer`s and `TileLayer`s
   		this.createPane('tilePane');
   		// @pane overlayPane: HTMLElement = 400
-  		// Pane for overlay shadows (e.g. `Marker` shadows)
-  		this.createPane('shadowPane');
-  		// @pane shadowPane: HTMLElement = 500
   		// Pane for vectors (`Path`s, like `Polyline`s and `Polygon`s), `ImageOverlay`s and `VideoOverlay`s
   		this.createPane('overlayPane');
+  		// @pane shadowPane: HTMLElement = 500
+  		// Pane for overlay shadows (e.g. `Marker` shadows)
+  		this.createPane('shadowPane');
   		// @pane markerPane: HTMLElement = 600
   		// Pane for `Icon`s of `Marker`s
   		this.createPane('markerPane');
@@ -4352,7 +4472,7 @@ function convertOffset(x, y, degrees) {
   	// private methods that modify map state
 
   	// @section Map state change events
-  	_resetView: function (center, zoom) {
+  	_resetView: function (center, zoom, noMoveStart) {
   		setPosition(this._mapPane, new Point(0, 0));
 
   		var loading = !this._loaded;
@@ -4363,7 +4483,7 @@ function convertOffset(x, y, degrees) {
 
   		var zoomChanged = this._zoom !== zoom;
   		this
-  			._moveStart(zoomChanged, false)
+  			._moveStart(zoomChanged, noMoveStart)
   			._move(center, zoom)
   			._moveEnd(zoomChanged);
 
@@ -4394,7 +4514,7 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	_move: function (center, zoom, data) {
+  	_move: function (center, zoom, data, supressEvent) {
   		if (zoom === undefined) {
   			zoom = this._zoom;
   		}
@@ -4404,29 +4524,34 @@ function convertOffset(x, y, degrees) {
   		this._lastCenter = center;
   		this._pixelOrigin = this._getNewPixelOrigin(center);
 
-  		// @event zoom: Event
-  		// Fired repeatedly during any change in zoom level, including zoom
-  		// and fly animations.
-  		if (zoomChanged || (data && data.pinch)) {	// Always fire 'zoom' if pinching because #3530
+  		if (!supressEvent) {
+  			// @event zoom: Event
+  			// Fired repeatedly during any change in zoom level,
+  			// including zoom and fly animations.
+  			if (zoomChanged || (data && data.pinch)) {	// Always fire 'zoom' if pinching because #3530
+  				this.fire('zoom', data);
+  			}
+
+  			// @event move: Event
+  			// Fired repeatedly during any movement of the map,
+  			// including pan and fly animations.
+  			this.fire('move', data);
+  		} else if (data && data.pinch) {	// Always fire 'zoom' if pinching because #3530
   			this.fire('zoom', data);
   		}
-
-  		// @event move: Event
-  		// Fired repeatedly during any movement of the map, including pan and
-  		// fly animations.
-  		return this.fire('move', data);
+  		return this;
   	},
 
   	_moveEnd: function (zoomChanged) {
   		// @event zoomend: Event
-  		// Fired when the map has changed, after any animations.
+  		// Fired when the map zoom changed, after any animations.
   		if (zoomChanged) {
   			this.fire('zoomend');
   		}
 
   		// @event moveend: Event
-  		// Fired when the center of the map stops changing (e.g. user stopped
-  		// dragging the map).
+  		// Fired when the center of the map stops changing
+  		// (e.g. user stopped dragging the map or after non-centered zoom).
   		return this.fire('moveend');
   	},
 
@@ -4461,11 +4586,11 @@ function convertOffset(x, y, degrees) {
   	// DOM event handling
 
   	// @section Interaction events
-  	_initEvents: function (remove$$1) {
+  	_initEvents: function (remove) {
   		this._targets = {};
   		this._targets[stamp(this._container)] = this;
 
-  		var onOff = remove$$1 ? off : on;
+  		var onOff = remove ? off : on;
 
   		// @event click: MouseEvent
   		// Fired when the user clicks (or taps) the map.
@@ -4501,8 +4626,8 @@ function convertOffset(x, y, degrees) {
   			onOff(window, 'resize', this._onResize, this);
   		}
 
-  		if (any3d && this.options.transform3DLimit) {
-  			(remove$$1 ? this.off : this.on).call(this, 'moveend', this._onMoveEnd);
+  		if (Browser.any3d && this.options.transform3DLimit) {
+  			(remove ? this.off : this.on).call(this, 'moveend', this._onMoveEnd);
   		}
   	},
 
@@ -4521,7 +4646,7 @@ function convertOffset(x, y, degrees) {
   		var pos = this._getMapPanePos();
   		if (Math.max(Math.abs(pos.x), Math.abs(pos.y)) >= this.options.transform3DLimit) {
   			// https://bugzilla.mozilla.org/show_bug.cgi?id=1203873 but Webkit also have
-  			// a pixel offset on very high values, see: http://jsfiddle.net/dg6r5hhb/
+  			// a pixel offset on very high values, see: https://jsfiddle.net/dg6r5hhb/
   			this._resetView(this.getCenter(), this.getZoom());
   		}
   	},
@@ -4535,7 +4660,7 @@ function convertOffset(x, y, degrees) {
 
   		while (src) {
   			target = this._targets[stamp(src)];
-  			if (target && (type === 'click' || type === 'preclick') && !e._simulated && this._draggableMoved(target)) {
+  			if (target && (type === 'click' || type === 'preclick') && this._draggableMoved(target)) {
   				// Prevent firing click after you just dragged an object.
   				dragging = true;
   				break;
@@ -4548,20 +4673,30 @@ function convertOffset(x, y, degrees) {
   			if (src === this._container) { break; }
   			src = src.parentNode;
   		}
-  		if (!targets.length && !dragging && !isHover && isExternalTarget(src, e)) {
+  		if (!targets.length && !dragging && !isHover && this.listens(type, true)) {
   			targets = [this];
   		}
   		return targets;
   	},
 
+  	_isClickDisabled: function (el) {
+  		while (el && el !== this._container) {
+  			if (el['_leaflet_disable_click']) { return true; }
+  			el = el.parentNode;
+  		}
+  	},
+
   	_handleDOMEvent: function (e) {
-  		if (!this._loaded || skipped(e)) { return; }
+  		var el = (e.target || e.srcElement);
+  		if (!this._loaded || el['_leaflet_disable_events'] || e.type === 'click' && this._isClickDisabled(el)) {
+  			return;
+  		}
 
   		var type = e.type;
 
-  		if (type === 'mousedown' || type === 'keypress' || type === 'keyup' || type === 'keydown') {
+  		if (type === 'mousedown') {
   			// prevents outline when clicking on keyboard-focusable element
-  			preventOutline(e.target || e.srcElement);
+  			preventOutline(el);
   		}
 
   		this._fireDOMEvent(e, type);
@@ -4569,7 +4704,7 @@ function convertOffset(x, y, degrees) {
 
   	_mouseEvents: ['click', 'dblclick', 'mouseover', 'mouseout', 'contextmenu'],
 
-  	_fireDOMEvent: function (e, type, targets) {
+  	_fireDOMEvent: function (e, type, canvasTargets) {
 
   		if (e.type === 'click') {
   			// Fire a synthetic 'preclick' event which propagates up (mainly for closing popups).
@@ -4579,21 +4714,29 @@ function convertOffset(x, y, degrees) {
   			// handlers start running).
   			var synth = extend({}, e);
   			synth.type = 'preclick';
-  			this._fireDOMEvent(synth, synth.type, targets);
+  			this._fireDOMEvent(synth, synth.type, canvasTargets);
   		}
 
-  		if (e._stopped) { return; }
-
   		// Find the layer the event is propagating from and its parents.
-  		targets = (targets || []).concat(this._findEventTargets(e, type));
+  		var targets = this._findEventTargets(e, type);
+
+  		if (canvasTargets) {
+  			var filtered = []; // pick only targets with listeners
+  			for (var i = 0; i < canvasTargets.length; i++) {
+  				if (canvasTargets[i].listens(type, true)) {
+  					filtered.push(canvasTargets[i]);
+  				}
+  			}
+  			targets = filtered.concat(targets);
+  		}
 
   		if (!targets.length) { return; }
 
-  		var target = targets[0];
-  		if (type === 'contextmenu' && target.listens(type, true)) {
+  		if (type === 'contextmenu') {
   			preventDefault(e);
   		}
 
+  		var target = targets[0];
   		var data = {
   			originalEvent: e
   		};
@@ -4606,7 +4749,7 @@ function convertOffset(x, y, degrees) {
   			data.latlng = isMarker ? target.getLatLng() : this.layerPointToLatLng(data.layerPoint);
   		}
 
-  		for (var i = 0; i < targets.length; i++) {
+  		for (i = 0; i < targets.length; i++) {
   			targets[i].fire(type, data, true);
   			if (data.originalEvent._stopped ||
   				(targets[i].options.bubblingMouseEvents === false && indexOf(this._mouseEvents, type) !== -1)) { return; }
@@ -4701,7 +4844,7 @@ function convertOffset(x, y, degrees) {
   		// If offset is less than a pixel, ignore.
   		// This prevents unstable projections from getting into
   		// an infinite loop of tiny offsets.
-  		if (offset.round().equals([0, 0])) {
+  		if (Math.abs(offset.x) <= 1 && Math.abs(offset.y) <= 1) {
   			return center;
   		}
 
@@ -4742,7 +4885,7 @@ function convertOffset(x, y, degrees) {
   	_limitZoom: function (zoom) {
   		var min = this.getMinZoom(),
   		    max = this.getMaxZoom(),
-  		    snap = any3d ? this.options.zoomSnap : 1;
+  		    snap = Browser.any3d ? this.options.zoomSnap : 1;
   		if (snap) {
   			zoom = Math.round(zoom / snap) * snap;
   		}
@@ -4833,7 +4976,7 @@ function convertOffset(x, y, degrees) {
 
   		requestAnimFrame(function () {
   			this
-  			    ._moveStart(true, false)
+  			    ._moveStart(true, options.noMoveStart || false)
   			    ._animateZoom(center, zoom, true);
   		}, this);
 
@@ -4862,6 +5005,12 @@ function convertOffset(x, y, degrees) {
   			noUpdate: noUpdate
   		});
 
+  		if (!this._tempFireZoomEvent) {
+  			this._tempFireZoomEvent = this._zoom !== this._animateToZoom;
+  		}
+
+  		this._move(this._animateToCenter, this._animateToZoom, undefined, true);
+
   		// Work around webkit not firing 'transitionend', see https://github.com/Leaflet/Leaflet/issues/3689, 2693
   		setTimeout(bind(this._onZoomTransitionEnd, this), 250);
   	},
@@ -4875,12 +5024,16 @@ function convertOffset(x, y, degrees) {
 
   		this._animatingZoom = false;
 
-  		this._move(this._animateToCenter, this._animateToZoom);
+  		this._move(this._animateToCenter, this._animateToZoom, undefined, true);
 
-  		// This anim frame should prevent an obscure iOS webkit tile loading race condition.
-  		requestAnimFrame(function () {
-  			this._moveEnd(true);
-  		}, this);
+  		if (this._tempFireZoomEvent) {
+  			this.fire('zoom');
+  		}
+  		delete this._tempFireZoomEvent;
+
+  		this.fire('move');
+
+  		this._moveEnd(true);
   	}
   });
 
@@ -4909,7 +5062,7 @@ function convertOffset(x, y, degrees) {
 
   var Control = Class.extend({
   	// @section
-  	// @aka Control options
+  	// @aka Control Options
   	options: {
   		// @option position: String = 'topright'
   		// The position of the control (one of the map corners). Possible values are `'topleft'`,
@@ -5072,7 +5225,7 @@ function convertOffset(x, y, degrees) {
    * @aka L.Control.Layers
    * @inherits Control
    *
-   * The layers control gives users the ability to switch between different base layers and switch overlays on/off (check out the [detailed example](http://leafletjs.com/examples/layers-control/)). Extends `Control`.
+   * The layers control gives users the ability to switch between different base layers and switch overlays on/off (check out the [detailed example](https://leafletjs.com/examples/layers-control/)). Extends `Control`.
    *
    * @example
    *
@@ -5111,7 +5264,7 @@ function convertOffset(x, y, degrees) {
   	// @aka Control.Layers options
   	options: {
   		// @option collapsed: Boolean = true
-  		// If `true`, the control will be collapsed into an icon and expanded on mouse hover or touch.
+  		// If `true`, the control will be collapsed into an icon and expanded on mouse hover, touch, or keyboard activation.
   		collapsed: true,
   		position: 'topright',
 
@@ -5146,6 +5299,7 @@ function convertOffset(x, y, degrees) {
   		this._layers = [];
   		this._lastZIndex = 0;
   		this._handlingClick = false;
+  		this._preventClick = false;
 
   		for (var i in baseLayers) {
   			this._addLayer(baseLayers[i], i);
@@ -5249,24 +5403,29 @@ function convertOffset(x, y, degrees) {
   		if (collapsed) {
   			this._map.on('click', this.collapse, this);
 
-  			if (!android) {
-  				on(container, {
-  					mouseenter: this.expand,
-  					mouseleave: this.collapse
-  				}, this);
-  			}
+  			on(container, {
+  				mouseenter: this._expandSafely,
+  				mouseleave: this.collapse
+  			}, this);
   		}
 
   		var link = this._layersLink = create$1('a', className + '-toggle', container);
   		link.href = '#';
   		link.title = 'Layers';
+  		link.setAttribute('role', 'button');
 
-  		if (touch) {
-  			on(link, 'click', stop);
-  			on(link, 'click', this.expand, this);
-  		} else {
-  			on(link, 'focus', this.expand, this);
-  		}
+  		on(link, {
+  			keydown: function (e) {
+  				if (e.keyCode === 13) {
+  					this._expandSafely();
+  				}
+  			},
+  			// Certain screen readers intercept the key event and instead send a click event
+  			click: function (e) {
+  				preventDefault(e);
+  				this._expandSafely();
+  			}
+  		}, this);
 
   		if (!collapsed) {
   			this.expand();
@@ -5366,7 +5525,7 @@ function convertOffset(x, y, degrees) {
   		}
   	},
 
-  	// IE7 bugs out if you create a radio dynamically, so you have to do it this hacky way (see http://bit.ly/PqYLBe)
+  	// IE7 bugs out if you create a radio dynamically, so you have to do it this hacky way (see https://stackoverflow.com/a/119079)
   	_createRadioElement: function (name, checked) {
 
   		var radioHtml = '<input type="radio" class="leaflet-control-layers-selector" name="' +
@@ -5402,7 +5561,7 @@ function convertOffset(x, y, degrees) {
 
   		// Helps from preventing layer control flicker when checkboxes are disabled
   		// https://github.com/Leaflet/Leaflet/issues/2771
-  		var holder = document.createElement('div');
+  		var holder = document.createElement('span');
 
   		label.appendChild(holder);
   		holder.appendChild(input);
@@ -5416,6 +5575,11 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_onInputClick: function () {
+  		// expanding the control on mobile with a click can cause adding a layer - we don't want this
+  		if (this._preventClick) {
+  			return;
+  		}
+
   		var inputs = this._layerControlInputs,
   		    input, layer;
   		var addedLayers = [],
@@ -5473,14 +5637,16 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	_expand: function () {
-  		// Backward compatibility, remove me in 1.1.
-  		return this.expand();
-  	},
-
-  	_collapse: function () {
-  		// Backward compatibility, remove me in 1.1.
-  		return this.collapse();
+  	_expandSafely: function () {
+  		var section = this._section;
+  		this._preventClick = true;
+  		on(section, 'click', preventDefault);
+  		this.expand();
+  		var that = this;
+  		setTimeout(function () {
+  			off(section, 'click', preventDefault);
+  			that._preventClick = false;
+  		});
   	}
 
   });
@@ -5506,17 +5672,17 @@ function convertOffset(x, y, degrees) {
   	options: {
   		position: 'topleft',
 
-  		// @option zoomInText: String = '+'
+  		// @option zoomInText: String = '<span aria-hidden="true">+</span>'
   		// The text set on the 'zoom in' button.
-  		zoomInText: '+',
+  		zoomInText: '<span aria-hidden="true">+</span>',
 
   		// @option zoomInTitle: String = 'Zoom in'
   		// The title set on the 'zoom in' button.
   		zoomInTitle: 'Zoom in',
 
-  		// @option zoomOutText: String = '&#x2212;'
+  		// @option zoomOutText: String = '<span aria-hidden="true">&#x2212;</span>'
   		// The text set on the 'zoom out' button.
-  		zoomOutText: '&#x2212;',
+  		zoomOutText: '<span aria-hidden="true">&#x2212;</span>',
 
   		// @option zoomOutTitle: String = 'Zoom out'
   		// The title set on the 'zoom out' button.
@@ -5593,12 +5759,16 @@ function convertOffset(x, y, degrees) {
 
   		removeClass(this._zoomInButton, className);
   		removeClass(this._zoomOutButton, className);
+  		this._zoomInButton.setAttribute('aria-disabled', 'false');
+  		this._zoomOutButton.setAttribute('aria-disabled', 'false');
 
   		if (this._disabled || map._zoom === map.getMinZoom()) {
   			addClass(this._zoomOutButton, className);
+  			this._zoomOutButton.setAttribute('aria-disabled', 'true');
   		}
   		if (this._disabled || map._zoom === map.getMaxZoom()) {
   			addClass(this._zoomInButton, className);
+  			this._zoomInButton.setAttribute('aria-disabled', 'true');
   		}
   	}
   });
@@ -5758,6 +5928,9 @@ function convertOffset(x, y, degrees) {
   	return new Scale(options);
   };
 
+  var ukrainianFlag = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"/><path fill="#FFD500" d="M0 4h12v3H0z"/><path fill="#E0BC00" d="M0 7h12v1H0z"/></svg>';
+
+
   /*
    * @class Control.Attribution
    * @aka L.Control.Attribution
@@ -5772,9 +5945,9 @@ function convertOffset(x, y, degrees) {
   	options: {
   		position: 'bottomright',
 
-  		// @option prefix: String = 'Leaflet'
+  		// @option prefix: String|false = 'Leaflet'
   		// The HTML text shown before the attributions. Pass `false` to disable.
-  		prefix: '<a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>'
+  		prefix: '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">' + (Browser.inlineSvg ? ukrainianFlag + ' ' : '') + 'Leaflet</a>'
   	},
 
   	initialize: function (options) {
@@ -5797,11 +5970,26 @@ function convertOffset(x, y, degrees) {
 
   		this._update();
 
+  		map.on('layeradd', this._addAttribution, this);
+
   		return this._container;
   	},
 
-  	// @method setPrefix(prefix: String): this
-  	// Sets the text before the attributions.
+  	onRemove: function (map) {
+  		map.off('layeradd', this._addAttribution, this);
+  	},
+
+  	_addAttribution: function (ev) {
+  		if (ev.layer.getAttribution) {
+  			this.addAttribution(ev.layer.getAttribution());
+  			ev.layer.once('remove', function () {
+  				this.removeAttribution(ev.layer.getAttribution());
+  			}, this);
+  		}
+  	},
+
+  	// @method setPrefix(prefix: String|false): this
+  	// The HTML text shown before the attributions. Pass `false` to disable.
   	setPrefix: function (prefix) {
   		this.options.prefix = prefix;
   		this._update();
@@ -5809,7 +5997,7 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method addAttribution(text: String): this
-  	// Adds an attribution text (e.g. `'Vector data &copy; Mapbox'`).
+  	// Adds an attribution text (e.g. `'&copy; OpenStreetMap contributors'`).
   	addAttribution: function (text) {
   		if (!text) { return this; }
 
@@ -5856,7 +6044,7 @@ function convertOffset(x, y, degrees) {
   			prefixAndAttribs.push(attribs.join(', '));
   		}
 
-  		this._container.innerHTML = prefixAndAttribs.join(' | ');
+  		this._container.innerHTML = prefixAndAttribs.join(' <span aria-hidden="true">|</span> ');
   	}
   });
 
@@ -5965,20 +6153,7 @@ function convertOffset(x, y, degrees) {
    * ```
    */
 
-  var START = touch ? 'touchstart mousedown' : 'mousedown';
-  var END = {
-  	mousedown: 'mouseup',
-  	touchstart: 'touchend',
-  	pointerdown: 'touchend',
-  	MSPointerDown: 'touchend'
-  };
-  var MOVE = {
-  	mousedown: 'mousemove',
-  	touchstart: 'touchmove',
-  	pointerdown: 'touchmove',
-  	MSPointerDown: 'touchmove'
-  };
-
+  var START = Browser.touch ? 'touchstart mousedown' : 'mousedown';
 
   var Draggable = Evented.extend({
 
@@ -5993,12 +6168,12 @@ function convertOffset(x, y, degrees) {
 
   	// @constructor L.Draggable(el: HTMLElement, dragHandle?: HTMLElement, preventOutline?: Boolean, options?: Draggable options)
   	// Creates a `Draggable` object for moving `el` when you start dragging the `dragHandle` element (equals `el` itself by default).
-  	initialize: function (element, dragStartTarget, preventOutline$$1, options) {
+  	initialize: function (element, dragStartTarget, preventOutline, options) {
   		setOptions(this, options);
 
   		this._element = element;
   		this._dragStartTarget = dragStartTarget || element;
-  		this._preventOutline = preventOutline$$1;
+  		this._preventOutline = preventOutline;
   	},
 
   	// @method enable()
@@ -6019,7 +6194,7 @@ function convertOffset(x, y, degrees) {
   		// If we're currently dragging this draggable,
   		// disabling it counts as first ending the drag.
   		if (Draggable._dragging === this) {
-  			this.finishDrag();
+  			this.finishDrag(true);
   		}
 
   		off(this._dragStartTarget, START, this._onDown, this);
@@ -6029,16 +6204,21 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_onDown: function (e) {
-  		// Ignore simulated events, since we handle both touch and
-  		// mouse explicitly; otherwise we risk getting duplicates of
-  		// touch events, see #4315.
-  		// Also ignore the event if disabled; this happens in IE11
+  		// Ignore the event if disabled; this happens in IE11
   		// under some circumstances, see #3666.
-  		if (e._simulated || !this._enabled) { return; }
+  		if (!this._enabled) { return; }
 
   		this._moved = false;
 
   		if (hasClass(this._element, 'leaflet-zoom-anim')) { return; }
+
+  		if (e.touches && e.touches.length !== 1) {
+  			// Finish dragging to avoid conflict with touchZoom
+  			if (Draggable._dragging === this) {
+  				this.finishDrag();
+  			}
+  			return;
+  		}
 
   		if (Draggable._dragging || e.shiftKey || ((e.which !== 1) && (e.button !== 1) && !e.touches)) { return; }
   		Draggable._dragging = this;  // Prevent dragging multiple objects at once.
@@ -6060,21 +6240,20 @@ function convertOffset(x, y, degrees) {
   		    sizedParent = getSizedParentNode(this._element);
 
   		this._startPoint = new Point(first.clientX, first.clientY);
+  		this._startPos = getPosition(this._element);
 
   		// Cache the scale, so that we can continuously compensate for it during drag (_onMove).
   		this._parentScale = getScale(sizedParent);
 
-  		on(document, MOVE[e.type], this._onMove, this);
-  		on(document, END[e.type], this._onUp, this);
+  		var mouseevent = e.type === 'mousedown';
+  		on(document, mouseevent ? 'mousemove' : 'touchmove', this._onMove, this);
+  		on(document, mouseevent ? 'mouseup' : 'touchend touchcancel', this._onUp, this);
   	},
 
   	_onMove: function (e) {
-  		// Ignore simulated events, since we handle both touch and
-  		// mouse explicitly; otherwise we risk getting duplicates of
-  		// touch events, see #4315.
-  		// Also ignore the event if disabled; this happens in IE11
+  		// Ignore the event if disabled; this happens in IE11
   		// under some circumstances, see #3666.
-  		if (e._simulated || !this._enabled) { return; }
+  		if (!this._enabled) { return; }
 
   		if (e.touches && e.touches.length > 1) {
   			this._moved = true;
@@ -6101,7 +6280,6 @@ function convertOffset(x, y, degrees) {
   			this.fire('dragstart');
 
   			this._moved = true;
-  			this._startPos = getPosition(this._element).subtract(offset);
 
   			addClass(document.body, 'leaflet-dragging');
 
@@ -6117,9 +6295,8 @@ function convertOffset(x, y, degrees) {
   		this._newPos = this._startPos.add(offset);
   		this._moving = true;
 
-  		cancelAnimFrame(this._animRequest);
   		this._lastEvent = e;
-  		this._animRequest = requestAnimFrame(this._updatePosition, this, true);
+  		this._updatePosition();
   	},
 
   	_updatePosition: function () {
@@ -6136,17 +6313,14 @@ function convertOffset(x, y, degrees) {
   		this.fire('drag', e);
   	},
 
-  	_onUp: function (e) {
-  		// Ignore simulated events, since we handle both touch and
-  		// mouse explicitly; otherwise we risk getting duplicates of
-  		// touch events, see #4315.
-  		// Also ignore the event if disabled; this happens in IE11
+  	_onUp: function () {
+  		// Ignore the event if disabled; this happens in IE11
   		// under some circumstances, see #3666.
-  		if (e._simulated || !this._enabled) { return; }
+  		if (!this._enabled) { return; }
   		this.finishDrag();
   	},
 
-  	finishDrag: function () {
+  	finishDrag: function (noInertia) {
   		removeClass(document.body, 'leaflet-dragging');
 
   		if (this._lastTarget) {
@@ -6154,30 +6328,161 @@ function convertOffset(x, y, degrees) {
   			this._lastTarget = null;
   		}
 
-  		for (var i in MOVE) {
-  			off(document, MOVE[i], this._onMove, this);
-  			off(document, END[i], this._onUp, this);
-  		}
+  		off(document, 'mousemove touchmove', this._onMove, this);
+  		off(document, 'mouseup touchend touchcancel', this._onUp, this);
 
   		enableImageDrag();
   		enableTextSelection();
 
-  		if (this._moved && this._moving) {
-  			// ensure drag is not fired after dragend
-  			cancelAnimFrame(this._animRequest);
-
-  			// @event dragend: DragEndEvent
-  			// Fired when the drag ends.
-  			this.fire('dragend', {
-  				distance: this._newPos.distanceTo(this._startPos)
-  			});
-  		}
+  		var fireDragend = this._moved && this._moving;
 
   		this._moving = false;
   		Draggable._dragging = false;
+
+  		if (fireDragend) {
+  			// @event dragend: DragEndEvent
+  			// Fired when the drag ends.
+  			this.fire('dragend', {
+  				noInertia: noInertia,
+  				distance: this._newPos.distanceTo(this._startPos)
+  			});
+  		}
   	}
 
   });
+
+  /*
+   * @namespace PolyUtil
+   * Various utility functions for polygon geometries.
+   */
+
+  /* @function clipPolygon(points: Point[], bounds: Bounds, round?: Boolean): Point[]
+   * Clips the polygon geometry defined by the given `points` by the given bounds (using the [Sutherland-Hodgman algorithm](https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm)).
+   * Used by Leaflet to only show polygon points that are on the screen or near, increasing
+   * performance. Note that polygon points needs different algorithm for clipping
+   * than polyline, so there's a separate method for it.
+   */
+  function clipPolygon(points, bounds, round) {
+  	var clippedPoints,
+  	    edges = [1, 4, 2, 8],
+  	    i, j, k,
+  	    a, b,
+  	    len, edge, p;
+
+  	for (i = 0, len = points.length; i < len; i++) {
+  		points[i]._code = _getBitCode(points[i], bounds);
+  	}
+
+  	// for each edge (left, bottom, right, top)
+  	for (k = 0; k < 4; k++) {
+  		edge = edges[k];
+  		clippedPoints = [];
+
+  		for (i = 0, len = points.length, j = len - 1; i < len; j = i++) {
+  			a = points[i];
+  			b = points[j];
+
+  			// if a is inside the clip window
+  			if (!(a._code & edge)) {
+  				// if b is outside the clip window (a->b goes out of screen)
+  				if (b._code & edge) {
+  					p = _getEdgeIntersection(b, a, edge, bounds, round);
+  					p._code = _getBitCode(p, bounds);
+  					clippedPoints.push(p);
+  				}
+  				clippedPoints.push(a);
+
+  			// else if b is inside the clip window (a->b enters the screen)
+  			} else if (!(b._code & edge)) {
+  				p = _getEdgeIntersection(b, a, edge, bounds, round);
+  				p._code = _getBitCode(p, bounds);
+  				clippedPoints.push(p);
+  			}
+  		}
+  		points = clippedPoints;
+  	}
+
+  	return points;
+  }
+
+  /* @function polygonCenter(latlngs: LatLng[], crs: CRS): LatLng
+   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polygon.
+   */
+  function polygonCenter(latlngs, crs) {
+  	var i, j, p1, p2, f, area, x, y, center;
+
+  	if (!latlngs || latlngs.length === 0) {
+  		throw new Error('latlngs not passed');
+  	}
+
+  	if (!isFlat(latlngs)) {
+  		console.warn('latlngs are not flat! Only the first ring will be used');
+  		latlngs = latlngs[0];
+  	}
+
+  	var centroidLatLng = toLatLng([0, 0]);
+
+  	var bounds = toLatLngBounds(latlngs);
+  	var areaBounds = bounds.getNorthWest().distanceTo(bounds.getSouthWest()) * bounds.getNorthEast().distanceTo(bounds.getNorthWest());
+  	// tests showed that below 1700 rounding errors are happening
+  	if (areaBounds < 1700) {
+  		// getting a inexact center, to move the latlngs near to [0, 0] to prevent rounding errors
+  		centroidLatLng = centroid(latlngs);
+  	}
+
+  	var len = latlngs.length;
+  	var points = [];
+  	for (i = 0; i < len; i++) {
+  		var latlng = toLatLng(latlngs[i]);
+  		points.push(crs.project(toLatLng([latlng.lat - centroidLatLng.lat, latlng.lng - centroidLatLng.lng])));
+  	}
+
+  	area = x = y = 0;
+
+  	// polygon centroid algorithm;
+  	for (i = 0, j = len - 1; i < len; j = i++) {
+  		p1 = points[i];
+  		p2 = points[j];
+
+  		f = p1.y * p2.x - p2.y * p1.x;
+  		x += (p1.x + p2.x) * f;
+  		y += (p1.y + p2.y) * f;
+  		area += f * 3;
+  	}
+
+  	if (area === 0) {
+  		// Polygon is so small that all points are on same pixel.
+  		center = points[0];
+  	} else {
+  		center = [x / area, y / area];
+  	}
+
+  	var latlngCenter = crs.unproject(toPoint(center));
+  	return toLatLng([latlngCenter.lat + centroidLatLng.lat, latlngCenter.lng + centroidLatLng.lng]);
+  }
+
+  /* @function centroid(latlngs: LatLng[]): LatLng
+   * Returns the 'center of mass' of the passed LatLngs.
+   */
+  function centroid(coords) {
+  	var latSum = 0;
+  	var lngSum = 0;
+  	var len = 0;
+  	for (var i = 0; i < coords.length; i++) {
+  		var latlng = toLatLng(coords[i]);
+  		latSum += latlng.lat;
+  		lngSum += latlng.lng;
+  		len++;
+  	}
+  	return toLatLng([latSum / len, lngSum / len]);
+  }
+
+  var PolyUtil = {
+    __proto__: null,
+    clipPolygon: clipPolygon,
+    polygonCenter: polygonCenter,
+    centroid: centroid
+  };
 
   /*
    * @namespace LineUtil
@@ -6191,11 +6496,11 @@ function convertOffset(x, y, degrees) {
   // @function simplify(points: Point[], tolerance: Number): Point[]
   // Dramatically reduces the number of points in a polyline while retaining
   // its shape and returns a new array of simplified points, using the
-  // [Douglas-Peucker algorithm](http://en.wikipedia.org/wiki/Douglas-Peucker_algorithm).
+  // [Ramer-Douglas-Peucker algorithm](https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm).
   // Used for a huge performance boost when processing/displaying Leaflet polylines for
   // each zoom level and also reducing visual noise. tolerance affects the amount of
   // simplification (lesser value means higher quality but slower and with more points).
-  // Also released as a separated micro-library [Simplify.js](http://mourner.github.com/simplify-js/).
+  // Also released as a separated micro-library [Simplify.js](https://mourner.github.io/simplify-js/).
   function simplify(points, tolerance) {
   	if (!tolerance || !points.length) {
   		return points.slice();
@@ -6224,7 +6529,7 @@ function convertOffset(x, y, degrees) {
   	return _sqClosestPointOnSegment(p, p1, p2);
   }
 
-  // Douglas-Peucker simplification, see http://en.wikipedia.org/wiki/Douglas-Peucker_algorithm
+  // Ramer-Douglas-Peucker simplification, see https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm
   function _simplifyDP(points, sqTolerance) {
 
   	var len = points.length,
@@ -6418,7 +6723,69 @@ function convertOffset(x, y, degrees) {
   	return isFlat(latlngs);
   }
 
-  var LineUtil = ({
+  /* @function polylineCenter(latlngs: LatLng[], crs: CRS): LatLng
+   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polyline.
+   */
+  function polylineCenter(latlngs, crs) {
+  	var i, halfDist, segDist, dist, p1, p2, ratio, center;
+
+  	if (!latlngs || latlngs.length === 0) {
+  		throw new Error('latlngs not passed');
+  	}
+
+  	if (!isFlat(latlngs)) {
+  		console.warn('latlngs are not flat! Only the first ring will be used');
+  		latlngs = latlngs[0];
+  	}
+
+  	var centroidLatLng = toLatLng([0, 0]);
+
+  	var bounds = toLatLngBounds(latlngs);
+  	var areaBounds = bounds.getNorthWest().distanceTo(bounds.getSouthWest()) * bounds.getNorthEast().distanceTo(bounds.getNorthWest());
+  	// tests showed that below 1700 rounding errors are happening
+  	if (areaBounds < 1700) {
+  		// getting a inexact center, to move the latlngs near to [0, 0] to prevent rounding errors
+  		centroidLatLng = centroid(latlngs);
+  	}
+
+  	var len = latlngs.length;
+  	var points = [];
+  	for (i = 0; i < len; i++) {
+  		var latlng = toLatLng(latlngs[i]);
+  		points.push(crs.project(toLatLng([latlng.lat - centroidLatLng.lat, latlng.lng - centroidLatLng.lng])));
+  	}
+
+  	for (i = 0, halfDist = 0; i < len - 1; i++) {
+  		halfDist += points[i].distanceTo(points[i + 1]) / 2;
+  	}
+
+  	// The line is so small in the current view that all points are on the same pixel.
+  	if (halfDist === 0) {
+  		center = points[0];
+  	} else {
+  		for (i = 0, dist = 0; i < len - 1; i++) {
+  			p1 = points[i];
+  			p2 = points[i + 1];
+  			segDist = p1.distanceTo(p2);
+  			dist += segDist;
+
+  			if (dist > halfDist) {
+  				ratio = (dist - halfDist) / segDist;
+  				center = [
+  					p2.x - ratio * (p2.x - p1.x),
+  					p2.y - ratio * (p2.y - p1.y)
+  				];
+  				break;
+  			}
+  		}
+  	}
+
+  	var latlngCenter = crs.unproject(toPoint(center));
+  	return toLatLng([latlngCenter.lat + centroidLatLng.lat, latlngCenter.lng + centroidLatLng.lng]);
+  }
+
+  var LineUtil = {
+    __proto__: null,
     simplify: simplify,
     pointToSegmentDistance: pointToSegmentDistance,
     closestPointOnSegment: closestPointOnSegment,
@@ -6427,66 +6794,9 @@ function convertOffset(x, y, degrees) {
     _getBitCode: _getBitCode,
     _sqClosestPointOnSegment: _sqClosestPointOnSegment,
     isFlat: isFlat,
-    _flat: _flat
-  });
-
-  /*
-   * @namespace PolyUtil
-   * Various utility functions for polygon geometries.
-   */
-
-  /* @function clipPolygon(points: Point[], bounds: Bounds, round?: Boolean): Point[]
-   * Clips the polygon geometry defined by the given `points` by the given bounds (using the [Sutherland-Hodgman algorithm](https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm)).
-   * Used by Leaflet to only show polygon points that are on the screen or near, increasing
-   * performance. Note that polygon points needs different algorithm for clipping
-   * than polyline, so there's a separate method for it.
-   */
-  function clipPolygon(points, bounds, round) {
-  	var clippedPoints,
-  	    edges = [1, 4, 2, 8],
-  	    i, j, k,
-  	    a, b,
-  	    len, edge, p;
-
-  	for (i = 0, len = points.length; i < len; i++) {
-  		points[i]._code = _getBitCode(points[i], bounds);
-  	}
-
-  	// for each edge (left, bottom, right, top)
-  	for (k = 0; k < 4; k++) {
-  		edge = edges[k];
-  		clippedPoints = [];
-
-  		for (i = 0, len = points.length, j = len - 1; i < len; j = i++) {
-  			a = points[i];
-  			b = points[j];
-
-  			// if a is inside the clip window
-  			if (!(a._code & edge)) {
-  				// if b is outside the clip window (a->b goes out of screen)
-  				if (b._code & edge) {
-  					p = _getEdgeIntersection(b, a, edge, bounds, round);
-  					p._code = _getBitCode(p, bounds);
-  					clippedPoints.push(p);
-  				}
-  				clippedPoints.push(a);
-
-  			// else if b is inside the clip window (a->b enters the screen)
-  			} else if (!(b._code & edge)) {
-  				p = _getEdgeIntersection(b, a, edge, bounds, round);
-  				p._code = _getBitCode(p, bounds);
-  				clippedPoints.push(p);
-  			}
-  		}
-  		points = clippedPoints;
-  	}
-
-  	return points;
-  }
-
-  var PolyUtil = ({
-    clipPolygon: clipPolygon
-  });
+    _flat: _flat,
+    polylineCenter: polylineCenter
+  };
 
   /*
    * @namespace Projection
@@ -6563,7 +6873,7 @@ function convertOffset(x, y, degrees) {
    * @class Projection
 
    * An object with methods for projecting geographical coordinates of the world onto
-   * a flat surface (and back). See [Map projection](http://en.wikipedia.org/wiki/Map_projection).
+   * a flat surface (and back). See [Map projection](https://en.wikipedia.org/wiki/Map_projection).
 
    * @property bounds: Bounds
    * The bounds (specified in CRS units) where the projection is valid
@@ -6582,11 +6892,12 @@ function convertOffset(x, y, degrees) {
 
    */
 
-  var index = ({
+  var index = {
+    __proto__: null,
     LonLat: LonLat,
     Mercator: Mercator,
     SphericalMercator: SphericalMercator
-  });
+  };
 
   /*
    * @namespace CRS
@@ -6773,10 +7084,6 @@ function convertOffset(x, y, degrees) {
 
   		this.onAdd(map);
 
-  		if (this.getAttribution && map.attributionControl) {
-  			map.attributionControl.addAttribution(this.getAttribution());
-  		}
-
   		this.fire('add');
   		map.fire('layeradd', {layer: this});
   	}
@@ -6849,10 +7156,6 @@ function convertOffset(x, y, degrees) {
   			layer.onRemove(this);
   		}
 
-  		if (layer.getAttribution && this.attributionControl) {
-  			this.attributionControl.removeAttribution(layer.getAttribution());
-  		}
-
   		delete this._layers[id];
 
   		if (this._loaded) {
@@ -6868,7 +7171,7 @@ function convertOffset(x, y, degrees) {
   	// @method hasLayer(layer: Layer): Boolean
   	// Returns `true` if the given layer is currently added to the map
   	hasLayer: function (layer) {
-  		return !!layer && (stamp(layer) in this._layers);
+  		return stamp(layer) in this._layers;
   	},
 
   	/* @method eachLayer(fn: Function, context?: Object): this
@@ -6895,7 +7198,7 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_addZoomLimit: function (layer) {
-  		if (isNaN(layer.options.maxZoom) || !isNaN(layer.options.minZoom)) {
+  		if (!isNaN(layer.options.maxZoom) || !isNaN(layer.options.minZoom)) {
   			this._zoomBoundLayers[stamp(layer)] = layer;
   			this._updateZoomLevels();
   		}
@@ -6945,7 +7248,7 @@ function convertOffset(x, y, degrees) {
   /*
    * @class LayerGroup
    * @aka L.LayerGroup
-   * @inherits Layer
+   * @inherits Interactive layer
    *
    * Used to group several layers and handle them as one. If you add it to the map,
    * any layers added or removed from the group will be added/removed on the map as
@@ -7013,7 +7316,6 @@ function convertOffset(x, y, degrees) {
   	// @method hasLayer(id: Number): Boolean
   	// Returns `true` if the given internal ID is currently added to the group.
   	hasLayer: function (layer) {
-  		if (!layer) { return false; }
   		var layerId = typeof layer === 'number' ? layer : this.getLayerId(layer);
   		return layerId in this._layers;
   	},
@@ -7263,7 +7565,13 @@ function convertOffset(x, y, degrees) {
 
   	options: {
   		popupAnchor: [0, 0],
-  		tooltipAnchor: [0, 0]
+  		tooltipAnchor: [0, 0],
+
+  		// @option crossOrigin: Boolean|String = false
+  		// Whether the crossOrigin attribute will be added to the tiles.
+  		// If a String is provided, all tiles will have their crossOrigin attribute set to the String provided. This is needed if you want to access tile pixel data.
+  		// Refer to [CORS Settings](https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_settings_attributes) for valid String values.
+  		crossOrigin: false
   	},
 
   	initialize: function (options) {
@@ -7295,6 +7603,10 @@ function convertOffset(x, y, degrees) {
 
   		var img = this._createImg(src, oldIcon && oldIcon.tagName === 'IMG' ? oldIcon : null);
   		this._setIconStyles(img, name);
+
+  		if (this.options.crossOrigin || this.options.crossOrigin === '') {
+  			img.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin;
+  		}
 
   		return img;
   	},
@@ -7331,7 +7643,7 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_getIconUrl: function (name) {
-  		return retina && this.options[name + 'RetinaUrl'] || this.options[name + 'Url'];
+  		return Browser.retina && this.options[name + 'RetinaUrl'] || this.options[name + 'Url'];
   	}
   });
 
@@ -7372,7 +7684,7 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_getIconUrl: function (name) {
-  		if (!IconDefault.imagePath) {	// Deprecated, backwards-compatibility only
+  		if (typeof IconDefault.imagePath !== 'string') {	// Deprecated, backwards-compatibility only
   			IconDefault.imagePath = this._detectIconPath();
   		}
 
@@ -7383,20 +7695,26 @@ function convertOffset(x, y, degrees) {
   		return (this.options.imagePath || IconDefault.imagePath) + Icon.prototype._getIconUrl.call(this, name);
   	},
 
+  	_stripUrl: function (path) {	// separate function to use in tests
+  		var strip = function (str, re, idx) {
+  			var match = re.exec(str);
+  			return match && match[idx];
+  		};
+  		path = strip(path, /^url\((['"])?(.+)\1\)$/, 2);
+  		return path && strip(path, /^(.*)marker-icon\.png$/, 1);
+  	},
+
   	_detectIconPath: function () {
   		var el = create$1('div',  'leaflet-default-icon-path', document.body);
   		var path = getStyle(el, 'background-image') ||
   		           getStyle(el, 'backgroundImage');	// IE8
 
   		document.body.removeChild(el);
-
-  		if (path === null || path.indexOf('url') !== 0) {
-  			path = '';
-  		} else {
-  			path = path.replace(/^url\(["']?/, '').replace(/marker-icon\.png["']?\)$/, '');
-  		}
-
-  		return path;
+  		path = this._stripUrl(path);
+  		if (path) { return path; }
+  		var link = document.querySelector('link[href$="leaflet.css"]');
+  		if (!link) { return ''; }
+  		return link.href.substring(0, link.href.length - 'leaflet.css'.length - 1);
   	}
   });
 
@@ -7588,11 +7906,13 @@ function convertOffset(x, y, degrees) {
 
   		// @option title: String = ''
   		// Text for the browser tooltip that appear on marker hover (no tooltip by default).
+  		// [Useful for accessibility](https://leafletjs.com/examples/accessibility/#markers-must-be-labelled).
   		title: '',
 
-  		// @option alt: String = ''
-  		// Text for the `alt` attribute of the icon image (useful for accessibility).
-  		alt: '',
+  		// @option alt: String = 'Marker'
+  		// Text for the `alt` attribute of the icon image.
+  		// [Useful for accessibility](https://leafletjs.com/examples/accessibility/#markers-must-be-labelled).
+  		alt: 'Marker',
 
   		// @option zIndexOffset: Number = 0
   		// By default, marker images zIndex is set automatically based on its latitude. Use this option if you want to put the marker on top of all others (or below), specifying a high value like `1000` (or high negative value, respectively).
@@ -7622,6 +7942,12 @@ function convertOffset(x, y, degrees) {
   		// When `true`, a mouse event on this marker will trigger the same event on the map
   		// (unless [`L.DomEvent.stopPropagation`](#domevent-stoppropagation) is used).
   		bubblingMouseEvents: false,
+
+  		// @option autoPanOnFocus: Boolean = true
+  		// When `true`, the map will pan whenever the marker is focused (via
+  		// e.g. pressing `tab` on the keyboard) to ensure the marker is
+  		// visible within the map's bounds
+  		autoPanOnFocus: true,
 
   		// @section Draggable marker options
   		// @option draggable: Boolean = false
@@ -7775,6 +8101,7 @@ function convertOffset(x, y, degrees) {
 
   		if (options.keyboard) {
   			icon.tabIndex = '0';
+  			icon.setAttribute('role', 'button');
   		}
 
   		this._icon = icon;
@@ -7784,6 +8111,10 @@ function convertOffset(x, y, degrees) {
   				mouseover: this._bringToFront,
   				mouseout: this._resetZIndex
   			});
+  		}
+
+  		if (this.options.autoPanOnFocus) {
+  			on(icon, 'focus', this._panOnFocus, this);
   		}
 
   		var newShadow = options.icon.createShadow(this._shadow),
@@ -7821,6 +8152,10 @@ function convertOffset(x, y, degrees) {
   				mouseover: this._bringToFront,
   				mouseout: this._resetZIndex
   			});
+  		}
+
+  		if (this.options.autoPanOnFocus) {
+  			off(this._icon, 'focus', this._panOnFocus, this);
   		}
 
   		remove(this._icon);
@@ -7915,6 +8250,20 @@ function convertOffset(x, y, degrees) {
 
   	_resetZIndex: function () {
   		this._updateZIndex(0);
+  	},
+
+  	_panOnFocus: function () {
+  		var map = this._map;
+  		if (!map) { return; }
+
+  		var iconOpts = this.options.icon.options;
+  		var size = iconOpts.iconSize ? toPoint(iconOpts.iconSize) : toPoint(0, 0);
+  		var anchor = iconOpts.iconAnchor ? toPoint(iconOpts.iconAnchor) : toPoint(0, 0);
+
+  		map.panInside(this._latlng, {
+  			paddingTopLeft: anchor,
+  			paddingBottomRight: size.subtract(anchor)
+  		});
   	},
 
   	_getPopupAnchor: function () {
@@ -8076,7 +8425,8 @@ function convertOffset(x, y, degrees) {
 
   	_clickTolerance: function () {
   		// used when doing hit detection for Canvas layers
-  		return (this.options.stroke ? this.options.weight / 2 : 0) + this._renderer.options.tolerance;
+  		return (this.options.stroke ? this.options.weight / 2 : 0) +
+  		  (this._renderer.options.tolerance || 0);
   	}
   });
 
@@ -8398,44 +8748,13 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method getCenter(): LatLng
-  	// Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the polyline.
+  	// Returns the center ([centroid](https://en.wikipedia.org/wiki/Centroid)) of the polyline.
   	getCenter: function () {
   		// throws error when not yet added to map as this center calculation requires projected coordinates
   		if (!this._map) {
   			throw new Error('Must add layer to map before using getCenter()');
   		}
-
-  		var i, halfDist, segDist, dist, p1, p2, ratio,
-  		    points = this._rings[0],
-  		    len = points.length;
-
-  		if (!len) { return null; }
-
-  		// polyline centroid algorithm; only uses the first ring if there are multiple
-
-  		for (i = 0, halfDist = 0; i < len - 1; i++) {
-  			halfDist += points[i].distanceTo(points[i + 1]) / 2;
-  		}
-
-  		// The line is so small in the current view that all points are on the same pixel.
-  		if (halfDist === 0) {
-  			return this._map.layerPointToLatLng(points[0]);
-  		}
-
-  		for (i = 0, dist = 0; i < len - 1; i++) {
-  			p1 = points[i];
-  			p2 = points[i + 1];
-  			segDist = p1.distanceTo(p2);
-  			dist += segDist;
-
-  			if (dist > halfDist) {
-  				ratio = (dist - halfDist) / segDist;
-  				return this._map.layerPointToLatLng([
-  					p2.x - ratio * (p2.x - p1.x),
-  					p2.y - ratio * (p2.y - p1.y)
-  				]);
-  			}
-  		}
+  		return polylineCenter(this._defaultShape(), this._map.options.crs);
   	},
 
   	// @method getBounds(): LatLngBounds
@@ -8496,6 +8815,11 @@ function convertOffset(x, y, degrees) {
   	_updateBounds: function () {
   		var w = this._clickTolerance(),
   		    p = new Point(w, w);
+
+  		if (!this._rawPxBounds) {
+  			return;
+  		}
+
   		this._pxBounds = new Bounds([
   			this._rawPxBounds.min.subtract(p),
   			this._rawPxBounds.max.add(p)
@@ -8672,39 +8996,14 @@ function convertOffset(x, y, degrees) {
   		return !this._latlngs.length || !this._latlngs[0].length;
   	},
 
+  	// @method getCenter(): LatLng
+  	// Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the Polygon.
   	getCenter: function () {
   		// throws error when not yet added to map as this center calculation requires projected coordinates
   		if (!this._map) {
   			throw new Error('Must add layer to map before using getCenter()');
   		}
-
-  		var i, j, p1, p2, f, area, x, y, center,
-  		    points = this._rings[0],
-  		    len = points.length;
-
-  		if (!len) { return null; }
-
-  		// polygon centroid algorithm; only uses the first ring if there are multiple
-
-  		area = x = y = 0;
-
-  		for (i = 0, j = len - 1; i < len; j = i++) {
-  			p1 = points[i];
-  			p2 = points[j];
-
-  			f = p1.y * p2.x - p2.y * p1.x;
-  			x += (p1.x + p2.x) * f;
-  			y += (p1.y + p2.y) * f;
-  			area += f * 3;
-  		}
-
-  		if (area === 0) {
-  			// Polygon is so small that all points are on same pixel.
-  			center = points[0];
-  		} else {
-  			center = [x / area, y / area];
-  		}
-  		return this._map.layerPointToLatLng(center);
+  		return polygonCenter(this._defaultShape(), this._map.options.crs);
   	},
 
   	_convertLatLngs: function (latlngs) {
@@ -8989,14 +9288,24 @@ function convertOffset(x, y, degrees) {
 
   	case 'GeometryCollection':
   		for (i = 0, len = geometry.geometries.length; i < len; i++) {
-  			var layer = geometryToLayer({
+  			var geoLayer = geometryToLayer({
   				geometry: geometry.geometries[i],
   				type: 'Feature',
   				properties: geojson.properties
   			}, options);
 
-  			if (layer) {
-  				layers.push(layer);
+  			if (geoLayer) {
+  				layers.push(geoLayer);
+  			}
+  		}
+  		return new FeatureGroup(layers);
+
+  	case 'FeatureCollection':
+  		for (i = 0, len = geometry.features.length; i < len; i++) {
+  			var featureLayer = geometryToLayer(geometry.features[i], options);
+
+  			if (featureLayer) {
+  				layers.push(featureLayer);
   			}
   		}
   		return new FeatureGroup(layers);
@@ -9037,29 +9346,32 @@ function convertOffset(x, y, degrees) {
   	return latlngs;
   }
 
-  // @function latLngToCoords(latlng: LatLng, precision?: Number): Array
+  // @function latLngToCoords(latlng: LatLng, precision?: Number|false): Array
   // Reverse of [`coordsToLatLng`](#geojson-coordstolatlng)
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function.
   function latLngToCoords(latlng, precision) {
-  	precision = typeof precision === 'number' ? precision : 6;
+  	latlng = toLatLng(latlng);
   	return latlng.alt !== undefined ?
   		[formatNum(latlng.lng, precision), formatNum(latlng.lat, precision), formatNum(latlng.alt, precision)] :
   		[formatNum(latlng.lng, precision), formatNum(latlng.lat, precision)];
   }
 
-  // @function latLngsToCoords(latlngs: Array, levelsDeep?: Number, closed?: Boolean): Array
+  // @function latLngsToCoords(latlngs: Array, levelsDeep?: Number, closed?: Boolean, precision?: Number|false): Array
   // Reverse of [`coordsToLatLngs`](#geojson-coordstolatlngs)
   // `closed` determines whether the first point should be appended to the end of the array to close the feature, only used when `levelsDeep` is 0. False by default.
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function.
   function latLngsToCoords(latlngs, levelsDeep, closed, precision) {
   	var coords = [];
 
   	for (var i = 0, len = latlngs.length; i < len; i++) {
+  		// Check for flat arrays required to ensure unbalanced arrays are correctly converted in recursion
   		coords.push(levelsDeep ?
-  			latLngsToCoords(latlngs[i], levelsDeep - 1, closed, precision) :
+  			latLngsToCoords(latlngs[i], isFlat(latlngs[i]) ? 0 : levelsDeep - 1, closed, precision) :
   			latLngToCoords(latlngs[i], precision));
   	}
 
-  	if (!levelsDeep && closed) {
-  		coords.push(coords[0]);
+  	if (!levelsDeep && closed && coords.length > 0) {
+  		coords.push(coords[0].slice());
   	}
 
   	return coords;
@@ -9096,26 +9408,23 @@ function convertOffset(x, y, degrees) {
 
   // @namespace Marker
   // @section Other methods
-  // @method toGeoJSON(precision?: Number): Object
-  // `precision` is the number of decimal places for coordinates.
-  // The default value is 6 places.
-  // Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the marker (as a GeoJSON `Point` Feature).
+  // @method toGeoJSON(precision?: Number|false): Object
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function with given `precision`.
+  // Returns a [`GeoJSON`](https://en.wikipedia.org/wiki/GeoJSON) representation of the marker (as a GeoJSON `Point` Feature).
   Marker.include(PointToGeoJSON);
 
   // @namespace CircleMarker
-  // @method toGeoJSON(precision?: Number): Object
-  // `precision` is the number of decimal places for coordinates.
-  // The default value is 6 places.
-  // Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the circle marker (as a GeoJSON `Point` Feature).
+  // @method toGeoJSON(precision?: Number|false): Object
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function with given `precision`.
+  // Returns a [`GeoJSON`](https://en.wikipedia.org/wiki/GeoJSON) representation of the circle marker (as a GeoJSON `Point` Feature).
   Circle.include(PointToGeoJSON);
   CircleMarker.include(PointToGeoJSON);
 
 
   // @namespace Polyline
-  // @method toGeoJSON(precision?: Number): Object
-  // `precision` is the number of decimal places for coordinates.
-  // The default value is 6 places.
-  // Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the polyline (as a GeoJSON `LineString` or `MultiLineString` Feature).
+  // @method toGeoJSON(precision?: Number|false): Object
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function with given `precision`.
+  // Returns a [`GeoJSON`](https://en.wikipedia.org/wiki/GeoJSON) representation of the polyline (as a GeoJSON `LineString` or `MultiLineString` Feature).
   Polyline.include({
   	toGeoJSON: function (precision) {
   		var multi = !isFlat(this._latlngs);
@@ -9130,10 +9439,9 @@ function convertOffset(x, y, degrees) {
   });
 
   // @namespace Polygon
-  // @method toGeoJSON(precision?: Number): Object
-  // `precision` is the number of decimal places for coordinates.
-  // The default value is 6 places.
-  // Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the polygon (as a GeoJSON `Polygon` or `MultiPolygon` Feature).
+  // @method toGeoJSON(precision?: Number|false): Object
+  // Coordinates values are rounded with [`formatNum`](#util-formatnum) function with given `precision`.
+  // Returns a [`GeoJSON`](https://en.wikipedia.org/wiki/GeoJSON) representation of the polygon (as a GeoJSON `Polygon` or `MultiPolygon` Feature).
   Polygon.include({
   	toGeoJSON: function (precision) {
   		var holes = !isFlat(this._latlngs),
@@ -9168,10 +9476,9 @@ function convertOffset(x, y, degrees) {
   		});
   	},
 
-  	// @method toGeoJSON(precision?: Number): Object
-  	// `precision` is the number of decimal places for coordinates.
-  	// The default value is 6 places.
-  	// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the layer group (as a GeoJSON `FeatureCollection`, `GeometryCollection`, or `MultiPoint`).
+  	// @method toGeoJSON(precision?: Number|false): Object
+  	// Coordinates values are rounded with [`formatNum`](#util-formatnum) function with given `precision`.
+  	// Returns a [`GeoJSON`](https://en.wikipedia.org/wiki/GeoJSON) representation of the layer group (as a GeoJSON `FeatureCollection`, `GeometryCollection`, or `MultiPoint`).
   	toGeoJSON: function (precision) {
 
   		var type = this.feature && this.feature.geometry && this.feature.geometry.type;
@@ -9236,7 +9543,7 @@ function convertOffset(x, y, degrees) {
    * @example
    *
    * ```js
-   * var imageUrl = 'http://www.lib.utexas.edu/maps/historical/newark_nj_1922.jpg',
+   * var imageUrl = 'https://maps.lib.utexas.edu/maps/historical/newark_nj_1922.jpg',
    * 	imageBounds = [[40.712216, -74.22655], [40.773941, -74.12544]];
    * L.imageOverlay(imageUrl, imageBounds).addTo(map);
    * ```
@@ -9475,6 +9782,12 @@ function convertOffset(x, y, degrees) {
   			this._url = errorUrl;
   			this._image.src = errorUrl;
   		}
+  	},
+
+  	// @method getCenter(): LatLng
+  	// Returns the center of the ImageOverlay.
+  	getCenter: function () {
+  		return this._bounds.getCenter();
   	}
   });
 
@@ -9511,6 +9824,7 @@ function convertOffset(x, y, degrees) {
   	options: {
   		// @option autoplay: Boolean = true
   		// Whether the video starts playing automatically when loaded.
+  		// On some browsers autoplay will only work with `muted: true`
   		autoplay: true,
 
   		// @option loop: Boolean = true
@@ -9519,12 +9833,16 @@ function convertOffset(x, y, degrees) {
 
   		// @option keepAspectRatio: Boolean = true
   		// Whether the video will save aspect ratio after the projection.
-  		// Relevant for supported browsers. Browser compatibility- https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
+  		// Relevant for supported browsers. See [browser compatibility](https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit)
   		keepAspectRatio: true,
 
   		// @option muted: Boolean = false
   		// Whether the video starts on mute when loaded.
-  		muted: false
+  		muted: false,
+
+  		// @option playsInline: Boolean = true
+  		// Mobile browsers will play the video right where it is instead of open it up in fullscreen mode.
+  		playsInline: true
   	},
 
   	_initImage: function () {
@@ -9561,6 +9879,7 @@ function convertOffset(x, y, degrees) {
   		vid.autoplay = !!this.options.autoplay;
   		vid.loop = !!this.options.loop;
   		vid.muted = !!this.options.muted;
+  		vid.playsInline = !!this.options.playsInline;
   		for (var i = 0; i < this._url.length; i++) {
   			var source = create$1('source');
   			source.src = this._url[i];
@@ -9631,9 +9950,9 @@ function convertOffset(x, y, degrees) {
 
   /*
    * @class DivOverlay
-   * @inherits Layer
+   * @inherits Interactive layer
    * @aka L.DivOverlay
-   * Base model for L.Popup and L.Tooltip. Inherit from it for custom popup like plugins.
+   * Base model for L.Popup and L.Tooltip. Inherit from it for custom overlays like plugins.
    */
 
   // @namespace DivOverlay
@@ -9642,24 +9961,82 @@ function convertOffset(x, y, degrees) {
   	// @section
   	// @aka DivOverlay options
   	options: {
-  		// @option offset: Point = Point(0, 7)
-  		// The offset of the popup position. Useful to control the anchor
-  		// of the popup when opening it on some overlays.
-  		offset: [0, 7],
+  		// @option interactive: Boolean = false
+  		// If true, the popup/tooltip will listen to the mouse events.
+  		interactive: false,
+
+  		// @option offset: Point = Point(0, 0)
+  		// The offset of the overlay position.
+  		offset: [0, 0],
 
   		// @option className: String = ''
-  		// A custom CSS class name to assign to the popup.
+  		// A custom CSS class name to assign to the overlay.
   		className: '',
 
-  		// @option pane: String = 'popupPane'
-  		// `Map pane` where the popup will be added.
-  		pane: 'popupPane'
+  		// @option pane: String = undefined
+  		// `Map pane` where the overlay will be added.
+  		pane: undefined,
+
+  		// @option content: String|HTMLElement|Function = ''
+  		// Sets the HTML content of the overlay while initializing. If a function is passed the source layer will be
+  		// passed to the function. The function should return a `String` or `HTMLElement` to be used in the overlay.
+  		content: ''
   	},
 
   	initialize: function (options, source) {
-  		setOptions(this, options);
+  		if (options && (options instanceof LatLng || isArray(options))) {
+  			this._latlng = toLatLng(options);
+  			setOptions(this, source);
+  		} else {
+  			setOptions(this, options);
+  			this._source = source;
+  		}
+  		if (this.options.content) {
+  			this._content = this.options.content;
+  		}
+  	},
 
-  		this._source = source;
+  	// @method openOn(map: Map): this
+  	// Adds the overlay to the map.
+  	// Alternative to `map.openPopup(popup)`/`.openTooltip(tooltip)`.
+  	openOn: function (map) {
+  		map = arguments.length ? map : this._source._map; // experimental, not the part of public api
+  		if (!map.hasLayer(this)) {
+  			map.addLayer(this);
+  		}
+  		return this;
+  	},
+
+  	// @method close(): this
+  	// Closes the overlay.
+  	// Alternative to `map.closePopup(popup)`/`.closeTooltip(tooltip)`
+  	// and `layer.closePopup()`/`.closeTooltip()`.
+  	close: function () {
+  		if (this._map) {
+  			this._map.removeLayer(this);
+  		}
+  		return this;
+  	},
+
+  	// @method toggle(layer?: Layer): this
+  	// Opens or closes the overlay bound to layer depending on its current state.
+  	// Argument may be omitted only for overlay bound to layer.
+  	// Alternative to `layer.togglePopup()`/`.toggleTooltip()`.
+  	toggle: function (layer) {
+  		if (this._map) {
+  			this.close();
+  		} else {
+  			if (arguments.length) {
+  				this._source = layer;
+  			} else {
+  				layer = this._source;
+  			}
+  			this._prepareOpen();
+
+  			// open the overlay on the map
+  			this.openOn(layer._map);
+  		}
+  		return this;
   	},
 
   	onAdd: function (map) {
@@ -9682,6 +10059,11 @@ function convertOffset(x, y, degrees) {
   		}
 
   		this.bringToFront();
+
+  		if (this.options.interactive) {
+  			addClass(this._container, 'leaflet-interactive');
+  			this.addInteractiveTarget(this._container);
+  		}
   	},
 
   	onRemove: function (map) {
@@ -9691,17 +10073,22 @@ function convertOffset(x, y, degrees) {
   		} else {
   			remove(this._container);
   		}
+
+  		if (this.options.interactive) {
+  			removeClass(this._container, 'leaflet-interactive');
+  			this.removeInteractiveTarget(this._container);
+  		}
   	},
 
-  	// @namespace Popup
+  	// @namespace DivOverlay
   	// @method getLatLng: LatLng
-  	// Returns the geographical point of popup.
+  	// Returns the geographical point of the overlay.
   	getLatLng: function () {
   		return this._latlng;
   	},
 
   	// @method setLatLng(latlng: LatLng): this
-  	// Sets the geographical point where the popup will open.
+  	// Sets the geographical point where the overlay will open.
   	setLatLng: function (latlng) {
   		this._latlng = toLatLng(latlng);
   		if (this._map) {
@@ -9712,13 +10099,14 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method getContent: String|HTMLElement
-  	// Returns the content of the popup.
+  	// Returns the content of the overlay.
   	getContent: function () {
   		return this._content;
   	},
 
   	// @method setContent(htmlContent: String|HTMLElement|Function): this
-  	// Sets the HTML content of the popup. If a function is passed the source layer will be passed to the function. The function should return a `String` or `HTMLElement` to be used in the popup.
+  	// Sets the HTML content of the overlay. If a function is passed the source layer will be passed to the function.
+  	// The function should return a `String` or `HTMLElement` to be used in the overlay.
   	setContent: function (content) {
   		this._content = content;
   		this.update();
@@ -9726,13 +10114,13 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method getElement: String|HTMLElement
-  	// Returns the HTML container of the popup.
+  	// Returns the HTML container of the overlay.
   	getElement: function () {
   		return this._container;
   	},
 
   	// @method update: null
-  	// Updates the popup content, layout and position. Useful for updating the popup after something inside changed, e.g. image loaded.
+  	// Updates the overlay content, layout and position. Useful for updating the overlay after something inside changed, e.g. image loaded.
   	update: function () {
   		if (!this._map) { return; }
 
@@ -9760,13 +10148,13 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method isOpen: Boolean
-  	// Returns `true` when the popup is visible on the map.
+  	// Returns `true` when the overlay is visible on the map.
   	isOpen: function () {
   		return !!this._map && this._map.hasLayer(this);
   	},
 
   	// @method bringToFront: this
-  	// Brings this popup in front of other popups (in the same map pane).
+  	// Brings this overlay in front of other overlays (in the same map pane).
   	bringToFront: function () {
   		if (this._map) {
   			toFront(this._container);
@@ -9775,7 +10163,7 @@ function convertOffset(x, y, degrees) {
   	},
 
   	// @method bringToBack: this
-  	// Brings this popup to the back of other popups (in the same map pane).
+  	// Brings this overlay to the back of other overlays (in the same map pane).
   	bringToBack: function () {
   		if (this._map) {
   			toBack(this._container);
@@ -9783,36 +10171,45 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	_prepareOpen: function (parent, layer, latlng) {
-  		if (!(layer instanceof Layer)) {
-  			latlng = layer;
-  			layer = parent;
-  		}
+  	// prepare bound overlay to open: update latlng pos / content source (for FeatureGroup)
+  	_prepareOpen: function (latlng) {
+  		var source = this._source;
+  		if (!source._map) { return false; }
 
-  		if (layer instanceof FeatureGroup) {
-  			for (var id in parent._layers) {
-  				layer = parent._layers[id];
-  				break;
+  		if (source instanceof FeatureGroup) {
+  			source = null;
+  			var layers = this._source._layers;
+  			for (var id in layers) {
+  				if (layers[id]._map) {
+  					source = layers[id];
+  					break;
+  				}
   			}
+  			if (!source) { return false; } // Unable to get source layer.
+
+  			// set overlay source to this layer
+  			this._source = source;
   		}
 
   		if (!latlng) {
-  			if (layer.getCenter) {
-  				latlng = layer.getCenter();
-  			} else if (layer.getLatLng) {
-  				latlng = layer.getLatLng();
+  			if (source.getCenter) {
+  				latlng = source.getCenter();
+  			} else if (source.getLatLng) {
+  				latlng = source.getLatLng();
+  			} else if (source.getBounds) {
+  				latlng = source.getBounds().getCenter();
   			} else {
   				throw new Error('Unable to get source layer LatLng.');
   			}
   		}
+  		this.setLatLng(latlng);
 
-  		// set overlay source to this layer
-  		this._source = layer;
+  		if (this._map) {
+  			// update the overlay (content, layout, etc...)
+  			this.update();
+  		}
 
-  		// update the overlay (content, layout, ect...)
-  		this.update();
-
-  		return latlng;
+  		return true;
   	},
 
   	_updateContent: function () {
@@ -9829,6 +10226,11 @@ function convertOffset(x, y, degrees) {
   			}
   			node.appendChild(content);
   		}
+
+  		// @namespace DivOverlay
+  		// @section DivOverlay events
+  		// @event contentupdate: Event
+  		// Fired when the content of the overlay is updated
   		this.fire('contentupdate');
   	},
 
@@ -9848,7 +10250,7 @@ function convertOffset(x, y, degrees) {
   		var bottom = this._containerBottom = -offset.y,
   		    left = this._containerLeft = -Math.round(this._containerWidth / 2) + offset.x;
 
-  		// bottom position the popup in case the height of the popup changes (images loading etc)
+  		// bottom position the overlay in case the height of the overlay changes (images loading etc)
   		this._container.style.bottom = bottom + 'px';
   		this._container.style.left = left + 'px';
   	},
@@ -9857,6 +10259,34 @@ function convertOffset(x, y, degrees) {
   		return [0, 0];
   	}
 
+  });
+
+  Map.include({
+  	_initOverlay: function (OverlayClass, content, latlng, options) {
+  		var overlay = content;
+  		if (!(overlay instanceof OverlayClass)) {
+  			overlay = new OverlayClass(options).setContent(content);
+  		}
+  		if (latlng) {
+  			overlay.setLatLng(latlng);
+  		}
+  		return overlay;
+  	}
+  });
+
+
+  Layer.include({
+  	_initOverlay: function (OverlayClass, old, content, options) {
+  		var overlay = content;
+  		if (overlay instanceof OverlayClass) {
+  			setOptions(overlay, options);
+  			overlay._source = this;
+  		} else {
+  			overlay = (old && !options) ? old : new OverlayClass(options, this);
+  			overlay.setContent(content);
+  		}
+  		return overlay;
+  	}
   });
 
   /*
@@ -9875,12 +10305,18 @@ function convertOffset(x, y, degrees) {
    * marker.bindPopup(popupContent).openPopup();
    * ```
    * Path overlays like polylines also have a `bindPopup` method.
-   * Here's a more complicated way to open a popup on a map:
+   *
+   * A popup can be also standalone:
    *
    * ```js
    * var popup = L.popup()
    * 	.setLatLng(latlng)
    * 	.setContent('<p>Hello world!<br />This is a nice popup.</p>')
+   * 	.openOn(map);
+   * ```
+   * or
+   * ```js
+   * var popup = L.popup(latlng, {content: '<p>Hello world!<br />This is a nice popup.</p>')
    * 	.openOn(map);
    * ```
    */
@@ -9892,6 +10328,14 @@ function convertOffset(x, y, degrees) {
   	// @section
   	// @aka Popup options
   	options: {
+  		// @option pane: String = 'popupPane'
+  		// `Map pane` where the popup will be added.
+  		pane: 'popupPane',
+
+  		// @option offset: Point = Point(0, 7)
+  		// The offset of the popup position.
+  		offset: [0, 7],
+
   		// @option maxWidth: Number = 300
   		// Max width of the popup, in pixels.
   		maxWidth: 300,
@@ -9903,6 +10347,8 @@ function convertOffset(x, y, degrees) {
   		// @option maxHeight: Number = null
   		// If set, creates a scrollable container of the given height
   		// inside a popup if its content exceeds it.
+  		// The scrollable container can be styled using the
+  		// `leaflet-popup-scrolled` CSS class selector.
   		maxHeight: null,
 
   		// @option autoPan: Boolean = true
@@ -9954,10 +10400,17 @@ function convertOffset(x, y, degrees) {
 
   	// @namespace Popup
   	// @method openOn(map: Map): this
-  	// Adds the popup to the map and closes the previous one. The same as `map.openPopup(popup)`.
+  	// Alternative to `map.openPopup(popup)`.
+  	// Adds the popup to the map and closes the previous one.
   	openOn: function (map) {
-  		map.openPopup(this);
-  		return this;
+  		map = arguments.length ? map : this._source._map; // experimental, not the part of public api
+
+  		if (!map.hasLayer(this) && map._popup && map._popup.options.autoClose) {
+  			map.removeLayer(map._popup);
+  		}
+  		map._popup = this;
+
+  		return DivOverlay.prototype.openOn.call(this, map);
   	},
 
   	onAdd: function (map) {
@@ -10008,7 +10461,7 @@ function convertOffset(x, y, degrees) {
   		var events = DivOverlay.prototype.getEvents.call(this);
 
   		if (this.options.closeOnClick !== undefined ? this.options.closeOnClick : this._map.options.closePopupOnClick) {
-  			events.preclick = this._close;
+  			events.preclick = this.close;
   		}
 
   		if (this.options.keepInView) {
@@ -10016,12 +10469,6 @@ function convertOffset(x, y, degrees) {
   		}
 
   		return events;
-  	},
-
-  	_close: function () {
-  		if (this._map) {
-  			this._map.closePopup(this);
-  		}
   	},
 
   	_initLayout: function () {
@@ -10042,10 +10489,15 @@ function convertOffset(x, y, degrees) {
 
   		if (this.options.closeButton) {
   			var closeButton = this._closeButton = create$1('a', prefix + '-close-button', container);
+  			closeButton.setAttribute('role', 'button'); // overrides the implicit role=link of <a> elements #7399
+  			closeButton.setAttribute('aria-label', 'Close popup');
   			closeButton.href = '#close';
-  			closeButton.innerHTML = '&#215;';
+  			closeButton.innerHTML = '<span aria-hidden="true">&#215;</span>';
 
-  			on(closeButton, 'click', this._onCloseButtonClick, this);
+  			on(closeButton, 'click', function (ev) {
+  				preventDefault(ev);
+  				this.close();
+  			}, this);
   		}
   	},
 
@@ -10089,6 +10541,13 @@ function convertOffset(x, y, degrees) {
   		if (!this.options.autoPan) { return; }
   		if (this._map._panAnim) { this._map._panAnim.stop(); }
 
+  		// We can endlessly recurse if keepInView is set and the view resets.
+  		// Let's guard against that by exiting early if we're responding to our own autopan.
+  		if (this._autopanning) {
+  			this._autopanning = false;
+  			return;
+  		}
+
   		var map = this._map,
   		    marginBottom = parseInt(getStyle(this._container, 'marginBottom'), 10) || 0,
   		    containerHeight = this._container.offsetHeight + marginBottom,
@@ -10123,15 +10582,15 @@ function convertOffset(x, y, degrees) {
   		// @event autopanstart: Event
   		// Fired when the map starts autopanning when opening a popup.
   		if (dx || dy) {
+  			// Track that we're autopanning, as this function will be re-ran on moveend
+  			if (this.options.keepInView) {
+  				this._autopanning = true;
+  			}
+
   			map
   			    .fire('autopanstart')
   			    .panBy([dx, dy]);
   		}
-  	},
-
-  	_onCloseButtonClick: function (e) {
-  		this._close();
-  		stop(e);
   	},
 
   	_getAnchor: function () {
@@ -10144,6 +10603,9 @@ function convertOffset(x, y, degrees) {
   // @namespace Popup
   // @factory L.popup(options?: Popup options, source?: Layer)
   // Instantiates a `Popup` object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the popup with a reference to the Layer to which it refers.
+  // @alternative
+  // @factory L.popup(latlng: LatLng, options?: Popup options)
+  // Instantiates a `Popup` object given `latlng` where the popup will open and an optional `options` object that describes its appearance and location.
   var popup = function (options, source) {
   	return new Popup(options, source);
   };
@@ -10168,35 +10630,18 @@ function convertOffset(x, y, degrees) {
   	// @method openPopup(content: String|HTMLElement, latlng: LatLng, options?: Popup options): this
   	// Creates a popup with the specified content and options and opens it in the given point on a map.
   	openPopup: function (popup, latlng, options) {
-  		if (!(popup instanceof Popup)) {
-  			popup = new Popup(options).setContent(popup);
-  		}
+  		this._initOverlay(Popup, popup, latlng, options)
+  		  .openOn(this);
 
-  		if (latlng) {
-  			popup.setLatLng(latlng);
-  		}
-
-  		if (this.hasLayer(popup)) {
-  			return this;
-  		}
-
-  		if (this._popup && this._popup.options.autoClose) {
-  			this.closePopup();
-  		}
-
-  		this._popup = popup;
-  		return this.addLayer(popup);
+  		return this;
   	},
 
   	// @method closePopup(popup?: Popup): this
   	// Closes the popup previously opened with [openPopup](#map-openpopup) (or the given one).
   	closePopup: function (popup) {
-  		if (!popup || popup === this._popup) {
-  			popup = this._popup;
-  			this._popup = null;
-  		}
+  		popup = arguments.length ? popup : this._popup;
   		if (popup) {
-  			this.removeLayer(popup);
+  			popup.close();
   		}
   		return this;
   	}
@@ -10225,18 +10670,7 @@ function convertOffset(x, y, degrees) {
   	// necessary event listeners. If a `Function` is passed it will receive
   	// the layer as the first argument and should return a `String` or `HTMLElement`.
   	bindPopup: function (content, options) {
-
-  		if (content instanceof Popup) {
-  			setOptions(content, options);
-  			this._popup = content;
-  			content._source = this;
-  		} else {
-  			if (!this._popup || options) {
-  				this._popup = new Popup(options, this);
-  			}
-  			this._popup.setContent(content);
-  		}
-
+  		this._popup = this._initOverlay(Popup, this._popup, content, options);
   		if (!this._popupHandlersAdded) {
   			this.on({
   				click: this._openPopup,
@@ -10268,14 +10702,16 @@ function convertOffset(x, y, degrees) {
 
   	// @method openPopup(latlng?: LatLng): this
   	// Opens the bound popup at the specified `latlng` or at the default popup anchor if no `latlng` is passed.
-  	openPopup: function (layer, latlng) {
-  		if (this._popup && this._map) {
-  			latlng = this._popup._prepareOpen(this, layer, latlng);
-
-  			// open the popup on the map
-  			this._map.openPopup(this._popup, latlng);
+  	openPopup: function (latlng) {
+  		if (this._popup) {
+  			if (!(this instanceof FeatureGroup)) {
+  				this._popup._source = this;
+  			}
+  			if (this._popup._prepareOpen(latlng || this._latlng)) {
+  				// open the popup on the map
+  				this._popup.openOn(this._map);
+  			}
   		}
-
   		return this;
   	},
 
@@ -10283,20 +10719,16 @@ function convertOffset(x, y, degrees) {
   	// Closes the popup bound to this layer if it is open.
   	closePopup: function () {
   		if (this._popup) {
-  			this._popup._close();
+  			this._popup.close();
   		}
   		return this;
   	},
 
   	// @method togglePopup(): this
   	// Opens or closes the popup bound to this layer depending on its current state.
-  	togglePopup: function (target) {
+  	togglePopup: function () {
   		if (this._popup) {
-  			if (this._popup._map) {
-  				this.closePopup();
-  			} else {
-  				this.openPopup(target);
-  			}
+  			this._popup.toggle(this);
   		}
   		return this;
   	},
@@ -10323,33 +10755,25 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_openPopup: function (e) {
-  		var layer = e.layer || e.target;
-
-  		if (!this._popup) {
+  		if (!this._popup || !this._map) {
   			return;
   		}
-
-  		if (!this._map) {
-  			return;
-  		}
-
   		// prevent map click
   		stop(e);
 
-  		// if this inherits from Path its a vector and we can just
-  		// open the popup at the new location
-  		if (layer instanceof Path) {
-  			this.openPopup(e.layer || e.target, e.latlng);
+  		var target = e.layer || e.target;
+  		if (this._popup._source === target && !(target instanceof Path)) {
+  			// treat it like a marker and figure out
+  			// if we should toggle it open/closed
+  			if (this._map.hasLayer(this._popup)) {
+  				this.closePopup();
+  			} else {
+  				this.openPopup(e.latlng);
+  			}
   			return;
   		}
-
-  		// otherwise treat it like a marker and figure out
-  		// if we should toggle it open/closed
-  		if (this._map.hasLayer(this._popup) && this._popup._source === layer) {
-  			this.closePopup();
-  		} else {
-  			this.openPopup(layer, e.latlng);
-  		}
+  		this._popup._source = target;
+  		this.openPopup(e.latlng);
   	},
 
   	_movePopup: function (e) {
@@ -10370,10 +10794,28 @@ function convertOffset(x, y, degrees) {
    * Used to display small texts on top of map layers.
    *
    * @example
+   * If you want to just bind a tooltip to marker:
    *
    * ```js
    * marker.bindTooltip("my tooltip text").openTooltip();
    * ```
+   * Path overlays like polylines also have a `bindTooltip` method.
+   *
+   * A tooltip can be also standalone:
+   *
+   * ```js
+   * var tooltip = L.tooltip()
+   * 	.setLatLng(latlng)
+   * 	.setContent('Hello world!<br />This is a nice tooltip.')
+   * 	.addTo(map);
+   * ```
+   * or
+   * ```js
+   * var tooltip = L.tooltip(latlng, {content: 'Hello world!<br />This is a nice tooltip.'})
+   * 	.addTo(map);
+   * ```
+   *
+   *
    * Note about tooltip offset. Leaflet takes two options in consideration
    * for computing tooltip offsetting:
    * - the `offset` Tooltip option: it defaults to [0, 0], and it's specific to one tooltip.
@@ -10413,10 +10855,6 @@ function convertOffset(x, y, degrees) {
   		// If true, the tooltip will follow the mouse instead of being fixed at the feature center.
   		sticky: false,
 
-  		// @option interactive: Boolean = false
-  		// If true, the tooltip will listen to the feature events.
-  		interactive: false,
-
   		// @option opacity: Number = 0.9
   		// Tooltip container opacity.
   		opacity: 0.9
@@ -10433,6 +10871,8 @@ function convertOffset(x, y, degrees) {
   		map.fire('tooltipopen', {tooltip: this});
 
   		if (this._source) {
+  			this.addEventParent(this._source);
+
   			// @namespace Layer
   			// @section Tooltip events
   			// @event tooltipopen: TooltipEvent
@@ -10451,6 +10891,8 @@ function convertOffset(x, y, degrees) {
   		map.fire('tooltipclose', {tooltip: this});
 
   		if (this._source) {
+  			this.removeEventParent(this._source);
+
   			// @namespace Layer
   			// @section Tooltip events
   			// @event tooltipclose: TooltipEvent
@@ -10462,17 +10904,11 @@ function convertOffset(x, y, degrees) {
   	getEvents: function () {
   		var events = DivOverlay.prototype.getEvents.call(this);
 
-  		if (touch && !this.options.permanent) {
-  			events.preclick = this._close;
+  		if (!this.options.permanent) {
+  			events.preclick = this.close;
   		}
 
   		return events;
-  	},
-
-  	_close: function () {
-  		if (this._map) {
-  			this._map.closeTooltip(this);
-  		}
   	},
 
   	_initLayout: function () {
@@ -10480,6 +10916,9 @@ function convertOffset(x, y, degrees) {
   		    className = prefix + ' ' + (this.options.className || '') + ' leaflet-zoom-' + (this._zoomAnimated ? 'animated' : 'hide');
 
   		this._contentNode = this._container = create$1('div', className);
+
+  		this._container.setAttribute('role', 'tooltip');
+  		this._container.setAttribute('id', 'leaflet-tooltip-' + stamp(this));
   	},
 
   	_updateLayout: function () {},
@@ -10560,7 +10999,10 @@ function convertOffset(x, y, degrees) {
 
   // @namespace Tooltip
   // @factory L.tooltip(options?: Tooltip options, source?: Layer)
-  // Instantiates a Tooltip object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the tooltip with a reference to the Layer to which it refers.
+  // Instantiates a `Tooltip` object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the tooltip with a reference to the Layer to which it refers.
+  // @alternative
+  // @factory L.tooltip(latlng: LatLng, options?: Tooltip options)
+  // Instantiates a `Tooltip` object given `latlng` where the tooltip will open and an optional `options` object that describes its appearance and location.
   var tooltip = function (options, source) {
   	return new Tooltip(options, source);
   };
@@ -10575,27 +11017,16 @@ function convertOffset(x, y, degrees) {
   	// @method openTooltip(content: String|HTMLElement, latlng: LatLng, options?: Tooltip options): this
   	// Creates a tooltip with the specified content and options and open it.
   	openTooltip: function (tooltip, latlng, options) {
-  		if (!(tooltip instanceof Tooltip)) {
-  			tooltip = new Tooltip(options).setContent(tooltip);
-  		}
+  		this._initOverlay(Tooltip, tooltip, latlng, options)
+  		  .openOn(this);
 
-  		if (latlng) {
-  			tooltip.setLatLng(latlng);
-  		}
-
-  		if (this.hasLayer(tooltip)) {
-  			return this;
-  		}
-
-  		return this.addLayer(tooltip);
+  		return this;
   	},
 
-  	// @method closeTooltip(tooltip?: Tooltip): this
+  	// @method closeTooltip(tooltip: Tooltip): this
   	// Closes the tooltip given as parameter.
   	closeTooltip: function (tooltip) {
-  		if (tooltip) {
-  			this.removeLayer(tooltip);
-  		}
+  		tooltip.close();
   		return this;
   	}
 
@@ -10623,18 +11054,11 @@ function convertOffset(x, y, degrees) {
   	// the layer as the first argument and should return a `String` or `HTMLElement`.
   	bindTooltip: function (content, options) {
 
-  		if (content instanceof Tooltip) {
-  			setOptions(content, options);
-  			this._tooltip = content;
-  			content._source = this;
-  		} else {
-  			if (!this._tooltip || options) {
-  				this._tooltip = new Tooltip(options, this);
-  			}
-  			this._tooltip.setContent(content);
-
+  		if (this._tooltip && this.isTooltipOpen()) {
+  			this.unbindTooltip();
   		}
 
+  		this._tooltip = this._initOverlay(Tooltip, this._tooltip, content, options);
   		this._initTooltipInteractions();
 
   		if (this._tooltip.options.permanent && this._map && this._map.hasLayer(this)) {
@@ -10655,9 +11079,9 @@ function convertOffset(x, y, degrees) {
   		return this;
   	},
 
-  	_initTooltipInteractions: function (remove$$1) {
-  		if (!remove$$1 && this._tooltipHandlersAdded) { return; }
-  		var onOff = remove$$1 ? 'off' : 'on',
+  	_initTooltipInteractions: function (remove) {
+  		if (!remove && this._tooltipHandlersAdded) { return; }
+  		var onOff = remove ? 'off' : 'on',
   		    events = {
   			remove: this.closeTooltip,
   			move: this._moveTooltip
@@ -10665,36 +11089,40 @@ function convertOffset(x, y, degrees) {
   		if (!this._tooltip.options.permanent) {
   			events.mouseover = this._openTooltip;
   			events.mouseout = this.closeTooltip;
-  			if (this._tooltip.options.sticky) {
-  				events.mousemove = this._moveTooltip;
-  			}
-  			if (touch) {
-  				events.click = this._openTooltip;
+  			events.click = this._openTooltip;
+  			if (this._map) {
+  				this._addFocusListeners();
+  			} else {
+  				events.add = this._addFocusListeners;
   			}
   		} else {
   			events.add = this._openTooltip;
   		}
+  		if (this._tooltip.options.sticky) {
+  			events.mousemove = this._moveTooltip;
+  		}
   		this[onOff](events);
-  		this._tooltipHandlersAdded = !remove$$1;
+  		this._tooltipHandlersAdded = !remove;
   	},
 
   	// @method openTooltip(latlng?: LatLng): this
   	// Opens the bound tooltip at the specified `latlng` or at the default tooltip anchor if no `latlng` is passed.
-  	openTooltip: function (layer, latlng) {
-  		if (this._tooltip && this._map) {
-  			latlng = this._tooltip._prepareOpen(this, layer, latlng);
+  	openTooltip: function (latlng) {
+  		if (this._tooltip) {
+  			if (!(this instanceof FeatureGroup)) {
+  				this._tooltip._source = this;
+  			}
+  			if (this._tooltip._prepareOpen(latlng)) {
+  				// open the tooltip on the map
+  				this._tooltip.openOn(this._map);
 
-  			// open the tooltip on the map
-  			this._map.openTooltip(this._tooltip, latlng);
-
-  			// Tooltip container may not be defined if not permanent and never
-  			// opened.
-  			if (this._tooltip.options.interactive && this._tooltip._container) {
-  				addClass(this._tooltip._container, 'leaflet-clickable');
-  				this.addInteractiveTarget(this._tooltip._container);
+  				if (this.getElement) {
+  					this._setAriaDescribedByOnLayer(this);
+  				} else if (this.eachLayer) {
+  					this.eachLayer(this._setAriaDescribedByOnLayer, this);
+  				}
   			}
   		}
-
   		return this;
   	},
 
@@ -10702,24 +11130,15 @@ function convertOffset(x, y, degrees) {
   	// Closes the tooltip bound to this layer if it is open.
   	closeTooltip: function () {
   		if (this._tooltip) {
-  			this._tooltip._close();
-  			if (this._tooltip.options.interactive && this._tooltip._container) {
-  				removeClass(this._tooltip._container, 'leaflet-clickable');
-  				this.removeInteractiveTarget(this._tooltip._container);
-  			}
+  			return this._tooltip.close();
   		}
-  		return this;
   	},
 
   	// @method toggleTooltip(): this
   	// Opens or closes the tooltip bound to this layer depending on its current state.
-  	toggleTooltip: function (target) {
+  	toggleTooltip: function () {
   		if (this._tooltip) {
-  			if (this._tooltip._map) {
-  				this.closeTooltip();
-  			} else {
-  				this.openTooltip(target);
-  			}
+  			this._tooltip.toggle(this);
   		}
   		return this;
   	},
@@ -10745,13 +11164,52 @@ function convertOffset(x, y, degrees) {
   		return this._tooltip;
   	},
 
-  	_openTooltip: function (e) {
-  		var layer = e.layer || e.target;
+  	_addFocusListeners: function () {
+  		if (this.getElement) {
+  			this._addFocusListenersOnLayer(this);
+  		} else if (this.eachLayer) {
+  			this.eachLayer(this._addFocusListenersOnLayer, this);
+  		}
+  	},
 
+  	_addFocusListenersOnLayer: function (layer) {
+  		var el = typeof layer.getElement === 'function' && layer.getElement();
+  		if (el) {
+  			on(el, 'focus', function () {
+  				this._tooltip._source = layer;
+  				this.openTooltip();
+  			}, this);
+  			on(el, 'blur', this.closeTooltip, this);
+  		}
+  	},
+
+  	_setAriaDescribedByOnLayer: function (layer) {
+  		var el = typeof layer.getElement === 'function' && layer.getElement();
+  		if (el) {
+  			el.setAttribute('aria-describedby', this._tooltip._container.id);
+  		}
+  	},
+
+
+  	_openTooltip: function (e) {
   		if (!this._tooltip || !this._map) {
   			return;
   		}
-  		this.openTooltip(layer, this._tooltip.options.sticky ? e.latlng : undefined);
+
+  		// If the map is moving, we will show the tooltip after it's done.
+  		if (this._map.dragging && this._map.dragging.moving() && !this._openOnceFlag) {
+  			this._openOnceFlag = true;
+  			var that = this;
+  			this._map.once('moveend', function () {
+  				that._openOnceFlag = false;
+  				that._openTooltip(e);
+  			});
+  			return;
+  		}
+
+  		this._tooltip._source = e.layer || e.target;
+
+  		this.openTooltip(this._tooltip.options.sticky ? e.latlng : undefined);
   	},
 
   	_moveTooltip: function (e) {
@@ -10922,7 +11380,7 @@ function convertOffset(x, y, degrees) {
   		// `true` by default on mobile browsers, in order to avoid too many requests and keep smooth navigation.
   		// `false` otherwise in order to display new tiles _during_ panning, since it is easy to pan outside the
   		// [`keepBuffer`](#gridlayer-keepbuffer) option in desktop browsers.
-  		updateWhenIdle: mobile,
+  		updateWhenIdle: Browser.mobile,
 
   		// @option updateWhenZooming: Boolean = true
   		// By default, a smooth zoom animation (during a [touch zoom](#map-touchzoom) or a [`flyTo()`](#map-flyto)) will update grid layers every integer zoom level. Setting this option to `false` will update the grid layer only when the smooth animation ends.
@@ -10991,8 +11449,7 @@ function convertOffset(x, y, degrees) {
   		this._levels = {};
   		this._tiles = {};
 
-  		this._resetView();
-  		this._update();
+  		this._resetView(); // implicit _update() call
   	},
 
   	beforeAdd: function (map) {
@@ -11061,6 +11518,11 @@ function convertOffset(x, y, degrees) {
   	redraw: function () {
   		if (this._map) {
   			this._removeAllTiles();
+  			var tileZoom = this._clampZoom(this._map.getZoom());
+  			if (tileZoom !== this._tileZoom) {
+  				this._tileZoom = tileZoom;
+  				this._updateLevels();
+  			}
   			this._update();
   		}
   		return this;
@@ -11139,7 +11601,7 @@ function convertOffset(x, y, degrees) {
   		if (!this._map) { return; }
 
   		// IE doesn't inherit filter opacity properly, so we're forced to set it on tiles
-  		if (ielt9) { return; }
+  		if (Browser.ielt9) { return; }
 
   		setOpacity(this._container, this.options.opacity);
 
@@ -11425,7 +11887,7 @@ function convertOffset(x, y, degrees) {
   		    translate = level.origin.multiplyBy(scale)
   		        .subtract(this._map._getNewPixelOrigin(center, zoom)).round();
 
-  		if (any3d) {
+  		if (Browser.any3d) {
   			setTransform(level.el, translate, scale);
   		} else {
   			setPosition(level.el, translate);
@@ -11626,14 +12088,8 @@ function convertOffset(x, y, degrees) {
   		tile.onmousemove = falseFn;
 
   		// update opacity on tiles in IE7-8 because of filter inheritance problems
-  		if (ielt9 && this.options.opacity < 1) {
+  		if (Browser.ielt9 && this.options.opacity < 1) {
   			setOpacity(tile, this.options.opacity);
-  		}
-
-  		// without this hack, tiles disappear after zoom on Chrome for Android
-  		// https://github.com/Leaflet/Leaflet/issues/2078
-  		if (android && !android23) {
-  			tile.style.WebkitBackfaceVisibility = 'hidden';
   		}
   	},
 
@@ -11713,7 +12169,7 @@ function convertOffset(x, y, degrees) {
   			// Fired when the grid layer loaded all visible tiles.
   			this.fire('load');
 
-  			if (ielt9 || !this._map._fadeAnimated) {
+  			if (Browser.ielt9 || !this._map._fadeAnimated) {
   				requestAnimFrame(this._pruneTiles, this);
   			} else {
   				// Wait a bit more than 0.2 secs (the duration of the tile fade-in)
@@ -11765,7 +12221,7 @@ function convertOffset(x, y, degrees) {
    * @example
    *
    * ```js
-   * L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'}).addTo(map);
+   * L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
    * ```
    *
    * @section URL template
@@ -11774,7 +12230,7 @@ function convertOffset(x, y, degrees) {
    * A string of the following form:
    *
    * ```
-   * 'http://{s}.somedomain.com/blabla/{z}/{x}/{y}{r}.png'
+   * 'https://{s}.somedomain.com/blabla/{z}/{x}/{y}{r}.png'
    * ```
    *
    * `{s}` means one of the available subdomains (used sequentially to help with browser parallel requests per domain limitation; subdomain values are specified in options; `a`, `b` or `c` by default, can be omitted), `{z}` — zoom level, `{x}` and `{y}` — tile coordinates. `{r}` can be used to add "&commat;2x" to the URL to load retina tiles.
@@ -11782,7 +12238,7 @@ function convertOffset(x, y, degrees) {
    * You can use custom keys in the template, which will be [evaluated](#util-template) from TileLayer options, like this:
    *
    * ```
-   * L.tileLayer('http://{s}.somedomain.com/{foo}/{z}/{x}/{y}.png', {foo: 'bar'});
+   * L.tileLayer('https://{s}.somedomain.com/{foo}/{z}/{x}/{y}.png', {foo: 'bar'});
    * ```
    */
 
@@ -11828,7 +12284,15 @@ function convertOffset(x, y, degrees) {
   		// Whether the crossOrigin attribute will be added to the tiles.
   		// If a String is provided, all tiles will have their crossOrigin attribute set to the String provided. This is needed if you want to access tile pixel data.
   		// Refer to [CORS Settings](https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_settings_attributes) for valid String values.
-  		crossOrigin: false
+  		crossOrigin: false,
+
+  		// @option referrerPolicy: Boolean|String = false
+  		// Whether the referrerPolicy attribute will be added to the tiles.
+  		// If a String is provided, all tiles will have their referrerPolicy attribute set to the String provided.
+  		// This may be needed if your map's rendering context has a strict default but your tile provider expects a valid referrer
+  		// (e.g. to validate an API token).
+  		// Refer to [HTMLImageElement.referrerPolicy](https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/referrerPolicy) for valid String values.
+  		referrerPolicy: false
   	},
 
   	initialize: function (url, options) {
@@ -11838,29 +12302,32 @@ function convertOffset(x, y, degrees) {
   		options = setOptions(this, options);
 
   		// detecting retina displays, adjusting tileSize and zoom levels
-  		if (options.detectRetina && retina && options.maxZoom > 0) {
+  		if (options.detectRetina && Browser.retina && options.maxZoom > 0) {
 
   			options.tileSize = Math.floor(options.tileSize / 2);
 
   			if (!options.zoomReverse) {
   				options.zoomOffset++;
-  				options.maxZoom--;
+  				options.maxZoom = Math.max(options.minZoom, options.maxZoom - 1);
   			} else {
   				options.zoomOffset--;
-  				options.minZoom++;
+  				options.minZoom = Math.min(options.maxZoom, options.minZoom + 1);
   			}
 
   			options.minZoom = Math.max(0, options.minZoom);
+  		} else if (!options.zoomReverse) {
+  			// make sure maxZoom is gte minZoom
+  			options.maxZoom = Math.max(options.minZoom, options.maxZoom);
+  		} else {
+  			// make sure minZoom is lte maxZoom
+  			options.minZoom = Math.min(options.maxZoom, options.minZoom);
   		}
 
   		if (typeof options.subdomains === 'string') {
   			options.subdomains = options.subdomains.split('');
   		}
 
-  		// for https://github.com/Leaflet/Leaflet/issues/137
-  		if (!android) {
-  			this.on('tileunload', this._onTileRemove);
-  		}
+  		this.on('tileunload', this._onTileRemove);
   	},
 
   	// @method setUrl(url: String, noRedraw?: Boolean): this
@@ -11894,17 +12361,17 @@ function convertOffset(x, y, degrees) {
   			tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin;
   		}
 
-  		/*
-  		 Alt tag is set to empty string to keep screen readers from reading URL and for compliance reasons
-  		 http://www.w3.org/TR/WCAG20-TECHS/H67
-  		*/
-  		tile.alt = '';
+  		// for this new option we follow the documented behavior
+  		// more closely by only setting the property when string
+  		if (typeof this.options.referrerPolicy === 'string') {
+  			tile.referrerPolicy = this.options.referrerPolicy;
+  		}
 
-  		/*
-  		 Set role="presentation" to force screen readers to ignore this
-  		 https://www.w3.org/TR/wai-aria/roles#textalternativecomputation
-  		*/
-  		tile.setAttribute('role', 'presentation');
+  		// The alt attribute is set to the empty string,
+  		// allowing screen readers to ignore the decorative image tiles.
+  		// https://www.w3.org/WAI/tutorials/images/decorative/
+  		// https://www.w3.org/TR/html-aria/#el-img-empty-alt
+  		tile.alt = '';
 
   		tile.src = this.getTileUrl(coords);
 
@@ -11919,7 +12386,7 @@ function convertOffset(x, y, degrees) {
   	// Classes extending `TileLayer` can override this function to provide custom tile URL naming schemes.
   	getTileUrl: function (coords) {
   		var data = {
-  			r: retina ? '@2x' : '',
+  			r: Browser.retina ? '@2x' : '',
   			s: this._getSubdomain(coords),
   			x: coords.x,
   			y: coords.y,
@@ -11938,7 +12405,7 @@ function convertOffset(x, y, degrees) {
 
   	_tileOnLoad: function (done, tile) {
   		// For https://github.com/Leaflet/Leaflet/issues/3332
-  		if (ielt9) {
+  		if (Browser.ielt9) {
   			setTimeout(bind(done, this, null, tile), 0);
   		} else {
   			done(null, tile);
@@ -11987,8 +12454,15 @@ function convertOffset(x, y, degrees) {
 
   				if (!tile.complete) {
   					tile.src = emptyImageUrl;
+  					var coords = this._tiles[i].coords;
   					remove(tile);
   					delete this._tiles[i];
+  					// @event tileabort: TileEvent
+  					// Fired when a tile was loading but is now not wanted.
+  					this.fire('tileabort', {
+  						tile: tile,
+  						coords: coords
+  					});
   				}
   			}
   		}
@@ -11999,11 +12473,7 @@ function convertOffset(x, y, degrees) {
   		if (!tile) { return; }
 
   		// Cancels any pending http requests associated with the tile
-  		// unless we're on Android's stock browser,
-  		// see https://github.com/Leaflet/Leaflet/issues/137
-  		if (!androidStock) {
-  			tile.el.setAttribute('src', emptyImageUrl);
-  		}
+  		tile.el.setAttribute('src', emptyImageUrl);
 
   		return GridLayer.prototype._removeTile.call(this, key);
   	},
@@ -12049,7 +12519,7 @@ function convertOffset(x, y, degrees) {
   	// @aka TileLayer.WMS options
   	// If any custom options not documented here are used, they will be sent to the
   	// WMS server as extra parameters in each request URL. This can be useful for
-  	// [non-standard vendor WMS parameters](http://docs.geoserver.org/stable/en/user/services/wms/vendor.html).
+  	// [non-standard vendor WMS parameters](https://docs.geoserver.org/stable/en/user/services/wms/vendor.html).
   	defaultWmsParams: {
   		service: 'WMS',
   		request: 'GetMap',
@@ -12101,7 +12571,7 @@ function convertOffset(x, y, degrees) {
 
   		options = setOptions(this, options);
 
-  		var realRetina = options.detectRetina && retina ? 2 : 1;
+  		var realRetina = options.detectRetina && Browser.retina ? 2 : 1;
   		var tileSize = this.getTileSize();
   		wmsParams.width = tileSize.x * realRetina;
   		wmsParams.height = tileSize.y * realRetina;
@@ -12188,11 +12658,7 @@ function convertOffset(x, y, degrees) {
   		// @option padding: Number = 0.1
   		// How much to extend the clip area around the map view (relative to its size)
   		// e.g. 0.1 would be 10% of map view in each direction
-  		padding: 0.1,
-
-  		// @option tolerance: Number = 0
-  		// How much to extend click tolerance round a path/object on the map
-  		tolerance : 0
+  		padding: 0.1
   	},
 
   	initialize: function (options) {
@@ -12205,9 +12671,8 @@ function convertOffset(x, y, degrees) {
   		if (!this._container) {
   			this._initContainer(); // defined by renderer implementations
 
-  			if (this._zoomAnimated) {
-  				addClass(this._container, 'leaflet-zoom-animated');
-  			}
+  			// always keep transform-origin as 0 0
+  			addClass(this._container, 'leaflet-zoom-animated');
   		}
 
   		this.getPane().appendChild(this._container);
@@ -12243,15 +12708,13 @@ function convertOffset(x, y, degrees) {
 
   	_updateTransform: function (center, zoom) {
   		var scale = this._map.getZoomScale(zoom, this._zoom),
-  		    position = getPosition(this._container),
   		    viewHalf = this._map.getSize().multiplyBy(0.5 + this.options.padding),
   		    currentCenterPoint = this._map.project(this._center, zoom),
-  		    destCenterPoint = this._map.project(center, zoom),
-  		    centerOffset = destCenterPoint.subtract(currentCenterPoint),
 
-  		    topLeftOffset = viewHalf.multiplyBy(-scale).add(position).add(viewHalf).subtract(centerOffset);
+  		    topLeftOffset = viewHalf.multiplyBy(-scale).add(currentCenterPoint)
+  				  .subtract(this._map._getNewPixelOrigin(center, zoom));
 
-  		if (any3d) {
+  		if (Browser.any3d) {
   			setTransform(this._container, topLeftOffset, scale);
   		} else {
   			setPosition(this._container, topLeftOffset);
@@ -12301,7 +12764,7 @@ function convertOffset(x, y, degrees) {
    * Allows vector layers to be displayed with [`<canvas>`](https://developer.mozilla.org/docs/Web/API/Canvas_API).
    * Inherits `Renderer`.
    *
-   * Due to [technical limitations](http://caniuse.com/#search=canvas), Canvas is not
+   * Due to [technical limitations](https://caniuse.com/canvas), Canvas is not
    * available in all web browsers, notably IE8, and overlapping geometries might
    * not display properly in some edge cases.
    *
@@ -12326,6 +12789,15 @@ function convertOffset(x, y, degrees) {
    */
 
   var Canvas = Renderer.extend({
+
+  	// @section
+  	// @aka Canvas options
+  	options: {
+  		// @option tolerance: Number = 0
+  		// How much to extend the click tolerance around a path/object on the map.
+  		tolerance: 0
+  	},
+
   	getEvents: function () {
   		var events = Renderer.prototype.getEvents.call(this);
   		events.viewprereset = this._onViewPreReset;
@@ -12351,6 +12823,7 @@ function convertOffset(x, y, degrees) {
   		on(container, 'mousemove', this._onMouseMove, this);
   		on(container, 'click dblclick mousedown mouseup contextmenu', this._onClick, this);
   		on(container, 'mouseout', this._handleMouseOut, this);
+  		container['_leaflet_disable_events'] = true;
 
   		this._ctx = container.getContext('2d');
   	},
@@ -12383,7 +12856,7 @@ function convertOffset(x, y, degrees) {
   		var b = this._bounds,
   		    container = this._container,
   		    size = b.getSize(),
-  		    m = retina ? 2 : 1;
+  		    m = Browser.retina ? 2 : 1;
 
   		setPosition(container, b.min);
 
@@ -12393,7 +12866,7 @@ function convertOffset(x, y, degrees) {
   		container.style.width = size.x + 'px';
   		container.style.height = size.y + 'px';
 
-  		if (retina) {
+  		if (Browser.retina) {
   			this._ctx.scale(2, 2);
   		}
 
@@ -12637,15 +13110,12 @@ function convertOffset(x, y, degrees) {
   		for (var order = this._drawFirst; order; order = order.next) {
   			layer = order.layer;
   			if (layer.options.interactive && layer._containsPoint(point)) {
-  				if (!(e.type === 'click' || e.type !== 'preclick') || !this._map._draggableMoved(layer)) {
+  				if (!(e.type === 'click' || e.type === 'preclick') || !this._map._draggableMoved(layer)) {
   					clickedLayer = layer;
   				}
   			}
   		}
-  		if (clickedLayer)  {
-  			fakeStop(e);
-  			this._fireEvent([clickedLayer], e);
-  		}
+  		this._fireEvent(clickedLayer ? [clickedLayer] : false, e);
   	},
 
   	_onMouseMove: function (e) {
@@ -12691,9 +13161,7 @@ function convertOffset(x, y, degrees) {
   			}
   		}
 
-  		if (this._hoveredLayer) {
-  			this._fireEvent([this._hoveredLayer], e);
-  		}
+  		this._fireEvent(this._hoveredLayer ? [this._hoveredLayer] : false, e);
 
   		this._mouseHoverThrottled = true;
   		setTimeout(bind(function () {
@@ -12770,8 +13238,8 @@ function convertOffset(x, y, degrees) {
 
   // @factory L.canvas(options?: Renderer options)
   // Creates a Canvas renderer with the given options.
-  function canvas$1(options) {
-  	return canvas ? new Canvas(options) : null;
+  function canvas(options) {
+  	return Browser.canvas ? new Canvas(options) : null;
   }
 
   /*
@@ -12786,10 +13254,12 @@ function convertOffset(x, y, degrees) {
   			return document.createElement('<lvml:' + name + ' class="lvml">');
   		};
   	} catch (e) {
-  		return function (name) {
-  			return document.createElement('<' + name + ' xmlns="urn:schemas-microsoft.com:vml" class="lvml">');
-  		};
+  		// Do not return fn from catch block so `e` can be garbage collected
+  		// See https://github.com/Leaflet/Leaflet/pull/7279
   	}
+  	return function (name) {
+  		return document.createElement('<' + name + ' xmlns="urn:schemas-microsoft.com:vml" class="lvml">');
+  	};
   })();
 
 
@@ -12913,7 +13383,7 @@ function convertOffset(x, y, degrees) {
   	}
   };
 
-  var create$2 = vml ? vmlCreate : svgCreate;
+  var create = Browser.vml ? vmlCreate : svgCreate;
 
   /*
    * @class SVG
@@ -12923,7 +13393,7 @@ function convertOffset(x, y, degrees) {
    * Allows vector layers to be displayed with [SVG](https://developer.mozilla.org/docs/Web/SVG).
    * Inherits `Renderer`.
    *
-   * Due to [technical limitations](http://caniuse.com/#search=svg), SVG is not
+   * Due to [technical limitations](https://caniuse.com/svg), SVG is not
    * available in all web browsers, notably Android 2.x and 3.x.
    *
    * Although SVG is not available on IE7 and IE8, these browsers support
@@ -12953,19 +13423,13 @@ function convertOffset(x, y, degrees) {
 
   var SVG = Renderer.extend({
 
-  	getEvents: function () {
-  		var events = Renderer.prototype.getEvents.call(this);
-  		events.zoomstart = this._onZoomStart;
-  		return events;
-  	},
-
   	_initContainer: function () {
-  		this._container = create$2('svg');
+  		this._container = create('svg');
 
   		// makes it possible to click through svg root; we'll reset it back in individual paths
   		this._container.setAttribute('pointer-events', 'none');
 
-  		this._rootGroup = create$2('g');
+  		this._rootGroup = create('g');
   		this._container.appendChild(this._rootGroup);
   	},
 
@@ -12975,13 +13439,6 @@ function convertOffset(x, y, degrees) {
   		delete this._container;
   		delete this._rootGroup;
   		delete this._svgSize;
-  	},
-
-  	_onZoomStart: function () {
-  		// Drag-then-pinch interactions might mess up the center and zoom.
-  		// In this case, the easiest way to prevent this is re-do the renderer
-  		//   bounds and padding when the zooming starts.
-  		this._update();
   	},
 
   	_update: function () {
@@ -13010,7 +13467,7 @@ function convertOffset(x, y, degrees) {
   	// methods below are called by vector layers implementations
 
   	_initPath: function (layer) {
-  		var path = layer._path = create$2('path');
+  		var path = layer._path = create('path');
 
   		// @namespace Path
   		// @option className: String = null
@@ -13114,15 +13571,15 @@ function convertOffset(x, y, degrees) {
   	}
   });
 
-  if (vml) {
+  if (Browser.vml) {
   	SVG.include(vmlMixin);
   }
 
   // @namespace SVG
   // @factory L.svg(options?: Renderer options)
   // Creates a SVG renderer with the given options.
-  function svg$1(options) {
-  	return svg || vml ? new SVG(options) : null;
+  function svg(options) {
+  	return Browser.svg || Browser.vml ? new SVG(options) : null;
   }
 
   Map.include({
@@ -13163,7 +13620,7 @@ function convertOffset(x, y, degrees) {
   		// @namespace Map; @option preferCanvas: Boolean = false
   		// Whether `Path`s should be rendered on a `Canvas` renderer.
   		// By default, all `Path`s are rendered in a `SVG` renderer.
-  		return (this.options.preferCanvas && canvas$1(options)) || svg$1(options);
+  		return (this.options.preferCanvas && canvas(options)) || svg(options);
   	}
   });
 
@@ -13222,7 +13679,7 @@ function convertOffset(x, y, degrees) {
   	return new Rectangle(latLngBounds, options);
   }
 
-  SVG.create = create$2;
+  SVG.create = create;
   SVG.pointsToPath = pointsToPath;
 
   GeoJSON.geometryToLayer = geometryToLayer;
@@ -13367,6 +13824,8 @@ function convertOffset(x, y, degrees) {
   	_onKeyDown: function (e) {
   		if (e.keyCode === 27) {
   			this._finish();
+  			this._clearDeferredResetState();
+  			this._resetState();
   		}
   	}
   });
@@ -13437,7 +13896,7 @@ function convertOffset(x, y, degrees) {
   // @section Interaction Options
   Map.mergeOptions({
   	// @option dragging: Boolean = true
-  	// Whether the map be draggable with mouse/touch or not.
+  	// Whether the map is draggable with mouse/touch or not.
   	dragging: true,
 
   	// @section Panning Inertia Options
@@ -13445,8 +13904,8 @@ function convertOffset(x, y, degrees) {
   	// If enabled, panning of the map will have an inertia effect where
   	// the map builds momentum while dragging and continues moving in
   	// the same direction for some time. Feels especially nice on touch
-  	// devices. Enabled by default unless running on old Android devices.
-  	inertia: !android23,
+  	// devices. Enabled by default.
+  	inertia: true,
 
   	// @option inertiaDeceleration: Number = 3000
   	// The rate with which the inertial movement slows down, in pixels/second².
@@ -13610,7 +14069,7 @@ function convertOffset(x, y, degrees) {
   		var map = this._map,
   		    options = map.options,
 
-  		    noInertia = !options.inertia || this._times.length < 2;
+  		    noInertia = !options.inertia || e.noInertia || this._times.length < 2;
 
   		map.fire('dragend', e);
 
@@ -13804,10 +14263,15 @@ function convertOffset(x, y, degrees) {
   					offset = toPoint(offset).multiplyBy(3);
   				}
 
-  				map.panBy(offset);
-
   				if (map.options.maxBounds) {
-  					map.panInsideBounds(map.options.maxBounds);
+  					offset = map._limitOffset(toPoint(offset), map.options.maxBounds);
+  				}
+
+  				if (map.options.worldCopyJump) {
+  					var newLatLng = map.wrapLatLng(map.unproject(map.project(map.getCenter()).add(offset)));
+  					map.panTo(newLatLng);
+  				} else {
+  					map.panBy(offset);
   				}
   			}
   		} else if (key in this._zoomKeys) {
@@ -13918,17 +14382,19 @@ function convertOffset(x, y, degrees) {
   Map.addInitHook('addHandler', 'scrollWheelZoom', ScrollWheelZoom);
 
   /*
-   * L.Map.Tap is used to enable mobile hacks like quick taps and long hold.
+   * L.Map.TapHold is used to simulate `contextmenu` event on long hold,
+   * which otherwise is not fired by mobile Safari.
    */
+
+  var tapHoldDelay = 600;
 
   // @namespace Map
   // @section Interaction Options
   Map.mergeOptions({
   	// @section Touch interaction options
-  	// @option tap: Boolean = true
-  	// Enables mobile hacks for supporting instant taps (fixing 200ms click
-  	// delay on iOS/Android) and touch holds (fired as `contextmenu` events).
-  	tap: true,
+  	// @option tapHold: Boolean
+  	// Enables simulation of `contextmenu` event, default is `true` for mobile Safari.
+  	tapHold: Browser.touchNative && Browser.safari && Browser.mobile,
 
   	// @option tapTolerance: Number = 15
   	// The max number of pixels a user can shift his finger during touch
@@ -13936,7 +14402,7 @@ function convertOffset(x, y, degrees) {
   	tapTolerance: 15
   });
 
-  var Tap = Handler.extend({
+  var TapHold = Handler.extend({
   	addHooks: function () {
   		on(this._map._container, 'touchstart', this._onDown, this);
   	},
@@ -13946,104 +14412,70 @@ function convertOffset(x, y, degrees) {
   	},
 
   	_onDown: function (e) {
-  		if (!e.touches) { return; }
+  		clearTimeout(this._holdTimeout);
+  		if (e.touches.length !== 1) { return; }
 
-  		preventDefault(e);
-
-  		this._fireClick = true;
-
-  		// don't simulate click or track longpress if more than 1 touch
-  		if (e.touches.length > 1) {
-  			this._fireClick = false;
-  			clearTimeout(this._holdTimeout);
-  			return;
-  		}
-
-  		var first = e.touches[0],
-  		    el = first.target;
-
+  		var first = e.touches[0];
   		this._startPos = this._newPos = new Point(first.clientX, first.clientY);
 
-  		// if touching a link, highlight it
-  		if (el.tagName && el.tagName.toLowerCase() === 'a') {
-  			addClass(el, 'leaflet-active');
-  		}
-
-  		// simulate long hold but setting a timeout
   		this._holdTimeout = setTimeout(bind(function () {
-  			if (this._isTapValid()) {
-  				this._fireClick = false;
-  				this._onUp();
-  				this._simulateEvent('contextmenu', first);
-  			}
-  		}, this), 1000);
+  			this._cancel();
+  			if (!this._isTapValid()) { return; }
 
-  		this._simulateEvent('mousedown', first);
+  			// prevent simulated mouse events https://w3c.github.io/touch-events/#mouse-events
+  			on(document, 'touchend', preventDefault);
+  			on(document, 'touchend touchcancel', this._cancelClickPrevent);
+  			this._simulateEvent('contextmenu', first);
+  		}, this), tapHoldDelay);
 
-  		on(document, {
-  			touchmove: this._onMove,
-  			touchend: this._onUp
-  		}, this);
+  		on(document, 'touchend touchcancel contextmenu', this._cancel, this);
+  		on(document, 'touchmove', this._onMove, this);
   	},
 
-  	_onUp: function (e) {
+  	_cancelClickPrevent: function cancelClickPrevent() {
+  		off(document, 'touchend', preventDefault);
+  		off(document, 'touchend touchcancel', cancelClickPrevent);
+  	},
+
+  	_cancel: function () {
   		clearTimeout(this._holdTimeout);
+  		off(document, 'touchend touchcancel contextmenu', this._cancel, this);
+  		off(document, 'touchmove', this._onMove, this);
+  	},
 
-  		off(document, {
-  			touchmove: this._onMove,
-  			touchend: this._onUp
-  		}, this);
-
-  		if (this._fireClick && e && e.changedTouches) {
-
-  			var first = e.changedTouches[0],
-  			    el = first.target;
-
-  			if (el && el.tagName && el.tagName.toLowerCase() === 'a') {
-  				removeClass(el, 'leaflet-active');
-  			}
-
-  			this._simulateEvent('mouseup', first);
-
-  			// simulate click if the touch didn't move too much
-  			if (this._isTapValid()) {
-  				this._simulateEvent('click', first);
-  			}
-  		}
+  	_onMove: function (e) {
+  		var first = e.touches[0];
+  		this._newPos = new Point(first.clientX, first.clientY);
   	},
 
   	_isTapValid: function () {
   		return this._newPos.distanceTo(this._startPos) <= this._map.options.tapTolerance;
   	},
 
-  	_onMove: function (e) {
-  		var first = e.touches[0];
-  		this._newPos = new Point(first.clientX, first.clientY);
-  		this._simulateEvent('mousemove', first);
-  	},
-
   	_simulateEvent: function (type, e) {
-  		var simulatedEvent = document.createEvent('MouseEvents');
+  		var simulatedEvent = new MouseEvent(type, {
+  			bubbles: true,
+  			cancelable: true,
+  			view: window,
+  			// detail: 1,
+  			screenX: e.screenX,
+  			screenY: e.screenY,
+  			clientX: e.clientX,
+  			clientY: e.clientY,
+  			// button: 2,
+  			// buttons: 2
+  		});
 
   		simulatedEvent._simulated = true;
-  		e.target._simulatedClick = true;
-
-  		simulatedEvent.initMouseEvent(
-  		        type, true, true, window, 1,
-  		        e.screenX, e.screenY,
-  		        e.clientX, e.clientY,
-  		        false, false, false, false, 0, null);
 
   		e.target.dispatchEvent(simulatedEvent);
   	}
   });
 
   // @section Handlers
-  // @property tap: Handler
-  // Mobile touch hacks (quick tap and touch hold) handler.
-  if (touch && (!pointer || safari)) {
-  	Map.addInitHook('addHandler', 'tap', Tap);
-  }
+  // @property tapHold: Handler
+  // Long tap handler to simulate `contextmenu` event (useful in mobile Safari).
+  Map.addInitHook('addHandler', 'tapHold', TapHold);
 
   /*
    * L.Handler.TouchZoom is used by L.Map to add pinch zoom on supported mobile browsers.
@@ -14057,8 +14489,8 @@ function convertOffset(x, y, degrees) {
   	// Whether the map can be zoomed by touch-dragging with two fingers. If
   	// passed `'center'`, it will zoom to the center of the view regardless of
   	// where the touch events (fingers) were. Enabled for touch-capable web
-  	// browsers except for old Androids.
-  	touchZoom: touch && !android23,
+  	// browsers.
+  	touchZoom: Browser.touch,
 
   	// @option bounceAtZoomLimits: Boolean = true
   	// Set it to false if you don't want the map to zoom beyond min/max zoom
@@ -14099,7 +14531,7 @@ function convertOffset(x, y, degrees) {
   		map._stop();
 
   		on(document, 'touchmove', this._onTouchMove, this);
-  		on(document, 'touchend', this._onTouchEnd, this);
+  		on(document, 'touchend touchcancel', this._onTouchEnd, this);
 
   		preventDefault(e);
   	},
@@ -14137,7 +14569,7 @@ function convertOffset(x, y, degrees) {
 
   		cancelAnimFrame(this._animRequest);
 
-  		var moveFn = bind(map._move, map, this._center, this._zoom, {pinch: true, round: false});
+  		var moveFn = bind(map._move, map, this._center, this._zoom, {pinch: true, round: false}, undefined);
   		this._animRequest = requestAnimFrame(moveFn, this, true);
 
   		preventDefault(e);
@@ -14153,7 +14585,7 @@ function convertOffset(x, y, degrees) {
   		cancelAnimFrame(this._animRequest);
 
   		off(document, 'touchmove', this._onTouchMove, this);
-  		off(document, 'touchend', this._onTouchEnd, this);
+  		off(document, 'touchend touchcancel', this._onTouchEnd, this);
 
   		// Pinch updates GridLayers' levels only when zoomSnap is off, so zoomSnap becomes noUpdate.
   		if (this._map.options.zoomAnimation) {
@@ -14174,104 +14606,103 @@ function convertOffset(x, y, degrees) {
   Map.Drag = Drag;
   Map.Keyboard = Keyboard;
   Map.ScrollWheelZoom = ScrollWheelZoom;
-  Map.Tap = Tap;
+  Map.TapHold = TapHold;
   Map.TouchZoom = TouchZoom;
 
-  exports.version = version;
-  exports.Control = Control;
-  exports.control = control;
+  exports.Bounds = Bounds;
   exports.Browser = Browser;
-  exports.Evented = Evented;
-  exports.Mixin = Mixin;
-  exports.Util = Util;
+  exports.CRS = CRS;
+  exports.Canvas = Canvas;
+  exports.Circle = Circle;
+  exports.CircleMarker = CircleMarker;
   exports.Class = Class;
-  exports.Handler = Handler;
-  exports.extend = extend;
-  exports.bind = bind;
-  exports.stamp = stamp;
-  exports.setOptions = setOptions;
+  exports.Control = Control;
+  exports.DivIcon = DivIcon;
+  exports.DivOverlay = DivOverlay;
   exports.DomEvent = DomEvent;
   exports.DomUtil = DomUtil;
-  exports.PosAnimation = PosAnimation;
   exports.Draggable = Draggable;
-  exports.LineUtil = LineUtil;
-  exports.PolyUtil = PolyUtil;
-  exports.Point = Point;
-  exports.point = toPoint;
-  exports.Bounds = Bounds;
-  exports.bounds = toBounds;
-  exports.Transformation = Transformation;
-  exports.transformation = toTransformation;
-  exports.Projection = index;
-  exports.LatLng = LatLng;
-  exports.latLng = toLatLng;
-  exports.LatLngBounds = LatLngBounds;
-  exports.latLngBounds = toLatLngBounds;
-  exports.CRS = CRS;
+  exports.Evented = Evented;
+  exports.FeatureGroup = FeatureGroup;
   exports.GeoJSON = GeoJSON;
-  exports.geoJSON = geoJSON;
-  exports.geoJson = geoJson;
+  exports.GridLayer = GridLayer;
+  exports.Handler = Handler;
+  exports.Icon = Icon;
+  exports.ImageOverlay = ImageOverlay;
+  exports.LatLng = LatLng;
+  exports.LatLngBounds = LatLngBounds;
   exports.Layer = Layer;
   exports.LayerGroup = LayerGroup;
-  exports.layerGroup = layerGroup;
-  exports.FeatureGroup = FeatureGroup;
-  exports.featureGroup = featureGroup;
-  exports.ImageOverlay = ImageOverlay;
-  exports.imageOverlay = imageOverlay;
-  exports.VideoOverlay = VideoOverlay;
-  exports.videoOverlay = videoOverlay;
-  exports.SVGOverlay = SVGOverlay;
-  exports.svgOverlay = svgOverlay;
-  exports.DivOverlay = DivOverlay;
-  exports.Popup = Popup;
-  exports.popup = popup;
-  exports.Tooltip = Tooltip;
-  exports.tooltip = tooltip;
-  exports.Icon = Icon;
-  exports.icon = icon;
-  exports.DivIcon = DivIcon;
-  exports.divIcon = divIcon;
-  exports.Marker = Marker;
-  exports.marker = marker;
-  exports.TileLayer = TileLayer;
-  exports.tileLayer = tileLayer;
-  exports.GridLayer = GridLayer;
-  exports.gridLayer = gridLayer;
-  exports.SVG = SVG;
-  exports.svg = svg$1;
-  exports.Renderer = Renderer;
-  exports.Canvas = Canvas;
-  exports.canvas = canvas$1;
-  exports.Path = Path;
-  exports.CircleMarker = CircleMarker;
-  exports.circleMarker = circleMarker;
-  exports.Circle = Circle;
-  exports.circle = circle;
-  exports.Polyline = Polyline;
-  exports.polyline = polyline;
-  exports.Polygon = Polygon;
-  exports.polygon = polygon;
-  exports.Rectangle = Rectangle;
-  exports.rectangle = rectangle;
+  exports.LineUtil = LineUtil;
   exports.Map = Map;
+  exports.Marker = Marker;
+  exports.Mixin = Mixin;
+  exports.Path = Path;
+  exports.Point = Point;
+  exports.PolyUtil = PolyUtil;
+  exports.Polygon = Polygon;
+  exports.Polyline = Polyline;
+  exports.Popup = Popup;
+  exports.PosAnimation = PosAnimation;
+  exports.Projection = index;
+  exports.Rectangle = Rectangle;
+  exports.Renderer = Renderer;
+  exports.SVG = SVG;
+  exports.SVGOverlay = SVGOverlay;
+  exports.TileLayer = TileLayer;
+  exports.Tooltip = Tooltip;
+  exports.Transformation = Transformation;
+  exports.Util = Util;
+  exports.VideoOverlay = VideoOverlay;
+  exports.bind = bind;
+  exports.bounds = toBounds;
+  exports.canvas = canvas;
+  exports.circle = circle;
+  exports.circleMarker = circleMarker;
+  exports.control = control;
+  exports.divIcon = divIcon;
+  exports.extend = extend;
+  exports.featureGroup = featureGroup;
+  exports.geoJSON = geoJSON;
+  exports.geoJson = geoJson;
+  exports.gridLayer = gridLayer;
+  exports.icon = icon;
+  exports.imageOverlay = imageOverlay;
+  exports.latLng = toLatLng;
+  exports.latLngBounds = toLatLngBounds;
+  exports.layerGroup = layerGroup;
   exports.map = createMap;
+  exports.marker = marker;
+  exports.point = toPoint;
+  exports.polygon = polygon;
+  exports.polyline = polyline;
+  exports.popup = popup;
+  exports.rectangle = rectangle;
+  exports.setOptions = setOptions;
+  exports.stamp = stamp;
+  exports.svg = svg;
+  exports.svgOverlay = svgOverlay;
+  exports.tileLayer = tileLayer;
+  exports.tooltip = tooltip;
+  exports.transformation = toTransformation;
+  exports.version = version;
+  exports.videoOverlay = videoOverlay;
 
   var oldL = window.L;
   exports.noConflict = function() {
   	window.L = oldL;
   	return this;
   }
-
   // Always export us to window global (see #2364)
   window.L = exports;
 
-})));
+}));
 //# sourceMappingURL=leaflet-src.js.map
 
 
 /***/ }),
 
-/***/ 58:
+/***/ 1027:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -14281,7 +14712,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 59:
+/***/ 1028:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
@@ -14289,7 +14720,7 @@ module.exports = __webpack_require__.p + "leaflet/dist/images/marker-icon-2x.png
 
 /***/ }),
 
-/***/ 60:
+/***/ 1029:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
@@ -14297,13 +14728,13 @@ module.exports = __webpack_require__.p + "leaflet/dist/images/marker-shadow.png"
 
 /***/ }),
 
-/***/ 61:
+/***/ 1030:
 /***/ ((module, exports, __webpack_require__) => {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (factory, window) {
     // define an AMD module that relies on 'leaflet'
     if (true) {
-        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(57),__webpack_require__(62)], __WEBPACK_AMD_DEFINE_RESULT__ = (function (L, Spinner) {
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1026),__webpack_require__(1031)], __WEBPACK_AMD_DEFINE_RESULT__ = (function (L, Spinner) {
             factory(L, Spinner);
         }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -14364,7 +14795,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (facto
 
 /***/ }),
 
-/***/ 62:
+/***/ 1031:
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -14753,7 +15184,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ }),
 
-/***/ 63:
+/***/ 1032:
 /***/ (function(__unused_webpack_module, exports) {
 
 /*
@@ -17477,7 +17908,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ }),
 
-/***/ 64:
+/***/ 1033:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -17487,7 +17918,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 65:
+/***/ 1034:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -17497,7 +17928,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 66:
+/***/ 1035:
 /***/ (function() {
 
 /*
@@ -17629,7 +18060,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 67:
+/***/ 1036:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -17639,1985 +18070,1087 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 68:
-/***/ (() => {
+/***/ 1037:
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
-var leafletControlGeocoder = (function (exports, L) {
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Geocoder: () => (/* binding */ L),
+/* harmony export */   "default": () => (/* binding */ L),
+/* harmony export */   geocoder: () => (/* binding */ rt),
+/* harmony export */   geocoders: () => (/* binding */ it)
+/* harmony export */ });
+/* harmony import */ var leaflet__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1026);
 
-  function _interopNamespace(e) {
-    if (e && e.__esModule) return e;
-    var n = Object.create(null);
-    if (e) {
-      Object.keys(e).forEach(function (k) {
-        if (k !== 'default') {
-          var d = Object.getOwnPropertyDescriptor(e, k);
-          Object.defineProperty(n, k, d.get ? d : {
-            enumerable: true,
-            get: function () {
-              return e[k];
-            }
-          });
-        }
-      });
-    }
-    n['default'] = e;
-    return n;
-  }
-
-  var L__namespace = /*#__PURE__*/_interopNamespace(L);
-
-  function _inheritsLoose(subClass, superClass) {
-    subClass.prototype = Object.create(superClass.prototype);
-    subClass.prototype.constructor = subClass;
-    subClass.__proto__ = superClass;
-  }
-
-  function _assertThisInitialized(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  /**
-   * @internal
-   */
-
-  function geocodingParams(options, params) {
-    return L__namespace.Util.extend(params, options.geocodingQueryParams);
-  }
-  /**
-   * @internal
-   */
-
-  function reverseParams(options, params) {
-    return L__namespace.Util.extend(params, options.reverseQueryParams);
-  }
-
-  /**
-   * @internal
-   */
-
-  var lastCallbackId = 0; // Adapted from handlebars.js
-  // https://github.com/wycats/handlebars.js/
-
-  /**
-   * @internal
-   */
-
-  var badChars = /[&<>"'`]/g;
-  /**
-   * @internal
-   */
-
-  var possible = /[&<>"'`]/;
-  /**
-   * @internal
-   */
-
-  var escape = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '`': '&#x60;'
+function l(i, t) {
+  return Object.assign(t, i.geocodingQueryParams);
+}
+function p(i, t) {
+  return Object.assign(t, i.reverseQueryParams);
+}
+const M = /[&<>"'`]/g, S = /[&<>"'`]/, T = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#x27;",
+  "`": "&#x60;"
+};
+function D(i) {
+  return T[i];
+}
+function N(i) {
+  return i == null ? "" : i ? (i = "" + i, S.test(i) ? i.replace(M, D) : i) : i + "";
+}
+function c(i, t) {
+  const e = { Accept: "application/json" }, s = new URL(i);
+  return Object.entries(t).forEach(([o, r]) => {
+    (Array.isArray(r) ? r : [r]).forEach((a) => {
+      s.searchParams.append(o, a);
+    });
+  }), fetch(s.toString(), { headers: e }).then((o) => o.json());
+}
+function A(i, t) {
+  return i.replace(/\{ *([\w_]+) *\}/g, (e, s) => {
+    let o = t[s];
+    return o === void 0 ? o = "" : typeof o == "function" && (o = o(t)), N(o);
+  });
+}
+class w {
+  options = {
+    serviceUrl: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+    apiKey: ""
   };
-  /**
-   * @internal
-   */
-
-  function escapeChar(chr) {
-    return escape[chr];
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
   }
-  /**
-   * @internal
-   */
-
-
-  function htmlEscape(string) {
-    if (string == null) {
-      return '';
-    } else if (!string) {
-      return string + '';
-    } // Force a string conversion as this will be done by the append regardless and
-    // the regex test will do this transparently behind the scenes, causing issues if
-    // an object's to string has escaped characters in it.
-
-
-    string = '' + string;
-
-    if (!possible.test(string)) {
-      return string;
-    }
-
-    return string.replace(badChars, escapeChar);
-  }
-  /**
-   * @internal
-   */
-
-  function jsonp(url, params, callback, context, jsonpParam) {
-    var callbackId = '_l_geocoder_' + lastCallbackId++;
-    params[jsonpParam || 'callback'] = callbackId;
-    window[callbackId] = L__namespace.Util.bind(callback, context);
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = url + getParamString(params);
-    script.id = callbackId;
-    document.getElementsByTagName('head')[0].appendChild(script);
-  }
-  /**
-   * @internal
-   */
-
-  function getJSON(url, params, callback) {
-    var xmlHttp = new XMLHttpRequest();
-
-    xmlHttp.onreadystatechange = function () {
-      if (xmlHttp.readyState !== 4) {
-        return;
-      }
-
-      var message;
-
-      if (xmlHttp.status !== 200 && xmlHttp.status !== 304) {
-        message = '';
-      } else if (typeof xmlHttp.response === 'string') {
-        // IE doesn't parse JSON responses even with responseType: 'json'.
-        try {
-          message = JSON.parse(xmlHttp.response);
-        } catch (e) {
-          // Not a JSON response
-          message = xmlHttp.response;
-        }
-      } else {
-        message = xmlHttp.response;
-      }
-
-      callback(message);
-    };
-
-    xmlHttp.open('GET', url + getParamString(params), true);
-    xmlHttp.responseType = 'json';
-    xmlHttp.setRequestHeader('Accept', 'application/json');
-    xmlHttp.send(null);
-  }
-  /**
-   * @internal
-   */
-
-  function template(str, data) {
-    return str.replace(/\{ *([\w_]+) *\}/g, function (str, key) {
-      var value = data[key];
-
-      if (value === undefined) {
-        value = '';
-      } else if (typeof value === 'function') {
-        value = value(data);
-      }
-
-      return htmlEscape(value);
+  async geocode(t) {
+    const e = l(this.options, {
+      token: this.options.apiKey,
+      SingleLine: t,
+      outFields: "Addr_Type",
+      forStorage: !1,
+      maxLocations: 10,
+      f: "json"
+    });
+    return (await c(
+      this.options.serviceUrl + "/findAddressCandidates",
+      e
+    )).candidates.map((o) => {
+      const r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.location.y, o.location.x), a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.extent.ymax, o.extent.xmax),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.extent.ymin, o.extent.xmin)
+      );
+      return {
+        name: o.address,
+        bbox: a,
+        center: r
+      };
     });
   }
-  /**
-   * @internal
-   */
-
-  function getParamString(obj, existingUrl, uppercase) {
-    var params = [];
-
-    for (var i in obj) {
-      var key = encodeURIComponent(uppercase ? i.toUpperCase() : i);
-      var value = obj[i];
-
-      if (!Array.isArray(value)) {
-        params.push(key + '=' + encodeURIComponent(String(value)));
-      } else {
-        for (var j = 0; j < value.length; j++) {
-          params.push(key + '=' + encodeURIComponent(value[j]));
-        }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      location: t.lng + "," + t.lat,
+      distance: 100,
+      f: "json"
+    }), o = await c(this.options.serviceUrl + "/reverseGeocode", s);
+    if (!o || o.error)
+      return [];
+    const r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.location.y, o.location.x), a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(r, r);
+    return [
+      {
+        name: o.address.Match_addr,
+        center: r,
+        bbox: a
       }
-    }
-
-    return (!existingUrl || existingUrl.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+    ];
   }
-
-  /**
-   * Implementation of the [ArcGIS geocoder](https://developers.arcgis.com/features/geocoding/)
-   */
-
-  var ArcGis = /*#__PURE__*/function () {
-    function ArcGis(options) {
-      this.options = {
-        serviceUrl: 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer',
-        apiKey: ''
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = ArcGis.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        token: this.options.apiKey,
-        SingleLine: query,
-        outFields: 'Addr_Type',
-        forStorage: false,
-        maxLocations: 10,
-        f: 'json'
-      });
-      getJSON(this.options.serviceUrl + '/findAddressCandidates', params, function (data) {
-        var results = [];
-
-        if (data.candidates && data.candidates.length) {
-          for (var i = 0; i <= data.candidates.length - 1; i++) {
-            var loc = data.candidates[i];
-            var latLng = L__namespace.latLng(loc.location.y, loc.location.x);
-            var latLngBounds = L__namespace.latLngBounds(L__namespace.latLng(loc.extent.ymax, loc.extent.xmax), L__namespace.latLng(loc.extent.ymin, loc.extent.xmin));
-            results[i] = {
-              name: loc.address,
-              bbox: latLngBounds,
-              center: latLng
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        location: location.lng + ',' + location.lat,
-        distance: 100,
-        f: 'json'
-      });
-      getJSON(this.options.serviceUrl + '/reverseGeocode', params, function (data) {
-        var result = [];
-
-        if (data && !data.error) {
-          var center = L__namespace.latLng(data.location.y, data.location.x);
-          var bbox = L__namespace.latLngBounds(center, center);
-          result.push({
-            name: data.address.Match_addr,
-            center: center,
-            bbox: bbox
-          });
-        }
-
-        cb.call(context, result);
-      });
-    };
-
-    return ArcGis;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link ArcGis}
-   * @param options the options
-   */
-
-  function arcgis(options) {
-    return new ArcGis(options);
+}
+function G(i) {
+  return new w(i);
+}
+class v {
+  options = {
+    serviceUrl: "https://dev.virtualearth.net/REST/v1/Locations/"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
   }
-
-  /**
-   * Implementation of the [Bing Locations API](https://docs.microsoft.com/en-us/bingmaps/rest-services/locations/)
-   */
-
-  var Bing = /*#__PURE__*/function () {
-    function Bing(options) {
-      this.options = {
-        serviceUrl: 'https://dev.virtualearth.net/REST/v1/Locations'
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = Bing.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        query: query,
-        key: this.options.apiKey
-      });
-      jsonp(this.options.apiKey, params, function (data) {
-        var results = [];
-
-        if (data.resourceSets.length > 0) {
-          for (var i = data.resourceSets[0].resources.length - 1; i >= 0; i--) {
-            var resource = data.resourceSets[0].resources[i],
-                bbox = resource.bbox;
-            results[i] = {
-              name: resource.name,
-              bbox: L__namespace.latLngBounds([bbox[0], bbox[1]], [bbox[2], bbox[3]]),
-              center: L__namespace.latLng(resource.point.coordinates)
-            };
-          }
-        }
-
-        cb.call(context, results);
-      }, this, 'jsonp');
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        key: this.options.apiKey
-      });
-      jsonp(this.options.serviceUrl + location.lat + ',' + location.lng, params, function (data) {
-        var results = [];
-
-        for (var i = data.resourceSets[0].resources.length - 1; i >= 0; i--) {
-          var resource = data.resourceSets[0].resources[i],
-              bbox = resource.bbox;
-          results[i] = {
-            name: resource.name,
-            bbox: L__namespace.latLngBounds([bbox[0], bbox[1]], [bbox[2], bbox[3]]),
-            center: L__namespace.latLng(resource.point.coordinates)
-          };
-        }
-
-        cb.call(context, results);
-      }, this, 'jsonp');
-    };
-
-    return Bing;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Bing}
-   * @param options the options
-   */
-
-  function bing(options) {
-    return new Bing(options);
+  async geocode(t) {
+    const e = l(this.options, {
+      query: t,
+      key: this.options.apiKey
+    }), s = await c(this.options.serviceUrl, e);
+    return this._parseResults(s);
   }
-
-  var Google = /*#__PURE__*/function () {
-    function Google(options) {
-      this.options = {
-        serviceUrl: 'https://maps.googleapis.com/maps/api/geocode/json'
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = Google.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        key: this.options.apiKey,
-        address: query
-      });
-      getJSON(this.options.serviceUrl, params, function (data) {
-        var results = [];
-
-        if (data.results && data.results.length) {
-          for (var i = 0; i <= data.results.length - 1; i++) {
-            var loc = data.results[i];
-            var latLng = L__namespace.latLng(loc.geometry.location);
-            var latLngBounds = L__namespace.latLngBounds(L__namespace.latLng(loc.geometry.viewport.northeast), L__namespace.latLng(loc.geometry.viewport.southwest));
-            results[i] = {
-              name: loc.formatted_address,
-              bbox: latLngBounds,
-              center: latLng,
-              properties: loc.address_components
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        key: this.options.apiKey,
-        latlng: location.lat + ',' + location.lng
-      });
-      getJSON(this.options.serviceUrl, params, function (data) {
-        var results = [];
-
-        if (data.results && data.results.length) {
-          for (var i = 0; i <= data.results.length - 1; i++) {
-            var loc = data.results[i];
-            var center = L__namespace.latLng(loc.geometry.location);
-            var bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.geometry.viewport.northeast), L__namespace.latLng(loc.geometry.viewport.southwest));
-            results[i] = {
-              name: loc.formatted_address,
-              bbox: bbox,
-              center: center,
-              properties: loc.address_components
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return Google;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Google}
-   * @param options the options
-   */
-
-  function google(options) {
-    return new Google(options);
+  async reverse(t, e) {
+    const s = p(this.options, {
+      key: this.options.apiKey
+    }), o = await c(
+      this.options.serviceUrl + t.lat + "," + t.lng,
+      s
+    );
+    return this._parseResults(o);
   }
-
-  /**
-   * Implementation of the [HERE Geocoder API](https://developer.here.com/documentation/geocoder/topics/introduction.html)
-   */
-
-  var HERE = /*#__PURE__*/function () {
-    function HERE(options) {
-      this.options = {
-        serviceUrl: 'https://geocoder.api.here.com/6.2/',
-        app_id: '',
-        app_code: '',
-        apiKey: '',
-        maxResults: 5
+  _parseResults(t) {
+    return t.resourceSets[0].resources.map((e) => {
+      const s = e.bbox;
+      return {
+        name: e.name,
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds([s[0], s[1]], [s[2], s[3]]),
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(...e.point.coordinates)
       };
-      L__namespace.Util.setOptions(this, options);
-      if (options.apiKey) throw Error('apiKey is not supported, use app_id/app_code instead!');
-    }
-
-    var _proto = HERE.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        searchtext: query,
-        gen: 9,
-        app_id: this.options.app_id,
-        app_code: this.options.app_code,
-        jsonattributes: 1,
-        maxresults: this.options.maxResults
-      });
-      this.getJSON(this.options.serviceUrl + 'geocode.json', params, cb, context);
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var prox = location.lat + ',' + location.lng;
-
-      if (this.options.reverseGeocodeProxRadius) {
-        prox += ',' + this.options.reverseGeocodeProxRadius;
+    });
+  }
+}
+function z(i) {
+  return new v(i);
+}
+class _ {
+  options = {
+    apiKey: "",
+    serviceUrl: "https://atlas.microsoft.com/search"
+  };
+  constructor(t) {
+    if (leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t), !this.options.apiKey)
+      throw new Error("Azure Maps Geocoder requires an API key.");
+  }
+  /**
+   * {@inheritdoc}
+   * https://learn.microsoft.com/en-us/rest/api/maps/search/get-search-address?view=rest-maps-1.0&tabs=HTTP
+   */
+  async geocode(t) {
+    const e = {
+      "api-version": "1.0",
+      query: t,
+      "subscription-key": this.options.apiKey
+    }, s = this.options.serviceUrl + "/address/json";
+    return ((await c(s, e)).results || []).map(
+      (r) => ({
+        name: r.address.freeformAddress,
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+          [r.viewport.topLeftPoint.lat, r.viewport.topLeftPoint.lon],
+          [r.viewport.btmRightPoint.lat, r.viewport.btmRightPoint.lon]
+        ),
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(r.position.lat, r.position.lon)
+      })
+    );
+  }
+  /**
+   * {@inheritdoc}
+   * https://learn.microsoft.com/en-us/rest/api/maps/search/get-search-address-reverse?view=rest-maps-1.0&tabs=HTTP
+   */
+  async reverse(t, e) {
+    const s = {
+      "api-version": "1.0",
+      query: t.lat + "," + t.lng,
+      "subscription-key": this.options.apiKey
+    }, o = this.options.serviceUrl + "/address/reverse/json";
+    return ((await c(o, s)).addresses || []).map(
+      (a) => ({
+        name: a.address.freeformAddress,
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+          [a.viewport.topLeftPoint.lat, a.viewport.topLeftPoint.lon],
+          [a.viewport.btmRightPoint.lat, a.viewport.btmRightPoint.lon]
+        ),
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(t.lat, t.lng)
+      })
+    );
+  }
+}
+function W(i) {
+  return new _(i);
+}
+class f {
+  options = {
+    serviceUrl: "https://maps.googleapis.com/maps/api/geocode/json"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    const e = l(this.options, {
+      key: this.options.apiKey,
+      address: t
+    }), s = await c(this.options.serviceUrl, e);
+    return this._parseResults(s);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      key: this.options.apiKey,
+      latlng: t.lat + "," + t.lng
+    }), o = await c(this.options.serviceUrl, s);
+    return this._parseResults(o);
+  }
+  _parseResults(t) {
+    return (t.results || [])?.map((e) => {
+      const s = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.geometry.location.lat, e.geometry.location.lng), o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.geometry.viewport.northeast.lat, e.geometry.viewport.northeast.lng),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.geometry.viewport.southwest.lat, e.geometry.viewport.southwest.lng)
+      );
+      return {
+        name: e.formatted_address,
+        bbox: o,
+        center: s,
+        properties: e.address_components
+      };
+    });
+  }
+}
+function I(i) {
+  return new f(i);
+}
+class b {
+  options = {
+    serviceUrl: "https://geocoder.api.here.com/6.2/",
+    app_id: "",
+    app_code: "",
+    apiKey: "",
+    maxResults: 5
+  };
+  constructor(t) {
+    if (leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t), t?.apiKey) throw Error("apiKey is not supported, use app_id/app_code instead!");
+  }
+  geocode(t) {
+    const e = l(this.options, {
+      searchtext: t,
+      gen: 9,
+      app_id: this.options.app_id,
+      app_code: this.options.app_code,
+      jsonattributes: 1,
+      maxresults: this.options.maxResults
+    });
+    return this.getJSON(this.options.serviceUrl + "geocode.json", e);
+  }
+  reverse(t, e) {
+    let s = t.lat + "," + t.lng;
+    this.options.reverseGeocodeProxRadius && (s += "," + this.options.reverseGeocodeProxRadius);
+    const o = p(this.options, {
+      prox: s,
+      mode: "retrieveAddresses",
+      app_id: this.options.app_id,
+      app_code: this.options.app_code,
+      gen: 9,
+      jsonattributes: 1,
+      maxresults: this.options.maxResults
+    });
+    return this.getJSON(this.options.serviceUrl + "reversegeocode.json", o);
+  }
+  async getJSON(t, e) {
+    return ((await c(t, e)).response.view?.[0]?.result || []).map((o) => {
+      const r = o.location, a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(r.displayPosition.latitude, r.displayPosition.longitude), d = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(r.mapView.topLeft.latitude, r.mapView.topLeft.longitude),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(r.mapView.bottomRight.latitude, r.mapView.bottomRight.longitude)
+      );
+      return {
+        name: r.address.label,
+        properties: r.address,
+        bbox: d,
+        center: a
+      };
+    });
+  }
+}
+class y {
+  options = {
+    serviceUrl: "https://geocode.search.hereapi.com/v1",
+    apiKey: "",
+    app_id: "",
+    app_code: "",
+    maxResults: 10
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  geocode(t) {
+    const e = l(this.options, {
+      q: t,
+      apiKey: this.options.apiKey,
+      limit: this.options.maxResults
+    });
+    if (!e.at && !e.in)
+      throw Error(
+        "at / in parameters not found. Please define coordinates (at=latitude,longitude) or other (in) in your geocodingQueryParams."
+      );
+    return this.getJSON(this.options.serviceUrl + "/discover", e);
+  }
+  reverse(t, e) {
+    const s = p(this.options, {
+      at: t.lat + "," + t.lng,
+      limit: this.options.reverseGeocodeProxRadius,
+      apiKey: this.options.apiKey
+    });
+    return this.getJSON(this.options.serviceUrl + "/revgeocode", s);
+  }
+  async getJSON(t, e) {
+    return ((await c(t, e)).items || []).map((o) => {
+      const r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.position.lat, o.position.lng);
+      let a;
+      return o.mapView ? a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.mapView.south, o.mapView.west),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.mapView.north, o.mapView.east)
+      ) : a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.position.lat, o.position.lng),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(o.position.lat, o.position.lng)
+      ), {
+        name: o.address.label,
+        properties: o.address,
+        bbox: a,
+        center: r
+      };
+    });
+  }
+}
+function q(i) {
+  return i?.apiKey ? new y(i) : new b(i);
+}
+function x(i) {
+  let t;
+  if (t = i.match(/^([NS])\s*(\d{1,3}(?:\.\d*)?)\W*([EW])\s*(\d{1,3}(?:\.\d*)?)$/))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[1]) ? 1 : -1) * +t[2],
+      (/E/i.test(t[3]) ? 1 : -1) * +t[4]
+    );
+  if (t = i.match(/^(\d{1,3}(?:\.\d*)?)\s*([NS])\W*(\d{1,3}(?:\.\d*)?)\s*([EW])$/))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[2]) ? 1 : -1) * +t[1],
+      (/E/i.test(t[4]) ? 1 : -1) * +t[3]
+    );
+  if (t = i.match(
+    /^([NS])\s*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\W*([EW])\s*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?$/
+  ))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[1]) ? 1 : -1) * (+t[2] + +t[3] / 60),
+      (/E/i.test(t[4]) ? 1 : -1) * (+t[5] + +t[6] / 60)
+    );
+  if (t = i.match(
+    /^(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\s*([NS])\W*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\s*([EW])$/
+  ))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[3]) ? 1 : -1) * (+t[1] + +t[2] / 60),
+      (/E/i.test(t[6]) ? 1 : -1) * (+t[4] + +t[5] / 60)
+    );
+  if (t = i.match(
+    /^([NS])\s*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?\W*([EW])\s*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?$/
+  ))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[1]) ? 1 : -1) * (+t[2] + +t[3] / 60 + +t[4] / 3600),
+      (/E/i.test(t[5]) ? 1 : -1) * (+t[6] + +t[7] / 60 + +t[8] / 3600)
+    );
+  if (t = i.match(
+    /^(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]\s*([NS])\W*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?\s*([EW])$/
+  ))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(
+      (/N/i.test(t[4]) ? 1 : -1) * (+t[1] + +t[2] / 60 + +t[3] / 3600),
+      (/E/i.test(t[8]) ? 1 : -1) * (+t[5] + +t[6] / 60 + +t[7] / 3600)
+    );
+  if (t = i.match(/^\s*([+-]?\d+(?:\.\d*)?)\s*[\s,]\s*([+-]?\d+(?:\.\d*)?)\s*$/))
+    return new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(+t[1], +t[2]);
+}
+class U {
+  options = {
+    next: void 0,
+    sizeInMeters: 1e4
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    const e = x(t);
+    return e ? [
+      {
+        name: t,
+        center: e,
+        bbox: e.toBounds(this.options.sizeInMeters)
       }
-
-      var params = reverseParams(this.options, {
-        prox: prox,
-        mode: 'retrieveAddresses',
-        app_id: this.options.app_id,
-        app_code: this.options.app_code,
-        gen: 9,
-        jsonattributes: 1,
-        maxresults: this.options.maxResults
-      });
-      this.getJSON(this.options.serviceUrl + 'reversegeocode.json', params, cb, context);
+    ] : this.options.next ? this.options.next.geocode(t) : [];
+  }
+}
+function H(i) {
+  return new U(i);
+}
+class R {
+  options = {
+    serviceUrl: "https://api.mapbox.com/geocoding/v5/mapbox.places/"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  _getProperties(t) {
+    const e = {
+      text: t.text,
+      address: t.address
     };
-
-    _proto.getJSON = function getJSON$1(url, params, cb, context) {
-      getJSON(url, params, function (data) {
-        var results = [];
-
-        if (data.response.view && data.response.view.length) {
-          for (var i = 0; i <= data.response.view[0].result.length - 1; i++) {
-            var loc = data.response.view[0].result[i].location;
-            var center = L__namespace.latLng(loc.displayPosition.latitude, loc.displayPosition.longitude);
-            var bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.mapView.topLeft.latitude, loc.mapView.topLeft.longitude), L__namespace.latLng(loc.mapView.bottomRight.latitude, loc.mapView.bottomRight.longitude));
-            results[i] = {
-              name: loc.address.label,
-              properties: loc.address,
-              bbox: bbox,
-              center: center
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return HERE;
-  }();
-  /**
-   * Implementation of the new [HERE Geocoder API](https://developer.here.com/documentation/geocoding-search-api/api-reference-swagger.html)
-   */
-
-  var HEREv2 = /*#__PURE__*/function () {
-    function HEREv2(options) {
-      this.options = {
-        serviceUrl: 'https://geocode.search.hereapi.com/v1',
-        apiKey: '',
-        app_id: '',
-        app_code: '',
-        maxResults: 10
+    return (t.context || []).forEach((s) => {
+      const o = s.id.split(".")[0];
+      e[o] = s.text, s.short_code && (e.countryShortCode = s.short_code);
+    }), e;
+  }
+  async geocode(t) {
+    const e = this.options.serviceUrl + encodeURIComponent(t) + ".json", s = l(this.options, {
+      access_token: this.options.apiKey
+    });
+    s.proximity !== void 0 && s.proximity.lat !== void 0 && s.proximity.lng !== void 0 && (s.proximity = s.proximity.lng + "," + s.proximity.lat);
+    const o = await c(e, s);
+    return this._parseResults(o);
+  }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  async reverse(t, e) {
+    const s = this.options.serviceUrl + t.lng + "," + t.lat + ".json", o = p(this.options, {
+      access_token: this.options.apiKey
+    }), r = await c(s, o);
+    return this._parseResults(r);
+  }
+  _parseResults(t) {
+    return t.features?.length ? t.features.map((e) => {
+      const s = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(...e.center.reverse());
+      let o;
+      return e.bbox ? o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(...e.bbox.slice(0, 2).reverse()),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(...e.bbox.slice(2, 4).reverse())
+      ) : o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(s, s), {
+        name: e.place_name,
+        bbox: o,
+        center: s,
+        properties: this._getProperties(e)
       };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto2 = HEREv2.prototype;
-
-    _proto2.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        q: query,
-        apiKey: this.options.apiKey,
-        limit: this.options.maxResults
-      });
-
-      if (!params.at && !params["in"]) {
-        throw Error('at / in parameters not found. Please define coordinates (at=latitude,longitude) or other (in) in your geocodingQueryParams.');
-      }
-
-      this.getJSON(this.options.serviceUrl + '/discover', params, cb, context);
-    };
-
-    _proto2.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        at: location.lat + ',' + location.lng,
-        limit: this.options.reverseGeocodeProxRadius,
-        apiKey: this.options.apiKey
-      });
-      this.getJSON(this.options.serviceUrl + '/revgeocode', params, cb, context);
-    };
-
-    _proto2.getJSON = function getJSON$1(url, params, cb, context) {
-      getJSON(url, params, function (data) {
-        var results = [];
-
-        if (data.items && data.items.length) {
-          for (var i = 0; i <= data.items.length - 1; i++) {
-            var item = data.items[i];
-            var latLng = L__namespace.latLng(item.position.lat, item.position.lng);
-            var bbox = void 0;
-
-            if (item.mapView) {
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(item.mapView.south, item.mapView.west), L__namespace.latLng(item.mapView.north, item.mapView.east));
-            } else {
-              // Using only position when not provided
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(item.position.lat, item.position.lng), L__namespace.latLng(item.position.lat, item.position.lng));
-            }
-
-            results[i] = {
-              name: item.address.label,
-              properties: item.address,
-              bbox: bbox,
-              center: latLng
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return HEREv2;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link HERE}
-   * @param options the options
-   */
-
-  function here(options) {
-    if (options.apiKey) {
-      return new HEREv2(options);
-    } else {
-      return new HERE(options);
-    }
+    }) : [];
   }
-
-  /**
-   * Parses basic latitude/longitude strings such as `'50.06773 14.37742'`, `'N50.06773 W14.37742'`, `'S 50° 04.064 E 014° 22.645'`, or `'S 50° 4′ 03.828″, W 14° 22′ 38.712″'`
-   * @param query the latitude/longitude string to parse
-   * @returns the parsed latitude/longitude
-   */
-
-  function parseLatLng(query) {
-    var match; // regex from https://github.com/openstreetmap/openstreetmap-website/blob/master/app/controllers/geocoder_controller.rb
-
-    if (match = query.match(/^([NS])\s*(\d{1,3}(?:\.\d*)?)\W*([EW])\s*(\d{1,3}(?:\.\d*)?)$/)) {
-      // [NSEW] decimal degrees
-      return L__namespace.latLng((/N/i.test(match[1]) ? 1 : -1) * +match[2], (/E/i.test(match[3]) ? 1 : -1) * +match[4]);
-    } else if (match = query.match(/^(\d{1,3}(?:\.\d*)?)\s*([NS])\W*(\d{1,3}(?:\.\d*)?)\s*([EW])$/)) {
-      // decimal degrees [NSEW]
-      return L__namespace.latLng((/N/i.test(match[2]) ? 1 : -1) * +match[1], (/E/i.test(match[4]) ? 1 : -1) * +match[3]);
-    } else if (match = query.match(/^([NS])\s*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\W*([EW])\s*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?$/)) {
-      // [NSEW] degrees, decimal minutes
-      return L__namespace.latLng((/N/i.test(match[1]) ? 1 : -1) * (+match[2] + +match[3] / 60), (/E/i.test(match[4]) ? 1 : -1) * (+match[5] + +match[6] / 60));
-    } else if (match = query.match(/^(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\s*([NS])\W*(\d{1,3})°?\s*(\d{1,3}(?:\.\d*)?)?['′]?\s*([EW])$/)) {
-      // degrees, decimal minutes [NSEW]
-      return L__namespace.latLng((/N/i.test(match[3]) ? 1 : -1) * (+match[1] + +match[2] / 60), (/E/i.test(match[6]) ? 1 : -1) * (+match[4] + +match[5] / 60));
-    } else if (match = query.match(/^([NS])\s*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?\W*([EW])\s*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?$/)) {
-      // [NSEW] degrees, minutes, decimal seconds
-      return L__namespace.latLng((/N/i.test(match[1]) ? 1 : -1) * (+match[2] + +match[3] / 60 + +match[4] / 3600), (/E/i.test(match[5]) ? 1 : -1) * (+match[6] + +match[7] / 60 + +match[8] / 3600));
-    } else if (match = query.match(/^(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]\s*([NS])\W*(\d{1,3})°?\s*(\d{1,2})['′]?\s*(\d{1,3}(?:\.\d*)?)?["″]?\s*([EW])$/)) {
-      // degrees, minutes, decimal seconds [NSEW]
-      return L__namespace.latLng((/N/i.test(match[4]) ? 1 : -1) * (+match[1] + +match[2] / 60 + +match[3] / 3600), (/E/i.test(match[8]) ? 1 : -1) * (+match[5] + +match[6] / 60 + +match[7] / 3600));
-    } else if (match = query.match(/^\s*([+-]?\d+(?:\.\d*)?)\s*[\s,]\s*([+-]?\d+(?:\.\d*)?)\s*$/)) {
-      return L__namespace.latLng(+match[1], +match[2]);
-    }
+}
+function V(i) {
+  return new R(i);
+}
+class E {
+  options = {
+    serviceUrl: "https://www.mapquestapi.com/geocoding/v1"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t), this.options.apiKey = decodeURIComponent(this.options.apiKey);
   }
-  /**
-   * Parses basic latitude/longitude strings such as `'50.06773 14.37742'`, `'N50.06773 W14.37742'`, `'S 50° 04.064 E 014° 22.645'`, or `'S 50° 4′ 03.828″, W 14° 22′ 38.712″'`
-   */
-
-  var LatLng = /*#__PURE__*/function () {
-    function LatLng(options) {
-      this.options = {
-        next: undefined,
-        sizeInMeters: 10000
+  _formatName(...t) {
+    return t.filter((e) => !!e).join(", ");
+  }
+  async geocode(t) {
+    const e = l(this.options, {
+      key: this.options.apiKey,
+      location: t,
+      limit: 5,
+      outFormat: "json"
+    }), s = await c(this.options.serviceUrl + "/address", e);
+    return this._parseResults(s);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      key: this.options.apiKey,
+      location: t.lat + "," + t.lng,
+      outputFormat: "json"
+    }), o = await c(this.options.serviceUrl + "/reverse", s);
+    return this._parseResults(o);
+  }
+  _parseResults(t) {
+    return (t.results?.[0]?.locations || []).map((s) => {
+      const o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(s.latLng.lat, s.latLng.lng);
+      return {
+        name: this._formatName(s.street, s.adminArea4, s.adminArea3, s.adminArea1),
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(o, o),
+        center: o
       };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = LatLng.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var center = parseLatLng(query);
-
-      if (center) {
-        var results = [{
-          name: query,
-          center: center,
-          bbox: center.toBounds(this.options.sizeInMeters)
-        }];
-        cb.call(context, results);
-      } else if (this.options.next) {
-        this.options.next.geocode(query, cb, context);
-      }
-    };
-
-    return LatLng;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link LatLng}
-   * @param options the options
-   */
-
-  function latLng(options) {
-    return new LatLng(options);
+    });
   }
-
-  /**
-   * Implementation of the [Mapbox Geocoding](https://www.mapbox.com/api-documentation/#geocoding)
-   */
-
-  var Mapbox = /*#__PURE__*/function () {
-    function Mapbox(options) {
-      this.options = {
-        serviceUrl: 'https://api.mapbox.com/geocoding/v5/mapbox.places/'
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = Mapbox.prototype;
-
-    _proto._getProperties = function _getProperties(loc) {
-      var properties = {
-        text: loc.text,
-        address: loc.address
-      };
-
-      for (var j = 0; j < (loc.context || []).length; j++) {
-        var id = loc.context[j].id.split('.')[0];
-        properties[id] = loc.context[j].text; // Get country code when available
-
-        if (loc.context[j].short_code) {
-          properties['countryShortCode'] = loc.context[j].short_code;
-        }
-      }
-
-      return properties;
-    };
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var _this = this;
-
-      var params = geocodingParams(this.options, {
-        access_token: this.options.apiKey
-      });
-
-      if (params.proximity !== undefined && params.proximity.lat !== undefined && params.proximity.lng !== undefined) {
-        params.proximity = params.proximity.lng + ',' + params.proximity.lat;
-      }
-
-      getJSON(this.options.serviceUrl + encodeURIComponent(query) + '.json', params, function (data) {
-        var results = [];
-
-        if (data.features && data.features.length) {
-          for (var i = 0; i <= data.features.length - 1; i++) {
-            var loc = data.features[i];
-            var center = L__namespace.latLng(loc.center.reverse());
-            var bbox = void 0;
-
-            if (loc.bbox) {
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.bbox.slice(0, 2).reverse()), L__namespace.latLng(loc.bbox.slice(2, 4).reverse()));
-            } else {
-              bbox = L__namespace.latLngBounds(center, center);
-            }
-
-            results[i] = {
-              name: loc.place_name,
-              bbox: bbox,
-              center: center,
-              properties: _this._getProperties(loc)
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var _this2 = this;
-
-      var url = this.options.serviceUrl + location.lng + ',' + location.lat + '.json';
-      var param = reverseParams(this.options, {
-        access_token: this.options.apiKey
-      });
-      getJSON(url, param, function (data) {
-        var results = [];
-
-        if (data.features && data.features.length) {
-          for (var i = 0; i <= data.features.length - 1; i++) {
-            var loc = data.features[i];
-            var center = L__namespace.latLng(loc.center.reverse());
-            var bbox = void 0;
-
-            if (loc.bbox) {
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.bbox.slice(0, 2).reverse()), L__namespace.latLng(loc.bbox.slice(2, 4).reverse()));
-            } else {
-              bbox = L__namespace.latLngBounds(center, center);
-            }
-
-            results[i] = {
-              name: loc.place_name,
-              bbox: bbox,
-              center: center,
-              properties: _this2._getProperties(loc)
-            };
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return Mapbox;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Mapbox}
-   * @param options the options
-   */
-
-  function mapbox(options) {
-    return new Mapbox(options);
+}
+function J(i) {
+  return new E(i);
+}
+class k {
+  options = {
+    userId: "",
+    apiKey: "",
+    serviceUrl: "https://neutrinoapi.com/"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
   }
-
-  /**
-   * Implementation of the [MapQuest Geocoding API](http://developer.mapquest.com/web/products/dev-services/geocoding-ws)
-   */
-
-  var MapQuest = /*#__PURE__*/function () {
-    function MapQuest(options) {
-      this.options = {
-        serviceUrl: 'https://www.mapquestapi.com/geocoding/v1'
-      };
-      L__namespace.Util.setOptions(this, options); // MapQuest seems to provide URI encoded API keys,
-      // so to avoid encoding them twice, we decode them here
-
-      this.options.apiKey = decodeURIComponent(this.options.apiKey);
-    }
-
-    var _proto = MapQuest.prototype;
-
-    _proto._formatName = function _formatName() {
-      return [].slice.call(arguments).filter(function (s) {
-        return !!s;
-      }).join(', ');
-    };
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        key: this.options.apiKey,
-        location: query,
-        limit: 5,
-        outFormat: 'json'
-      });
-      getJSON(this.options.serviceUrl + '/address', params, L__namespace.Util.bind(function (data) {
-        var results = [];
-
-        if (data.results && data.results[0].locations) {
-          for (var i = data.results[0].locations.length - 1; i >= 0; i--) {
-            var loc = data.results[0].locations[i];
-            var center = L__namespace.latLng(loc.latLng);
-            results[i] = {
-              name: this._formatName(loc.street, loc.adminArea4, loc.adminArea3, loc.adminArea1),
-              bbox: L__namespace.latLngBounds(center, center),
-              center: center
-            };
-          }
-        }
-
-        cb.call(context, results);
-      }, this));
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        key: this.options.apiKey,
-        location: location.lat + ',' + location.lng,
-        outputFormat: 'json'
-      });
-      getJSON(this.options.serviceUrl + '/reverse', params, L__namespace.Util.bind(function (data) {
-        var results = [];
-
-        if (data.results && data.results[0].locations) {
-          for (var i = data.results[0].locations.length - 1; i >= 0; i--) {
-            var loc = data.results[0].locations[i];
-            var center = L__namespace.latLng(loc.latLng);
-            results[i] = {
-              name: this._formatName(loc.street, loc.adminArea4, loc.adminArea3, loc.adminArea1),
-              bbox: L__namespace.latLngBounds(center, center),
-              center: center
-            };
-          }
-        }
-
-        cb.call(context, results);
-      }, this));
-    };
-
-    return MapQuest;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link MapQuest}
-   * @param options the options
-   */
-
-  function mapQuest(options) {
-    return new MapQuest(options);
-  }
-
-  /**
-   * Implementation of the [Neutrino API](https://www.neutrinoapi.com/api/geocode-address/)
-   */
-
-  var Neutrino = /*#__PURE__*/function () {
-    function Neutrino(options) {
-      this.options = {
-        userId: undefined,
-        apiKey: undefined,
-        serviceUrl: 'https://neutrinoapi.com/'
-      };
-      L__namespace.Util.setOptions(this, options);
-    } // https://www.neutrinoapi.com/api/geocode-address/
-
-
-    var _proto = Neutrino.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        apiKey: this.options.apiKey,
-        userId: this.options.userId,
-        //get three words and make a dot based string
-        address: query.split(/\s+/).join('.')
-      });
-      getJSON(this.options.serviceUrl + 'geocode-address', params, function (data) {
-        var results = [];
-
-        if (data.locations) {
-          data.geometry = data.locations[0];
-          var center = L__namespace.latLng(data.geometry['latitude'], data.geometry['longitude']);
-          var bbox = L__namespace.latLngBounds(center, center);
-          results[0] = {
-            name: data.geometry.address,
-            bbox: bbox,
-            center: center
-          };
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    } // https://www.neutrinoapi.com/api/geocode-reverse/
-    ;
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        apiKey: this.options.apiKey,
-        userId: this.options.userId,
-        latitude: location.lat,
-        longitude: location.lng
-      });
-      getJSON(this.options.serviceUrl + 'geocode-reverse', params, function (data) {
-        var results = [];
-
-        if (data.status.status == 200 && data.found) {
-          var center = L__namespace.latLng(location.lat, location.lng);
-          var bbox = L__namespace.latLngBounds(center, center);
-          results[0] = {
-            name: data.address,
-            bbox: bbox,
-            center: center
-          };
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return Neutrino;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Neutrino}
-   * @param options the options
-   */
-
-  function neutrino(options) {
-    return new Neutrino(options);
-  }
-
-  /**
-   * Implementation of the [Nominatim](https://wiki.openstreetmap.org/wiki/Nominatim) geocoder.
-   *
-   * This is the default geocoding service used by the control, unless otherwise specified in the options.
-   *
-   * Unless using your own Nominatim installation, please refer to the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
-   */
-
-  var Nominatim = /*#__PURE__*/function () {
-    function Nominatim(options) {
-      this.options = {
-        serviceUrl: 'https://nominatim.openstreetmap.org/',
-        htmlTemplate: function htmlTemplate(r) {
-          var address = r.address;
-          var className;
-          var parts = [];
-
-          if (address.road || address.building) {
-            parts.push('{building} {road} {house_number}');
-          }
-
-          if (address.city || address.town || address.village || address.hamlet) {
-            className = parts.length > 0 ? 'leaflet-control-geocoder-address-detail' : '';
-            parts.push('<span class="' + className + '">{postcode} {city} {town} {village} {hamlet}</span>');
-          }
-
-          if (address.state || address.country) {
-            className = parts.length > 0 ? 'leaflet-control-geocoder-address-context' : '';
-            parts.push('<span class="' + className + '">{state} {country}</span>');
-          }
-
-          return template(parts.join('<br/>'), address);
-        }
-      };
-      L__namespace.Util.setOptions(this, options || {});
-    }
-
-    var _proto = Nominatim.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var _this = this;
-
-      var params = geocodingParams(this.options, {
-        q: query,
-        limit: 5,
-        format: 'json',
-        addressdetails: 1
-      });
-      getJSON(this.options.serviceUrl + 'search', params, function (data) {
-        var results = [];
-
-        for (var i = data.length - 1; i >= 0; i--) {
-          var bbox = data[i].boundingbox;
-
-          for (var j = 0; j < 4; j++) {
-            bbox[j] = +bbox[j];
-          }
-
-          results[i] = {
-            icon: data[i].icon,
-            name: data[i].display_name,
-            html: _this.options.htmlTemplate ? _this.options.htmlTemplate(data[i]) : undefined,
-            bbox: L__namespace.latLngBounds([bbox[0], bbox[2]], [bbox[1], bbox[3]]),
-            center: L__namespace.latLng(data[i].lat, data[i].lon),
-            properties: data[i]
-          };
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var _this2 = this;
-
-      var params = reverseParams(this.options, {
-        lat: location.lat,
-        lon: location.lng,
-        zoom: Math.round(Math.log(scale / 256) / Math.log(2)),
-        addressdetails: 1,
-        format: 'json'
-      });
-      getJSON(this.options.serviceUrl + 'reverse', params, function (data) {
-        var result = [];
-
-        if (data && data.lat && data.lon) {
-          var center = L__namespace.latLng(data.lat, data.lon);
-          var bbox = L__namespace.latLngBounds(center, center);
-          result.push({
-            name: data.display_name,
-            html: _this2.options.htmlTemplate ? _this2.options.htmlTemplate(data) : undefined,
-            center: center,
-            bbox: bbox,
-            properties: data
-          });
-        }
-
-        cb.call(context, result);
-      });
-    };
-
-    return Nominatim;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Nominatim}
-   * @param options the options
-   */
-
-  function nominatim(options) {
-    return new Nominatim(options);
-  }
-
-  /**
-   * Implementation of the [Plus codes](https://plus.codes/) (formerly OpenLocationCode) (requires [open-location-code](https://www.npmjs.com/package/open-location-code))
-   */
-
-  var OpenLocationCode = /*#__PURE__*/function () {
-    function OpenLocationCode(options) {
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = OpenLocationCode.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      try {
-        var decoded = this.options.OpenLocationCode.decode(query);
-        var result = {
-          name: query,
-          center: L__namespace.latLng(decoded.latitudeCenter, decoded.longitudeCenter),
-          bbox: L__namespace.latLngBounds(L__namespace.latLng(decoded.latitudeLo, decoded.longitudeLo), L__namespace.latLng(decoded.latitudeHi, decoded.longitudeHi))
-        };
-        cb.call(context, [result]);
-      } catch (e) {
-        console.warn(e); // eslint-disable-line no-console
-
-        cb.call(context, []);
-      }
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      try {
-        var code = this.options.OpenLocationCode.encode(location.lat, location.lng, this.options.codeLength);
-        var result = {
-          name: code,
-          center: L__namespace.latLng(location.lat, location.lng),
-          bbox: L__namespace.latLngBounds(L__namespace.latLng(location.lat, location.lng), L__namespace.latLng(location.lat, location.lng))
-        };
-        cb.call(context, [result]);
-      } catch (e) {
-        console.warn(e); // eslint-disable-line no-console
-
-        cb.call(context, []);
-      }
-    };
-
-    return OpenLocationCode;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link OpenLocationCode}
-   * @param options the options
-   */
-
-  function openLocationCode(options) {
-    return new OpenLocationCode(options);
-  }
-
-  /**
-   * Implementation of the [OpenCage Data API](https://opencagedata.com/)
-   */
-
-  var OpenCage = /*#__PURE__*/function () {
-    function OpenCage(options) {
-      this.options = {
-        serviceUrl: 'https://api.opencagedata.com/geocode/v1/json'
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = OpenCage.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        key: this.options.apiKey,
-        q: query
-      });
-      getJSON(this.options.serviceUrl, params, function (data) {
-        var results = [];
-
-        if (data.results && data.results.length) {
-          for (var i = 0; i < data.results.length; i++) {
-            var loc = data.results[i];
-            var center = L__namespace.latLng(loc.geometry);
-            var bbox = void 0;
-
-            if (loc.annotations && loc.annotations.bounds) {
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.annotations.bounds.northeast), L__namespace.latLng(loc.annotations.bounds.southwest));
-            } else {
-              bbox = L__namespace.latLngBounds(center, center);
-            }
-
-            results.push({
-              name: loc.formatted,
-              bbox: bbox,
-              center: center
-            });
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        key: this.options.apiKey,
-        q: [location.lat, location.lng].join(',')
-      });
-      getJSON(this.options.serviceUrl, params, function (data) {
-        var results = [];
-
-        if (data.results && data.results.length) {
-          for (var i = 0; i < data.results.length; i++) {
-            var loc = data.results[i];
-            var center = L__namespace.latLng(loc.geometry);
-            var bbox = void 0;
-
-            if (loc.annotations && loc.annotations.bounds) {
-              bbox = L__namespace.latLngBounds(L__namespace.latLng(loc.annotations.bounds.northeast), L__namespace.latLng(loc.annotations.bounds.southwest));
-            } else {
-              bbox = L__namespace.latLngBounds(center, center);
-            }
-
-            results.push({
-              name: loc.formatted,
-              bbox: bbox,
-              center: center
-            });
-          }
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return OpenCage;
-  }();
-  function opencage(options) {
-    return new OpenCage(options);
-  }
-
-  /**
-   * Implementation of the [Pelias](https://pelias.io/), [geocode.earth](https://geocode.earth/) geocoder (formerly Mapzen Search)
-   */
-
-  var Pelias = /*#__PURE__*/function () {
-    function Pelias(options) {
-      this.options = {
-        serviceUrl: 'https://api.geocode.earth/v1'
-      };
-      this._lastSuggest = 0;
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = Pelias.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var _this = this;
-
-      var params = geocodingParams(this.options, {
-        api_key: this.options.apiKey,
-        text: query
-      });
-      getJSON(this.options.serviceUrl + '/search', params, function (data) {
-        cb.call(context, _this._parseResults(data, 'bbox'));
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      var _this2 = this;
-
-      var params = geocodingParams(this.options, {
-        api_key: this.options.apiKey,
-        text: query
-      });
-      getJSON(this.options.serviceUrl + '/autocomplete', params, function (data) {
-        if (data.geocoding.timestamp > _this2._lastSuggest) {
-          _this2._lastSuggest = data.geocoding.timestamp;
-          cb.call(context, _this2._parseResults(data, 'bbox'));
-        }
-      });
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      var _this3 = this;
-
-      var params = reverseParams(this.options, {
-        api_key: this.options.apiKey,
-        'point.lat': location.lat,
-        'point.lon': location.lng
-      });
-      getJSON(this.options.serviceUrl + '/reverse', params, function (data) {
-        cb.call(context, _this3._parseResults(data, 'bounds'));
-      });
-    };
-
-    _proto._parseResults = function _parseResults(data, bboxname) {
-      var results = [];
-      L__namespace.geoJSON(data, {
-        pointToLayer: function pointToLayer(feature, latlng) {
-          return L__namespace.circleMarker(latlng);
-        },
-        onEachFeature: function onEachFeature(feature, layer) {
-          var result = {};
-          var bbox;
-          var center;
-
-          if (layer.getBounds) {
-            bbox = layer.getBounds();
-            center = bbox.getCenter();
-          } else if (layer.feature.bbox) {
-            center = layer.getLatLng();
-            bbox = L__namespace.latLngBounds(L__namespace.GeoJSON.coordsToLatLng(layer.feature.bbox.slice(0, 2)), L__namespace.GeoJSON.coordsToLatLng(layer.feature.bbox.slice(2, 4)));
-          } else {
-            center = layer.getLatLng();
-            bbox = L__namespace.latLngBounds(center, center);
-          }
-
-          result.name = layer.feature.properties.label;
-          result.center = center;
-          result[bboxname] = bbox;
-          result.properties = layer.feature.properties;
-          results.push(result);
-        }
-      });
-      return results;
-    };
-
-    return Pelias;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Pelias}
-   * @param options the options
-   */
-
-  function pelias(options) {
-    return new Pelias(options);
-  }
-  var GeocodeEarth = Pelias;
-  var geocodeEarth = pelias;
-  /**
-   * r.i.p.
-   * @deprecated
-   */
-
-  var Mapzen = Pelias;
-  /**
-   * r.i.p.
-   * @deprecated
-   */
-
-  var mapzen = pelias;
-  /**
-   * Implementation of the [Openrouteservice](https://openrouteservice.org/dev/#/api-docs/geocode) geocoder
-   */
-
-  var Openrouteservice = /*#__PURE__*/function (_Pelias) {
-    _inheritsLoose(Openrouteservice, _Pelias);
-
-    function Openrouteservice(options) {
-      return _Pelias.call(this, L__namespace.Util.extend({
-        serviceUrl: 'https://api.openrouteservice.org/geocode'
-      }, options)) || this;
-    }
-
-    return Openrouteservice;
-  }(Pelias);
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Openrouteservice}
-   * @param options the options
-   */
-
-  function openrouteservice(options) {
-    return new Openrouteservice(options);
-  }
-
-  /**
-   * Implementation of the [Photon](http://photon.komoot.de/) geocoder
-   */
-
-  var Photon = /*#__PURE__*/function () {
-    function Photon(options) {
-      this.options = {
-        serviceUrl: 'https://photon.komoot.io/api/',
-        reverseUrl: 'https://photon.komoot.io/reverse/',
-        nameProperties: ['name', 'street', 'suburb', 'hamlet', 'town', 'city', 'state', 'country']
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = Photon.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
-      var params = geocodingParams(this.options, {
-        q: query
-      });
-      getJSON(this.options.serviceUrl, params, L__namespace.Util.bind(function (data) {
-        cb.call(context, this._decodeFeatures(data));
-      }, this));
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    };
-
-    _proto.reverse = function reverse(latLng, scale, cb, context) {
-      var params = reverseParams(this.options, {
-        lat: latLng.lat,
-        lon: latLng.lng
-      });
-      getJSON(this.options.reverseUrl, params, L__namespace.Util.bind(function (data) {
-        cb.call(context, this._decodeFeatures(data));
-      }, this));
-    };
-
-    _proto._decodeFeatures = function _decodeFeatures(data) {
-      var results = [];
-
-      if (data && data.features) {
-        for (var i = 0; i < data.features.length; i++) {
-          var f = data.features[i];
-          var c = f.geometry.coordinates;
-          var center = L__namespace.latLng(c[1], c[0]);
-          var extent = f.properties.extent;
-          var bbox = extent ? L__namespace.latLngBounds([extent[1], extent[0]], [extent[3], extent[2]]) : L__namespace.latLngBounds(center, center);
-          results.push({
-            name: this._decodeFeatureName(f),
-            html: this.options.htmlTemplate ? this.options.htmlTemplate(f) : undefined,
-            center: center,
-            bbox: bbox,
-            properties: f.properties
-          });
-        }
-      }
-
-      return results;
-    };
-
-    _proto._decodeFeatureName = function _decodeFeatureName(f) {
-      return (this.options.nameProperties || []).map(function (p) {
-        return f.properties[p];
-      }).filter(function (v) {
-        return !!v;
-      }).join(', ');
-    };
-
-    return Photon;
-  }();
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link Photon}
-   * @param options the options
-   */
-
-  function photon(options) {
-    return new Photon(options);
-  }
-
-  /**
-   * Implementation of the What3Words service
-   */
-
-  var What3Words = /*#__PURE__*/function () {
-    function What3Words(options) {
-      this.options = {
-        serviceUrl: 'https://api.what3words.com/v2/'
-      };
-      L__namespace.Util.setOptions(this, options);
-    }
-
-    var _proto = What3Words.prototype;
-
-    _proto.geocode = function geocode(query, cb, context) {
+  // https://www.neutrinoapi.com/api/geocode-address/
+  async geocode(t) {
+    const e = l(this.options, {
+      apiKey: this.options.apiKey,
+      userId: this.options.userId,
       //get three words and make a dot based string
-      getJSON(this.options.serviceUrl + 'forward', geocodingParams(this.options, {
+      address: t.split(/\s+/).join(".")
+    }), s = await c(this.options.serviceUrl + "geocode-address", e);
+    if (!s.locations)
+      return [];
+    s.geometry = s.locations[0];
+    const o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(s.geometry.latitude, s.geometry.longitude), r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(o, o);
+    return [
+      {
+        name: s.geometry.address,
+        bbox: r,
+        center: o
+      }
+    ];
+  }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  // https://www.neutrinoapi.com/api/geocode-reverse/
+  async reverse(t, e) {
+    const s = p(this.options, {
+      apiKey: this.options.apiKey,
+      userId: this.options.userId,
+      latitude: t.lat,
+      longitude: t.lng
+    }), o = await c(this.options.serviceUrl + "geocode-reverse", s);
+    if (o.status.status !== 200 || !o.found)
+      return [];
+    const r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(t.lat, t.lng), a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(r, r);
+    return [
+      {
+        name: o.address,
+        bbox: a,
+        center: r
+      }
+    ];
+  }
+}
+function $(i) {
+  return new k(i);
+}
+class u {
+  options = {
+    serviceUrl: "https://nominatim.openstreetmap.org/",
+    htmlTemplate(t) {
+      const e = t.address;
+      let s;
+      const o = [];
+      return (e.road || e.building) && o.push("{building} {road} {house_number}"), (e.city || e.town || e.village || e.hamlet) && (s = o.length > 0 ? "leaflet-control-geocoder-address-detail" : "", o.push(
+        '<span class="' + s + '">{postcode} {city} {town} {village} {hamlet}</span>'
+      )), (e.state || e.country) && (s = o.length > 0 ? "leaflet-control-geocoder-address-context" : "", o.push('<span class="' + s + '">{state} {country}</span>')), A(o.join("<br/>"), e);
+    }
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t || {});
+  }
+  async geocode(t) {
+    const e = l(this.options, {
+      q: t,
+      limit: 5,
+      format: "json",
+      addressdetails: 1
+    });
+    return (await c(this.options.serviceUrl + "search", e)).map((o) => {
+      const r = o.boundingbox;
+      return {
+        icon: o.icon,
+        name: o.display_name,
+        html: this.options.htmlTemplate ? this.options.htmlTemplate(o) : void 0,
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds([+r[0], +r[2]], [+r[1], +r[3]]),
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(+o.lat, +o.lon),
+        properties: o
+      };
+    });
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      lat: t.lat,
+      lon: t.lng,
+      zoom: Math.round(Math.log(e / 256) / Math.log(2)),
+      addressdetails: 1,
+      format: "json"
+    }), o = await c(this.options.serviceUrl + "reverse", s);
+    if (!o?.lat || !o?.lon)
+      return [];
+    const r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(+o.lat, +o.lon), a = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(r, r);
+    return [
+      {
+        name: o.display_name,
+        html: this.options.htmlTemplate ? this.options.htmlTemplate(o) : void 0,
+        center: r,
+        bbox: a,
+        properties: o
+      }
+    ];
+  }
+}
+function Q(i) {
+  return new u(i);
+}
+class C {
+  options = {};
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    try {
+      const e = this.options.OpenLocationCode.decode(t);
+      return [{
+        name: t,
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.latitudeCenter, e.longitudeCenter),
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+          new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.latitudeLo, e.longitudeLo),
+          new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.latitudeHi, e.longitudeHi)
+        )
+      }];
+    } catch (e) {
+      return console.warn(e), [];
+    }
+  }
+  async reverse(t, e) {
+    try {
+      return [{
+        name: this.options.OpenLocationCode.encode(
+          t.lat,
+          t.lng,
+          this.options.codeLength
+        ),
+        center: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(t.lat, t.lng),
+        bbox: new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+          new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(t.lat, t.lng),
+          new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(t.lat, t.lng)
+        )
+      }];
+    } catch (s) {
+      return console.warn(s), [];
+    }
+  }
+}
+function F(i) {
+  return new C(i);
+}
+class O {
+  options = {
+    serviceUrl: "https://api.opencagedata.com/geocode/v1/json"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    const e = l(this.options, {
+      key: this.options.apiKey,
+      q: t
+    }), s = await c(this.options.serviceUrl, e);
+    return this._parseResults(s);
+  }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      key: this.options.apiKey,
+      q: [t.lat, t.lng].join(",")
+    }), o = await c(this.options.serviceUrl, s);
+    return this._parseResults(o);
+  }
+  _parseResults(t) {
+    return (t.results || []).map((e) => {
+      const s = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.geometry.lat, e.geometry.lng), o = e.annotations && e.annotations.bounds ? new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.annotations.bounds.northeast.lat, e.annotations.bounds.northeast.lng),
+        new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.annotations.bounds.southwest.lat, e.annotations.bounds.southwest.lng)
+      ) : new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(s, s);
+      return {
+        name: e.formatted,
+        bbox: o,
+        center: s,
+        properties: e
+      };
+    });
+  }
+}
+function Z(i) {
+  return new O(i);
+}
+class h {
+  options = {
+    serviceUrl: "https://api.geocode.earth/v1"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    const e = l(this.options, {
+      api_key: this.options.apiKey,
+      text: t
+    }), s = await c(this.options.serviceUrl + "/search", e);
+    return this._parseResults(s);
+  }
+  async suggest(t) {
+    const e = l(this.options, {
+      api_key: this.options.apiKey,
+      text: t
+    }), s = await c(this.options.serviceUrl + "/autocomplete", e);
+    return this._parseResults(s);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      api_key: this.options.apiKey,
+      "point.lat": t.lat,
+      "point.lon": t.lng
+    }), o = await c(this.options.serviceUrl + "/reverse", s);
+    return this._parseResults(o);
+  }
+  _parseResults(t) {
+    return (t.features || []).map((e) => {
+      const s = e.geometry.coordinates, o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(s[1], s[0]), r = Array.isArray(e.bbox) && e.bbox.length === 4 ? new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds([e.bbox[1], e.bbox[0]], [e.bbox[3], e.bbox[2]]) : new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(o, o);
+      return {
+        name: e.properties.label,
+        center: o,
+        bbox: r,
+        properties: e.properties
+      };
+    });
+  }
+}
+function g(i) {
+  return new h(i);
+}
+const X = h, Y = g, tt = h, et = g;
+class K extends h {
+  constructor(t) {
+    super(
+      Object.assign(
+        {
+          serviceUrl: "https://api.openrouteservice.org/geocode"
+        },
+        t
+      )
+    );
+  }
+}
+function st(i) {
+  return new K(i);
+}
+class j {
+  options = {
+    serviceUrl: "https://photon.komoot.io/api/",
+    reverseUrl: "https://photon.komoot.io/reverse/",
+    nameProperties: ["name", "street", "suburb", "hamlet", "town", "city", "state", "country"]
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t, e) {
+    const s = l(this.options, { q: t }), o = e?.map?.getCenter?.();
+    o && (s.lat = o.lat, s.lon = o.lng);
+    const r = e?.map?.getZoom?.();
+    r && (s.zoom = r);
+    const a = await c(this.options.serviceUrl, s);
+    return this._parseResults(a);
+  }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  async reverse(t, e) {
+    const s = p(this.options, {
+      lat: t.lat,
+      lon: t.lng
+    }), o = await c(this.options.reverseUrl, s);
+    return this._parseResults(o);
+  }
+  _parseResults(t) {
+    return (t.features || []).map((e) => {
+      const s = e.geometry.coordinates, o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(s[1], s[0]), r = e.properties?.extent, a = r ? new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds([r[1], r[0]], [r[3], r[2]]) : new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(o, o);
+      return {
+        name: this._decodeFeatureName(e),
+        html: this.options.htmlTemplate ? this.options.htmlTemplate(e) : void 0,
+        center: o,
+        bbox: a,
+        properties: e.properties
+      };
+    });
+  }
+  _decodeFeatureName(t) {
+    return (this.options.nameProperties || []).map((e) => t.properties?.[e]).filter((e) => !!e).join(", ");
+  }
+}
+function ot(i) {
+  return new j(i);
+}
+class B {
+  options = {
+    serviceUrl: "https://api.what3words.com/v2/"
+  };
+  constructor(t) {
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t);
+  }
+  async geocode(t) {
+    const e = await c(
+      this.options.serviceUrl + "forward",
+      l(this.options, {
         key: this.options.apiKey,
-        addr: query.split(/\s+/).join('.')
-      }), function (data) {
-        var results = [];
-
-        if (data.geometry) {
-          var latLng = L__namespace.latLng(data.geometry['lat'], data.geometry['lng']);
-          var latLngBounds = L__namespace.latLngBounds(latLng, latLng);
-          results[0] = {
-            name: data.words,
-            bbox: latLngBounds,
-            center: latLng
-          };
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    _proto.suggest = function suggest(query, cb, context) {
-      return this.geocode(query, cb, context);
-    };
-
-    _proto.reverse = function reverse(location, scale, cb, context) {
-      getJSON(this.options.serviceUrl + 'reverse', reverseParams(this.options, {
+        //get three words and make a dot based string
+        addr: t.split(/\s+/).join(".")
+      })
+    );
+    if (!e.geometry)
+      return [];
+    const s = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(e.geometry.lat, e.geometry.lng), o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(s, s);
+    return [
+      {
+        name: e.words,
+        bbox: o,
+        center: s
+      }
+    ];
+  }
+  suggest(t) {
+    return this.geocode(t);
+  }
+  async reverse(t, e) {
+    const s = await c(
+      this.options.serviceUrl + "reverse",
+      p(this.options, {
         key: this.options.apiKey,
-        coords: [location.lat, location.lng].join(',')
-      }), function (data) {
-        var results = [];
-
-        if (data.status.status == 200) {
-          var center = L__namespace.latLng(data.geometry['lat'], data.geometry['lng']);
-          var bbox = L__namespace.latLngBounds(center, center);
-          results[0] = {
-            name: data.words,
-            bbox: bbox,
-            center: center
-          };
-        }
-
-        cb.call(context, results);
-      });
-    };
-
-    return What3Words;
-  }();
+        coords: [t.lat, t.lng].join(",")
+      })
+    );
+    if (s.status.status != 200)
+      return [];
+    const o = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLng(s.geometry.lat, s.geometry.lng), r = new leaflet__WEBPACK_IMPORTED_MODULE_0__.LatLngBounds(o, o);
+    return [
+      {
+        name: s.words,
+        bbox: r,
+        center: o
+      }
+    ];
+  }
+}
+function nt(i) {
+  return new B(i);
+}
+const it = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  ArcGis: w,
+  AzureMaps: _,
+  Bing: v,
+  GeocodeEarth: X,
+  Google: f,
+  HERE: b,
+  HEREv2: y,
+  LatLng: U,
+  MapQuest: E,
+  Mapbox: R,
+  Mapzen: tt,
+  Neutrino: k,
+  Nominatim: u,
+  OpenCage: O,
+  OpenLocationCode: C,
+  Openrouteservice: K,
+  Pelias: h,
+  Photon: j,
+  What3Words: B,
+  arcgis: G,
+  azure: W,
+  bing: z,
+  geocodeEarth: Y,
+  geocodingParams: l,
+  google: I,
+  here: q,
+  latLng: H,
+  mapQuest: J,
+  mapbox: V,
+  mapzen: et,
+  neutrino: $,
+  nominatim: Q,
+  openLocationCode: F,
+  opencage: Z,
+  openrouteservice: st,
+  parseLatLng: x,
+  pelias: g,
+  photon: ot,
+  reverseParams: p,
+  what3words: nt
+}, Symbol.toStringTag, { value: "Module" }));
+class m {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(...t) {
+  }
+}
+Object.assign(m.prototype, leaflet__WEBPACK_IMPORTED_MODULE_0__.Control.prototype);
+Object.assign(m.prototype, leaflet__WEBPACK_IMPORTED_MODULE_0__.Evented.prototype);
+class L extends m {
+  options = {
+    showUniqueResult: !0,
+    showResultIcons: !1,
+    collapsed: !0,
+    expand: "touch",
+    position: "topright",
+    placeholder: "Search...",
+    errorMessage: "Nothing found.",
+    iconLabel: "Initiate a new search",
+    query: "",
+    queryMinLength: 1,
+    suggestMinLength: 3,
+    suggestTimeout: 250,
+    defaultMarkGeocode: !0
+  };
+  _alts;
+  _container;
+  _errorElement;
+  _geocodeMarker;
+  _input;
+  _lastGeocode;
+  _map;
+  _preventBlurCollapse;
+  _requestCount = 0;
+  _results;
+  _selection;
+  _suggestTimeout;
   /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link What3Words}
+   * Instantiates a geocoder control (to be invoked using `new`)
    * @param options the options
    */
-
-  function what3words(options) {
-    return new What3Words(options);
+  constructor(t) {
+    super(t), leaflet__WEBPACK_IMPORTED_MODULE_0__.Util.setOptions(this, t), this.options.geocoder || (this.options.geocoder = new u());
   }
-
-  var geocoders = {
-    __proto__: null,
-    geocodingParams: geocodingParams,
-    reverseParams: reverseParams,
-    ArcGis: ArcGis,
-    arcgis: arcgis,
-    Bing: Bing,
-    bing: bing,
-    Google: Google,
-    google: google,
-    HERE: HERE,
-    HEREv2: HEREv2,
-    here: here,
-    parseLatLng: parseLatLng,
-    LatLng: LatLng,
-    latLng: latLng,
-    Mapbox: Mapbox,
-    mapbox: mapbox,
-    MapQuest: MapQuest,
-    mapQuest: mapQuest,
-    Neutrino: Neutrino,
-    neutrino: neutrino,
-    Nominatim: Nominatim,
-    nominatim: nominatim,
-    OpenLocationCode: OpenLocationCode,
-    openLocationCode: openLocationCode,
-    OpenCage: OpenCage,
-    opencage: opencage,
-    Pelias: Pelias,
-    pelias: pelias,
-    GeocodeEarth: GeocodeEarth,
-    geocodeEarth: geocodeEarth,
-    Mapzen: Mapzen,
-    mapzen: mapzen,
-    Openrouteservice: Openrouteservice,
-    openrouteservice: openrouteservice,
-    Photon: Photon,
-    photon: photon,
-    What3Words: What3Words,
-    what3words: what3words
-  };
-
+  addThrobberClass() {
+    this._container.classList.add("leaflet-control-geocoder-throbber");
+  }
+  removeThrobberClass() {
+    this._container.classList.remove("leaflet-control-geocoder-throbber");
+  }
   /**
-   * Leaflet mixins https://leafletjs.com/reference-1.7.1.html#class-includes
-   * for TypeScript https://www.typescriptlang.org/docs/handbook/mixins.html
-   * @internal
+   * Returns the container DOM element for the control and add listeners on relevant map events.
+   * @param map the map instance
+   * @see https://leafletjs.com/reference.html#control-onadd
    */
-
-  var EventedControl = // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function EventedControl() {// empty
-  };
-
-  L__namespace.Util.extend(EventedControl.prototype, L__namespace.Control.prototype);
-  L__namespace.Util.extend(EventedControl.prototype, L__namespace.Evented.prototype);
+  onAdd(t) {
+    const e = "leaflet-control-geocoder", s = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("div", e + " leaflet-bar"), o = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("button", e + "-icon", s), r = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("div", e + "-form", s);
+    this._map = t, this._container = s, o.innerHTML = "&nbsp;", o.type = "button", o.setAttribute("aria-label", this.options.iconLabel);
+    const a = this._input = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("input", "", r);
+    return a.type = "search", a.value = this.options.query, a.placeholder = this.options.placeholder, leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.disableClickPropagation(a), this._errorElement = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("div", e + "-form-no-error", s), this._errorElement.innerHTML = this.options.errorMessage, this._alts = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create(
+      "ul",
+      e + "-alternatives leaflet-control-geocoder-alternatives-minimized",
+      s
+    ), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.disableClickPropagation(this._alts), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(a, "keydown", this._keydown, this), this.options.geocoder?.suggest && leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(a, "input", this._change, this), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(a, "blur", () => {
+      this.options.collapsed && !this._preventBlurCollapse && this._collapse(), this._preventBlurCollapse = !1;
+    }), this.options.collapsed ? this.options.expand === "click" ? leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "click", (d) => {
+      d.button === 0 && d.detail !== 2 && this._toggle();
+    }) : this.options.expand === "touch" ? leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(
+      s,
+      leaflet__WEBPACK_IMPORTED_MODULE_0__.Browser.touch ? "touchstart mousedown" : "mousedown",
+      (d) => {
+        this._toggle(), d.preventDefault(), d.stopPropagation();
+      },
+      this
+    ) : (leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "mouseover", this._expand, this), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "mouseout", this._collapse, this), this._map.on("movestart", this._collapse, this)) : (this._expand(), leaflet__WEBPACK_IMPORTED_MODULE_0__.Browser.touch ? leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "touchstart", () => this._geocode()) : leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "click", () => this._geocode())), this.options.defaultMarkGeocode && this.on("markgeocode", this.markGeocode, this), this.on("startgeocode", this.addThrobberClass, this), this.on("finishgeocode", this.removeThrobberClass, this), this.on("startsuggest", this.addThrobberClass, this), this.on("finishsuggest", this.removeThrobberClass, this), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.disableClickPropagation(s), s;
+  }
   /**
-   * This is the geocoder control. It works like any other [Leaflet control](https://leafletjs.com/reference.html#control), and is added to the map.
+   * Sets the query string on the text input
+   * @param string the query string
    */
-
-  var GeocoderControl = /*#__PURE__*/function (_EventedControl) {
-    _inheritsLoose(GeocoderControl, _EventedControl);
-
-    /**
-     * Instantiates a geocoder control (to be invoked using `new`)
-     * @param options the options
-     */
-    function GeocoderControl(options) {
-      var _this;
-
-      _this = _EventedControl.call(this, options) || this;
-      _this.options = {
-        showUniqueResult: true,
-        showResultIcons: false,
-        collapsed: true,
-        expand: 'touch',
-        position: 'topright',
-        placeholder: 'Search...',
-        errorMessage: 'Nothing found.',
-        iconLabel: 'Initiate a new search',
-        query: '',
-        queryMinLength: 1,
-        suggestMinLength: 3,
-        suggestTimeout: 250,
-        defaultMarkGeocode: true
-      };
-      _this._requestCount = 0;
-      L__namespace.Util.setOptions(_assertThisInitialized(_this), options);
-
-      if (!_this.options.geocoder) {
-        _this.options.geocoder = new Nominatim();
-      }
-
-      return _this;
+  setQuery(t) {
+    return this._input.value = t, this;
+  }
+  _geocodeResult(t, e) {
+    !e && this.options.showUniqueResult && t.length === 1 ? this._geocodeResultSelected(t[0]) : t.length > 0 ? (this._alts.innerHTML = "", this._results = t, this._alts.classList.remove("leaflet-control-geocoder-alternatives-minimized"), this._container.classList.add("leaflet-control-geocoder-options-open"), this._results.forEach((s, o) => this._alts.appendChild(this._createAlt(s, o)))) : (this._container.classList.add("leaflet-control-geocoder-options-error"), this._errorElement.classList.add("leaflet-control-geocoder-error"));
+  }
+  /**
+   * Marks a geocoding result on the map
+   * @param result the geocoding result
+   */
+  markGeocode(t) {
+    const e = t.geocode;
+    return this._map.fitBounds(e.bbox), this._geocodeMarker && this._map.removeLayer(this._geocodeMarker), this._geocodeMarker = new leaflet__WEBPACK_IMPORTED_MODULE_0__.Marker(e.center).bindPopup(e.html || e.name).addTo(this._map).openPopup(), this;
+  }
+  async _geocode(t = !1) {
+    const e = this._input.value;
+    if (!t && e.length < this.options.queryMinLength)
+      return;
+    const s = ++this._requestCount;
+    this._lastGeocode = e, t || this._clearResults();
+    const o = { input: e };
+    this.fire(t ? "startsuggest" : "startgeocode", o);
+    const r = { map: this._map }, a = t ? await this.options.geocoder.suggest(e, r) : await this.options.geocoder.geocode(e, r);
+    if (s === this._requestCount) {
+      const d = { input: e, results: a };
+      this.fire(t ? "finishsuggest" : "finishgeocode", d), this._geocodeResult(a, t);
     }
-
-    var _proto = GeocoderControl.prototype;
-
-    _proto.addThrobberClass = function addThrobberClass() {
-      L__namespace.DomUtil.addClass(this._container, 'leaflet-control-geocoder-throbber');
-    };
-
-    _proto.removeThrobberClass = function removeThrobberClass() {
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-throbber');
-    }
-    /**
-     * Returns the container DOM element for the control and add listeners on relevant map events.
-     * @param map the map instance
-     * @see https://leafletjs.com/reference.html#control-onadd
-     */
-    ;
-
-    _proto.onAdd = function onAdd(map) {
-      var _this2 = this;
-
-      var className = 'leaflet-control-geocoder';
-      var container = L__namespace.DomUtil.create('div', className + ' leaflet-bar');
-      var icon = L__namespace.DomUtil.create('button', className + '-icon', container);
-      var form = this._form = L__namespace.DomUtil.create('div', className + '-form', container);
-      this._map = map;
-      this._container = container;
-      icon.innerHTML = '&nbsp;';
-      icon.type = 'button';
-      icon.setAttribute('aria-label', this.options.iconLabel);
-      var input = this._input = L__namespace.DomUtil.create('input', '', form);
-      input.type = 'text';
-      input.value = this.options.query;
-      input.placeholder = this.options.placeholder;
-      L__namespace.DomEvent.disableClickPropagation(input);
-      this._errorElement = L__namespace.DomUtil.create('div', className + '-form-no-error', container);
-      this._errorElement.innerHTML = this.options.errorMessage;
-      this._alts = L__namespace.DomUtil.create('ul', className + '-alternatives leaflet-control-geocoder-alternatives-minimized', container);
-      L__namespace.DomEvent.disableClickPropagation(this._alts);
-      L__namespace.DomEvent.addListener(input, 'keydown', this._keydown, this);
-
-      if (this.options.geocoder.suggest) {
-        L__namespace.DomEvent.addListener(input, 'input', this._change, this);
-      }
-
-      L__namespace.DomEvent.addListener(input, 'blur', function () {
-        if (_this2.options.collapsed && !_this2._preventBlurCollapse) {
-          _this2._collapse();
-        }
-
-        _this2._preventBlurCollapse = false;
+  }
+  _geocodeResultSelected(t) {
+    const e = { geocode: t };
+    this.fire("markgeocode", e);
+  }
+  _toggle() {
+    this._container.classList.contains("leaflet-control-geocoder-expanded") ? this._collapse() : this._expand();
+  }
+  _expand() {
+    this._container.classList.add("leaflet-control-geocoder-expanded"), this._input.select(), this.fire("expand");
+  }
+  _collapse() {
+    this._container.classList.remove("leaflet-control-geocoder-expanded"), this._alts.classList.add("leaflet-control-geocoder-alternatives-minimized"), this._errorElement.classList.remove("leaflet-control-geocoder-error"), this._container.classList.remove("leaflet-control-geocoder-options-open"), this._container.classList.remove("leaflet-control-geocoder-options-error"), this._input.blur(), this.fire("collapse");
+  }
+  _clearResults() {
+    this._alts.classList.add("leaflet-control-geocoder-alternatives-minimized"), this._selection = null, this._errorElement.classList.remove("leaflet-control-geocoder-error"), this._container.classList.remove("leaflet-control-geocoder-options-open"), this._container.classList.remove("leaflet-control-geocoder-options-error");
+  }
+  _createAlt(t, e) {
+    const s = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("li", ""), o = leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("a", "", s), r = this.options.showResultIcons && t.icon ? leaflet__WEBPACK_IMPORTED_MODULE_0__.DomUtil.create("img", "", o) : null, a = t.html ? void 0 : document.createTextNode(t.name), d = (P) => {
+      this._preventBlurCollapse = !0, leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.stop(P), this._geocodeResultSelected(t), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.on(s, "click touchend", () => {
+        this.options.collapsed ? this._collapse() : this._clearResults();
       });
-
-      if (this.options.collapsed) {
-        if (this.options.expand === 'click') {
-          L__namespace.DomEvent.addListener(container, 'click', function (e) {
-            if (e.button === 0 && e.detail !== 2) {
-              _this2._toggle();
-            }
-          });
-        } else if (this.options.expand === 'touch') {
-          L__namespace.DomEvent.addListener(container, L__namespace.Browser.touch ? 'touchstart mousedown' : 'mousedown', function (e) {
-            _this2._toggle();
-
-            e.preventDefault(); // mobile: clicking focuses the icon, so UI expands and immediately collapses
-
-            e.stopPropagation();
-          }, this);
-        } else {
-          L__namespace.DomEvent.addListener(container, 'mouseover', this._expand, this);
-          L__namespace.DomEvent.addListener(container, 'mouseout', this._collapse, this);
-
-          this._map.on('movestart', this._collapse, this);
-        }
-      } else {
-        this._expand();
-
-        if (L__namespace.Browser.touch) {
-          L__namespace.DomEvent.addListener(container, 'touchstart', function () {
-            return _this2._geocode();
-          });
-        } else {
-          L__namespace.DomEvent.addListener(container, 'click', function () {
-            return _this2._geocode();
-          });
-        }
-      }
-
-      if (this.options.defaultMarkGeocode) {
-        this.on('markgeocode', this.markGeocode, this);
-      }
-
-      this.on('startgeocode', this.addThrobberClass, this);
-      this.on('finishgeocode', this.removeThrobberClass, this);
-      this.on('startsuggest', this.addThrobberClass, this);
-      this.on('finishsuggest', this.removeThrobberClass, this);
-      L__namespace.DomEvent.disableClickPropagation(container);
-      return container;
-    }
-    /**
-     * Sets the query string on the text input
-     * @param string the query string
-     */
-    ;
-
-    _proto.setQuery = function setQuery(string) {
-      this._input.value = string;
-      return this;
     };
-
-    _proto._geocodeResult = function _geocodeResult(results, suggest) {
-      if (!suggest && this.options.showUniqueResult && results.length === 1) {
-        this._geocodeResultSelected(results[0]);
-      } else if (results.length > 0) {
-        this._alts.innerHTML = '';
-        this._results = results;
-        L__namespace.DomUtil.removeClass(this._alts, 'leaflet-control-geocoder-alternatives-minimized');
-        L__namespace.DomUtil.addClass(this._container, 'leaflet-control-geocoder-options-open');
-
-        for (var i = 0; i < results.length; i++) {
-          this._alts.appendChild(this._createAlt(results[i], i));
-        }
-      } else {
-        L__namespace.DomUtil.addClass(this._container, 'leaflet-control-geocoder-options-error');
-        L__namespace.DomUtil.addClass(this._errorElement, 'leaflet-control-geocoder-error');
-      }
-    }
-    /**
-     * Marks a geocoding result on the map
-     * @param result the geocoding result
-     */
-    ;
-
-    _proto.markGeocode = function markGeocode(event) {
-      var result = event.geocode;
-
-      this._map.fitBounds(result.bbox);
-
-      if (this._geocodeMarker) {
-        this._map.removeLayer(this._geocodeMarker);
-      }
-
-      this._geocodeMarker = new L__namespace.Marker(result.center).bindPopup(result.html || result.name).addTo(this._map).openPopup();
-      return this;
+    return r && (r.src = t.icon), s.setAttribute("data-result-index", String(e)), t.html ? o.innerHTML = o.innerHTML + t.html : a && o.appendChild(a), leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.addListener(s, "mousedown touchstart", d, this), s;
+  }
+  _keydown(t) {
+    const e = (s) => {
+      this._selection && (this._selection.classList.remove("leaflet-control-geocoder-selected"), this._selection = this._selection[s > 0 ? "nextSibling" : "previousSibling"]), this._selection || (this._selection = this._alts[s > 0 ? "firstChild" : "lastChild"]), this._selection && this._selection.classList.add("leaflet-control-geocoder-selected");
     };
-
-    _proto._geocode = function _geocode(suggest) {
-      var _this3 = this;
-
-      var value = this._input.value;
-
-      if (!suggest && value.length < this.options.queryMinLength) {
+    switch (t.key) {
+      case "Escape":
+        this.options.collapsed ? this._collapse() : this._clearResults();
+        break;
+      case "ArrowUp":
+        e(-1);
+        break;
+      case "ArrowDown":
+        e(1);
+        break;
+      case "Enter":
+        if (this._selection) {
+          const s = parseInt(this._selection.getAttribute("data-result-index"), 10);
+          this._geocodeResultSelected(this._results[s]), this._clearResults();
+        } else
+          this._geocode();
+        break;
+      default:
         return;
-      }
-
-      var requestCount = ++this._requestCount;
-
-      var cb = function cb(results) {
-        if (requestCount === _this3._requestCount) {
-          var _event = {
-            input: value,
-            results: results
-          };
-
-          _this3.fire(suggest ? 'finishsuggest' : 'finishgeocode', _event);
-
-          _this3._geocodeResult(results, suggest);
-        }
-      };
-
-      this._lastGeocode = value;
-
-      if (!suggest) {
-        this._clearResults();
-      }
-
-      var event = {
-        input: value
-      };
-      this.fire(suggest ? 'startsuggest' : 'startgeocode', event);
-
-      if (suggest) {
-        this.options.geocoder.suggest(value, cb);
-      } else {
-        this.options.geocoder.geocode(value, cb);
-      }
-    };
-
-    _proto._geocodeResultSelected = function _geocodeResultSelected(geocode) {
-      var event = {
-        geocode: geocode
-      };
-      this.fire('markgeocode', event);
-    };
-
-    _proto._toggle = function _toggle() {
-      if (L__namespace.DomUtil.hasClass(this._container, 'leaflet-control-geocoder-expanded')) {
-        this._collapse();
-      } else {
-        this._expand();
-      }
-    };
-
-    _proto._expand = function _expand() {
-      L__namespace.DomUtil.addClass(this._container, 'leaflet-control-geocoder-expanded');
-
-      this._input.select();
-
-      this.fire('expand');
-    };
-
-    _proto._collapse = function _collapse() {
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-expanded');
-      L__namespace.DomUtil.addClass(this._alts, 'leaflet-control-geocoder-alternatives-minimized');
-      L__namespace.DomUtil.removeClass(this._errorElement, 'leaflet-control-geocoder-error');
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-options-open');
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-options-error');
-
-      this._input.blur(); // mobile: keyboard shouldn't stay expanded
-
-
-      this.fire('collapse');
-    };
-
-    _proto._clearResults = function _clearResults() {
-      L__namespace.DomUtil.addClass(this._alts, 'leaflet-control-geocoder-alternatives-minimized');
-      this._selection = null;
-      L__namespace.DomUtil.removeClass(this._errorElement, 'leaflet-control-geocoder-error');
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-options-open');
-      L__namespace.DomUtil.removeClass(this._container, 'leaflet-control-geocoder-options-error');
-    };
-
-    _proto._createAlt = function _createAlt(result, index) {
-      var _this4 = this;
-
-      var li = L__namespace.DomUtil.create('li', ''),
-          a = L__namespace.DomUtil.create('a', '', li),
-          icon = this.options.showResultIcons && result.icon ? L__namespace.DomUtil.create('img', '', a) : null,
-          text = result.html ? undefined : document.createTextNode(result.name),
-          mouseDownHandler = function mouseDownHandler(e) {
-        // In some browsers, a click will fire on the map if the control is
-        // collapsed directly after mousedown. To work around this, we
-        // wait until the click is completed, and _then_ collapse the
-        // control. Messy, but this is the workaround I could come up with
-        // for #142.
-        _this4._preventBlurCollapse = true;
-        L__namespace.DomEvent.stop(e);
-
-        _this4._geocodeResultSelected(result);
-
-        L__namespace.DomEvent.on(li, 'click touchend', function () {
-          if (_this4.options.collapsed) {
-            _this4._collapse();
-          } else {
-            _this4._clearResults();
-          }
-        });
-      };
-
-      if (icon) {
-        icon.src = result.icon;
-      }
-
-      li.setAttribute('data-result-index', String(index));
-
-      if (result.html) {
-        a.innerHTML = a.innerHTML + result.html;
-      } else if (text) {
-        a.appendChild(text);
-      } // Use mousedown and not click, since click will fire _after_ blur,
-      // causing the control to have collapsed and removed the items
-      // before the click can fire.
-
-
-      L__namespace.DomEvent.addListener(li, 'mousedown touchstart', mouseDownHandler, this);
-      return li;
-    };
-
-    _proto._keydown = function _keydown(e) {
-      var _this5 = this;
-
-      var select = function select(dir) {
-        if (_this5._selection) {
-          L__namespace.DomUtil.removeClass(_this5._selection, 'leaflet-control-geocoder-selected');
-          _this5._selection = _this5._selection[dir > 0 ? 'nextSibling' : 'previousSibling'];
-        }
-
-        if (!_this5._selection) {
-          _this5._selection = _this5._alts[dir > 0 ? 'firstChild' : 'lastChild'];
-        }
-
-        if (_this5._selection) {
-          L__namespace.DomUtil.addClass(_this5._selection, 'leaflet-control-geocoder-selected');
-        }
-      };
-
-      switch (e.keyCode) {
-        // Escape
-        case 27:
-          if (this.options.collapsed) {
-            this._collapse();
-          } else {
-            this._clearResults();
-          }
-
-          break;
-        // Up
-
-        case 38:
-          select(-1);
-          break;
-        // Up
-
-        case 40:
-          select(1);
-          break;
-        // Enter
-
-        case 13:
-          if (this._selection) {
-            var index = parseInt(this._selection.getAttribute('data-result-index'), 10);
-
-            this._geocodeResultSelected(this._results[index]);
-
-            this._clearResults();
-          } else {
-            this._geocode();
-          }
-
-          break;
-
-        default:
-          return;
-      }
-
-      L__namespace.DomEvent.preventDefault(e);
-    };
-
-    _proto._change = function _change() {
-      var _this6 = this;
-
-      var v = this._input.value;
-
-      if (v !== this._lastGeocode) {
-        clearTimeout(this._suggestTimeout);
-
-        if (v.length >= this.options.suggestMinLength) {
-          this._suggestTimeout = setTimeout(function () {
-            return _this6._geocode(true);
-          }, this.options.suggestTimeout);
-        } else {
-          this._clearResults();
-        }
-      }
-    };
-
-    return GeocoderControl;
-  }(EventedControl);
-  /**
-   * [Class factory method](https://leafletjs.com/reference.html#class-class-factories) for {@link GeocoderControl}
-   * @param options the options
-   */
-
-  function geocoder(options) {
-    return new GeocoderControl(options);
+    }
+    leaflet__WEBPACK_IMPORTED_MODULE_0__.DomEvent.preventDefault(t);
   }
+  _change() {
+    const t = this._input.value;
+    t !== this._lastGeocode && (clearTimeout(this._suggestTimeout), t.length >= this.options.suggestMinLength ? this._suggestTimeout = setTimeout(() => this._geocode(!0), this.options.suggestTimeout) : this._clearResults());
+  }
+}
+function rt(i) {
+  return new L(i);
+}
+/* @preserve
+ * Leaflet Control Geocoder
+ * https://github.com/perliedman/leaflet-control-geocoder
+ *
+ * Copyright (c) 2012 sa3m (https://github.com/sa3m)
+ * Copyright (c) 2018 Per Liedman
+ * All rights reserved.
+ */
+Object.assign(L, it);
+Object.assign(leaflet__WEBPACK_IMPORTED_MODULE_0__.Control, {
+  Geocoder: L,
+  geocoder: rt
+});
 
-  /* @preserve
-   * Leaflet Control Geocoder
-   * https://github.com/perliedman/leaflet-control-geocoder
-   *
-   * Copyright (c) 2012 sa3m (https://github.com/sa3m)
-   * Copyright (c) 2018 Per Liedman
-   * All rights reserved.
-   */
-  L__namespace.Util.extend(GeocoderControl, geocoders);
-  L__namespace.Util.extend(L__namespace.Control, {
-    Geocoder: GeocoderControl,
-    geocoder: geocoder
-  });
-
-  exports.Geocoder = GeocoderControl;
-  exports.default = GeocoderControl;
-  exports.geocoder = geocoder;
-  exports.geocoders = geocoders;
-
-  return exports;
-
-}({}, L));
-//# sourceMappingURL=Control.Geocoder.js.map
+//# sourceMappingURL=Control.Geocoder.modern.js.map
 
 
 /***/ }),
 
-/***/ 69:
+/***/ 1038:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -19627,7 +19160,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
-/***/ 70:
+/***/ 1039:
 /***/ (() => {
 
 L.Control.Fullscreen = L.Control.extend({
@@ -19786,7 +19319,7 @@ L.control.fullscreen = function (options) {
 
 /***/ }),
 
-/***/ 71:
+/***/ 1040:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -19858,8 +19391,11 @@ __webpack_require__.r(__webpack_exports__);
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
+// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
 (() => {
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var leaflet_control_geocoder__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1037);
 /**
  * ---------------------------------------------------------------------
  *
@@ -19895,25 +19431,25 @@ var __webpack_exports__ = {};
 
 // spin.js dependency
 // Spinner object have to be accessible in window context
-window.Spinner = (__webpack_require__(56).Spinner);
+window.Spinner = (__webpack_require__(1025).Spinner);
 
 // Leaflet core lib
-__webpack_require__(57);
-__webpack_require__(58);
-__webpack_require__(59); // image is not present in CSS and will not be copied automatically
-__webpack_require__(60); // image is not present in CSS and will not be copied automatically
+__webpack_require__(1026);
+__webpack_require__(1027);
+__webpack_require__(1028); // image is not present in CSS and will not be copied automatically
+__webpack_require__(1029); // image is not present in CSS and will not be copied automatically
 
 // Leaflet plugins
-__webpack_require__(61);
-__webpack_require__(63);
-__webpack_require__(64);
-__webpack_require__(65);
-__webpack_require__(66);
-__webpack_require__(67);
-__webpack_require__(68);
-__webpack_require__(69);
-__webpack_require__(70);
-__webpack_require__(71);
+__webpack_require__(1030);
+__webpack_require__(1032);
+__webpack_require__(1033);
+__webpack_require__(1034);
+__webpack_require__(1035);
+__webpack_require__(1036);
+
+__webpack_require__(1038);
+__webpack_require__(1039);
+__webpack_require__(1040);
 
 })();
 

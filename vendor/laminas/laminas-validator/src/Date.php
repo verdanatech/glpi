@@ -77,6 +77,8 @@ class Date extends AbstractValidator
     /**
      * Returns the format option
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @return string
      */
     public function getFormat()
@@ -90,22 +92,30 @@ class Date extends AbstractValidator
      * Format cannot be null.  It will always default to 'Y-m-d', even
      * if null is provided.
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @param string|null $format
      * @return $this provides a fluent interface
      * @todo   validate the format
      */
     public function setFormat($format = self::FORMAT_DEFAULT)
     {
-        $this->format = empty($format) ? self::FORMAT_DEFAULT : $format;
+        $this->format = $format === null || $format === '' ? self::FORMAT_DEFAULT : $format;
         return $this;
     }
 
+    /**
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     */
     public function setStrict(bool $strict): self
     {
         $this->strict = $strict;
         return $this;
     }
 
+    /**
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     */
     public function isStrict(): bool
     {
         return $this->strict;
@@ -207,6 +217,10 @@ class Date extends AbstractValidator
         // Invalid dates can show up as warnings (ie. "2007-02-99")
         // and still return a DateTime object.
         $errors = DateTime::getLastErrors();
+        if ($errors === false) {
+            return $date;
+        }
+
         if ($errors['warning_count'] > 0) {
             if ($addErrors) {
                 $this->error(self::FALSEFORMAT);
@@ -220,7 +234,6 @@ class Date extends AbstractValidator
     /**
      * Implodes the array into a string and proxies to {@link convertString()}.
      *
-     * @param array $value
      * @param bool $addErrors
      * @return false|DateTime
      * @todo   enhance the implosion

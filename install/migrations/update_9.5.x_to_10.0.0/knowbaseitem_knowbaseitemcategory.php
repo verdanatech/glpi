@@ -31,12 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $default_charset = DBConnection::getDefaultCharset();
 $default_collation = DBConnection::getDefaultCollation();
 $default_key_sign = DBConnection::getDefaultPrimaryKeySignOption();
@@ -51,7 +49,7 @@ if (!$DB->tableExists('glpi_knowbaseitems_knowbaseitemcategories')) {
       KEY `knowbaseitems_id` (`knowbaseitems_id`),
       KEY `knowbaseitemcategories_id` (`knowbaseitemcategories_id`)
       ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation};";
-    $DB->doQueryOrDie($query, "add table glpi_knowbaseitems_knowbaseitemcategories");
+    $DB->doQuery($query);
 }
 
 if ($DB->fieldExists('glpi_knowbaseitems', 'knowbaseitemcategories_id')) {
@@ -63,7 +61,7 @@ if ($DB->fieldExists('glpi_knowbaseitems', 'knowbaseitemcategories_id')) {
     if (count($iterator)) {
         //migrate existing data
         foreach ($iterator as $row) {
-            $DB->insertOrDie("glpi_knowbaseitems_knowbaseitemcategories", [
+            $DB->insert("glpi_knowbaseitems_knowbaseitemcategories", [
                 'knowbaseitemcategories_id'   => $row['knowbaseitemcategories_id'],
                 'knowbaseitems_id'            => $row['id'],
             ]);

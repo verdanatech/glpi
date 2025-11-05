@@ -41,7 +41,20 @@ LitEmoji::config('excludeShortcodes', ['mobile', 'android']);
 
 echo LitEmoji::encodeShortcode('📱');
 // ':iphone:'
+
+// Add aliases for custom shortcodes
+LitEmoji::config('aliasShortcodes', ['yeah' => 'thumbsup']);
+echo LitEmoji::encodeUnicode('Can do :yeah:!');
+// 'Can do 👍!'
 ```
+
+# Encodings
+
+LitEmoji's various functions will do their best to detect the encoding of the
+provided text and should work on UTF-8 encoded strings without issue. In cases
+where the encoding cannot be detected, UTF-8 is assumed, however a second argument
+can be provided to any of the functions to hint the actual encoded of the provided
+string.
 
 ## Contributing
 

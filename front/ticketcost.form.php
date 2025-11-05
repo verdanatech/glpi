@@ -33,13 +33,14 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.84
  */
-
-use Glpi\Event;
-
-include('../inc/includes.php');
 
 Session::checkCentralAccess();
 
@@ -60,7 +61,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $cost->check($_POST["id"], PURGE);
-    if ($cost->delete($_POST, 1)) {
+    if ($cost->delete($_POST, true)) {
         Event::log(
             $cost->fields['tickets_id'],
             "tickets",
@@ -87,4 +88,4 @@ if (isset($_POST["add"])) {
     Html::back();
 }
 
-Html::displayErrorAndDie('Lost');
+throw new BadRequestHttpException();

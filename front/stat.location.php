@@ -33,27 +33,26 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Application\View\TemplateRenderer;
 use Glpi\Stat\Data\Location\StatDataClosed;
 use Glpi\Stat\Data\Location\StatDataLate;
 use Glpi\Stat\Data\Location\StatDataOpened;
 use Glpi\Stat\Data\Location\StatDataOpenSatisfaction;
 use Glpi\Stat\Data\Location\StatDataSolved;
 
-/** @var array $CFG_GLPI */
-global $CFG_GLPI;
+use function Safe\mktime;
+use function Safe\preg_match;
 
-include('../inc/includes.php');
+global $CFG_GLPI;
 
 Html::header(__('Statistics'), '', "helpdesk", "stat");
 
 Session::checkRight("statistic", READ);
 
 
-if (empty($_GET["showgraph"])) {
-    $_GET["showgraph"] = 0;
-} else {
-    $_GET["showgraph"] = (int) $_GET["showgraph"];
-}
+$_GET["showgraph"] = (int) ($_GET["showgraph"] ?? 0);
 
 //sanitize dates
 foreach (['date1', 'date2'] as $key) {
@@ -62,8 +61,8 @@ foreach (['date1', 'date2'] as $key) {
     }
 }
 if (empty($_GET["date1"]) && empty($_GET["date2"])) {
-    $year          = date("Y") - 1;
-    $_GET["date1"] = date("Y-m-d", mktime(1, 0, 0, date("m"), date("d"), $year));
+    $year          = ((int) date("Y")) - 1;
+    $_GET["date1"] = date("Y-m-d", mktime(1, 0, 0, (int) date("m"), (int) date("d"), $year));
     $_GET["date2"] = date("Y-m-d");
 }
 
@@ -98,56 +97,29 @@ if (!isset($_GET['itemtype'])) {
 $stat = new Stat();
 Stat::title();
 
-echo "<form method='get' name='form' action='stat.location.php'>";
-// keep it first param
-echo "<input type='hidden' name='itemtype' value=\"" . htmlspecialchars($_GET['itemtype']) . "\">";
-
-echo "<table class='tab_cadre_fixe' ><tr class='tab_bg_2'><td rowspan='2' width='30%'>";
-$values = [_n('Dropdown', 'Dropdowns', Session::getPluralNumber()) => ['ComputerType'    => _n('Type', 'Types', 1),
-    'ComputerModel'   => _n('Model', 'Models', 1),
-    'OperatingSystem' => OperatingSystem::getTypeName(1),
-    'Location'        => Location::getTypeName(1),
-],
-];
-$devices = Dropdown::getDeviceItemTypes();
-foreach ($devices as $label => $dp) {
-    foreach ($dp as $i => $name) {
-        $values[$label][$i] = $name;
-    }
-}
-
-Dropdown::showFromArray('dropdown', $values, ['value' => $_GET["dropdown"]]);
-
-echo "</td>";
-
-echo "<td class='right'>" . __('Start date') . "</td><td>";
-Html::showDateField("date1", ['value' => $_GET["date1"]]);
-echo "</td>";
-echo "<td class='right'>" . __('Show graphics') . "</td>";
-echo "<td rowspan='2' class='center'>";
-echo "<input type='submit' class='btn btn-primary' name='submit' value='" . __s('Display report') . "'></td></tr>";
-
-echo "<tr class='tab_bg_2'><td class='right'>" . __('End date') . "</td><td>";
-Html::showDateField("date2", ['value' => $_GET["date2"]]);
-echo "</td><td class='center'>";
-Dropdown::showYesNo('showgraph', $_GET['showgraph']);
-echo "</td>";
-echo "</tr>";
-echo "</table>";
-// form using GET method : CRSF not needed
-echo "</form>";
+TemplateRenderer::getInstance()->display('pages/assistance/stats/form.html.twig', [
+    'target'    => 'stat.location.php',
+    'itemtype'  => $_GET['itemtype'],
+    'type_params' => [
+        'field' => 'dropdown',
+        'value' => $_GET["dropdown"],
+        'elements' => Stat::getItemCharacteristicStatFields(),
+    ],
+    'date1'     => $_GET["date1"],
+    'date2'     => $_GET["date2"],
+    'showgraph' => $_GET['showgraph'],
+]);
 
 if (
     !($item = getItemForItemtype($_GET["dropdown"]))
 ) {
     // Do nothing
     Html::footer();
-    exit();
+    return;
 }
 
 
 if (!($item instanceof CommonDevice)) {
-    // echo "Dropdown";
     $type = "comp_champ";
 
     $val = Stat::getItems($_GET['itemtype'], $_GET["date1"], $_GET["date2"], $_GET["dropdown"]);
@@ -158,7 +130,6 @@ if (!($item instanceof CommonDevice)) {
         'start'    => $_GET["start"],
     ];
 } else {
-    //   echo "Device";
     $type  = "device";
 
     $val = Stat::getItems($_GET['itemtype'], $_GET["date1"], $_GET["date2"], $_GET["dropdown"]);
@@ -180,8 +151,7 @@ Html::printPager(
             'date2'    => $_GET['date2'],
             'itemtype' => $_GET['itemtype'],
             'dropdown' => $_GET['dropdown'],
-        ],
-        '&amp;'
+        ]
     ),
     'Stat',
     $params

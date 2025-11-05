@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkRight("profile", READ);
 
@@ -63,7 +63,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $prof->check($_POST['id'], PURGE);
-    if ($prof->delete($_POST, 1)) {
+    if ($prof->delete($_POST, true)) {
         Event::log(
             $_POST['id'],
             "profiles",

@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryFunction;
+
 class PurgeLogs extends CommonDBTM
 {
     protected static $notable = true;
@@ -59,7 +61,7 @@ class PurgeLogs extends CommonDBTM
             self::purgePlugins();
             self::purgeAll();
             $logs_after = self::getLogsCount();
-            Log::history(0, __CLASS__, [0, $logs_before, $logs_after], '', Log::HISTORY_LOG_SIMPLE_MESSAGE);
+            Log::history(0, self::class, [0, $logs_before, $logs_after], '', Log::HISTORY_LOG_SIMPLE_MESSAGE);
             $task->addVolume($logs_before - $logs_after);
             $cron_status = 1;
         } else {
@@ -80,10 +82,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeSoftware()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_item_software_install']);
@@ -158,10 +156,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeInfocom()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_infocom_creation']);
@@ -193,10 +187,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeUserinfos()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_profile_user']);
@@ -266,10 +256,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeDevices()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $actions = [
@@ -300,10 +286,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeRelations()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $actions = [
@@ -332,10 +314,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeItems()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $actions = [
@@ -367,10 +345,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeRefusedLogs()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_refusedequipment']);
@@ -396,10 +370,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeOthers()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $actions = [
@@ -427,10 +397,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgePlugins()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_plugins']);
@@ -452,10 +418,6 @@ class PurgeLogs extends CommonDBTM
      */
     public static function purgeAll()
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
         global $CFG_GLPI, $DB;
 
         $month = self::getDateModRestriction($CFG_GLPI['purge_all']);
@@ -477,7 +439,7 @@ class PurgeLogs extends CommonDBTM
     public static function getDateModRestriction($month)
     {
         if ($month > 0) {
-            return ['date_mod' => ['<=', new QueryExpression("DATE_ADD(NOW(), INTERVAL -$month MONTH)")]];
+            return ['date_mod' => ['<=', QueryFunction::dateSub(QueryFunction::now(), $month, 'MONTH')]];
         } elseif ($month == Config::DELETE_ALL) {
             return [1 => 1];
         } elseif ($month == Config::KEEP_ALL) {

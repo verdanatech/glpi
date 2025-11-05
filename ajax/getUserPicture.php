@@ -33,19 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\BadRequestHttpException;
 
-$AJAX_INCLUDE = 1;
-
-include('../inc/includes.php');
+use function Safe\json_encode;
 
 header("Content-Type: application/json; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if (!isset($_REQUEST['users_id'])) {
-    Response::sendError(400, "Missing users_id parameter");
+    throw new BadRequestHttpException("Missing users_id parameter");
 } elseif (!is_array($_REQUEST['users_id'])) {
     $_REQUEST['users_id'] = [$_REQUEST['users_id']];
 }
@@ -79,7 +75,11 @@ foreach ($_REQUEST['users_id'] as $user_id) {
                 'class'          => $_REQUEST['class'] ?? '',
             ]);
             if (isset($_REQUEST['link']) && $_REQUEST['link']) {
-                $imgs[$user_id] = Html::link($img, User::getFormURLWithID($user_id));
+                $imgs[$user_id] = sprintf(
+                    '<a href="%1$s">%2$s</a>',
+                    htmlescape(User::getFormURLWithID($user_id)),
+                    $img
+                );
             } else {
                 $imgs[$user_id] = $img;
             }

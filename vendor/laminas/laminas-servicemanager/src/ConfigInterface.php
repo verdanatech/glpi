@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Laminas\ServiceManager;
 
 use ArrayAccess;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 
 /**
+ * @deprecated Interface will be removed as of v4.0
+ *
  * @see ContainerInterface
  * @see ArrayAccess
  *
@@ -26,7 +28,7 @@ use Interop\Container\ContainerInterface;
  * @psalm-type FactoriesConfigurationType = array<
  *      string,
  *      (class-string<Factory\FactoryInterface>|Factory\FactoryInterface)
- *      |callable(ContainerInterface,string,array<mixed>|null)
+ *      |callable(ContainerInterface,?string,?array<mixed>|null):object
  * >
  * @psalm-type InitializersConfigurationType = array<
  *      array-key,
@@ -48,7 +50,8 @@ use Interop\Container\ContainerInterface;
  *     invokables?: array<string,string>,
  *     lazy_services?: LazyServicesConfigurationType,
  *     services?: array<string,object|array>,
- *     shared?:array<string,bool>
+ *     shared?:array<string,bool>,
+ *     ...
  * }
  */
 interface ConfigInterface

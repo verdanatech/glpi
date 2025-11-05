@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    include('../inc/includes.php');
-}
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Exception\Http\BadRequestHttpException;
 
 Session::checkCentralAccess();
 
@@ -57,33 +57,27 @@ if (isset($_POST["rules_id"])) {
 
 /** @var Rule $rule */
 if (!$rule = getItemForItemtype($sub_type)) {
-    exit;
+    throw new BadRequestHttpException();
 }
 $rule->checkGlobal(READ);
 
-Html::popHeader(__('Setup'), $_SERVER['PHP_SELF']);
+Html::popHeader(__('Setup'));
 
-$rule->showRulePreviewCriteriasForm($_SERVER['PHP_SELF'], $rules_id);
+$rule->showRulePreviewCriteriasForm($rules_id);
 
 if (isset($_POST["test_rule"])) {
     $params = [];
     //Unset values that must not be processed by the rule
-    unset($_POST["test_rule"]);
-    unset($_POST["rules_id"]);
-    unset($_POST["sub_type"]);
-    $rule->getRuleWithCriteriasAndActions($rules_id, 1, 1);
+    unset($_POST["test_rule"], $_POST["rules_id"], $_POST["sub_type"]);
+    $rule->getRuleWithCriteriasAndActions($rules_id, true, true);
 
-    // Need for RuleEngines
-    foreach ($_POST as $key => $val) {
-        $_POST[$key] = stripslashes($val);
-    }
     //Add rules specific POST fields to the param array
     $params = $rule->addSpecificParamsForPreview($params);
 
     $input = $rule->prepareAllInputDataForProcess($_POST, $params);
     //$rule->regex_results = array();
     echo "<br>";
-    $rule->showRulePreviewResultsForm($_SERVER['PHP_SELF'], $input, $params);
+    $rule->showRulePreviewResultsForm($input, $params);
 }
 
 Html::popFooter();

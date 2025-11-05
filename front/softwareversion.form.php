@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkRight("software", READ);
 
@@ -65,7 +65,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $version->check($_POST['id'], PURGE);
-    $version->delete($_POST, 1);
+    $version->delete($_POST, true);
     Event::log(
         $version->fields['softwares_id'],
         "software",

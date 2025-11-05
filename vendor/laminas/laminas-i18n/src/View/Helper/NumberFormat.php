@@ -13,7 +13,9 @@ use function md5;
 use function serialize;
 
 /**
- * View helper for formatting dates.
+ * View helper for formatting numbers.
+ *
+ * @final
  */
 class NumberFormat extends AbstractHelper
 {
@@ -43,7 +45,7 @@ class NumberFormat extends AbstractHelper
     /**
      * Formatter instances
      *
-     * @var array
+     * @var array<string, NumberFormatter>
      */
     protected $formatters = [];
 

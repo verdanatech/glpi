@@ -10,6 +10,7 @@ use function is_array;
 use function is_scalar;
 use function preg_replace;
 
+/** @final */
 class Alpha extends Alnum
 {
     /**
@@ -17,8 +18,8 @@ class Alpha extends Alnum
      *
      * Returns the string $value, removing all but alphabetic characters
      *
-     * @param  string|array $value
-     * @return string|array
+     * @param mixed $value
+     * @return ($value is scalar ? string : ($value is list<scalar> ? list<string> : mixed))
      */
     public function filter($value)
     {

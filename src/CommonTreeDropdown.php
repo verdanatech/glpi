@@ -32,8 +32,8 @@
  *
  * ---------------------------------------------------------------------
  */
-
-use Glpi\Toolbox\Sanitizer;
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
 
 /**
  * CommonTreeDropdown Class
@@ -64,16 +64,28 @@ abstract class CommonTreeDropdown extends CommonDropdown
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
 
-        $this->addStandardTab($this->getType(), $ong, $options);
+        $this->addStandardTab(static::class, $ong, $options);
+
+        $ong = array_merge($ong, $this->insertTabs($options));
+
         if ($this->dohistory) {
-            $this->addStandardTab('Log', $ong, $options);
+            $this->addStandardTab(Log::class, $ong, $options);
         }
 
-        if (DropdownTranslation::canBeTranslated($this)) {
-            $this->addStandardTab('DropdownTranslation', $ong, $options);
+        if ($this->maybeTranslated()) {
+            $this->addStandardTab(DropdownTranslation::class, $ong, $options);
         }
 
         return $ong;
+    }
+
+    /**
+     * Override this method to easily insert new tabs between the children tab
+     * and the log tab.
+     */
+    protected function insertTabs($options = []): array
+    {
+        return [];
     }
 
 
@@ -91,7 +103,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
                     [$this->getForeignKeyField() => $item->getID()]
                 );
             }
-            return self::createTabEntry($this->getTypeName(Session::getPluralNumber()), $nb);
+            return self::createTabEntry($this->getTypeName(Session::getPluralNumber()), $nb, $item::getType());
         }
         return '';
     }
@@ -110,12 +122,12 @@ abstract class CommonTreeDropdown extends CommonDropdown
     /**
      * Compute completename based on parent one
      *
-     * @param $parentCompleteName string parent complete name (need to be stripslashes / comes from DB)
-     * @param $thisName           string item name (need to be addslashes : comes from input)
+     * @param $parentCompleteName string parent complete name
+     * @param $thisName           string item name
      **/
     public static function getCompleteNameFromParents($parentCompleteName, $thisName)
     {
-        return addslashes($parentCompleteName) . " > " . $thisName;
+        return $parentCompleteName . " > " . $thisName;
     }
 
 
@@ -124,32 +136,32 @@ abstract class CommonTreeDropdown extends CommonDropdown
      **/
     public function adaptTreeFieldsFromUpdateOrAdd($input)
     {
-
         $parent = clone $this;
-        // Update case input['name'] not set :
-        if (!isset($input['name']) && isset($this->fields['name'])) {
-            $input['name'] = addslashes($this->fields['name']);
+
+        $fkey = static::getForeignKeyField();
+
+        // Fallback to current values if all required fields are set in input
+        foreach (['name', $fkey] as $fieldname) {
+            if (!isset($input[$fieldname]) && isset($this->fields[$fieldname])) {
+                $input[$fieldname] = $this->fields[$fieldname];
+            }
         }
+
         // leading/ending space will break findID/import
         $input['name'] = trim($input['name']);
 
         if (
-            isset($input[$this->getForeignKeyField()])
-            && !$this->isNewID($input[$this->getForeignKeyField()])
-            && $parent->getFromDB($input[$this->getForeignKeyField()])
+            isset($input[$fkey])
+            && !$this->isNewID($input[$fkey])
+            && $parent->getFromDB($input[$fkey])
         ) {
             $input['level']        = $parent->fields['level'] + 1;
-            // Sometimes (internet address), the complete name may be different ...
-            /* if ($input[$this->getForeignKeyField()]==0) { // Root entity case
-             $input['completename'] =  $input['name'];
-            } else {*/
             $input['completename'] = self::getCompleteNameFromParents(
                 $parent->fields['completename'],
                 $input['name']
             );
-            // }
         } else {
-            $input[$this->getForeignKeyField()] = 0;
+            $input[$fkey] = 0;
             $input['level']                     = 1;
             $input['completename']              = $input['name'];
         }
@@ -165,7 +177,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
 
     public function pre_deleteItem()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         // Not set in case of massive delete : use parent
@@ -197,7 +208,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
 
     public function prepareInputForUpdate($input)
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         if (isset($input[$this->getForeignKeyField()])) {
@@ -234,10 +244,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
      **/
     public function regenerateTreeUnderID($ID, $updateName, $changeParent)
     {
-        /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
-         */
         global $DB, $GLPI_CACHE;
 
         //drop from sons cache when needed
@@ -272,10 +278,10 @@ abstract class CommonTreeDropdown extends CommonDropdown
                     if (isset($currentNodeCompleteName)) {
                         $update['completename'] = self::getCompleteNameFromParents(
                             $currentNodeCompleteName,
-                            addslashes($data["name"])
+                            $data["name"]
                         );
                     } else {
-                        $update['completename'] = addslashes($data["name"]);
+                        $update['completename'] = $data["name"];
                     }
                 }
 
@@ -311,10 +317,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
      */
     protected function cleanParentsSons($id = null, $cache = true)
     {
-        /**
-         * @var \DBmysql $DB
-         * @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE
-         */
         global $DB, $GLPI_CACHE;
 
         if ($id === null) {
@@ -350,7 +352,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
      */
     protected function addSonInParents()
     {
-        /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
 
         //add sons cache when needed
@@ -377,7 +378,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
             $changes = [
                 0,
                 '',
-                addslashes($this->getNameID(['forceid' => true])),
+                $this->getNameID(['forceid' => true]),
             ];
             Log::history(
                 $parent,
@@ -410,7 +411,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
                     $oldParentNameID = $parent->getNameID(['forceid' => true]);
                     $changes = [
                         '0',
-                        addslashes($this->getNameID(['forceid' => true])),
+                        $this->getNameID(['forceid' => true]),
                         '',
                     ];
                     Log::history(
@@ -430,7 +431,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
                     $changes = [
                         '0',
                         '',
-                        addslashes($this->getNameID(['forceid' => true])),
+                        $this->getNameID(['forceid' => true]),
                     ];
                     Log::history(
                         $newParentID,
@@ -471,7 +472,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
         if ($parent && $this->dohistory) {
             $changes = [
                 '0',
-                addslashes($this->getNameID(['forceid' => true])),
+                $this->getNameID(['forceid' => true]),
                 '',
             ];
             Log::history(
@@ -498,7 +499,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
             $papa = clone $this;
 
             if ($papa->getFromDB($this->fields[$this->getForeignKeyField()])) {
-                $link = $papa->getTreeLink() . " > ";
+                $link = $papa->getTreeLink() . " &gt; ";
             }
         }
         return $link . $this->getLink();
@@ -508,144 +509,174 @@ abstract class CommonTreeDropdown extends CommonDropdown
     /**
      * Print the HTML array children of a TreeDropdown
      *
-     * @return void
+     * @return bool
      */
-    public function showChildren()
+    public function showChildren(): bool
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $ID            = $this->getID();
         $this->check($ID, READ);
-        $fields = array_filter(
-            $this->getAdditionalFields(),
-            function ($field) {
-                return isset($field['list']) && $field['list'];
-            }
-        );
-        $nb            = count($fields);
+        $fields = array_filter($this->getAdditionalFields(), static fn($field) => isset($field['list']) && $field['list']);
         $entity_assign = $this->isEntityAssign();
 
         // Minimal form for quick input.
         if (static::canCreate()) {
-            $link = $this->getFormURL();
-            echo "<div class='firstbloc'>";
-            echo "<form action='" . $link . "' method='post'>";
-            echo "<table class='tab_cadre_fixe'>";
-            echo "<tr><th colspan='3'>" . __('New child heading') . "</th></tr>";
-
-            echo "<tr class='tab_bg_1'><td>" . __('Name') . "</td><td>";
-            echo Html::input('name', ['value' => '']);
-
-            if (
-                $entity_assign
-                && ($this->getForeignKeyField() != 'entities_id')
-            ) {
-                echo "<input type='hidden' name='entities_id' value='" . $_SESSION['glpiactive_entity'] . "'>";
-            }
-
-            if ($entity_assign && $this->isRecursive()) {
-                echo "<input type='hidden' name='is_recursive' value='1'>";
-            }
-            echo "<input type='hidden' name='" . $this->getForeignKeyField() . "' value='$ID'></td>";
-            echo "<td><input type='submit' name='add' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
-            echo "</td></tr>\n";
-            echo "</table>";
-            Html::closeForm();
-            echo "</div>\n";
+            $twig_params = [
+                'header' => sprintf(__('New child %s'), static::getTypeName(1)),
+                'form_url' => static::getFormURL(),
+                'entity' => ($entity_assign && static::getForeignKeyField() !== 'entities_id') ? $_SESSION['glpiactive_entity'] : null,
+                'is_recursive' => $entity_assign && $this->isRecursive() ? 1 : 0,
+                'name_label' => __('Name'),
+                'btn_label' => _x('button', 'Add'),
+                'fk' => static::getForeignKeyField(),
+                'id' => $ID,
+            ];
+            // language=Twig
+            echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+                {% import 'components/form/fields_macros.html.twig' as fields %}
+                <div class="mb-3">
+                    <form action="{{ form_url }}" method="post">
+                        {{ fields.largeTitle(header) }}
+                        <input type="hidden" name="{{ fk }}" value="{{ id }}">
+                        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                        <div>
+                            <div>
+                                {{ fields.textField('name', '', name_label, {
+                                    full_width: true,
+                                }) }}
+                                {% if entity is not null %}
+                                    <input type="hidden" name="entities_id" value="{{ entity }}">
+                                {% endif %}
+                                {% if is_recursive %}
+                                    <input type="hidden" name="is_recursive" value="1">
+                                {% endif %}
+                            </div>
+                            <div class="d-flex flex-row-reverse pe-2">
+                                <button type="submit" name="add" class="btn btn-primary">{{ btn_label }}</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+TWIG, $twig_params);
         }
 
-        echo "<div class='spaced'>";
-        echo "<table class='tab_cadre_fixehov'>";
-        echo "<tr class='noHover'><th colspan='" . ($nb + 3) . "'>" . sprintf(
-            __('Sons of %s'),
-            $this->getTreeLink()
-        );
-        echo "</th></tr>";
-
-        $header = "<tr><th>" . __('Name') . "</th>";
-        if ($entity_assign) {
-            $header .= "<th>" . Entity::getTypeName(1) . "</th>";
-        }
-        foreach ($fields as $field) {
-            $header .= "<th>" . $field['label'] . "</th>";
-        }
-        $header .= "<th>" . __('Comments') . "</th>";
-        $header .= "</tr>\n";
-        echo $header;
-
-        $fk   = $this->getForeignKeyField();
-
+        $fk   = static::getForeignKeyField();
         $result = $DB->request(
             [
-                'FROM'  => $this->getTable(),
+                'FROM'  => static::getTable(),
                 'WHERE' => [$fk => $ID],
                 'ORDER' => 'name',
             ]
         );
 
-        $nb = 0;
+        $entries = [];
+        $values_cache = [];
         foreach ($result as $data) {
-            $nb++;
-            echo "<tr class='tab_bg_1'><td>";
+            $entry = [
+                'itemtype' => static::class,
+                'id'       => $data['id'],
+            ];
+            $name = htmlescape($data['name']);
             if (
-                (($fk == 'entities_id') && in_array($data['id'], $_SESSION['glpiactiveentities']))
+                (($fk === 'entities_id') && in_array($data['id'], $_SESSION['glpiactiveentities'], true))
                 || !$entity_assign
-                || (($fk != 'entities_id') && in_array($data['entities_id'], $_SESSION['glpiactiveentities']))
+                || (($fk !== 'entities_id') && in_array($data['entities_id'], $_SESSION['glpiactiveentities'], true))
             ) {
-                echo "<a href='" . $this->getFormURL();
-                echo '?id=' . $data['id'] . "'>" . $data['name'] . "</a>";
+                $entry['name'] = sprintf(
+                    '<a href="%s">%s</a>',
+                    htmlescape(static::getFormURLWithID($data['id'])),
+                    $name
+                );
             } else {
-                echo $data['name'];
+                $entry['name'] = $name;
             }
             echo "</td>";
             if ($entity_assign) {
-                echo "<td>" . Dropdown::getDropdownName("glpi_entities", $data["entities_id"]) . "</td>";
+                if (!isset($values_cache['entity'][$data['entities_id']])) {
+                    $values_cache['entity'][$data['entities_id']] = Dropdown::getDropdownName(
+                        'glpi_entities',
+                        $data['entities_id']
+                    );
+                }
+                $entry['entity'] = $values_cache['entity'][$data['entities_id']];
             }
 
             foreach ($fields as $field) {
-                echo "<td>";
                 switch ($field['type']) {
                     case 'UserDropdown':
-                        echo getUserName($data[$field['name']]);
+                        if (!isset($values_cache['UserDropdown'][$data[$field['name']]])) {
+                            $values_cache['UserDropdown'][$data[$field['name']]] = getUserName($data[$field['name']]);
+                        }
+                        $entry[$field['name']] = $values_cache['UserDropdown'][$data[$field['name']]];
                         break;
 
                     case 'bool':
-                        echo Dropdown::getYesNo($data[$field['name']]);
+                        $entry[$field['name']] = Dropdown::getYesNo($data[$field['name']]);
                         break;
 
                     case 'dropdownValue':
-                        echo Dropdown::getDropdownName(
-                            getTableNameForForeignKeyField($field['name']),
-                            $data[$field['name']]
-                        );
+                        if (!isset($values_cache[$field['name']][$data[$field['name']]])) {
+                            $values_cache[$field['name']][$data[$field['name']]] = Dropdown::getDropdownName(
+                                $field['name'],
+                                $data[$field['name']]
+                            );
+                        }
+                        $entry[$field['name']] = $values_cache[$field['name']][$data[$field['name']]];
                         break;
 
                     default:
-                        echo $data[$field['name']];
+                        $entry[$field['name']] = $data[$field['name']];
+                        break;
                 }
-                echo "</td>";
             }
-            echo "<td>" . $data['comment'] . "</td>";
-            echo "</tr>\n";
+            $entry['comment'] = $data['comment'];
+            $entries[] = $entry;
         }
-        if ($nb) {
-            echo $header;
+
+        $columns = [
+            'name' => __('Name'),
+            'entity' => Entity::getTypeName(1),
+        ];
+        foreach ($fields as $field) {
+            $columns[$field['name']] = $field['label'];
         }
-        echo "</table></div>\n";
+        $columns['comment'] = _n('Comment', 'Comments', Session::getPluralNumber());
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
+            'is_tab' => true,
+            'nofilter' => true,
+            'nosort' => true,
+            'super_header' => [
+                'label' => sprintf(__s('Sons of %s'), $this->getTreeLink()),
+                'is_raw' => true,
+            ],
+            'columns' => $columns,
+            'formatters' => [
+                'name' => 'raw_html',
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'filtered_number' => count($entries),
+            'showmassiveactions' => static::canUpdate(),
+            'massiveactionparams' => [
+                'num_displayed' => count($entries),
+                'container'     => 'mass' . Toolbox::slugify(static::class) . mt_rand(),
+            ],
+        ]);
+
+        return true;
     }
 
 
     public function getSpecificMassiveActions($checkitem = null)
     {
-
         $isadmin = static::canUpdate();
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $actions[__CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_under']
-                  = "<i class='fas fa-sitemap'></i>" .
-                    _x('button', 'Move under');
+            $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'move_under']
+                  = "<i class='ti ti-sitemap'></i>"
+                    . _sx('button', 'Move under');
         }
 
         return $actions;
@@ -658,14 +689,14 @@ abstract class CommonTreeDropdown extends CommonDropdown
         switch ($ma->getAction()) {
             case 'move_under':
                 $itemtype = $ma->getItemType(true);
-                echo __('As child of');
+                echo __s('As child of');
                 Dropdown::show($itemtype, ['name'     => 'parent',
                     'comments' => 0,
                     'entity'   => $_SESSION['glpiactive_entity'],
                     'entity_sons' => $_SESSION['glpiactive_entity_recursive'],
                 ]);
-                echo "<br><br><input type='submit' name='massiveaction' class='btn btn-primary' value='" .
-                           _sx('button', 'Move') . "'>\n";
+                echo "<br><br><input type='submit' name='massiveaction' class='btn btn-primary' value='"
+                           . _sx('button', 'Move') . "'>\n";
                 return true;
         }
         return parent::showMassiveActionsSubForm($ma);
@@ -761,6 +792,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
             'field'             => 'name',
             'name'              => __('Name'),
             'datatype'          => 'itemlink',
+            'massiveaction'     => false,
         ];
 
         $tab[] = [
@@ -770,15 +802,14 @@ abstract class CommonTreeDropdown extends CommonDropdown
             'name'              => __('Father'),
             'datatype'          => 'dropdown',
             'massiveaction'     => false,
-            // Add virtual condition to relink table
-            'joinparams'        => ['condition' => [new QueryExpression("1=1")]],
+            'joinparams'        => ['condition' => [new QueryExpression('true')]], // Add virtual condition to relink table
         ];
 
         $tab[] = [
             'id'                => '16',
             'table'             => $this->getTable(),
             'field'             => 'comment',
-            'name'              => __('Comments'),
+            'name'              => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'          => 'text',
         ];
 
@@ -841,6 +872,15 @@ abstract class CommonTreeDropdown extends CommonDropdown
         return (countElementsInTable($this->getTable(), [$fk => $id]) > 0);
     }
 
+    /** @return iterable<static> */
+    public function getAncestors(): iterable
+    {
+        $ancestor_ids = getAncestorsOf($this->getTable(), $this->getID());
+        if (empty($ancestor_ids)) {
+            return [];
+        }
+        return static::getSeveralFromDBByCrit(['id' => $ancestor_ids]);
+    }
 
     /**
      * reformat text field describing a tree (such as completename)
@@ -867,7 +907,6 @@ abstract class CommonTreeDropdown extends CommonDropdown
 
     public function findID(array &$input)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         if (isset($input['completename'])) {
@@ -884,7 +923,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
                 ],
             ];
             if ($this->isEntityAssign()) {
-                $criteria['WHERE'] = $criteria['WHERE'] + getEntitiesRestrictCriteria(
+                $criteria['WHERE'] += getEntitiesRestrictCriteria(
                     $this->getTable(),
                     '',
                     $input['entities_id'],
@@ -909,7 +948,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
                 ],
             ];
             if ($this->isEntityAssign()) {
-                $criteria['WHERE'] = $criteria['WHERE'] + getEntitiesRestrictCriteria(
+                $criteria['WHERE'] += getEntitiesRestrictCriteria(
                     $this->getTable(),
                     '',
                     $input['entities_id'],
@@ -939,7 +978,7 @@ abstract class CommonTreeDropdown extends CommonDropdown
         }
 
         // Import a full tree from completename
-        $names  = explode('>', self::unsanitizeSeparatorInCompletename($input['completename']));
+        $names  = explode('>', $input['completename']);
         $fk     = $this->getForeignKeyField();
         $i      = count($names);
         $parent = 0;
@@ -982,43 +1021,5 @@ abstract class CommonTreeDropdown extends CommonDropdown
     public static function getIcon()
     {
         return "ti ti-subtask";
-    }
-
-    /**
-     * Separator is not encoded in DB, and it could not be changed as this is mandatory to be able to split tree
-     * correctly even if some tree elements are containing ">" char in their name (this one will be encoded).
-     *
-     * This method aims to sanitize the completename value in display context.
-     *
-     * @param string|null $completename
-     *
-     * @return string|null
-     */
-    public static function sanitizeSeparatorInCompletename(?string $completename): ?string
-    {
-        if (empty($completename)) {
-            return $completename;
-        }
-        $separator = '>';
-        return implode(Sanitizer::sanitize($separator), explode($separator, $completename));
-    }
-
-    /**
-     * Separator may be encoded in input, but should sometimes be decoded to have a complename
-     * that fits the value expected to be stored in DB.
-     *
-     * This method aims to normalize the completename value.
-     *
-     * @param string|null $completename
-     *
-     * @return string|null
-     */
-    public static function unsanitizeSeparatorInCompletename(?string $completename): ?string
-    {
-        if (empty($completename)) {
-            return $completename;
-        }
-        $separator = '>';
-        return implode($separator, explode(Sanitizer::sanitize($separator), $completename));
     }
 }

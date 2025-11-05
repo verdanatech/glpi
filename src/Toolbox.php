@@ -32,18 +32,87 @@
  *
  * ---------------------------------------------------------------------
  */
-
+use Glpi\Api\Deprecated\DeprecatedInterface;
 use Glpi\Console\Application;
+use Glpi\DBAL\QueryParam;
+use Glpi\Error\ErrorUtils;
 use Glpi\Event;
+use Glpi\Exception\EmptyCurlContentException;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\NotFoundHttpException;
+use Glpi\Helpdesk\DefaultDataManager;
 use Glpi\Mail\Protocol\ProtocolInterface;
+use Glpi\Message\MessageType;
+use Glpi\OAuth\Server;
+use Glpi\Plugin\Hooks;
+use Glpi\Progress\AbstractProgressIndicator;
 use Glpi\Rules\RulesManager;
-use Glpi\Toolbox\Sanitizer;
 use Glpi\Toolbox\URL;
 use Glpi\Toolbox\VersionParser;
+use GuzzleHttp\Client;
+use Laminas\Mail\Protocol\Imap;
+use Laminas\Mail\Protocol\Pop3;
 use Laminas\Mail\Storage\AbstractStorage;
 use Mexitek\PHPColors\Color;
 use Monolog\Logger;
+use Psr\Log\LogLevel;
+use Safe\Exceptions\CurlException;
+use Safe\Exceptions\ErrorfuncException;
+use Safe\Exceptions\FilesystemException;
+use Safe\Exceptions\ImageException;
+use Safe\Exceptions\JsonException;
+use Safe\Exceptions\PcreException;
+use Safe\Exceptions\UrlException;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
+use function Safe\base64_decode;
+use function Safe\chmod;
+use function Safe\class_uses;
+use function Safe\copy;
+use function Safe\curl_exec;
+use function Safe\curl_getinfo;
+use function Safe\curl_init;
+use function Safe\error_log;
+use function Safe\fclose;
+use function Safe\file_get_contents;
+use function Safe\filemtime;
+use function Safe\finfo_open;
+use function Safe\fopen;
+use function Safe\fwrite;
+use function Safe\getimagesize;
+use function Safe\gzcompress;
+use function Safe\gzuncompress;
+use function Safe\imagealphablending;
+use function Safe\imagecopyresampled;
+use function Safe\imagecreatefrombmp;
+use function Safe\imagecreatefromgif;
+use function Safe\imagecreatefromjpeg;
+use function Safe\imagecreatefrompng;
+use function Safe\imagecreatefromwebp;
+use function Safe\imagecreatetruecolor;
+use function Safe\imagejpeg;
+use function Safe\imagepng;
+use function Safe\imagesavealpha;
+use function Safe\imagewebp;
+use function Safe\ini_get;
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\mb_convert_encoding;
+use function Safe\md5_file;
+use function Safe\mkdir;
+use function Safe\opendir;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\realpath;
+use function Safe\rename;
+use function Safe\rmdir;
+use function Safe\strtotime;
+use function Safe\unlink;
+use function Safe\unpack;
 
 /**
  * Toolbox Class
@@ -101,9 +170,9 @@ class Toolbox
 
         $pos = self::strpos(self::strtolower($str), self::strtolower($shortcut));
         if ($pos !== false) {
-            return self::substr($str, 0, $pos) .
-                "<u>" . self::substr($str, $pos, 1) . "</u>" .
-                self::substr($str, $pos + 1);
+            return htmlescape(self::substr($str, 0, $pos))
+                . "<u>" . htmlescape(self::substr($str, $pos, 1)) . "</u>"
+                . htmlescape(self::substr($str, $pos + 1));
         }
         return $str;
     }
@@ -208,9 +277,12 @@ class Toolbox
      * @param $str string   string to analyse
      *
      * @return boolean
+     *
+     * @deprecated 11.0.0
      **/
     public static function seems_utf8($str)
     {
+        Toolbox::deprecated();
         return mb_check_encoding($str, "UTF-8");
     }
 
@@ -247,133 +319,25 @@ class Toolbox
     }
 
     /**
-     * @deprecated 10.0.0
-     */
-    public static function sodiumEncrypt($content, $key = null)
-    {
-        Toolbox::deprecated('Use "GLPIKey::encrypt()"');
-        $glpikey = new GLPIKey();
-        return $glpikey->encrypt($content, $key);
-    }
-
-    /**
-     * @deprecated 10.0.0
-     */
-    public static function sodiumDecrypt($content, $key = null)
-    {
-        Toolbox::deprecated('Use "GLPIKey::decrypt()"');
-        $glpikey = new GLPIKey();
-        return $glpikey->decrypt($content, $key);
-    }
-
-
-    /**
-     * Prevent from XSS
-     * Clean code
-     *
-     * @param array|string $value  item to prevent
-     *
-     * @return array|string  clean item
-     *
-     * @see unclean_cross_side_scripting_deep*
-     *
-     * @deprecated 10.0.0
-     **/
-    public static function clean_cross_side_scripting_deep($value)
-    {
-        Toolbox::deprecated('Use "Glpi\Toolbox\Sanitizer::encodeHtmlSpecialCharsRecursive()"');
-        return Sanitizer::encodeHtmlSpecialCharsRecursive($value);
-    }
-
-
-    /**
-     *  Invert fonction from clean_cross_side_scripting_deep
-     *
-     * @param array|string $value  item to unclean from clean_cross_side_scripting_deep
-     *
-     * @return array|string  unclean item
-     *
-     * @see clean_cross_side_scripting_deep()
-     *
-     * @deprecated 10.0.0
-     **/
-    public static function unclean_cross_side_scripting_deep($value)
-    {
-        Toolbox::deprecated('Use "Glpi\Toolbox\Sanitizer::decodeHtmlSpecialCharsRecursive()"');
-        /** @var \DBmysql $DB */
-        global $DB;
-        return $DB->escape(Sanitizer::decodeHtmlSpecialCharsRecursive($value));
-    }
-
-    /**
-     * Returns a safe configuration for htmLawed.
-     *
-     * @return array
-     *
-     * @since 9.5.4
-     */
-    public static function getHtmLawedSafeConfig(): array
-    {
-        $forbidden_elements = [
-            'script',
-
-            // header elements used to link external resources
-            'link',
-            'meta',
-
-            // elements used to embed potential malicious external application
-            'applet',
-            'canvas',
-            'embed',
-            'object',
-
-            // form elements
-            'form',
-            'button',
-            'input',
-            'select',
-            'datalist',
-            'option',
-            'optgroup',
-            'textarea',
-        ];
-
-        $config = [
-            'elements'           => '* ' . implode('', array_map(fn($element) => '-' . $element, $forbidden_elements)),
-            'deny_attribute'     => 'on*, srcdoc, formaction',
-            'comment'            => 1, // 1: remove HTML comments (and do not display their contents)
-            'cdata'              => 1, // 1: remove CDATA sections (and do not display their contents)
-            'direct_list_nest'   => 1, // 1: Allow usage of ul/ol tags nested in other ul/ol tags
-            'schemes'            => 'href: aim, app, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, tel, telnet, notes; *: file, http, https',
-            'no_deprecated_attr' => 0, // 0: do not transform deprecated HTML attributes
-        ];
-        if (!GLPI_ALLOW_IFRAME_IN_RICH_TEXT) {
-            $config['elements'] .= '-iframe';
-        }
-
-        return $config;
-    }
-
-    /**
      * Log in 'php-errors' all args
      *
-     * @param Logger  $logger Logger instance, if any
-     * @param integer $level  Log level (defaults to warning)
-     * @param array   $args   Arguments (message to log, ...)
+     * @param mixed $level  The log level (a Monolog, PSR-3 or RFC 5424 level)
+     * @param array $args   Arguments (message to log, ...)
      *
      * @return void
      **/
-    private static function log($logger = null, $level = Logger::WARNING, $args = null)
+    private static function log($level = LogLevel::WARNING, $args = null)
     {
+        /** @var Logger $PHPLOGGER */
+        global $PHPLOGGER;
+
         static $tps = 0;
 
         $extra = [];
-        if (method_exists('Session', 'getLoginUserID')) {
-            $extra['user'] = Session::getLoginUserID() . '@' . php_uname('n');
-        }
+        $extra['user'] = Session::getLoginUserID() . '@' . php_uname('n');
         if ($tps && function_exists('memory_get_usage')) {
-            $extra['mem_usage'] = number_format(microtime(true) - $tps, 3) . '", ' .
-                      number_format(memory_get_usage() / 1024 / 1024, 2) . 'Mio)';
+            $extra['mem_usage'] = number_format(microtime(true) - $tps, 3) . '", '
+                      . number_format(memory_get_usage() / 1024 / 1024, 2) . 'Mio)';
         }
 
         $msg = "";
@@ -408,25 +372,14 @@ class Toolbox
 
         $tps = microtime(true);
 
-        if ($logger === null) {
-            /** @var \Monolog\Logger $PHPLOGGER */
-            global $PHPLOGGER;
-            $logger = $PHPLOGGER;
-        }
-
         try {
-            $logger->addRecord($level, $msg, $extra);
-        } catch (\Throwable $e) {
-            //something went wrong, make sure logging does not cause fatal
+            $msg = self::cleanPaths($msg);
+            $PHPLOGGER->log($level, $msg, $extra);
+        } catch (Throwable $e) {
+            //something went wrong
+            // make sure logging does not cause fatal
+            // and error still logged (without glpi root path removed)
             error_log($e);
-        }
-
-        /** @var \Monolog\Logger $SQLLOGGER */
-        global $SQLLOGGER;
-        if (isCommandLine() && $level >= Logger::WARNING && $logger !== $SQLLOGGER) {
-            // Do not output related messages to $SQLLOGGER as they are redundant with
-            // output made by "ErrorHandler::handleSql*()" methods.
-            echo $msg;
         }
     }
 
@@ -435,20 +388,7 @@ class Toolbox
      */
     public static function logDebug()
     {
-        self::log(null, Logger::DEBUG, func_get_args());
-    }
-
-    /**
-     * PHP notice log
-     */
-    public static function logNotice()
-    {
-        self::deprecated(
-            'Use either native trigger_error($msg, E_USER_NOTICE) to log notices,'
-            . ' either Glpi\\Application\\ErrorHandler::handleException() to log exceptions,'
-            . ' either Toolbox::logInfo() or Toolbox::logDebug() to log messages not related to errors.'
-        );
-        self::log(null, Logger::NOTICE, func_get_args());
+        self::log(LogLevel::DEBUG, func_get_args());
     }
 
     /**
@@ -456,66 +396,7 @@ class Toolbox
      */
     public static function logInfo()
     {
-        self::log(null, Logger::INFO, func_get_args());
-    }
-
-    /**
-     * PHP warning log
-     */
-    public static function logWarning()
-    {
-        self::deprecated(
-            'Use either native trigger_error($msg, E_USER_WARNING) to log warnings,'
-            . ' either Glpi\\Application\\ErrorHandler::handleException() to log exceptions,'
-            . ' either Toolbox::logInfo() or Toolbox::logDebug() to log messages not related to errors.'
-        );
-        self::log(null, Logger::WARNING, func_get_args());
-    }
-
-    /**
-     * PHP error log
-     */
-    public static function logError()
-    {
-        self::deprecated(
-            'Use either native trigger_error($msg, E_USER_WARNING) to log errors,'
-            . ' either Glpi\\Application\\ErrorHandler::handleException() to log exceptions,'
-            . ' either Toolbox::logInfo() or Toolbox::logDebug() to log messages not related to errors.'
-        );
-        self::log(null, Logger::ERROR, func_get_args());
-    }
-
-    /**
-     * SQL debug log
-     */
-    public static function logSqlDebug()
-    {
-        /** @var \Psr\Log\LoggerInterface $SQLLOGGER */
-        global $SQLLOGGER;
-        $args = func_get_args();
-        self::log($SQLLOGGER, Logger::DEBUG, $args);
-    }
-
-    /**
-     * SQL warning log
-     */
-    public static function logSqlWarning()
-    {
-        /** @var \Psr\Log\LoggerInterface $SQLLOGGER */
-        global $SQLLOGGER;
-        $args = func_get_args();
-        self::log($SQLLOGGER, Logger::WARNING, $args);
-    }
-
-    /**
-     * SQL error log
-     */
-    public static function logSqlError()
-    {
-        /** @var \Psr\Log\LoggerInterface $SQLLOGGER */
-        global $SQLLOGGER;
-        $args = func_get_args();
-        self::log($SQLLOGGER, Logger::ERROR, $args);
+        self::log(LogLevel::INFO, func_get_args());
     }
 
 
@@ -537,9 +418,9 @@ class Toolbox
             $message = "  Backtrace :\n";
             $traces  = debug_backtrace();
             foreach ($traces as $trace) {
-                $script = ($trace["file"] ?? "") . ":" .
-                        ($trace["line"] ?? "");
-                if (strpos($script, GLPI_ROOT) === 0) {
+                $script = ($trace["file"] ?? "") . ":"
+                        . ($trace["line"] ?? "");
+                if (str_starts_with($script, GLPI_ROOT)) {
                     $script = substr($script, strlen(GLPI_ROOT) + 1);
                 }
                 if (strlen($script) > 50) {
@@ -547,9 +428,9 @@ class Toolbox
                 } else {
                     $script = str_pad($script, 50);
                 }
-                $call = ($trace["class"] ?? "") .
-                    ($trace["type"] ?? "") .
-                    (isset($trace["function"]) ? $trace["function"] . "()" : "");
+                $call = ($trace["class"] ?? "")
+                    . ($trace["type"] ?? "")
+                    . $trace["function"];
                 if ($call == $hide) {
                     $call = '';
                 }
@@ -589,8 +470,8 @@ class Toolbox
             return;
         }
         if (
-            $strict === true ||
-            (defined('GLPI_STRICT_DEPRECATED') && GLPI_STRICT_DEPRECATED === true)
+            $strict === true
+            || GLPI_STRICT_ENV === true
         ) {
             trigger_error($message, E_USER_DEPRECATED);
         }
@@ -599,31 +480,38 @@ class Toolbox
     /**
      * Log a message in log file
      *
-     * @param string  $name   name of the log file
-     * @param string  $text   text to log
-     * @param boolean $force  force log in file not seeing use_log_in_files config
+     * @param string    $name   name of the log file, relative to GLPI_LOG_DIR, without '.log' extension
+     * @param string    $text   text to log
+     * @param bool      $force  force log in file not seeing use_log_in_files config
+     * @param bool      $output whether to output the message
      *
      * @return boolean
      **/
-    public static function logInFile($name, $text, $force = false)
+    public static function logInFile($name, $text, $force = false, bool $output = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
+        $text = self::cleanPaths($text);
 
         $user = '';
-        if (method_exists('Session', 'getLoginUserID')) {
-            $user = " [" . Session::getLoginUserID() . '@' . php_uname('n') . "]";
-        }
+        $user = " [" . Session::getLoginUserID() . '@' . php_uname('n') . "]";
 
         $ok = true;
         if (
             (isset($CFG_GLPI["use_log_in_files"]) && $CFG_GLPI["use_log_in_files"])
             || $force
         ) {
-            $ok = error_log(date("Y-m-d H:i:s") . "$user\n" . $text, 3, GLPI_LOG_DIR . "/" . $name . ".log");
+            try {
+                error_log(date("Y-m-d H:i:s") . "$user\n" . $text, 3, GLPI_LOG_DIR . "/" . $name . ".log");
+            } catch (ErrorfuncException $e) {
+                $ok = false;
+            }
         }
 
-        /** @var \Glpi\Console\Application $application */
+        if ($output === false) {
+            return $ok;
+        }
+
+        /** @var Application $application */
         global $application;
         if ($application instanceof Application) {
             $application->getOutput()->writeln('<comment>' . $text . '</comment>', OutputInterface::VERBOSITY_VERY_VERBOSE);
@@ -631,6 +519,7 @@ class Toolbox
             isset($_SESSION['glpi_use_mode'])
             && ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE)
             && isCommandLine()
+            && !defined('TU_USER')
         ) {
             $stderr = fopen('php://stderr', 'w');
             fwrite($stderr, $text);
@@ -644,82 +533,67 @@ class Toolbox
      * Switch error mode for GLPI
      *
      * @param integer|null $mode       From Session::*_MODE
-     * @param boolean|null $debug_sql
-     * @param boolean|null $debug_vars
+     * @param boolean|null $removed_param No longer used (Used to be $debug_sql)
+     * @param boolean|null $removed_param_2 No longer used (Used to be $debug_vars)
      * @param boolean|null $log_in_files
      *
      * @return void
      *
      * @since 0.84
      **/
-    public static function setDebugMode($mode = null, $debug_sql = null, $debug_vars = null, $log_in_files = null)
+    public static function setDebugMode($mode = null, $removed_param = null, $removed_param_2 = null, $log_in_files = null)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (isset($mode)) {
             $_SESSION['glpi_use_mode'] = $mode;
         }
-        //FIXME Deprecate the debug_sql and debug_vars parameters in GLPI 10.1.0
-        if (isset($debug_sql)) {
-            $CFG_GLPI['debug_sql'] = $debug_sql;
-        }
-        if (isset($debug_vars)) {
-            $CFG_GLPI['debug_vars'] = $debug_vars;
-        }
         if (isset($log_in_files)) {
             $CFG_GLPI['use_log_in_files'] = $log_in_files;
-        }
-
-        // If debug mode activated : display some information
-        if ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE) {
-            // Force reporting of all errors
-            error_reporting(E_ALL);
-            // Disable native error displaying as it will be done by custom handler
-            ini_set('display_errors', 'Off');
         }
     }
 
 
     /**
-     * Send a file (not a document) to the navigator
-     * See Document->send();
+     * Get a Symfony response for the given file.
      *
-     * @param string      $file            storage filename
-     * @param string      $filename        file title
-     * @param string|null $mime            file mime type
-     * @param boolean     $expires_headers add expires headers maximize cacheability ?
+     * @param string      $path             filesystem path
+     * @param string      $filename         file name to send in the response
+     * @param string|null $mime             mime type
+     * @param boolean     $expires_headers  whether to add expires headers to maximize cacheability
      *
-     * @return void
-     **/
-    public static function sendFile($file, $filename, $mime = null, $expires_headers = false)
-    {
-
+     * @throws HttpException
+     */
+    public static function getFileAsResponse(
+        string $path,
+        string $filename,
+        ?string $mime = null,
+        bool $expires_headers = false
+    ): Response {
         // Test securite : document in DOC_DIR
-        $tmpfile = str_replace(GLPI_DOC_DIR, "", $file);
+        $tmpfile = str_replace(GLPI_DOC_DIR, "", $path);
 
-        if (strstr($tmpfile, "../") || strstr($tmpfile, "..\\")) {
+        if (str_contains($tmpfile, "../") || str_contains($tmpfile, "..\\")) {
             Event::log(
-                $file,
+                $path,
                 "sendFile",
                 1,
                 "security",
                 $_SESSION["glpiname"] . " try to get a non standard file."
             );
-            echo "Security attack!!!";
-            die(1);
+
+            throw new AccessDeniedHttpException();
         }
 
-        if (!file_exists($file)) {
-            echo "Error file $file does not exist";
-            die(1);
+        if (!file_exists($path)) {
+            throw new NotFoundHttpException();
         }
 
         // if $mime is defined, ignore mime type by extension
-        if ($mime === null && preg_match('/\.(...)$/', $file)) {
+        if ($mime === null && preg_match('/\.(...)$/', $path)) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $file);
-            finfo_close($finfo);
+            $mime = finfo_file($finfo, $path);
+            unset($finfo);
         }
 
         $can_be_inlined = false;
@@ -736,53 +610,78 @@ class Toolbox
         }
         $attachment = $can_be_inlined === false ? ' attachment;' : '';
 
-        $etag = md5_file($file);
-        $lastModified = filemtime($file);
+        $etag = md5_file($path);
+        $lastModified = filemtime($path);
 
-        // Make sure there is nothing in the output buffer (In case stuff was added by core or misbehaving plugin).
-        // If there is any extra data, the sent file will be corrupted.
-        // 1. Turn off any extra buffering level. Keep one buffering level if PHP output_buffering directive is not "off".
-        $ob_config = ini_get('output_buffering');
-        $max_buffering_level = $ob_config !== false && (strtolower($ob_config) === 'on' || (is_numeric($ob_config) && (int) $ob_config > 0))
-            ? 1
-            : 0;
-        while (ob_get_level() > $max_buffering_level) {
-            ob_end_clean();
-        }
-        // 2. Clean any buffered output in remaining level (output_buffering="on" case).
-        if (ob_get_level() > 0) {
-            ob_clean();
-        }
-
-        // Now send the file with header() magic
-        header("Last-Modified: " . gmdate("D, d M Y H:i:s", $lastModified) . " GMT");
-        header("Etag: $etag");
+        // remove headers automatically added by session start
         header_remove('Pragma');
-        header('Cache-Control: private');
+        header_remove('Cache-Control');
+        header_remove('Expires');
+
+        $headers = [
+            'Last-Modified' => gmdate("D, d M Y H:i:s", $lastModified) . " GMT",
+            'Etag'          => $etag,
+            'Cache-Control' => 'private, must-revalidate',
+        ];
         if ($expires_headers) {
             $max_age = WEEK_TIMESTAMP;
-            header('Expires: ' . gmdate('D, d M Y H:i:s \G\M\T', time() + $max_age));
+            $headers['Cache-Control'] = 'private, max-age=' . $max_age . ', must-revalidate';
+            $headers['Expires'] = gmdate('D, d M Y H:i:s \G\M\T', time() + $max_age);
         }
-        header(
-            "Content-disposition:$attachment filename=\"" .
-            addslashes(mb_convert_encoding($filename, 'ISO-8859-1', 'UTF-8')) .
-            "\"; filename*=utf-8''" .
-            rawurlencode($filename)
-        );
-        header("Content-type: " . $mime);
+        $content_disposition = "$attachment filename=\""
+            . addslashes(mb_convert_encoding($filename, 'ISO-8859-1', 'UTF-8'))
+            . "\"; filename*=utf-8''"
+            . rawurlencode($filename);
+        $headers['Content-Disposition'] = $content_disposition;
+        $headers['Content-type'] = $mime;
 
         // HTTP_IF_NONE_MATCH takes precedence over HTTP_IF_MODIFIED_SINCE
         // http://tools.ietf.org/html/rfc7232#section-3.3
+        $matches_cache = false;
         if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
-            http_response_code(304); //304 - Not Modified
-            exit;
+            $matches_cache = true;
+        } elseif (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $lastModified) {
+            $matches_cache = true;
         }
-        if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $lastModified) {
-            http_response_code(304); //304 - Not Modified
-            exit;
+        if ($matches_cache) {
+            return new Response(
+                status: 304,
+                headers: $headers
+            );
         }
 
-        readfile($file) or die("Error opening file $file");
+        try {
+            $content = file_get_contents($path);
+        } catch (FilesystemException $e) {
+            throw new HttpException(500, $e->getMessage(), $e);
+        }
+
+        return new Response(
+            content: $content,
+            status: 200,
+            headers: $headers
+        );
+    }
+
+
+    /**
+     * Send a file (not a document) to the navigator
+     * See Document->send();
+     *
+     * @param string      $file        storage filename
+     * @param string      $filename    file title
+     * @param string|null $mime        file mime type
+     * @param boolean     $expires_headers add expires headers maximize cacheability ?
+     *
+     * @return void
+     *
+     * @deprecated 11.0.0
+     */
+    public static function sendFile($file, $filename, $mime = null, $expires_headers = false)
+    {
+        Toolbox::deprecated();
+
+        static::getFileAsResponse($file, $filename, $mime, $expires_headers)->send();
     }
 
 
@@ -792,14 +691,17 @@ class Toolbox
      * @param string|string[] $value value to add slashes
      *
      * @return string|string[]
+     *
+     * @deprecated 11.0.0
      **/
     public static function addslashes_deep($value)
     {
-        /** @var \DBmysql $DB */
+        Toolbox::deprecated();
+
         global $DB;
 
         $value = ((array) $value === $value)
-                  ? array_map([__CLASS__, 'addslashes_deep'], $value)
+                  ? array_map([self::class, 'addslashes_deep'], $value)
                   : (
                       is_null($value)
                        ? null : (is_resource($value) || is_object($value)
@@ -822,12 +724,15 @@ class Toolbox
      * @param array|string $value  item to stripslashes
      *
      * @return array|string stripslashes item
+     *
+     * @deprecated 11.0.0
      **/
     public static function stripslashes_deep($value)
     {
+        Toolbox::deprecated();
 
         $value = ((array) $value === $value)
-                  ? array_map([__CLASS__, 'stripslashes_deep'], $value)
+                  ? array_map([self::class, 'stripslashes_deep'], $value)
                   : (is_null($value)
                         ? null : (is_resource($value) || is_object($value)
                                     ? $value : stripslashes($value)));
@@ -848,6 +753,9 @@ class Toolbox
 
         $params = [];
         foreach ($array as $k => $v) {
+            if ($v === null) {
+                continue;
+            }
             if (is_array($v)) {
                 $params[] = self::append_params(
                     $v,
@@ -868,7 +776,7 @@ class Toolbox
     /**
      * Compute PHP memory_limit
      *
-     * @param string $ininame  name of the ini ooption to retrieve (since 9.1)
+     * @param string $ininame  name of the ini option to retrieve (since 9.1)
      *
      * @return integer|string memory limit
      **/
@@ -934,41 +842,6 @@ class Toolbox
     }
 
 
-    /**
-     * Get the filesize of a complete directory (from php.net)
-     *
-     * @param string $path  directory or file to get size
-     *
-     * @return null|integer
-     *
-     * @deprecated 10.0.0
-     **/
-    public static function filesizeDirectory($path)
-    {
-        Toolbox::deprecated();
-
-        if (!is_dir($path)) {
-            return filesize($path);
-        }
-
-        if ($handle = opendir($path)) {
-            $size = 0;
-
-            while (false !== ($file = readdir($handle))) {
-                if (($file != '.') && ($file != '..')) {
-                    $size += filesize($path . '/' . $file);
-                    $size += self::filesizeDirectory($path . '/' . $file);
-                }
-            }
-
-            closedir($handle);
-            return $size;
-        }
-
-        return null;
-    }
-
-
     /** Format a size passing a size in octet
      *
      * @param integer $size  Size in octet
@@ -992,7 +865,7 @@ class Toolbox
         ];
         foreach ($bytes as $val) {
             if ($size > 1024) {
-                $size = $size / 1024;
+                $size /= 1024;
             } else {
                 break;
             }
@@ -1013,7 +886,7 @@ class Toolbox
     {
 
         if (file_exists($dir)) {
-            chmod($dir, 0755);
+            chmod($dir, 0o755);
 
             if (is_dir($dir)) {
                 $id_dir = opendir($dir);
@@ -1145,23 +1018,26 @@ class Toolbox
         );
 
         //output img
-        $result = null;
-        switch ($img_type) {
-            case IMAGETYPE_GIF:
-            case IMAGETYPE_PNG:
-                $result = imagepng($source_dest, $dest_path);
-                break;
+        try {
+            switch ($img_type) {
+                case IMAGETYPE_GIF:
+                case IMAGETYPE_PNG:
+                    imagepng($source_dest, $dest_path);
+                    break;
 
-            case IMAGETYPE_WEBP:
-                $result = imagewebp($source_dest, $dest_path);
-                break;
+                case IMAGETYPE_WEBP:
+                    imagewebp($source_dest, $dest_path);
+                    break;
 
-            case IMAGETYPE_JPEG:
-            default:
-                $result = imagejpeg($source_dest, $dest_path, 90);
-                break;
+                case IMAGETYPE_JPEG:
+                default:
+                    imagejpeg($source_dest, $dest_path, 90);
+                    break;
+            }
+        } catch (ImageException $e) {
+            return false;
         }
-        return $result;
+        return true;
     }
 
 
@@ -1215,19 +1091,6 @@ class Toolbox
 
 
     /**
-     * Determine if CAS auth is usable checking lib existence
-     *
-     * @since 9.3
-     *
-     * @return boolean
-     **/
-    public static function canUseCas()
-    {
-        return class_exists('phpCAS');
-    }
-
-
-    /**
      * Check Write Access to a directory
      *
      * @param string $dir  directory to check
@@ -1240,16 +1103,20 @@ class Toolbox
     public static function testWriteAccessToDirectory($dir)
     {
 
-        $rand = rand();
+        $rand = random_int(0, mt_getrandmax());
 
         // Check directory creation which can be denied by SElinux
         $sdir = sprintf("%s/test_glpi_%08x", $dir, $rand);
 
-        if (!mkdir($sdir)) {
+        try {
+            mkdir($sdir);
+        } catch (FilesystemException $e) {
             return 4;
         }
 
-        if (!rmdir($sdir)) {
+        try {
+            rmdir($sdir);
+        } catch (FilesystemException $e) {
             return 3;
         }
 
@@ -1263,13 +1130,13 @@ class Toolbox
 
         fwrite($fp, "This file was created for testing reasons. ");
         fclose($fp);
-        $delete = unlink($path);
 
-        if (!$delete) {
+        try {
+            unlink($path);
+            return 0;
+        } catch (FilesystemException $e) {
             return 1;
         }
-
-        return 0;
     }
 
 
@@ -1283,18 +1150,16 @@ class Toolbox
      **/
     public static function getItemTypeFormURL($itemtype, $full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $dir = ($full ? $CFG_GLPI['root_doc'] : '');
 
         if ($plug = isPluginItemType($itemtype)) {
-            /* PluginFooBar => /plugins/foo/front/bar */
-            $dir .= Plugin::getPhpDir(strtolower($plug['plugin']), false);
+            $dir .= "/plugins/" . strtolower($plug['plugin']);
             $item = str_replace('\\', '/', strtolower($plug['class']));
         } else { // Standard case
             $item = strtolower($itemtype);
-            if (substr($itemtype, 0, \strlen(NS_GLPI)) === NS_GLPI) {
+            if (str_starts_with($itemtype, NS_GLPI)) {
                 $item = str_replace('\\', '/', substr($item, \strlen(NS_GLPI)));
             }
         }
@@ -1313,13 +1178,12 @@ class Toolbox
      **/
     public static function getItemTypeSearchURL($itemtype, $full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $dir = ($full ? $CFG_GLPI['root_doc'] : '');
 
         if ($plug = isPluginItemType($itemtype)) {
-            $dir .= Plugin::getPhpDir(strtolower($plug['plugin']), false);
+            $dir .= "/plugins/" . strtolower($plug['plugin']);
             $item = str_replace('\\', '/', strtolower($plug['class']));
         } else { // Standard case
             if ($itemtype == 'Cartridge') {
@@ -1329,7 +1193,7 @@ class Toolbox
                 $itemtype = 'ConsumableItem';
             }
             $item = strtolower($itemtype);
-            if (substr($itemtype, 0, \strlen(NS_GLPI)) === NS_GLPI) {
+            if (str_starts_with($itemtype, NS_GLPI)) {
                 $item = str_replace('\\', '/', substr($item, \strlen(NS_GLPI)));
             }
         }
@@ -1348,7 +1212,6 @@ class Toolbox
      **/
     public static function getItemTypeTabsURL($itemtype, $full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $filename = "/ajax/common.tabs.php";
@@ -1381,7 +1244,7 @@ class Toolbox
     /**
      * Split timestamp in time units
      *
-     * @param integer $time  timestamp
+     * @param integer|float $time  timestamp
      *
      * @return array
      **/
@@ -1430,14 +1293,16 @@ class Toolbox
     public static function isUrlSafe(string $url, array $allowlist = GLPI_SERVERSIDE_URL_ALLOWLIST): bool
     {
         foreach ($allowlist as $allow_regex) {
-            $result = preg_match($allow_regex, $url);
-            if ($result === false) {
+            try {
+                $result = preg_match($allow_regex, $url);
+                if ($result === 1) {
+                    return true;
+                }
+            } catch (PcreException $e) {
                 trigger_error(
                     sprintf('Unable to validate URL safeness. Following regex is probably invalid: "%s".', $allow_regex),
                     E_USER_WARNING
                 );
-            } elseif ($result === 1) {
-                return true;
             }
         }
 
@@ -1462,6 +1327,30 @@ class Toolbox
     }
 
     /**
+     * Get a new Guzzle client with proxy if configured and the specified other options.
+     * @param array $extra_options Extra options to pass to the Guzzle client constructor
+     * @return Client Guzzle client
+     */
+    public static function getGuzzleClient(array $extra_options = []): Client
+    {
+        global $CFG_GLPI;
+
+        $options = $extra_options + ['connect_timeout' => 5];
+        // add proxy string if configured in glpi
+        if (!empty($CFG_GLPI["proxy_name"])) {
+            $proxy_creds = "";
+            if (!empty($CFG_GLPI["proxy_user"])) {
+                $proxy_user = rawurlencode($CFG_GLPI["proxy_user"]);
+                $proxy_pass = rawurlencode((new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]));
+                $proxy_creds = $proxy_user . ":" . $proxy_pass . "@";
+            }
+            $proxy_string = "http://{$proxy_creds}" . $CFG_GLPI['proxy_name'] . ":" . $CFG_GLPI['proxy_port'];
+            $options['proxy'] = $proxy_string;
+        }
+        return new Client($options);
+    }
+
+    /**
      * Executes a curl call
      *
      * @param string $url         URL to retrieve
@@ -1480,7 +1369,56 @@ class Toolbox
         bool $check_url_safeness = false,
         ?array &$curl_info = null
     ) {
-        /** @var array $CFG_GLPI */
+        global $CFG_GLPI, $PHPLOGGER;
+
+        try {
+            return self::doCallCurl($url, $eopts, $msgerr, $curl_error, $check_url_safeness, $curl_info);
+        } catch (CurlException $e) {
+            $PHPLOGGER->error($e->getMessage(), ['exception' => $e]);
+
+            $curl_error = $e->getMessage();
+            if (empty($CFG_GLPI["proxy_name"])) {
+                $msgerr = sprintf(
+                    __('Connection failed. If you use a proxy, please configure it. (%s)'),
+                    $curl_error
+                );
+            } else {
+                $msgerr = sprintf(
+                    __('Failed to connect to the proxy server (%s)'),
+                    $curl_error
+                );
+            }
+
+            return "";
+        } catch (EmptyCurlContentException $e) {
+            $PHPLOGGER->error($e->getMessage(), ['exception' => $e]);
+            $msgerr = __('No data available on the website');
+            return "";
+        }
+    }
+
+    /**
+     * Executes a curl call
+     *
+     * @param string $url
+     * @param array  $eopts
+     * @param string $msgerr
+     * @param bool   $check_url_safeness
+     * @param array  $curl_info
+     *
+     * @return string
+     *
+     * @throws CurlException
+     * @throws EmptyCurlContentException
+     */
+    private static function doCallCurl(
+        $url,
+        array $eopts = [],
+        &$msgerr = null,
+        &$curl_error = null,
+        bool $check_url_safeness = false,
+        ?array &$curl_info = null
+    ): string {
         global $CFG_GLPI;
 
         if ($check_url_safeness && !Toolbox::isUrlSafe($url)) {
@@ -1526,9 +1464,11 @@ class Toolbox
             ];
 
             if (!empty($CFG_GLPI["proxy_user"])) {
+                $proxy_user = rawurlencode($CFG_GLPI["proxy_user"]);
+                $proxy_pass = rawurlencode((new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]));
                 $opts += [
                     CURLOPT_PROXYAUTH    => CURLAUTH_BASIC,
-                    CURLOPT_PROXYUSERPWD => $CFG_GLPI["proxy_user"] . ":" . (new GLPIKey())->decrypt($CFG_GLPI["proxy_passwd"]),
+                    CURLOPT_PROXYUSERPWD => $proxy_user . ":" . $proxy_pass,
                 ];
             }
 
@@ -1541,37 +1481,15 @@ class Toolbox
 
         curl_setopt_array($ch, $opts);
         $content = curl_exec($ch);
-        $curl_error = curl_error($ch) ?: null;
         $curl_info = curl_getinfo($ch);
         $curl_redirect = $curl_info['redirect_url'] ?? null;
-        if (PHP_VERSION_ID < 80000) {
-            // `curl_close` is usefull only with PHP < 8.0.
-            curl_close($ch);
-        }
 
-        if ($curl_error !== null) {
-            if (empty($CFG_GLPI["proxy_name"])) {
-                //TRANS: %s is the error string
-                $msgerr = sprintf(
-                    __('Connection failed. If you use a proxy, please configure it. (%s)'),
-                    $curl_error
-                );
-            } else {
-                //TRANS: %s is the error string
-                $msgerr = sprintf(
-                    __('Failed to connect to the proxy server (%s)'),
-                    $curl_error
-                );
-            }
-            $content = '';
-        } elseif (!empty($curl_redirect)) {
+        if (!empty($curl_redirect)) {
             return self::callCurl($curl_redirect, $eopts, $msgerr, $curl_error, $check_url_safeness, $curl_info);
         } elseif (empty($content)) {
-            $msgerr = __('No data available on the web site');
+            throw new EmptyCurlContentException();
         }
-        if (!empty($msgerr)) {
-            trigger_error($msgerr, E_USER_WARNING);
-        }
+
         return $content;
     }
 
@@ -1622,18 +1540,12 @@ class Toolbox
     public static function manageBeginAndEndPlanDates(&$data)
     {
 
-        if (!isset($data['end'])) {
-            if (
-                isset($data['begin'])
-                && isset($data['_duration'])
-            ) {
-                $begin_timestamp = strtotime($data['begin']);
-                $data['end']     = date("Y-m-d H:i:s", $begin_timestamp + $data['_duration']);
-                unset($data['_duration']);
-            }
+        if (!isset($data['end']) && !empty($data['begin']) && isset($data['_duration'])) {
+            $begin_timestamp = strtotime($data['begin']);
+            $data['end']     = date("Y-m-d H:i:s", $begin_timestamp + $data['_duration']);
+            unset($data['_duration']);
         }
     }
-
 
     /**
      * Manage login redirection
@@ -1644,7 +1556,6 @@ class Toolbox
      **/
     public static function manageRedirect($where)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         if (empty($where) || !Session::getCurrentInterface()) {
@@ -1659,7 +1570,7 @@ class Toolbox
         if ($redirect === null) {
             Session::addMessageAfterRedirect(__s('Redirection failed'));
             if (Session::getCurrentInterface() === "helpdesk") {
-                Html::redirect($CFG_GLPI["root_doc"] . "/front/helpdesk.public.php");
+                Html::redirect($CFG_GLPI["root_doc"] . "/Helpdesk");
             } else {
                 Html::redirect($CFG_GLPI["root_doc"] . "/front/central.php");
             }
@@ -1674,14 +1585,12 @@ class Toolbox
      * @param string $where
      * @return string|null
      */
-    private static function computeRedirect(string $where): ?string
+    public static function computeRedirect(string $where): ?string
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $parsed_url = parse_url($where);
-
-        if ($parsed_url !== false) {
+        try {
+            $parsed_url = parse_url($where);
             // Target URL contains a hostname, validates that it matches the base GLPI URL
             if (array_key_exists('host', $parsed_url)) {
                 if (!str_starts_with($where, $CFG_GLPI['url_base'] . '/')) {
@@ -1695,9 +1604,13 @@ class Toolbox
             if (array_key_exists('path', $parsed_url) && $parsed_url['path'][0] === '/') {
                 return URL::isGLPIRelativeUrl($where) ? $CFG_GLPI["root_doc"] . $where : null;
             }
+        } catch (UrlException $e) {
+            //empty catch
         }
 
-        $data = explode("_", $where);
+        // explode with limit 3 to preserve the last part of the url
+        // /index.php?redirect=ticket_2_Ticket$main#TicketValidation_1 (preserve anchor)
+        $data = explode("_", $where, 3);
         $forcetab = '';
         // forcetab for simple items
         if (isset($data[2])) {
@@ -1708,6 +1621,8 @@ class Toolbox
             case "helpdesk":
                 switch (strtolower($data[0])) {
                     case "tracking": // Used for compatibility with old name
+                        // similar to "ticket" case
+
                     case "ticket":
                         $data[0] = 'Ticket';
                         // redirect to item
@@ -1720,26 +1635,23 @@ class Toolbox
                             if (
                                 ($item = getItemForItemtype($data[0]))
                                 && $item->isEntityAssign()
+                                && $item->getFromDB($data[1])
+                                && !Session::haveAccessToEntity($item->getEntityID())
                             ) {
-                                if ($item->getFromDB($data[1])) {
-                                    if (!Session::haveAccessToEntity($item->getEntityID())) {
-                                        Session::changeActiveEntities($item->getEntityID(), 1);
-                                    }
-                                }
+                                Session::changeActiveEntities($item->getEntityID(), true);
                             }
                             // force redirect to timeline when timeline is enabled and viewing
                             // Tasks or Followups
-                            $forcetab = str_replace('TicketFollowup$1', 'Ticket$1', $forcetab);
-                            $forcetab = str_replace('TicketTask$1', 'Ticket$1', $forcetab);
-                            $forcetab = str_replace('ITILFollowup$1', 'Ticket$1', $forcetab);
-                            return Ticket::getFormURLWithID($data[1]) . "&$forcetab";
-                        } elseif (!empty($data[0])) { // redirect to list
-                            if ($item = getItemForItemtype($data[0])) {
-                                $searchUrl = $item->getSearchURL();
-                                $searchUrl .= strpos($searchUrl, '?') === false ? '?' : '&';
-                                $searchUrl .= $forcetab;
-                                return $searchUrl;
-                            }
+                            $forcetab = str_replace(['TicketFollowup$1', 'TicketTask$1', 'ITILFollowup$1'], 'Ticket$1', $forcetab);
+
+                            return Ticket::getFormURLWithID((int) $data[1]) . "&$forcetab";
+                        }
+
+                        if ($item = getItemForItemtype($data[0])) {
+                            $searchUrl = $item::getSearchURL();
+                            $searchUrl .= !str_contains($searchUrl, '?') ? '?' : '&';
+                            $searchUrl .= $forcetab;
+                            return $searchUrl;
                         }
 
                         return null;
@@ -1748,7 +1660,7 @@ class Toolbox
                         return $CFG_GLPI["root_doc"] . "/front/preference.php?$forcetab";
 
                     case "reservation":
-                        return Reservation::getFormURLWithID($data[1]) . "&$forcetab";
+                        return Reservation::getFormURLWithID((int) $data[1]) . "&$forcetab";
                 }
 
                 break;
@@ -1774,34 +1686,38 @@ class Toolbox
                         ) {
                             // Check entity
                             if ($item = getItemForItemtype($data[0])) {
-                                if ($item->isEntityAssign()) {
-                                    if ($item->getFromDB($data[1])) {
-                                        if (!Session::haveAccessToEntity($item->getEntityID())) {
-                                            Session::changeActiveEntities($item->getEntityID(), 1);
-                                        }
-                                    }
+                                if (
+                                    $item->isEntityAssign()
+                                    && $item->getFromDB($data[1])
+                                    && !Session::haveAccessToEntity($item->getEntityID())
+                                ) {
+                                    Session::changeActiveEntities($item->getEntityID(), true);
                                 }
                                 // force redirect to timeline when timeline is enabled
-                                $forcetab = str_replace('TicketFollowup$1', 'Ticket$1', $forcetab);
-                                $forcetab = str_replace('TicketTask$1', 'Ticket$1', $forcetab);
-                                $forcetab = str_replace('ITILFollowup$1', 'Ticket$1', $forcetab);
-                                return $item->getFormURLWithID($data[1]) . "&$forcetab";
+                                $forcetab = str_replace(['TicketFollowup$1', 'TicketTask$1', 'ITILFollowup$1'], 'Ticket$1', $forcetab);
+
+                                return $item::getFormURLWithID((int) $data[1]) . "&$forcetab";
                             }
-                        } elseif (!empty($data[0])) { // redirect to list
-                            if ($item = getItemForItemtype($data[0])) {
-                                $searchUrl = $item->getSearchURL();
-                                $searchUrl .= strpos($searchUrl, '?') === false ? '?' : '&';
-                                $searchUrl .= $forcetab;
-                                return $searchUrl;
-                            }
+                        } elseif (
+                            !empty($data[0])
+                            && $item = getItemForItemtype($data[0])
+                        ) {
+                            // redirect to list
+                            $searchUrl = $item::getSearchURL();
+                            $searchUrl .= !str_contains($searchUrl, '?') ? '?' : '&';
+                            $searchUrl .= $forcetab;
+                            return $searchUrl;
                         }
+
+                        return null;
                 }
+
+                // @phpstan-ignore deadCode.unreachable (defensive programming)
                 break;
         }
 
         return null;
     }
-
 
     /**
      * Convert a value in byte, kbyte, megabyte etc...
@@ -1897,7 +1813,7 @@ class Toolbox
                     $tab['port'] = 995;
                 }
             }
-            if ($tab['type'] = 'imap') {
+            if ($tab['type'] == 'imap') {
                 if ($tab['ssl']) {
                     $tab['port'] = 993;
                 } else {
@@ -1934,173 +1850,6 @@ class Toolbox
 
         return $tab;
     }
-
-
-    /**
-     * Display a mail server configuration form
-     *
-     * @param string    $value                      Host connect string ex {localhost:993/imap/ssl}INBOX
-     * @param bool      $allow_plugins_protocols    Whether plugins protocol must be allowed.
-     *
-     * @return string  type of the server (imap/pop)
-     **/
-    public static function showMailServerConfig($value, bool $allow_plugins_protocols = true)
-    {
-
-        if (!Config::canUpdate()) {
-            return '';
-        }
-
-        $tab = Toolbox::parseMailServerConnectString($value, false, $allow_plugins_protocols);
-
-        echo "<tr class='tab_bg_1'><td>" . __('Server') . "</td>";
-        echo "<td><input size='30' class='form-control' type='text' name='mail_server' value=\"" . $tab['address'] . "\" required>";
-        echo "</td></tr>\n";
-
-        echo "<tr class='tab_bg_1'><td>" . __('Connection options') . "</td><td>";
-        $values = [];
-        $protocols = Toolbox::getMailServerProtocols($allow_plugins_protocols);
-        foreach ($protocols as $key => $params) {
-            $values['/' . $key] = $params['label'];
-        }
-        $svalue = (!empty($tab['type']) ? '/' . $tab['type'] : '');
-
-        Dropdown::showFromArray(
-            'server_type',
-            $values,
-            ['value'               => $svalue,
-                'display_emptychoice' => true,
-            ]
-        );
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/ssl' => __('SSL'),
-        ];
-
-        $svalue = ($tab['ssl'] ? '/ssl' : '');
-
-        Dropdown::showFromArray(
-            'server_ssl',
-            $values,
-            ['value'               => $svalue,
-                'display_emptychoice' => true,
-            ]
-        );
-
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/tls' => __('TLS'),
-            //TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/notls' => __('NO-TLS'),
-        ];
-
-        $svalue = '';
-        if (($tab['tls'] === true)) {
-            $svalue = '/tls';
-        }
-        if (($tab['tls'] === false)) {
-            $svalue = '/notls';
-        }
-
-        Dropdown::showFromArray(
-            'server_tls',
-            $values,
-            ['value'               => $svalue,
-                'width'               => '14%',
-                'display_emptychoice' => true,
-            ]
-        );
-
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/novalidate-cert' => __('NO-VALIDATE-CERT'),
-            //TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/validate-cert' => __('VALIDATE-CERT'),
-        ];
-
-        $svalue = '';
-        if (($tab['validate-cert'] === false)) {
-            $svalue = '/novalidate-cert';
-        }
-        if (($tab['validate-cert'] === true)) {
-            $svalue = '/validate-cert';
-        }
-
-        Dropdown::showFromArray(
-            'server_cert',
-            $values,
-            ['value'               => $svalue,
-                'display_emptychoice' => true,
-            ]
-        );
-
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/norsh' => __('NORSH'),
-        ];
-
-        $svalue = ($tab['norsh'] === true ? '/norsh' : '');
-
-        Dropdown::showFromArray(
-            'server_rsh',
-            $values,
-            ['value'               => $svalue,
-                'display_emptychoice' => true,
-            ]
-        );
-
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/secure' => __('SECURE'),
-        ];
-
-        $svalue = ($tab['secure'] === true ? '/secure' : '');
-
-        Dropdown::showFromArray(
-            'server_secure',
-            $values,
-            ['value'               => $svalue,
-                'display_emptychoice' => true,
-            ]
-        );
-
-        $values = [//TRANS: imap_open option see http://www.php.net/manual/en/function.imap-open.php
-            '/debug' => __('DEBUG'),
-        ];
-
-        $svalue = ($tab['debug'] === true ? '/debug' : '');
-
-        Dropdown::showFromArray(
-            'server_debug',
-            $values,
-            ['value'               => $svalue,
-                'width'               => '12%',
-                'display_emptychoice' => true,
-            ]
-        );
-
-        echo "<input type=hidden name=imap_string value='" . $value . "'>";
-        echo "</td></tr>\n";
-
-        if ($tab['type'] != 'pop') {
-            echo "<tr class='tab_bg_1'><td>" . __('Incoming mail folder (optional, often INBOX)') . "</td>";
-            echo "<td>";
-            echo "<div class='btn-group btn-group-sm'>";
-            echo "<input size='30' class='form-control' type='text' id='server_mailbox' name='server_mailbox' value=\"" . $tab['mailbox'] . "\" >";
-            echo "<div class='btn btn-outline-secondary get-imap-folder'>";
-            echo "<i class='fa fa-list pointer'></i>";
-            echo "</div>";
-            echo "</div></td></tr>\n";
-        }
-
-        //TRANS: for mail connection system
-        echo "<tr class='tab_bg_1'><td>" . __('Port (optional)') . "</td>";
-        echo "<td><input size='10' class='form-control' type='text' name='server_port' value='" . $tab['port'] . "'></td></tr>\n";
-        if (empty($value)) {
-            $value = "&nbsp;";
-        }
-        //TRANS: for mail connection system
-        echo "<tr class='tab_bg_1'><td>" . __('Connection string') . "</td>";
-        echo "<td class='b'>$value</td></tr>\n";
-
-        return $tab['type'];
-    }
-
 
     /**
      * @param array $input
@@ -2150,7 +1899,7 @@ class Toolbox
     }
 
     /**
-     * Retuns available mail servers protocols.
+     * Returns available mail servers protocols.
      *
      * For each returned element:
      *  - key is type used in connection string;
@@ -2162,20 +1911,20 @@ class Toolbox
      *
      * @return array
      */
-    private static function getMailServerProtocols(bool $allow_plugins_protocols = true): array
+    public static function getMailServerProtocols(bool $allow_plugins_protocols = true): array
     {
         $protocols = [
             'imap' => [
                 //TRANS: IMAP mail server protocol
                 'label'    => __('IMAP'),
-                'protocol' => 'Laminas\Mail\Protocol\Imap',
-                'storage'  => 'Laminas\Mail\Storage\Imap',
+                'protocol' => Imap::class,
+                'storage'  => Laminas\Mail\Storage\Imap::class,
             ],
             'pop'  => [
                 //TRANS: POP3 mail server protocol
                 'label'    => __('POP'),
-                'protocol' => 'Laminas\Mail\Protocol\Pop3',
-                'storage'  => 'Laminas\Mail\Storage\Pop3',
+                'protocol' => Pop3::class,
+                'storage'  => Laminas\Mail\Storage\Pop3::class,
             ],
         ];
 
@@ -2183,7 +1932,7 @@ class Toolbox
             return $protocols;
         }
 
-        $additionnal_protocols = Plugin::doHookFunction('mail_server_protocols', []);
+        $additionnal_protocols = Plugin::doHookFunction(Hooks::MAIL_SERVER_PROTOCOLS, []);
         if (is_array($additionnal_protocols)) {
             foreach ($additionnal_protocols as $key => $additionnal_protocol) {
                 if (array_key_exists($key, $protocols)) {
@@ -2226,7 +1975,7 @@ class Toolbox
      * @param string    $protocol_type
      * @param bool      $allow_plugins_protocols    Whether plugins protocol must be allowed.
      *
-     * @return null|\Glpi\Mail\Protocol\ProtocolInterface|\Laminas\Mail\Protocol\Imap|\Laminas\Mail\Protocol\Pop3
+     * @return null|ProtocolInterface|Imap|Pop3
      */
     public static function getMailServerProtocolInstance(string $protocol_type, bool $allow_plugins_protocols = true)
     {
@@ -2238,8 +1987,8 @@ class Toolbox
             } elseif (
                 class_exists($protocol)
                 && (is_a($protocol, ProtocolInterface::class, true)
-                 || is_a($protocol, \Laminas\Mail\Protocol\Imap::class, true)
-                 || is_a($protocol, \Laminas\Mail\Protocol\Pop3::class, true))
+                 || is_a($protocol, Imap::class, true)
+                 || is_a($protocol, Pop3::class, true))
             ) {
                 return new $protocol();
             } else {
@@ -2353,7 +2102,7 @@ class Toolbox
     /**
      * Clean integer string value (strip all chars not - and spaces )
      *
-     * @since versin 0.83.5
+     * @since version 0.83.5
      *
      * @param string  $integer  integer string
      *
@@ -2404,17 +2153,18 @@ class Toolbox
      *
      * @param string   $lang     Language to install
      * @param ?DBmysql $database Database instance to use, will fallback to a new instance of DB if null
+     * @param ?AbstractProgressIndicator $progress_indicator
      *
      * @return void
      *
+     * @internal
+     *
      * @since 9.1
-     * @since 9.4.7 Added $database parameter
-     **/
-    public static function createSchema($lang = 'en_GB', ?DBmysql $database = null)
+     * @since 9.4.7 Added the `$database` parameter.
+     * @since 11.0.0 Added the `$progress_indicator` parameter.
+     */
+    public static function createSchema($lang = 'en_GB', ?DBmysql $database = null, ?AbstractProgressIndicator $progress_indicator = null)
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         if (null === $database) {
             // Use configured DB if no $db is defined in parameters
             if (!class_exists('DB', false)) {
@@ -2423,86 +2173,129 @@ class Toolbox
             $database = new DB();
         }
 
-        // Set global $DB as it is used in "Config::setConfigurationValues()" just after schema creation
-        /** @var \DBmysql $DB */
-        $DB = $database;
+        $structure_queries = $database->getQueriesFromFile(sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT));
 
-        if (!$DB->runFile(sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT))) {
-            echo "Errors occurred inserting default database";
-        } else {
-            //dataset
-            Session::loadLanguage($lang, false); // Load default language locales to translate empty data
-            $tables = require_once(__DIR__ . '/../install/empty_data.php');
-            Session::loadLanguage('', false); // Load back session language
+        //dataset
+        Session::loadLanguage($lang, false); // Load default language locales to translate empty data
+        $tables = require_once(__DIR__ . '/../install/empty_data.php');
+        Session::loadLanguage('', false); // Load back session language
 
-            foreach ($tables as $table => $data) {
-                $reference = array_replace(
-                    $data[0],
-                    array_fill_keys(
-                        array_keys($data[0]),
-                        new QueryParam()
-                    )
-                );
+        $number_of_steps = \count($structure_queries);
+        foreach ($tables as $data) {
+            $number_of_steps += \count($data);
+        }
 
-                $stmt = $DB->prepare($DB->buildInsert($table, $reference));
-                if (false === $stmt) {
-                    $msg = "Error preparing statement in table $table";
-                    throw new \RuntimeException($msg);
-                }
+        // For post install steps
+        $init_form_weight = (int) round($number_of_steps * 0.1); // 10 % of the install process
+        $init_rules_weight = (int) round($number_of_steps * 0.1); // 10 % of the install process
+        $generate_keys_weight = (int) round($number_of_steps * 0.02); // 2 % of the install process
+        $default_lang_weight = 1;
+        $cron_config_weight = 1;
+        $number_of_steps += $init_form_weight + $init_rules_weight + $generate_keys_weight + $default_lang_weight;
+        if (GLPI_SYSTEM_CRON) {
+            $number_of_steps += $cron_config_weight;
+        }
 
-                $types = str_repeat('s', count($data[0]));
-                foreach ($data as $row) {
-                    $res = $stmt->bind_param($types, ...array_values($row));
-                    if (false === $res) {
-                        $msg = "Error binding params in table $table\n";
-                        $msg .= print_r($row, true);
-                        throw new \RuntimeException($msg);
-                    }
-                    $res = $stmt->execute();
-                    if (false === $res) {
-                        $msg = $stmt->error;
-                        $msg .= "\nError execution statement in table $table\n";
-                        $msg .= print_r($row, true);
-                        throw new \RuntimeException($msg);
-                    }
-                    if (!isCommandLine()) {
-                        // Flush will prevent proxy to timeout as it will receive data.
-                        // Flush requires a content to be sent, so we sent spaces as multiple spaces
-                        // will be shown as a single one on browser.
-                        echo ' ';
-                        Html::glpi_flush();
-                    }
-                }
-            }
+        $progress_indicator?->setMaxSteps($number_of_steps);
+        $progress_indicator?->setProgressBarMessage(__('Creating database structure…'));
 
-            // Initalize rules
-            RulesManager::initializeRules();
+        foreach ($structure_queries as $query) {
+            $database->doQuery($query);
+            $progress_indicator?->advance();
+        }
+        $progress_indicator?->addMessage(MessageType::Success, __('Database structure created.'));
 
-            // update default language
-            Config::setConfigurationValues(
-                'core',
-                [
-                    'language'      => $lang,
-                    'version'       => GLPI_VERSION,
-                    'dbversion'     => GLPI_SCHEMA_VERSION,
-                ]
+        $progress_indicator?->setProgressBarMessage(__('Importing default data…'));
+
+        foreach ($tables as $table => $data) {
+            $reference = array_replace(
+                $data[0],
+                array_fill_keys(
+                    array_keys($data[0]),
+                    new QueryParam()
+                )
             );
 
-            if (defined('GLPI_SYSTEM_CRON')) {
-                // Downstream packages may provide a good system cron
-                $DB->updateOrDie(
-                    'glpi_crontasks',
-                    [
-                        'mode'   => 2,
-                    ],
-                    [
-                        'name'      => ['!=', 'watcher'],
-                        'allowmode' => ['&', 2],
-                    ],
-                    '4203'
-                );
+            $stmt = $database->prepare($database->buildInsert($table, $reference));
+
+            $types = str_repeat('s', count($data[0]));
+            foreach ($data as $row) {
+                $res = $stmt->bind_param($types, ...array_values($row));
+                if (false === $res) {
+                    $msg = "Error binding params in table $table\n";
+                    $msg .= json_encode($row);
+                    throw new RuntimeException($msg);
+                }
+                $res = $stmt->execute();
+                if (false === $res) {
+                    $msg = $stmt->error;
+                    $msg .= "\nError execution statement in table $table\n";
+                    $msg .= json_encode($row);
+                    throw new RuntimeException($msg);
+                }
+
+                $progress_indicator?->advance();
             }
         }
+        $progress_indicator?->addMessage(MessageType::Success, __('Default data imported.'));
+
+        $progress_indicator?->setProgressBarMessage(__('Creating default forms…'));
+        Session::loadAllCoreLocales();
+        $default_forms_manager = new DefaultDataManager();
+        $default_forms_manager->initializeData();
+        $progress_indicator?->advance($init_form_weight);
+        $progress_indicator?->addMessage(MessageType::Success, __('Default forms created.'));
+
+        $progress_indicator?->setProgressBarMessage(__('Initializing default rules…'));
+        RulesManager::initializeRules();
+        $progress_indicator?->advance($init_rules_weight);
+        $progress_indicator?->addMessage(MessageType::Success, __('Default rules initialized.'));
+
+        $progress_indicator?->setProgressBarMessage(__('Generating security keys…'));
+        // Make sure keys are generated automatically so OAuth will work when/if they choose to use it
+        Server::generateKeys();
+        $progress_indicator?->advance($generate_keys_weight);
+        $progress_indicator?->addMessage(MessageType::Success, __('Security keys generated.'));
+
+        $progress_indicator?->setProgressBarMessage(__('Defining configuration defaults…'));
+        $configs = [
+            'language'  => $lang,
+            'version'   => GLPI_VERSION,
+            'dbversion' => GLPI_SCHEMA_VERSION,
+        ];
+        foreach ($configs as $name => $value) {
+            $database->updateOrInsert(
+                'glpi_configs',
+                [
+                    'value' => $value,
+                ],
+                [
+                    'context' => 'core',
+                    'name'    => $name,
+                ]
+            );
+        }
+        $progress_indicator?->advance($default_lang_weight);
+
+        if (GLPI_SYSTEM_CRON) {
+            // Downstream packages may provide a good system cron
+            $database->update(
+                'glpi_crontasks',
+                [
+                    'mode'   => 2,
+                ],
+                [
+                    'name'      => ['!=', 'watcher'],
+                    'allowmode' => ['&', 2],
+                ]
+            );
+            $progress_indicator?->advance($cron_config_weight);
+        }
+        $progress_indicator?->addMessage(MessageType::Success, __('Configuration defaults defined.'));
+
+        $progress_indicator?->setProgressBarMessage('');
+        $progress_indicator?->addMessage(MessageType::Success, __('Installation done.'));
+        $progress_indicator?->finish();
     }
 
 
@@ -2575,80 +2368,6 @@ class Toolbox
 
 
     /**
-     * Check valid referer accessing GLPI
-     *
-     * @since 0.84.2
-     *
-     * @return void  display error if not permit
-     *
-     * @deprecated 10.0.7
-     **/
-    public static function checkValidReferer()
-    {
-        Toolbox::deprecated('Checking `HTTP_REFERER` does not provide any security.');
-
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $isvalidReferer = true;
-
-        if (!isset($_SERVER['HTTP_REFERER'])) {
-            if ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE) {
-                Html::displayErrorAndDie(
-                    __("No HTTP_REFERER found in request. Reload previous page before doing action again."),
-                    true
-                );
-                $isvalidReferer = false;
-            }
-        } elseif (!is_array($url = parse_url($_SERVER['HTTP_REFERER']))) {
-            if ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE) {
-                Html::displayErrorAndDie(
-                    __("Error when parsing HTTP_REFERER. Reload previous page before doing action again."),
-                    true
-                );
-                $isvalidReferer = false;
-            }
-        }
-
-        if (
-            !isset($url['host'])
-            || (($url['host'] != $_SERVER['SERVER_NAME'])
-            && (!isset($_SERVER['HTTP_X_FORWARDED_SERVER'])
-               || ($url['host'] != $_SERVER['HTTP_X_FORWARDED_SERVER'])))
-        ) {
-            if ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE) {
-                Html::displayErrorAndDie(
-                    __("None or Invalid host in HTTP_REFERER. Reload previous page before doing action again."),
-                    true
-                );
-                $isvalidReferer = false;
-            }
-        }
-
-        if (
-            !isset($url['path'])
-            || (!empty($CFG_GLPI['root_doc'])
-            && (strpos($url['path'], $CFG_GLPI['root_doc']) !== 0))
-        ) {
-            if ($_SESSION['glpi_use_mode'] == Session::DEBUG_MODE) {
-                Html::displayErrorAndDie(
-                    __("None or Invalid path in HTTP_REFERER. Reload previous page before doing action again."),
-                    true
-                );
-                $isvalidReferer = false;
-            }
-        }
-
-        if (!$isvalidReferer && $_SESSION['glpi_use_mode'] != Session::DEBUG_MODE) {
-            Html::displayErrorAndDie(
-                __("The action you have requested is not allowed. Reload previous page before doing action again."),
-                true
-            );
-        }
-    }
-
-
-    /**
      * Retrieve the mime type of a file
      *
      * @since 0.85.5
@@ -2711,15 +2430,21 @@ class Toolbox
      *
      * @param string $string String to slugify
      * @param string $prefix Prefix to use (anchors cannot begin with a number)
+     * @param bool   $force_special_dash Replace all special chars by a dash
      *
      * @return string
      */
-    public static function slugify($string, $prefix = 'slug_')
+    public static function slugify(string $string = "", string $prefix = 'slug_', bool $force_special_dash = false): string
     {
         $string = transliterator_transliterate("Any-Latin; Latin-ASCII; [^a-zA-Z0-9\.\ -_] Remove;", $string);
         $string = str_replace(' ', '-', self::strtolower($string));
         $string = preg_replace('~[^0-9a-z_\.]+~i', '-', $string);
         $string = trim($string, '-');
+
+        if ($force_special_dash) {
+            $string = preg_replace('~[^\-\w]+~', '-', $string);
+        }
+
         if ($string == '') {
             //prevent empty slugs; see https://github.com/glpi-project/glpi/issues/2946
             //harcoded prefix string because html @id must begin with a letter
@@ -2768,7 +2493,6 @@ class Toolbox
      **/
     public static function convertTagToImage($content_text, CommonDBTM $item, $doc_data = [], bool $add_link = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $document = new Document();
@@ -2781,21 +2505,12 @@ class Toolbox
         if (count($doc_data)) {
             $base_path = $CFG_GLPI['root_doc'];
 
-            $was_html_encoded = Sanitizer::isHtmlEncoded($content_text);
-            $was_escaped      = Sanitizer::isDbEscaped($content_text);
-            if ($was_html_encoded) {
-                $content_text = Sanitizer::decodeHtmlSpecialChars($content_text);
-            }
-            if ($was_escaped) {
-                $content_text = Sanitizer::dbUnescape($content_text);
-            }
-
             foreach ($doc_data as $id => $image) {
                 if (isset($image['tag'])) {
                     // Add only image files : try to detect mime type
                     if (
                         $document->getFromDB($id)
-                        && strpos($document->fields['mime'], 'image/') !== false
+                        && str_contains($document->fields['mime'], 'image/')
                     ) {
                         // append object reference in image link
                         $linked_object = null;
@@ -2808,11 +2523,14 @@ class Toolbox
                         } elseif ($item instanceof CommonDBTM) {
                             $linked_object = $item;
                         }
-                        $object_url_param = null !== $linked_object
-                        ? sprintf('&itemtype=%s&items_id=%s', $linked_object->getType(), $linked_object->fields['id'])
-                        : "";
-                        $img = "<img alt='" . $image['tag'] . "' src='" . $base_path .
-                          "/front/document.send.php?docid=" . $id . $object_url_param . "'/>";
+                        $object_url_param = sprintf(
+                            '&itemtype=%s&items_id=%s',
+                            rawurlencode($linked_object::class),
+                            $linked_object->getID()
+                        );
+                        $img = "<img alt='" . htmlescape($image['tag']) . "' src='"
+                            . htmlescape($base_path . "/front/document.send.php?docid=" . $id . $object_url_param)
+                            . "'/>";
 
                         // 1 - Replace direct tag (with prefix and suffix) by the image
                         $content_text = preg_replace(
@@ -2825,17 +2543,18 @@ class Toolbox
                         $regex = '/<img[^>]+' . preg_quote($image['tag'], '/') . '[^<]+>/im';
                         preg_match_all($regex, $content_text, $matches);
                         foreach ($matches[0] as $match_img) {
-                            //retrieve dimensions
                             $width = $height = null;
+
                             $attributes = [];
                             preg_match_all('/(width|height)="([^"]*)"/i', $match_img, $attributes);
                             if (isset($attributes[1][0])) {
-                                ${$attributes[1][0]} = $attributes[2][0];
+                                $width = $attributes[2][0];
                             }
                             if (isset($attributes[1][1])) {
-                                ${$attributes[1][1]} = $attributes[2][1];
+                                $height = $attributes[2][1];
                             }
 
+                            // retrieve dimensions
                             if ($width == null || $height == null) {
                                 $path = GLPI_DOC_DIR . "/" . $image['filepath'];
                                 $img_infos  = getimagesize($path);
@@ -2860,7 +2579,7 @@ class Toolbox
                                 $object_url_param
                             );
                             if (empty($new_image)) {
-                                $new_image = '#' . $image['tag'] . '#';
+                                $new_image = htmlescape('#' . $image['tag'] . '#');
                             }
                             $content_text = str_replace(
                                 $match_img,
@@ -2894,13 +2613,6 @@ class Toolbox
                     }
                 }
             }
-
-            if ($was_html_encoded) {
-                $content_text = Sanitizer::encodeHtmlSpecialChars($content_text);
-            }
-            if ($was_escaped) {
-                $content_text = Sanitizer::dbEscape($content_text);
-            }
         }
 
         return $content_text;
@@ -2918,20 +2630,15 @@ class Toolbox
      **/
     public static function cleanTagOrImage($content, array $tags)
     {
-        $content = Sanitizer::unsanitize($content);
-
         foreach ($tags as $tag) {
             $content = preg_replace("/<img.*alt=['|\"]" . $tag . "['|\"][^>]*\>/", "<p></p>", $content);
         }
-
-        $content = Sanitizer::sanitize($content);
 
         return $content;
     }
 
     /**
-     * Decode JSON in GLPI
-     * Because json can have been modified from Sanitizer
+     * Decode JSON in GLPI.
      *
      * @param string $encoded Encoded JSON
      * @param boolean $assoc  assoc parameter of json_encode native function
@@ -2941,23 +2648,17 @@ class Toolbox
     public static function jsonDecode($encoded, $assoc = false)
     {
         if (!is_string($encoded)) {
-            self::log(null, Logger::NOTICE, ['Only strings can be json to decode!']);
+            self::log(LogLevel::NOTICE, ['Only strings can be json to decode!']);
             return $encoded;
         }
 
         $json_data = null;
         if (self::isJSON($encoded)) {
             $json_data = $encoded;
-        } else {
-            //something went wrong... Try to unsanitize before decoding.
-            $raw_encoded = Sanitizer::unsanitize($encoded);
-            if (self::isJSON($raw_encoded)) {
-                $json_data = $raw_encoded;
-            }
         }
 
         if ($json_data === null) {
-            self::log(null, Logger::NOTICE, ['Unable to decode JSON string! Is this really JSON?']);
+            self::log(LogLevel::NOTICE, ['Unable to decode JSON string! Is this really JSON?']);
             return $encoded;
         }
 
@@ -3023,43 +2724,12 @@ class Toolbox
         }
 
         // See if the string contents are valid JSON.
-        return null !== json_decode($json);
-    }
-
-    /**
-     * Checks if a string starts with another one
-     *
-     * @since 9.1.5
-     *
-     * @param string $haystack String to check
-     * @param string $needle   String to find
-     *
-     * @return boolean
-     *
-     * @deprecated 10.0.0
-     */
-    public static function startsWith($haystack, $needle)
-    {
-        Toolbox::deprecated('Use native str_starts_with() function.');
-        return str_starts_with($haystack, $needle);
-    }
-
-    /**
-     * Checks if a string starts with another one
-     *
-     * @since 9.2
-     *
-     * @param string $haystack String to check
-     * @param string $needle   String to find
-     *
-     * @return boolean
-     *
-     * @deprecated 10.0.0
-     */
-    public static function endsWith($haystack, $needle)
-    {
-        Toolbox::deprecated('Use native str_ends_with() function.');
-        return str_ends_with($haystack, $needle);
+        try {
+            json_decode($json);
+            return true;
+        } catch (JsonException $e) {
+            return false;
+        }
     }
 
     /**
@@ -3102,7 +2772,7 @@ class Toolbox
                 ];
                 break;
             default:
-                throw new \RuntimeException("Unknown type $type to get date formats.");
+                throw new RuntimeException("Unknown type $type to get date formats.");
         }
         return $formats;
     }
@@ -3204,36 +2874,6 @@ class Toolbox
     }
 
     /**
-     * Get HTML content to display (cleaned)
-     *
-     * @since 9.1.8
-     *
-     * @param string $content Content to display
-     *
-     * @return string
-     *
-     * @deprecated 10.0.0
-     */
-    public static function getHtmlToDisplay($content)
-    {
-        Toolbox::deprecated('Use Glpi\Toolbox\RichText::getEnhancedHtml()');
-
-        $content = Toolbox::unclean_cross_side_scripting_deep(
-            $content
-        );
-
-        $content = Html::clean($content, false, 1);
-
-        // If content does not contain <br> or <p> html tag, use nl2br
-        // Required to correctly render linebreaks from "simple text mode" from GLPI prior to 9.4.0.
-        if (!preg_match('/<br\s?\/?>/', $content) && !preg_match('/<p>/', $content)) {
-            $content = nl2br($content);
-        }
-
-        return $content;
-    }
-
-    /**
      * Strip HTML tags from a string.
      *
      * @since 10.0.0
@@ -3246,8 +2886,6 @@ class Toolbox
      */
     public static function stripTags(string $str): string
     {
-        $str = Sanitizer::getVerbatimValue($str);
-
         return strip_tags($str);
     }
 
@@ -3262,7 +2900,7 @@ class Toolbox
      *
      * @since 9.5.0
      */
-    public static function savePicture($src, $uniq_prefix = '')
+    public static function savePicture($src, $uniq_prefix = '', $keep_src = false)
     {
 
         if (!Document::isImage($src)) {
@@ -3283,12 +2921,26 @@ class Toolbox
             $i++;
         } while (file_exists($dest));
 
-        if (!is_dir(GLPI_PICTURE_DIR . '/' . $subdirectory) && !mkdir(GLPI_PICTURE_DIR . '/' . $subdirectory)) {
-            return false;
+        if (!is_dir(GLPI_PICTURE_DIR . '/' . $subdirectory)) {
+            try {
+                mkdir(GLPI_PICTURE_DIR . '/' . $subdirectory);
+            } catch (FilesystemException $e) {
+                return false;
+            }
         }
 
-        if (!rename($src, $dest)) {
-            return false;
+        if (!$keep_src) {
+            try {
+                rename($src, $dest);
+            } catch (FilesystemException $e) {
+                return false;
+            }
+        } else {
+            try {
+                copy($src, $dest);
+            } catch (FilesystemException $e) {
+                return false;
+            }
         }
 
         return substr($dest, strlen(GLPI_PICTURE_DIR . '/')); // Return dest relative to GLPI_PICTURE_DIR
@@ -3315,11 +2967,16 @@ class Toolbox
 
         $fullpath = realpath($fullpath);
         if (!str_starts_with($fullpath, realpath(GLPI_PICTURE_DIR))) {
-            // Prevent deletion of a file ouside pictures directory
+            // Prevent deletion of a file outside pictures directory
             return false;
         }
 
-        return @unlink($fullpath);
+        try {
+            @unlink($fullpath);
+            return true;
+        } catch (FilesystemException $e) {
+            return false;
+        }
     }
 
 
@@ -3335,16 +2992,13 @@ class Toolbox
      */
     public static function getPictureUrl($path, $full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
-
-        $path = Html::cleanInputText($path); // prevent xss
 
         if (empty($path)) {
             return null;
         }
 
-        return ($full ? $CFG_GLPI["root_doc"] : "") . '/front/document.send.php?file=_pictures/' . $path;
+        return ($full ? $CFG_GLPI["root_doc"] : "") . '/front/document.send.php?file=' . urlencode('_pictures/' . $path);
     }
 
     /**
@@ -3385,19 +3039,19 @@ class Toolbox
             $suffix = "T";
         }
 
-        if (strpos($formatted, '.') === false) {
+        if (!str_contains($formatted, '.')) {
             $precision = 0;
         }
 
         if ($html) {
-            $formatted = <<<HTML
-            <span title="{$number}"
-                  class="formatted-number"
-                  data-precision='{$precision}'>
-               <span class="number">$formatted</span>
-               <span class="suffix">$suffix</span>
-            </span>
-HTML;
+            $formatted = '
+                <span "
+                      class="formatted-number"
+                      data-precision="' . htmlescape($precision) . '">
+                    <span class="number">' . htmlescape($formatted) . '</span>
+                    <span class="suffix">' . htmlescape($suffix) . '</span>
+                </span>
+            ';
         } else {
             $formatted .= $suffix;
         }
@@ -3471,7 +3125,7 @@ HTML;
     {
         $fg_color = "FFFFFF";
         if ($color !== "") {
-            if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d\.]+)?\)/', $color, $matches)) {
+            if (preg_match('/^rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d\.]+)?\)$/', $color, $matches)) {
                 $rgb_color = [
                     "R" => intval($matches[1]),
                     "G" => intval($matches[2]),
@@ -3547,10 +3201,10 @@ HTML;
      */
     public static function isAPIDeprecated(string $class): bool
     {
-        $deprecated = "Glpi\Api\Deprecated\DeprecatedInterface";
+        $deprecated = DeprecatedInterface::class;
 
         // Insert namespace if missing
-        if (strpos($class, "Glpi\Api\Deprecated") === false) {
+        if (!str_contains($class, "Glpi\Api\Deprecated")) {
             $class = "Glpi\Api\Deprecated\\$class";
         }
 
@@ -3591,11 +3245,7 @@ HTML;
             (?:\# (?:[\pL\pN\-._\~!$&\'()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?       # a fragment (optional)
         $~ixuD';
 
-
-        return (preg_match(
-            $pattern,
-            Sanitizer::unsanitize($url)
-        ) === 1);
+        return preg_match($pattern, $url) === 1;
     }
 
     /**
@@ -3603,7 +3253,7 @@ HTML;
      * This function checks the class itself and all parent classes for the trait.
      * @since 10.0.0
      * @param string|object $class The class or object
-     * @param string $trait The trait
+     * @param class-string $trait The trait
      * @return bool True if the class or its parents have the specified trait
      */
     public static function hasTrait($class, string $trait): bool
@@ -3661,7 +3311,6 @@ HTML;
      */
     public static function cleanTarget(string $target): string
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $file = preg_replace('/^' . preg_quote($CFG_GLPI['root_doc'], '/') . '/', '', $target);
@@ -3705,23 +3354,6 @@ HTML;
         $tabs[-1] = 'All';
 
         return $tabs;
-    }
-
-    /**
-     * Handle redirect after a profile switch.
-     * Must be called after a right check failure.
-     */
-    public static function handleProfileChangeRedirect(): void
-    {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $redirect = $_SESSION['_redirected_from_profile_selector'] ?? false;
-
-        if ($redirect) {
-            unset($_SESSION['_redirected_from_profile_selector']);
-            Html::redirect($CFG_GLPI['root_doc'] . "/front/central.php");
-        }
     }
 
     /**
@@ -3773,7 +3405,7 @@ HTML;
             return 0;
         }
 
-        return strlen(preg_replace('/\d*\./', '', floatval($value)));
+        return strlen(preg_replace('/\d*\./', '', (string) floatval($value)));
     }
 
     /**
@@ -3792,7 +3424,7 @@ HTML;
         }
 
         if (!preg_match('/(\d+).*?(\w+)/', $size, $matches)) {
-            // Unkown format, keep the string as it is
+            // Unknown format, keep the string as it is
             return $size;
         }
         $supported_sizes = [
@@ -3806,8 +3438,29 @@ HTML;
         if (count($matches) >= 3 && isset($supported_sizes[strtolower($matches[2])])) {
             // Known format
             $size = (int) $matches[1];
-            $size *= pow(1024, $supported_sizes[strtolower($matches[2])]);
+            $size *= 1024 ** $supported_sizes[strtolower($matches[2])];
         }
         return $size;
+    }
+
+    /**
+     * Get itemtype name used in JS function names, etc
+     *
+     * @param string $itemtype
+     *
+     * @return string
+     */
+    final public static function getNormalizedItemtype(string $itemtype)
+    {
+        return strtolower(str_replace('\\', '', $itemtype));
+    }
+
+    /**
+     * @param string $message
+     * @return string
+     */
+    public static function cleanPaths(string $message): string
+    {
+        return ErrorUtils::cleanPaths($message);
     }
 }

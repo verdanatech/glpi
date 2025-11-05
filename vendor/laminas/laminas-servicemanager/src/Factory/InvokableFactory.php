@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Laminas\ServiceManager\Factory;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 
 /**
  * Factory for instantiating classes with no dependencies or which accept a single array.
@@ -19,9 +19,7 @@ use Interop\Container\ContainerInterface;
  */
 final class InvokableFactory implements FactoryInterface
 {
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         return null === $options ? new $requestedName() : new $requestedName($options);

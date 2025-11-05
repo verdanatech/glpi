@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+require_once(__DIR__ . '/_check_webserver_config.php');
 
-include('../inc/includes.php');
+use Glpi\Event;
 
 Session::checkCentralAccess();
 
@@ -58,7 +58,7 @@ if (isset($_POST["add"])) {
     Html::back();
 } elseif (isset($_POST["purge"])) {
     $language->check($_POST["id"], PURGE);
-    $language->delete($_POST, 1);
+    $language->delete($_POST, true);
 
     Event::log(
         $_POST["id"],
@@ -99,7 +99,7 @@ if (isset($_POST["add"])) {
         $options = [];
     }
 
-    $menus = ["config", "notification", "notificationtemplate"];
+    $menus = ["config", "notification", "NotificationTemplate"];
     NotificationTemplateTranslation::displayFullPageForItem(
         $_GET["id"],
         $menus,

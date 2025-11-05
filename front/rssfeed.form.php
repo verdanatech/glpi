@@ -33,19 +33,18 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 0.84
  */
 
 use Glpi\Event;
 
-include('../inc/includes.php');
-
 if (!isset($_GET["id"])) {
     $_GET["id"] = "";
 }
 $rssfeed = new RSSFeed();
-Session::checkLoginUser();
 
 if (isset($_POST["add"])) {
     $rssfeed->check(-1, CREATE, $_POST);
@@ -65,7 +64,7 @@ if (isset($_POST["add"])) {
     Html::redirect($rssfeed->getFormURLWithID($newID));
 } elseif (isset($_POST["purge"])) {
     $rssfeed->check($_POST["id"], PURGE);
-    $rssfeed->delete($_POST, 1);
+    $rssfeed->delete($_POST, true);
     Event::log(
         $_POST["id"],
         "rssfeed",

@@ -33,13 +33,14 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.84
  */
-
-use Glpi\Event;
-
-include('../inc/includes.php');
 
 Session::checkCentralAccess();
 
@@ -68,7 +69,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $cost->check($_POST["id"], PURGE);
 
-    if ($cost->delete($_POST, 1)) {
+    if ($cost->delete($_POST, true)) {
         Event::log(
             $cost->fields['contracts_id'],
             "contracts",
@@ -80,8 +81,8 @@ if (isset($_POST["add"])) {
     }
     $contract = new Contract();
     $contract->getFromDB($cost->fields['contracts_id']);
-    Html::redirect(Toolbox::getItemTypeFormURL('Contract') . '?id=' . $cost->fields['contracts_id'] .
-                  ($contract->fields['is_template'] ? "&withtemplate=1" : ""));
+    Html::redirect(Toolbox::getItemTypeFormURL('Contract') . '?id=' . $cost->fields['contracts_id']
+                  . ($contract->fields['is_template'] ? "&withtemplate=1" : ""));
 } elseif (isset($_POST["update"])) {
     $cost->check($_POST["id"], UPDATE);
 
@@ -98,4 +99,4 @@ if (isset($_POST["add"])) {
     Html::back();
 }
 
-Html::displayErrorAndDie('Lost');
+throw new BadRequestHttpException();

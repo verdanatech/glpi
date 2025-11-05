@@ -43,10 +43,8 @@ class DeviceMotherboard extends CommonDevice
         return _n('System board', 'System boards', $nb);
     }
 
-
     public function getAdditionalFields()
     {
-
         return array_merge(
             parent::getAdditionalFields(),
             [['name'  => 'chipset',
@@ -61,14 +59,13 @@ class DeviceMotherboard extends CommonDevice
         );
     }
 
-
     public function rawSearchOptions()
     {
         $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'                 => '11',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'chipset',
             'name'               => __('Chipset'),
             'datatype'           => 'string',
@@ -84,7 +81,6 @@ class DeviceMotherboard extends CommonDevice
 
         return $tab;
     }
-
 
     public static function getHTMLTableHeader(
         $itemtype,
@@ -102,11 +98,10 @@ class DeviceMotherboard extends CommonDevice
 
         switch ($itemtype) {
             case 'Computer':
-                Manufacturer::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
+                Manufacturer::getHTMLTableHeader(self::class, $base, $super, $father, $options);
                 break;
         }
     }
-
 
     public function getHTMLTableCellForItem(
         ?HTMLTableRow $row = null,
@@ -121,18 +116,18 @@ class DeviceMotherboard extends CommonDevice
             return $father;
         }
 
-        switch ($item->getType()) {
-            case 'Computer':
+        switch ($item::class) {
+            case Computer::class:
                 Manufacturer::getHTMLTableCellsForItem($row, $this, null, $options);
                 break;
         }
+        return null;
     }
-
 
     public function getImportCriteria()
     {
-
-        return ['designation'      => 'equal',
+        return [
+            'designation'      => 'equal',
             'manufacturers_id' => 'equal',
             'chipset'          => 'equal',
         ];
@@ -156,6 +151,30 @@ class DeviceMotherboard extends CommonDevice
                     'joinparams'         => $main_joinparams,
                 ],
             ],
+        ];
+
+        $tab[] = [
+            'id'                 => '1328',
+            'table'              => 'glpi_items_devicemotherboards',
+            'field'              => 'serial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Serial Number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
+        ];
+
+        $tab[] = [
+            'id'                 => '1329',
+            'table'              => 'glpi_items_devicemotherboards',
+            'field'              => 'otherserial',
+            'name'               => sprintf(__('%1$s: %2$s'), self::getTypeName(1), __('Inventory number')),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'string',
+            'massiveaction'      => false,
+            'joinparams'         => $main_joinparams,
         ];
 
         return $tab;

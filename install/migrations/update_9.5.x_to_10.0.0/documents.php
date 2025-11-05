@@ -31,10 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \Migration $migration
+ * @var Migration $migration
  */
+use function Safe\ini_get;
 
 // Add a config entry for document max size.
 // Default size corresponds to the 'upload_max_filesize' directive in Mio (rounded down)

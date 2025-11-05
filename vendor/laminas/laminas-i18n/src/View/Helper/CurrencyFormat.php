@@ -14,6 +14,8 @@ use function sprintf;
 
 /**
  * View helper for formatting currency.
+ *
+ * @final
  */
 class CurrencyFormat extends AbstractHelper
 {
@@ -29,7 +31,7 @@ class CurrencyFormat extends AbstractHelper
     /**
      * Formatter instances
      *
-     * @var array
+     * @var array<string, NumberFormatter>
      */
     protected $formatters = [];
 

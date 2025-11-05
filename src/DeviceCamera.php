@@ -44,15 +44,15 @@ class DeviceCamera extends CommonDevice
 
     public function defineTabs($options = [])
     {
-
         $ong = [];
         $this->addDefaultFormTab($ong)
          ->addImpactTab($ong, $options)
-         ->addStandardTab('Item_DeviceCamera_ImageResolution', $ong, $options)
-         ->addStandardTab('Item_DeviceCamera_ImageFormat', $ong, $options)
-         ->addStandardTab('Infocom', $ong, $options)
-         ->addStandardTab('Contract_Item', $ong, $options)
-         ->addStandardTab('Log', $ong, $options);
+         ->addStandardTab(Item_DeviceCamera_ImageResolution::class, $ong, $options)
+         ->addStandardTab(Item_DeviceCamera_ImageFormat::class, $ong, $options)
+         ->addStandardTab(Infocom::class, $ong, $options)
+         ->addStandardTab(Contract_Item::class, $ong, $options)
+         ->addStandardTab(Item_Project::class, $ong, $options)
+         ->addStandardTab(Log::class, $ong, $options);
         return $ong;
     }
 
@@ -114,7 +114,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '11',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'flashunit',
             'name'               => __('Flashunit'),
             'datatype'           => 'bool',
@@ -122,7 +122,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '12',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'lensfacing',
             'name'               => __('Lensfacing'),
             'datatype'           => 'string',
@@ -130,7 +130,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '13',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'orientation',
             'name'               => __('orientation'),
             'datatype'           => 'string',
@@ -138,7 +138,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '14',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'focallength',
             'name'               => __('Focal length'),
             'datatype'           => 'string',
@@ -146,7 +146,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '15',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'sensorsize',
             'name'               => __('Sensor size'),
             'datatype'           => 'string',
@@ -154,7 +154,7 @@ class DeviceCamera extends CommonDevice
 
         $tab[] = [
             'id'                 => '17',
-            'table'              => $this->getTable(),
+            'table'              => static::getTable(),
             'field'              => 'support',
             'name'               => __('Support'),
             'datatype'           => 'string',
@@ -177,14 +177,14 @@ class DeviceCamera extends CommonDevice
             return $father;
         }
 
-        Manufacturer::getHTMLTableHeader(__CLASS__, $base, $super, $father, $options);
-        $base->addHeader('devicecamera_model', _n('Model', 'Models', 1), $super, $father);
-        $base->addHeader('flashunit', __('Flashunit'), $super, $father);
-        $base->addHeader('lensfacing', __('lensfacing'), $super, $father);
-        $base->addHeader('orientation', __('orientation'), $super, $father);
-        $base->addHeader('focallength', __('focal length'), $super, $father);
-        $base->addHeader('sensorsize', __('sensorsize'), $super, $father);
-        $base->addHeader('support', __('support'), $super, $father);
+        Manufacturer::getHTMLTableHeader(self::class, $base, $super, $father, $options);
+        $base->addHeader('devicecamera_model', _sn('Model', 'Models', 1), $super, $father);
+        $base->addHeader('flashunit', __s('Flashunit'), $super, $father);
+        $base->addHeader('lensfacing', __s('lensfacing'), $super, $father);
+        $base->addHeader('orientation', __s('orientation'), $super, $father);
+        $base->addHeader('focallength', __s('focal length'), $super, $father);
+        $base->addHeader('sensorsize', __s('sensorsize'), $super, $father);
+        $base->addHeader('support', __s('support'), $super, $father);
     }
 
     public function getHTMLTableCellForItem(
@@ -193,7 +193,6 @@ class DeviceCamera extends CommonDevice
         ?HTMLTableCell $father = null,
         array $options = []
     ) {
-
         $column = parent::getHTMLTableCellForItem($row, $item, $father, $options);
 
         if ($column == $father) {
@@ -205,7 +204,7 @@ class DeviceCamera extends CommonDevice
         if ($this->fields["devicecameramodels_id"]) {
             $row->addCell(
                 $row->getHeaderByName('devicecamera_model'),
-                Dropdown::getDropdownName("glpi_devicecameramodels", $this->fields["devicecameramodels_id"]),
+                htmlescape(Dropdown::getDropdownName("glpi_devicecameramodels", $this->fields["devicecameramodels_id"])),
                 $father
             );
         }
@@ -213,7 +212,7 @@ class DeviceCamera extends CommonDevice
         if ($this->fields["lensfacing"]) {
             $row->addCell(
                 $row->getHeaderByName('lensfacing'),
-                $this->fields["lensfacing"],
+                htmlescape($this->fields["lensfacing"]),
                 $father
             );
         }
@@ -221,10 +220,11 @@ class DeviceCamera extends CommonDevice
         if ($this->fields["flashunit"]) {
             $row->addCell(
                 $row->getHeaderByName('flashunit'),
-                $this->fields["flashunit"],
+                htmlescape($this->fields["flashunit"]),
                 $father
             );
         }
+        return null;
     }
 
     public function getImportCriteria()

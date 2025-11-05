@@ -42,11 +42,10 @@ abstract class CommonDeviceType extends CommonType
 
     public static function getFormURL($full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $dir = ($full ? $CFG_GLPI['root_doc'] : '');
-        $itemtype = get_called_class();
+        $itemtype = static::class;
         $link = "$dir/front/devicetype.form.php?itemtype=$itemtype";
 
         return $link;
@@ -54,11 +53,10 @@ abstract class CommonDeviceType extends CommonType
 
     public static function getSearchURL($full = true)
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $dir = ($full ? $CFG_GLPI['root_doc'] : '');
-        $itemtype = get_called_class();
+        $itemtype = static::class;
         $link = "$dir/front/devicetype.php?itemtype=$itemtype";
 
         return $link;

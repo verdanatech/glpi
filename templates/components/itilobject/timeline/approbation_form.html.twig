@@ -61,7 +61,6 @@
                         'helper': __('Optional when approved'),
                         'enable_richtext': true,
                         'enable_fileupload': true,
-                        'enable_mentions': true,
                         'entities_id': item.fields['entities_id'],
                         'is_horizontal': false,
                      }
@@ -69,12 +68,12 @@
                </div>
 
                <div class="card-footer">
-                  <button class="btn btn-icon btn-outline-danger me-2" name="add_reopen">
+                  <button class="btn btn-outline-danger me-2" name="add_reopen">
                      <i class="ti ti-x"></i>
                      <span>{{ __('Refuse') }}</span>
                   </button>
 
-                  <button class="btn btn-icon btn-outline-success" name="add_close">
+                  <button class="btn btn-outline-success" name="add_close">
                      <i class="ti ti-check"></i>
                      <span>{{ __('Approve') }}</span>
                   </button>

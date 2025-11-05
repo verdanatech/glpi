@@ -35,24 +35,22 @@
 /**
  * Update from 9.5.3 to 9.5.4
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update953to954()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
     $updateresult = true;
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.5.4'));
     $migration->setVersion('9.5.4');
 
     /* Remove invalid Profile SO */
-    $DB->deleteOrDie('glpi_displaypreferences', ['itemtype' => 'Profile', 'num' => 62]);
+    $DB->delete('glpi_displaypreferences', ['itemtype' => 'Profile', 'num' => 62]);
     /* /Remove invalid Profile SO */
 
     /* Add is_default_profile */

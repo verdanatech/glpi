@@ -32,6 +32,10 @@
 
 {% import 'components/form/fields_macros.html.twig' as fields %}
 
+{% if itiltemplate.isReadonlyField('status') %}
+   {% set field_options = field_options|merge({'readonly': true}) %}
+{% endif %}
+
 {% if canupdate %}
    {% set status_field %}
       {{ item.dropdownStatus({
@@ -39,7 +43,8 @@
          'value_calculation': item.fields['status'],
          'showtype': 'allowed',
          'width': '100%',
-         'display': false
+         'display': false,
+         'use_template_limits': itiltemplate.fields['id'] ?? 0
       }|merge(field_options))|raw }}
 
       {% set validation_class = item.getValidationClassInstance() %}
@@ -60,7 +65,7 @@
       {% if item.canReopen() %}
          <a href="{{ item.getLinkURL() }}&amp;_openfollowup=1"
             class="btn btn-ghost-secondary">
-            <i class="far fa-folder-open"></i>
+            <i class="ti ti-folder-open"></i>
             <span>{{ __('Reopen') }}</span>
          </a>
       {% endif %}

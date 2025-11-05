@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 /**
  * @since 0.85
  */
-
-include("../inc/includes.php");
 
 Session::checkCentralAccess();
 if (isset($_GET['action'])) {
@@ -51,8 +51,8 @@ if (isset($_GET['action'])) {
 $rulecollection = new RuleCollection();
 $rulecollection->checkGlobal(READ);
 
-if ($action != "export") {
-    Html::header(Rule::getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], "admin", "rule", -1);
+if ($action !== "export") {
+    Html::header(Rule::getTypeName(Session::getPluralNumber()), '', "admin", "rule");
 }
 
 switch ($action) {
@@ -61,7 +61,7 @@ switch ($action) {
         if (RuleCollection::previewImportRules()) {
             break;
         }
-        //seems wanted not to break; I do no understand why
+        // seems wanted not to break; I do no understand why
 
         // no break
     case "import":
@@ -76,24 +76,22 @@ switch ($action) {
         } else {
             $rules_key = array_keys($rule->find(getEntitiesRestrictCriteria()));
         }
-        $rulecollection->exportRulesToXML($rules_key);
+        $rulecollection::exportRulesToXML($rules_key);
         unset($_SESSION['exportitems']);
         break;
 
     case "download":
         echo "<div class='center'>";
         $itemtype = $_REQUEST['itemtype'];
-        echo "<a href='" . $itemtype::getSearchURL() . "'>" . __('Back') . "</a>";
+        echo "<a href='" . htmlescape($itemtype::getSearchURL()) . "'>" . __s('Back') . "</a>";
         echo "</div>";
-        Html::redirect("rule.backup.php?action=export&itemtype=" . $_REQUEST['itemtype']);
-        break;
-
+        Html::redirect("rule.backup.php?action=export&itemtype=" . urlencode($_REQUEST['itemtype']));
+        // no break
     case "process_import":
         $rulecollection->checkGlobal(UPDATE);
         RuleCollection::processImportRules();
         Html::back();
-        break;
 }
-if ($action != "export") {
+if ($action !== "export") {
     Html::footer();
 }

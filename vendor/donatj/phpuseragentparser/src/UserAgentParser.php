@@ -90,7 +90,7 @@ REGEX
 		} elseif( $platform == 'Adr' ) {
 			$platform = 'Android';
 		} elseif( $platform === null ) {
-			if(preg_match_all('%(?P<platform>Android)[:/ ]%ix', $u_agent, $result)) {
+			if( preg_match_all('%(?P<platform>Android)[:/ ]%ix', $u_agent, $result) ) {
 				$platform = $result[PLATFORM][0];
 			}
 		}
@@ -98,18 +98,19 @@ REGEX
 		preg_match_all(<<<'REGEX'
 %(?P<browser>Camino|Kindle(\ Fire)?|Firefox|Iceweasel|IceCat|Safari|MSIE|Trident|AppleWebKit|
 TizenBrowser|(?:Headless)?Chrome|YaBrowser|Vivaldi|IEMobile|Opera|OPR|Silk|Midori|(?-i:Edge)|EdgA?|CriOS|UCBrowser|Puffin|
-OculusBrowser|SamsungBrowser|SailfishBrowser|XiaoMi/MiuiBrowser|
-Baiduspider|Applebot|Facebot|Googlebot|YandexBot|bingbot|Lynx|Version|Wget|curl|
-Valve\ Steam\ Tenfoot|
+OculusBrowser|SamsungBrowser|SailfishBrowser|XiaoMi/MiuiBrowser|YaApp_Android|Whale|
+Baiduspider|Applebot|Facebot|Googlebot|YandexBot|bingbot|Lynx|Version|Wget|curl|ChatGPT-User|GPTBot|OAI-SearchBot|
+Valve\ Steam\ Tenfoot|Mastodon|
 NintendoBrowser|PLAYSTATION\ (?:\d|Vita)+)
 \)?;?
-(?:[:/ ](?P<version>[0-9A-Z.]+)|/[A-Z]*)%ix
+(?:[:/ ](?P<version>[0-9A-Z.]+)|/[A-Z]*)
+%ix
 REGEX
 			, $u_agent, $result);
 
 		// If nothing matched, return null (to avoid undefined index errors)
 		if( !isset($result[BROWSER][0], $result[BROWSER_VERSION][0]) ) {
-			if( preg_match('%^(?!Mozilla)(?P<browser>[A-Z0-9\-]+)(/(?P<version>[0-9A-Z.]+))?%ix', $u_agent, $result) ) {
+			if( preg_match('%^(?!Mozilla)(?P<browser>[A-Z0-9\-]+)([/ :](?P<version>[0-9A-Z.]+))?%ix', $u_agent, $result) ) {
 				return [ PLATFORM => $platform ?: null, BROWSER => $result[BROWSER], BROWSER_VERSION => empty($result[BROWSER_VERSION]) ? null : $result[BROWSER_VERSION] ];
 			}
 
@@ -125,7 +126,7 @@ REGEX
 
 		$lowerBrowser = array_map('strtolower', $result[BROWSER]);
 
-		$find = function ( $search, &$key = null, &$value = null ) use ( $lowerBrowser ) {
+		$find = function( $search, &$key = null, &$value = null ) use ( $lowerBrowser ) {
 			$search = (array)$search;
 
 			foreach( $search as $val ) {
@@ -141,7 +142,7 @@ REGEX
 			return false;
 		};
 
-		$findT = function ( array $search, &$key = null, &$value = null ) use ( $find ) {
+		$findT = function( array $search, &$key = null, &$value = null ) use ( $find ) {
 			$value2 = null;
 			if( $find(array_keys($search), $key, $value2) ) {
 				$value = $search[$value2];
@@ -154,7 +155,7 @@ REGEX
 
 		$key = 0;
 		$val = '';
-		if( $findT([ 'OPR' => 'Opera', 'Facebot' => 'iMessageBot', 'UCBrowser' => 'UC Browser', 'YaBrowser' => 'Yandex', 'Iceweasel' => 'Firefox', 'Icecat' => 'Firefox', 'CriOS' => 'Chrome', 'Edg' => 'Edge', 'EdgA' => 'Edge', 'XiaoMi/MiuiBrowser' => 'MiuiBrowser' ], $key, $browser) ) {
+		if( $findT([ 'OPR' => 'Opera', 'Facebot' => 'iMessageBot', 'UCBrowser' => 'UC Browser', 'YaBrowser' => 'Yandex', 'YaApp_Android' => 'Yandex', 'Iceweasel' => 'Firefox', 'Icecat' => 'Firefox', 'CriOS' => 'Chrome', 'Edg' => 'Edge', 'EdgA' => 'Edge', 'XiaoMi/MiuiBrowser' => 'MiuiBrowser' ], $key, $browser) ) {
 			$version = is_numeric(substr($result[BROWSER_VERSION][$key], 0, 1)) ? $result[BROWSER_VERSION][$key] : null;
 		} elseif( $find('Playstation Vita', $key, $platform) ) {
 			$platform = 'PlayStation Vita';
@@ -168,7 +169,7 @@ REGEX
 		} elseif( $find('NintendoBrowser', $key) || $platform == 'Nintendo 3DS' ) {
 			$browser = 'NintendoBrowser';
 			$version = $result[BROWSER_VERSION][$key];
-		} elseif( $find('Kindle', $key, $platform) ) {
+		} elseif( $find([ 'Kindle' ], $key, $platform) ) {
 			$browser = $result[BROWSER][$key];
 			$version = $result[BROWSER_VERSION][$key];
 		} elseif( $find('Opera', $key, $browser) ) {
@@ -187,7 +188,7 @@ REGEX
 					}
 				}
 			}
-		} elseif( $find([ 'Applebot', 'IEMobile', 'Edge', 'Midori', 'Vivaldi', 'OculusBrowser', 'SamsungBrowser', 'Valve Steam Tenfoot', 'Chrome', 'HeadlessChrome', 'SailfishBrowser' ], $key, $browser) ) {
+		} elseif( $find([ 'Googlebot', 'Applebot', 'IEMobile', 'Edge', 'Midori', 'Whale', 'Vivaldi', 'OculusBrowser', 'SamsungBrowser', 'Valve Steam Tenfoot', 'Chrome', 'HeadlessChrome', 'SailfishBrowser' ], $key, $browser) ) {
 			$version = $result[BROWSER_VERSION][$key];
 		} elseif( $rv_result && $find('Trident') ) {
 			$browser = 'MSIE';
@@ -200,12 +201,17 @@ REGEX
 				$platform = 'BlackBerry';
 			} elseif( $platform == 'BlackBerry' || $platform == 'PlayBook' ) {
 				$browser = 'BlackBerry Browser';
-			} else {
-				$find('Safari', $key, $browser) || $find('TizenBrowser', $key, $browser);
+			} elseif( $find('Safari', $key, $browser) || $find('TizenBrowser', $key, $browser) ) {
+				$version = $result[BROWSER_VERSION][$key];
+			} elseif( count($result[BROWSER]) ) {
+				$key     = count($result[BROWSER]) - 1;
+				$browser = $result[BROWSER][$key];
+				$version = $result[BROWSER_VERSION][$key];
 			}
 
-			$find('Version', $key);
-			$version = $result[BROWSER_VERSION][$key];
+			if( $find('Version', $key) ) {
+				$version = $result[BROWSER_VERSION][$key];
+			}
 		} elseif( $pKey = preg_grep('/playstation \d/i', $result[BROWSER]) ) {
 			$pKey = reset($pKey);
 

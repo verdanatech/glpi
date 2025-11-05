@@ -41,7 +41,7 @@
 
    <div class="floating-buttons d-inline-flex">
       <span class="btn btn-secondary d-none me-1" id="backtotop">
-         <i class="fas fa-arrow-up" title="{{ __('Back to top of the page') }}">
+         <i class="ti ti-arrow-up" title="{{ __('Back to top of the page') }}">
             <span class="visually-hidden">{{ __('Top of the page') }}</span>
          </i>
       </span>
@@ -49,7 +49,7 @@
 
    {% if config('maintenance_mode') %}
       <div id="maintenance-float">
-         <a href="{{ path('front/config.form.php?forcetab=Config$5') }}">GLPI MAINTENANCE MODE</a>
+         <a href="{{ path('front/config.form.php?forcetab=Config$5') }}">{{ __('MAINTENANCE MODE') }}</a>
       </div>
    {% endif %}
 
@@ -61,5 +61,10 @@
       <script type="module" src="{{ js_path(js_file.path, js_file.options ?? []) }}"></script>
    {% endfor %}
 
+    {% if debug_info is not null %}
+        {{ include('components/debug/debug_toolbar.html.twig', {
+            debug_info: debug_info,
+        }, with_context = false) }}
+    {% endif %}
 </body>
 </html>

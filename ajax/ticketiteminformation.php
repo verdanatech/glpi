@@ -33,17 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-// Direct access to file
-use Glpi\Http\Response;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
-if (strpos($_SERVER['PHP_SELF'], "ticketiteminformation.php")) {
-    $AJAX_INCLUDE = 1;
-    include('../inc/includes.php');
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
-}
-
-Session::checkLoginUser();
+header("Content-Type: text/html; charset=UTF-8");
+Html::header_nocache();
 
 if (isset($_POST["my_items"]) && !empty($_POST["my_items"])) {
     $splitter = explode("_", $_POST["my_items"]);
@@ -59,12 +52,13 @@ if (
 ) {
     // Security
     if (!($item = getItemForItemtype($_POST['itemtype'])) || !$item->can($_POST['items_id'], READ)) {
-        Response::sendError(403, 'Not allowed');
+        throw new AccessDeniedHttpException();
     }
 
     $days   = 3;
+
     $ticket = new Ticket();
-    $data   = $ticket->getActiveOrSolvedLastDaysTicketsForItem(
+    $data   = $ticket->getActiveOrSolvedLastDaysForItem(
         $_POST['itemtype'],
         $_POST['items_id'],
         $days
@@ -72,7 +66,7 @@ if (
 
     $nb = count($data);
     $badge_helper = sprintf(
-        _n(
+        _sn(
             '%s ticket in progress or recently solved on this item.',
             '%s tickets in progress or recently solved on this item.',
             $nb
@@ -84,7 +78,7 @@ if (
     if ($nb) {
         $content = '';
         foreach ($data as $title) {
-            $content .= $title . '<br>';
+            $content .= htmlescape($title) . '<br>';
         }
         echo '&nbsp;';
         Html::showToolTip($content);

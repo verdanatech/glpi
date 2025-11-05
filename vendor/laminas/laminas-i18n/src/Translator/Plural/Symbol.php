@@ -14,6 +14,8 @@ use function sprintf;
  * access from the applied closures. An exception are the closure properties
  * themselves, as they have to be accessed via the appropriate getter and
  * setter methods.
+ *
+ * @final
  */
 class Symbol
 {
@@ -23,20 +25,6 @@ class Symbol
      * @var Parser
      */
     public $parser;
-
-    /**
-     * Node or token type name.
-     *
-     * @var string
-     */
-    public $id;
-
-    /**
-     * Left binding power (precedence).
-     *
-     * @var int
-     */
-    public $leftBindingPower;
 
     /**
      * Getter for null denotation.
@@ -86,11 +74,18 @@ class Symbol
      * @param  string  $id
      * @param  int $leftBindingPower
      */
-    public function __construct(Parser $parser, $id, $leftBindingPower)
-    {
-        $this->parser           = $parser;
-        $this->id               = $id;
-        $this->leftBindingPower = $leftBindingPower;
+    public function __construct(
+        Parser $parser,
+        /**
+         * Node or token type name.
+         */
+        public $id,
+        /**
+         * Left binding power (precedence).
+         */
+        public $leftBindingPower
+    ) {
+        $this->parser = $parser;
     }
 
     /**

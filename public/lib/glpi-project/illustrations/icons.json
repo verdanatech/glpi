@@ -1,0 +1,1221 @@
+{
+    "advanced-dashboards": {
+        "title": "advanced-dashboards",
+        "tags": [
+            "plugin",
+            "charts",
+            "reporting",
+            "dashboard"
+        ]
+    },
+    "agent-config": {
+        "title": "Agent config",
+        "tags": [
+            "plugin",
+            "Qrcode",
+            "Smartphone",
+            "configuration",
+            "mobile"
+        ]
+    },
+    "alert": {
+        "title": "alert",
+        "tags": [
+            "plugin",
+            "notification",
+            "warning"
+        ]
+    },
+    "anonymise": {
+        "title": "anonymise",
+        "tags": [
+            "plugin",
+            "privacy",
+            "data-protection",
+            "file"
+        ]
+    },
+    "anonymize-alt": {
+        "title": "anonymize-alt",
+        "tags": [
+            "plugin",
+            "privacy",
+            "data-protection",
+            "file",
+            "folder"
+        ]
+    },
+    "ansible": {
+        "title": "ansible",
+        "tags": [
+            "plugin",
+            "automation",
+            "orchestration",
+            "configuration-management"
+        ]
+    },
+    "antivirus": {
+        "title": "Antivirus",
+        "tags": []
+    },
+    "application": {
+        "title": "Application",
+        "tags": [
+            "software"
+        ]
+    },
+    "application-altenative": {
+        "title": "application-altenative",
+        "tags": []
+    },
+    "application-edit": {
+        "title": "application-edit",
+        "tags": []
+    },
+    "approval-by-mail": {
+        "title": "approval-by-mail",
+        "tags": [
+            "plugin"
+        ]
+    },
+    "approve-requests": {
+        "title": "Approve Requests",
+        "tags": [
+            "validation",
+            "check",
+            "ok",
+            "accept",
+            "confirmation"
+        ]
+    },
+    "asset-cartridge": {
+        "title": "Cartridge",
+        "tags": [
+            "asset",
+            "device",
+            "printer"
+        ]
+    },
+    "asset-desktop-1": {
+        "title": "Desktop 1",
+        "tags": [
+            "asset",
+            "device",
+            "computer",
+            "monitor"
+        ]
+    },
+    "asset-desktop-2": {
+        "title": "Desktop 2",
+        "tags": [
+            "asset",
+            "device",
+            "computer",
+            "monitor"
+        ]
+    },
+    "asset-laptop": {
+        "title": "Laptop",
+        "tags": [
+            "asset",
+            "device",
+            "computer",
+            "portable",
+            "notebook"
+        ]
+    },
+    "asset-lost": {
+        "title": "Asset lost",
+        "tags": [
+            "asset",
+            "device"
+        ]
+    },
+    "asset-network-equipment": {
+        "title": "Network equipment",
+        "tags": [
+            "asset",
+            "device",
+            "switch",
+            "router"
+        ]
+    },
+    "asset-peripheral": {
+        "title": "Peripheral",
+        "tags": [
+            "asset",
+            "device",
+            "usb",
+            "keyboard",
+            "mouse"
+        ]
+    },
+    "asset-phone": {
+        "title": "Phone",
+        "tags": [
+            "asset",
+            "device",
+            "landline",
+            "call",
+            "communication"
+        ]
+    },
+    "asset-printer": {
+        "title": "Printer",
+        "tags": [
+            "asset",
+            "device",
+            "fax"
+        ]
+    },
+    "asset-server": {
+        "title": "Server",
+        "tags": [
+            "asset",
+            "device",
+            "hosting"
+        ]
+    },
+    "asset-smartphone": {
+        "title": "Smartphone",
+        "tags": [
+            "asset",
+            "device",
+            "mobile",
+            "cellphone",
+            "communication",
+            "iphone"
+        ]
+    },
+    "backup-restoration-1": {
+        "title": "Backup and restoration 1",
+        "tags": [
+            "database"
+        ]
+    },
+    "backup-restoration-2": {
+        "title": "Backup and restoration 2",
+        "tags": [
+            "cloud"
+        ]
+    },
+    "bank": {
+        "title": "Bank",
+        "tags": [
+            "building",
+            "credit",
+            "money",
+            "finance"
+        ]
+    },
+    "bi-reporting-1": {
+        "title": "Business Intelligence and Reporting 1",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "bi-reporting-2": {
+        "title": "Business Intelligence and Reporting 2",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "bi-reporting-3": {
+        "title": "Business Intelligence and Reporting 3",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "bookmark": {
+        "title": "Bookmark",
+        "tags": [
+            "tag",
+            "favorite",
+            "marker",
+            "label"
+        ]
+    },
+    "branding": {
+        "title": "branding",
+        "tags": [
+            "plugin",
+            "customization",
+            "theme",
+            "whitelabel"
+        ]
+    },
+    "browse-kb": {
+        "title": "Browse help articles",
+        "tags": [
+            "knowledge-base",
+            "faq",
+            "articles",
+            "documentation"
+        ]
+    },
+    "building": {
+        "title": "Building",
+        "tags": [
+            "building",
+            "office"
+        ]
+    },
+    "calendar": {
+        "title": "Calendar",
+        "tags": [
+            "date",
+            "schedule",
+            "agenda",
+            "time",
+            "event",
+            "planning"
+        ]
+    },
+    "car": {
+        "title": "Car",
+        "tags": [
+            "vehicle",
+            "transport",
+            "automobile"
+        ]
+    },
+    "carbon": {
+        "title": "carbon",
+        "tags": [
+            "plugin",
+            "footprint",
+            "environment",
+            "sustainability",
+            "co2",
+            "green-IT"
+        ]
+    },
+    "centreon": {
+        "title": "centreon",
+        "tags": [
+            "plugin",
+            "monitoring"
+        ]
+    },
+    "chart-area": {
+        "title": "Area chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-bar": {
+        "title": "Bars chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-donut": {
+        "title": "Donut chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-line": {
+        "title": "Line chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-multiple": {
+        "title": "Chart multiple",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-pie": {
+        "title": "Pie chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chart-search": {
+        "title": "Search chart",
+        "tags": [
+            "charts",
+            "reporting",
+            "dashboard",
+            "analytics"
+        ]
+    },
+    "chat-1": {
+        "title": "Chat 1",
+        "tags": [
+            "message",
+            "conversation",
+            "communication"
+        ]
+    },
+    "chat-2": {
+        "title": "Chat 2",
+        "tags": [
+            "message",
+            "chat",
+            "conversation",
+            "communication"
+        ]
+    },
+    "cloud": {
+        "title": "Cloud",
+        "tags": []
+    },
+    "cloud-instance": {
+        "title": "Cloud instance",
+        "tags": []
+    },
+    "cloud-inventory": {
+        "title": "cloud-inventory",
+        "tags": [
+            "plugin",
+            "asset"
+        ]
+    },
+    "cloud-network-1": {
+        "title": "Cloud Network 1",
+        "tags": []
+    },
+    "cloud-network-2": {
+        "title": "Cloud Network 2",
+        "tags": []
+    },
+    "collaborative-tools": {
+        "title": "collaborative-tools",
+        "tags": [
+            "plugin",
+            "notification",
+            "communication",
+            "webhook"
+        ]
+    },
+    "connectivity-issue": {
+        "title": "Connectivity issue",
+        "tags": [
+            "network",
+            "internet",
+            "connection"
+        ]
+    },
+    "container": {
+        "title": "Container",
+        "tags": [
+            "docker",
+            "virtualization"
+        ]
+    },
+    "containers": {
+        "title": "Containers",
+        "tags": [
+            "docker",
+            "virtualization"
+        ]
+    },
+    "contract-signing-1": {
+        "title": "Contract signing 1",
+        "tags": [
+            "legal",
+            "agreement",
+            "signature"
+        ]
+    },
+    "contract-signing-2": {
+        "title": "Contract signing 2",
+        "tags": [
+            "legal",
+            "agreement",
+            "signature"
+        ]
+    },
+    "credit": {
+        "title": "credit",
+        "tags": [
+            "plugin",
+            "ticket",
+            "helpdesk"
+        ]
+    },
+    "data-export": {
+        "title": "Data export",
+        "tags": [
+            "database"
+        ]
+    },
+    "data-injection": {
+        "title": "data-injection",
+        "tags": [
+            "plugin",
+            "CSV",
+            "import"
+        ]
+    },
+    "database": {
+        "title": "database",
+        "tags": []
+    },
+    "delivery": {
+        "title": "Delivery",
+        "tags": [
+            "package",
+            "shipping",
+            "transport"
+        ]
+    },
+    "doc-developer": {
+        "title": "Developer documentation",
+        "tags": [
+            "developer",
+            "api",
+            "code"
+        ]
+    },
+    "documentation": {
+        "title": "Documentation",
+        "tags": [
+            "docs",
+            "manual",
+            "guide"
+        ]
+    },
+    "download": {
+        "title": "download",
+        "tags": []
+    },
+    "error-404": {
+        "title": "Error 404",
+        "tags": [
+            "not found"
+        ]
+    },
+    "escalade": {
+        "title": "escalade",
+        "tags": [
+            "plugin",
+            "helpdesk",
+            "ticket",
+            "support",
+            "group"
+        ]
+    },
+    "factory": {
+        "title": "Factory",
+        "tags": [
+            "building",
+            "manufacturing",
+            "production",
+            "industry"
+        ]
+    },
+    "faq": {
+        "title": "Frequently Asked Questions",
+        "tags": [
+            "faq",
+            "questions",
+            "help"
+        ]
+    },
+    "fields": {
+        "title": "fields",
+        "tags": [
+            "plugin",
+            "custom",
+            "form"
+        ]
+    },
+    "file-sheet": {
+        "title": "Sheet file",
+        "tags": [
+            "File",
+            "document",
+            "excel",
+            "spreadsheet"
+        ]
+    },
+    "firewall": {
+        "title": "Firewall",
+        "tags": [
+            "security",
+            "protection"
+        ]
+    },
+    "fixing-bug": {
+        "title": "Fixing bug",
+        "tags": [
+            "issue",
+            "problem",
+            "error"
+        ]
+    },
+    "folder": {
+        "title": "Folder",
+        "tags": [
+            "directory"
+        ]
+    },
+    "formcreator": {
+        "title": "formcreator",
+        "tags": [
+            "plugin",
+            "form",
+            "survey"
+        ]
+    },
+    "gdpr-tools": {
+        "title": "gdpr-tools",
+        "tags": [
+            "plugin",
+            "privacy",
+            "data-protection",
+            "compliance"
+        ]
+    },
+    "gear": {
+        "title": "Gear",
+        "tags": [
+            "settings",
+            "setup",
+            "configuration",
+            "preferences",
+            "options",
+            "cog"
+        ]
+    },
+    "gear-hand": {
+        "title": "Gear hand",
+        "tags": [
+            "gear",
+            "wrench",
+            "setup",
+            "settings",
+            "configuration",
+            "preferences",
+            "options",
+            "cog"
+        ]
+    },
+    "generic-objects": {
+        "title": "generic-objects",
+        "tags": [
+            "plugin",
+            "custom",
+            "asset"
+        ]
+    },
+    "glpi-ai": {
+        "title": "glpi-ai",
+        "tags": [
+            "plugin",
+            "artificial-intelligence",
+            "machine-learning",
+            "natural-language-processing"
+        ]
+    },
+    "glpi-cloud-support-1": {
+        "title": "GLPI Cloud Support 1",
+        "tags": []
+    },
+    "glpi-cloud-support-2": {
+        "title": "GLPI Cloud Support 2",
+        "tags": []
+    },
+    "group": {
+        "title": "Group",
+        "tags": [
+            "users"
+        ]
+    },
+    "group-alternative-1": {
+        "title": "Group alternative 1",
+        "tags": [
+            "users"
+        ]
+    },
+    "group-alternative-2": {
+        "title": "Group alternative 2",
+        "tags": [
+            "users"
+        ]
+    },
+    "group-web": {
+        "title": "Group web",
+        "tags": [
+            "users"
+        ]
+    },
+    "helpdesk": {
+        "title": "Helpdesk",
+        "tags": [
+            "headphones",
+            "support",
+            "customer",
+            "assistance",
+            "service",
+            "desk",
+            "call"
+        ]
+    },
+    "hierarchy": {
+        "title": "Hierarchy",
+        "tags": [
+            "users",
+            "group",
+            "organization",
+            "structure",
+            "management",
+            "users",
+            "team",
+            "group"
+        ]
+    },
+    "holiday": {
+        "title": "holiday",
+        "tags": [
+            "plugin",
+            "vacation",
+            "nationnal-holiday"
+        ]
+    },
+    "inbox": {
+        "title": "Inbox",
+        "tags": [
+            "email",
+            "communication",
+            "message",
+            "email",
+            "notifications"
+        ]
+    },
+    "inventory": {
+        "title": "Inventory",
+        "tags": [
+            "inventory",
+            "items",
+            "resources"
+        ]
+    },
+    "kb-faq": {
+        "title": "Knowledge base and FAQ",
+        "tags": [
+            "articles",
+            "documentation"
+        ]
+    },
+    "legal": {
+        "title": "Legal",
+        "tags": [
+            "contract",
+            "agreement",
+            "law",
+            "regulations"
+        ]
+    },
+    "license": {
+        "title": "License",
+        "tags": [
+            "software",
+            "certificate"
+        ]
+    },
+    "location-1": {
+        "title": "Location 1",
+        "tags": [
+            "map",
+            "pin"
+        ]
+    },
+    "location-2": {
+        "title": "Location 2",
+        "tags": [
+            "map",
+            "pin"
+        ]
+    },
+    "lock": {
+        "title": "Lock",
+        "tags": [
+            "security",
+            "protection",
+            "privacy",
+            "safety"
+        ]
+    },
+    "mobility": {
+        "title": "Mobility",
+        "tags": [
+            "transport",
+            "travel"
+        ]
+    },
+    "monitoring": {
+        "title": "Monitoring",
+        "tags": [
+            "watch",
+            "supervision"
+        ]
+    },
+    "more-satisfaction": {
+        "title": "more-satisfaction",
+        "tags": [
+            "plugin",
+            "survey",
+            "feedback",
+            "customer",
+            "CSAT"
+        ]
+    },
+    "new-user-1": {
+        "title": "New user 1",
+        "tags": [
+            "person",
+            "profile"
+        ]
+    },
+    "new-user-2": {
+        "title": "New user 2",
+        "tags": [
+            "person",
+            "profile"
+        ]
+    },
+    "new-user-3": {
+        "title": "New user 3",
+        "tags": [
+            "person",
+            "profile"
+        ]
+    },
+    "new-user-4": {
+        "title": "New user 4",
+        "tags": [
+            "person",
+            "profile"
+        ]
+    },
+    "newspaper": {
+        "title": "Newspaper",
+        "tags": [
+            "articles"
+        ]
+    },
+    "notes": {
+        "title": "notes",
+        "tags": [
+            "journal"
+        ]
+    },
+    "oauth-imap": {
+        "title": "oauth-imap",
+        "tags": [
+            "plugin",
+            "email",
+            "receiver"
+        ]
+    },
+    "oauth-sso": {
+        "title": "oauth-sso",
+        "tags": [
+            "plugin",
+            "authentication",
+            "single-sign-on",
+            "login"
+        ]
+    },
+    "on-premise": {
+        "title": "On-premise",
+        "tags": []
+    },
+    "order-management": {
+        "title": "order-management",
+        "tags": [
+            "plugin",
+            "asset",
+            "invoice",
+            "delivery",
+            "shipping",
+            "purchase"
+        ]
+    },
+    "order-supplies": {
+        "title": "Order supplies",
+        "tags": []
+    },
+    "partner": {
+        "title": "Partner",
+        "tags": []
+    },
+    "presentation": {
+        "title": "presentation",
+        "tags": [
+            "training",
+            "slideshow",
+            "conference",
+            "meeting"
+        ]
+    },
+    "print-job": {
+        "title": "Print a job",
+        "tags": [
+            "printer"
+        ]
+    },
+    "question": {
+        "title": "Question",
+        "tags": []
+    },
+    "rename-glpi-strings": {
+        "title": "rename-glpi-strings",
+        "tags": [
+            "plugin",
+            "customization"
+        ]
+    },
+    "report-issue": {
+        "title": "Report an issue",
+        "tags": [
+            "problem",
+            "error",
+            "bug"
+        ]
+    },
+    "request-service": {
+        "title": "Request a service",
+        "tags": []
+    },
+    "request-support": {
+        "title": "Request support",
+        "tags": [
+            "assistance",
+            "help",
+            "ticket"
+        ]
+    },
+    "reservation": {
+        "title": "Make a reservation",
+        "tags": [
+            "booking",
+            "appointment",
+            "schedule"
+        ]
+    },
+    "reset-password-1": {
+        "title": "Reset password 1",
+        "tags": []
+    },
+    "reset-password-2": {
+        "title": "Reset password 2",
+        "tags": []
+    },
+    "reset-password-3": {
+        "title": "Reset password 3",
+        "tags": []
+    },
+    "rss-feeds": {
+        "title": "RSS feeds",
+        "tags": [
+            "news",
+            "articles"
+        ]
+    },
+    "scim": {
+        "title": "scim",
+        "tags": [
+            "plugin",
+            "users",
+            "import",
+            "synchronization",
+            "provisioning"
+        ]
+    },
+    "security": {
+        "title": "Security",
+        "tags": [
+            "protection",
+            "privacy",
+            "safety",
+            "shield"
+        ]
+    },
+    "settings": {
+        "title": "Settings",
+        "tags": [
+            "gear",
+            "setup",
+            "configuration",
+            "preferences",
+            "options",
+            "cog"
+        ]
+    },
+    "settings-search": {
+        "title": "Search settings",
+        "tags": [
+            "gear",
+            "wrench",
+            "setup",
+            "configuration",
+            "preferences",
+            "options",
+            "cog"
+        ]
+    },
+    "shaking-hands": {
+        "title": "Shaking hands",
+        "tags": [
+            "agreement",
+            "contract",
+            "business",
+            "partnership",
+            "collaboration"
+        ]
+    },
+    "shared-folder": {
+        "title": "Shared folder",
+        "tags": [
+            "directory"
+        ]
+    },
+    "shared-inbox": {
+        "title": "Shared inbox",
+        "tags": [
+            "email"
+        ]
+    },
+    "software-deployment": {
+        "title": "Deploy a software",
+        "tags": [
+            "application"
+        ]
+    },
+    "splitcat": {
+        "title": "splitcat",
+        "tags": [
+            "plugin",
+            "categories",
+            "ticket",
+            "helpdesk",
+            "dropdown"
+        ]
+    },
+    "tag": {
+        "title": "tag",
+        "tags": [
+            "plugin",
+            "label",
+            "classification",
+            "metadata"
+        ]
+    },
+    "technical-assistance-1": {
+        "title": "Technical assistance 1",
+        "tags": [
+            "support",
+            "helpdesk",
+            "assistance"
+        ]
+    },
+    "technical-assistance-2": {
+        "title": "Technical assistance 2",
+        "tags": [
+            "support",
+            "helpdesk",
+            "assistance"
+        ]
+    },
+    "ticket": {
+        "title": "Ticket",
+        "tags": [
+            "helpdesk",
+            "issue",
+            "problem",
+            "support",
+            "request",
+            "incident",
+            "form"
+        ]
+    },
+    "tickets": {
+        "title": "Tickets",
+        "tags": [
+            "helpdesk",
+            "issue",
+            "problem",
+            "support",
+            "request",
+            "incident",
+            "list"
+        ]
+    },
+    "time": {
+        "title": "Time",
+        "tags": [
+            "clock",
+            "schedule",
+            "agenda",
+            "date",
+            "hour"
+        ]
+    },
+    "training": {
+        "title": "Training",
+        "tags": [
+            "presentation",
+            "learning",
+            "education",
+            "course",
+            "seminar"
+        ]
+    },
+    "translation": {
+        "title": "translation",
+        "tags": [
+            "plugin",
+            "localization",
+            "internationalization",
+            "i18n",
+            "l10n"
+        ]
+    },
+    "tutorial": {
+        "title": "Tutorial",
+        "tags": [
+            "tutorial",
+            "how-to",
+            "guide"
+        ]
+    },
+    "uninstall": {
+        "title": "uninstall",
+        "tags": [
+            "plugin",
+            "lifecycle",
+            "asset",
+            "process"
+        ]
+    },
+    "unread-messages": {
+        "title": "unread-messages",
+        "tags": [
+            "plugin",
+            "notification"
+        ]
+    },
+    "update-1": {
+        "title": "Update 1",
+        "tags": [
+            "software",
+            "application"
+        ]
+    },
+    "update-2": {
+        "title": "Update 2",
+        "tags": [
+            "software",
+            "application"
+        ]
+    },
+    "user-laptop": {
+        "title": "user-laptop",
+        "tags": [
+            "asset",
+            "device",
+            "computer",
+            "portable",
+            "notebook"
+        ]
+    },
+    "user-offboarding": {
+        "title": "User offboarding",
+        "tags": []
+    },
+    "virus": {
+        "title": "Virus",
+        "tags": [
+            "malware",
+            "threat",
+            "security",
+            "protection"
+        ]
+    },
+    "vpn": {
+        "title": "VPN",
+        "tags": [
+            "network",
+            "internet",
+            "connection"
+        ]
+    },
+    "web": {
+        "title": "Web",
+        "tags": [
+            "www",
+            "internet",
+            "world",
+            "browser"
+        ]
+    },
+    "webinar": {
+        "title": "Webinar",
+        "tags": [
+            "meeting",
+            "conference",
+            "presentation"
+        ]
+    },
+    "wharehouse": {
+        "title": "Wharehouse",
+        "tags": [
+            "building",
+            "storage",
+            "inventory",
+            "stock"
+        ]
+    },
+    "world": {
+        "title": "World",
+        "tags": [
+            "web",
+            "www",
+            "internet",
+            "globe",
+            "earth",
+            "planet"
+        ]
+    },
+    "youtube": {
+        "title": "YouTube",
+        "tags": [
+            "video",
+            "youtube",
+            "channel"
+        ]
+    }
+}

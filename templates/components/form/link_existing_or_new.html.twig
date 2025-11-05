@@ -35,12 +35,18 @@
 {% set rand = rand|default(random()) %}
 <div class="firstbloc">
    <form id="{{ link_itemtype|lower ~ "_form" ~ rand }}" name="{{ link_itemtype|lower ~ "_form" ~ rand }}" method="post" action="{{ link_itemtype|itemtype_form_path }}">
-      {{ fields.largeTitle(__("Add a %s")|format(target_itemtype|itemtype_name)) }}
-      {{ fields.hiddenField(source_itemtype|itemtype_foreign_key, source_items_id, '', {
-         no_label: true,
-      }) }}
+      {{ form_label }}
+      {{ fields.hiddenField(source_itemtype|itemtype_foreign_key, source_items_id) }}
       {% set primary_dropdown_itemtype = dropdown_options['itemtype']|default(target_itemtype) %}
       <div class="d-flex">
+         {% if link_types is defined and link_types is not empty %}
+            <div class="col-auto">
+               {{ fields.dropdownArrayField('link', link_types|first, link_types, '', {
+                  no_label: true,
+                  field_class: ''
+               }) }}
+            </div>
+         {% endif %}
          <div class="col-auto">
             {{ fields.dropdownField(primary_dropdown_itemtype, primary_dropdown_itemtype|itemtype_foreign_key, '', '', {
                no_label: true,
@@ -77,7 +83,7 @@
                {% set create_url = create_link['url'] is defined ? create_link['url'] : target_form_path %}
                <a href="{{ create_url }}" class="btn btn-primary">
                   <i class="ti ti-plus"></i>
-                  <span>{{ __("Create a %1$s from this %2$s")|format(target_itemtype|itemtype_name, source_itemtype|itemtype_name) }}</span>
+                  <span>{{ button_label }}</span>
                </a>
             {% endif %}
          </div>

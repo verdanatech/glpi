@@ -33,7 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
@@ -48,12 +50,19 @@ switch ($_REQUEST['action']) {
             'criteria'           => $_REQUEST['criteria'],
             'sort'               => $_REQUEST['sort'] ?? [],
             'order'              => $_REQUEST['order'] ?? [],
+            'unpublished'        => $_REQUEST['unpublished'],
         ];
 
         $itemtype = $_REQUEST['itemtype'];
-        $category_itemtype = $itemtype::getCategoryItemType($itemtype);
-        $category_table = $category_itemtype::getTable();
-        $item = new $itemtype();
+        // If public FAQ is enabled we allow anonymous access to this script
+        // but only for FAQ/knowbase browsing. Prevent anonymous users from
+        // using this endpoint to list other item types (users, etc.).
+        if ($itemtype::canView() === false) {
+            throw new AccessDeniedHttpException();
+        }
+        $category_item = $itemtype::getCategoryItem($itemtype);
+        $category_table = $category_item::getTable();
+        $item = getItemForItemtype($itemtype);
         $so = $item->rawSearchOptions();
 
         $field = 0;
@@ -76,5 +85,5 @@ switch ($_REQUEST['action']) {
         Search::showList($itemtype, $params);
         return;
 }
-http_response_code(400);
-return;
+
+throw new BadRequestHttpException();

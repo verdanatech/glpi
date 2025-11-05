@@ -33,7 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-include('../inc/includes.php');
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Exception\Http\BadRequestHttpException;
 
 Session::checkCentralAccess();
 
@@ -45,8 +47,8 @@ if (isset($_POST['add'])) {
     Html::back();
 } elseif (isset($_POST['purge'])) {
     $app_item_rel->check($_POST['id'], PURGE);
-    $app_item_rel->delete($_POST, 1);
+    $app_item_rel->delete($_POST, true);
     Html::back();
 }
 
-Html::displayErrorAndDie("lost");
+throw new BadRequestHttpException();

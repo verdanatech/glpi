@@ -31,14 +31,10 @@
  *
  * ---------------------------------------------------------------------
  */
-
-use Glpi\Toolbox\Sanitizer;
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 // Fix user_dn_hash related to `user_dn` containing a special char
 $users_iterator = $DB->request(
     [
@@ -55,7 +51,7 @@ foreach ($users_iterator as $user_data) {
         $DB->buildUpdate(
             'glpi_users',
             [
-                'user_dn_hash' => md5(Sanitizer::decodeHtmlSpecialChars($user_data['user_dn'])),
+                'user_dn_hash' => md5($user_data['user_dn']),
             ],
             [
                 'id' => $user_data['id'],

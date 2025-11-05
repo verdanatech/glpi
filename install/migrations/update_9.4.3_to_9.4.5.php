@@ -35,20 +35,18 @@
 /**
  * Update from 9.4.3 to 9.4.5
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update943to945()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
     $updateresult     = true;
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.4.5'));
     $migration->setVersion('9.4.5');
 
     /** Add OLA TTR begin date field to Tickets */

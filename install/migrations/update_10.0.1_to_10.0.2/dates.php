@@ -32,11 +32,12 @@
  * ---------------------------------------------------------------------
  */
 
-/**
- * @var \DBmysql $DB
- * @var \Migration $migration
- */
+use Glpi\DBAL\QueryExpression;
 
+/**
+ * @var DBmysql $DB
+ * @var Migration $migration
+ */
 // Fix invalid zero dates
 // Prior to GLPI 10.0, SQL_MODE was set to empty (and NO_ZERO_DATE was removed), so MySQL allowed 0000-00-00 dates.
 // These invalid dates blocks ALTER TABLE queries that are made when this flag is active.
@@ -86,8 +87,8 @@ foreach ($columns_iterator as $column) {
             break;
         case 'timestamp':
             // Min value has is "1970-01-01 00:00:01" in UTC, so if we try to use this value in a timezone with a positive offset
-            // following error will be trigerred: "Incorrect datetime value: '1970-01-01 00:00:01' for column ..."
-            $min_value = new \QueryExpression(
+            // following error will be triggered: "Incorrect datetime value: '1970-01-01 00:00:01' for column ..."
+            $min_value = new QueryExpression(
                 sprintf(
                     'CONVERT_TZ(%s, %s, (SELECT @@SESSION.time_zone))',
                     $DB->quoteValue('1970-01-01 00:00:01'),

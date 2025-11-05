@@ -38,13 +38,18 @@
  */
 abstract class NotificationSetting extends CommonDBTM
 {
+    public const ATTACH_INHERIT           = -2;   // Inherit from global config
+    public const ATTACH_NO_DOCUMENT       = 0;    // No document
+    public const ATTACH_ALL_DOCUMENTS     = 1;    // All documents
+    public const ATTACH_FROM_TRIGGER_ONLY = 2;    // Only documents related to the item that triggers the event
+
     public $table           = 'glpi_configs';
     protected $displaylist  = false;
     public static $rightname       = 'config';
 
     public static function getTypeName($nb = 0)
     {
-        throw new \RuntimeException('getTypeName must be implemented');
+        throw new RuntimeException('getTypeName must be implemented');
     }
 
     /**
@@ -55,7 +60,7 @@ abstract class NotificationSetting extends CommonDBTM
     public static function getMode()
     {
         //For PHP 5.x; a method cannot be abstract and static
-        throw new \RuntimeException('getMode must be implemented');
+        throw new RuntimeException('getMode must be implemented');
     }
 
 
@@ -93,7 +98,7 @@ abstract class NotificationSetting extends CommonDBTM
     {
         switch ($item->getType()) {
             case static::class:
-                $tabs[1] = __('Setup');
+                $tabs[1] = self::createTabEntry(__('Setup'));
                 return $tabs;
         }
         return '';
@@ -114,18 +119,17 @@ abstract class NotificationSetting extends CommonDBTM
 
 
     /**
-     * Disable (temporary) all notifications
+     * Disable (temporary) all notifications for the rest of the request execution
      *
      * @return void
      */
     public static function disableAll()
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $CFG_GLPI['use_notifications'] = 0;
         foreach (array_keys($CFG_GLPI) as $key) {
-            if (substr($key, 0, strlen('notifications_')) === 'notifications_') {
+            if (str_starts_with($key, 'notifications_')) {
                 $CFG_GLPI[$key] = 0;
             }
         }
@@ -133,6 +137,6 @@ abstract class NotificationSetting extends CommonDBTM
 
     public static function getIcon()
     {
-        return "fas fa-bell";
+        return "ti ti-bell";
     }
 }

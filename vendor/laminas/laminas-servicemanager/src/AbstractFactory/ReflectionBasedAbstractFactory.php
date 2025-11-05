@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Laminas\ServiceManager\AbstractFactory;
 
-use Interop\Container\ContainerInterface;
 use Laminas\ServiceManager\Exception\ServiceNotFoundException;
 use Laminas\ServiceManager\Factory\AbstractFactoryInterface;
+use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -131,9 +131,7 @@ class ReflectionBasedAbstractFactory implements AbstractFactoryInterface
         return new $requestedName(...$parameters);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     public function canCreate(ContainerInterface $container, $requestedName)
     {
         return class_exists($requestedName) && $this->canCallConstructor($requestedName);

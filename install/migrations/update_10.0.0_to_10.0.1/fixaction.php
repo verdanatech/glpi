@@ -31,17 +31,15 @@
  *
  * ---------------------------------------------------------------------
  */
-
 /**
- * @var \DBmysql $DB
- * @var \Migration $migration
+ * @var DBmysql $DB
+ * @var Migration $migration
  */
-
 $migration->addPostQuery(
     $DB->buildUpdate(
         'glpi_rulecriterias',
         [
-            'pattern' => $DB->escape('/(.*)[,|\/]/'),
+            'pattern' => '/(.*)[,|\/]/',
         ],
         [
             'id' => 19,

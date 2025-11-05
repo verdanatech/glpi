@@ -33,13 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Socket;
 
-/** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
-include('../inc/includes.php');
 
 // Send UTF8 Headers
 header("Content-Type: text/html; charset=UTF-8");
@@ -54,7 +51,7 @@ if (
     !$item->canView()
     || (isset($_GET['items_id']) && !$item->can($_GET['items_id'], READ))
 ) {
-    Response::sendError(403, "Not allowed");
+    throw new AccessDeniedHttpException();
 }
 
 switch ($action) {
@@ -70,10 +67,7 @@ switch ($action) {
         break;
 
     case 'get_socket_dropdown':
-        if (
-            (isset($_GET['itemtype']) && class_exists($_GET['itemtype']))
-            && isset($_GET['items_id'])
-        ) {
+        if (isset($_GET['itemtype'], $_GET['items_id']) && class_exists($_GET['itemtype'])) {
             Socket::dropdown(['name'         =>  $_GET['dom_name'],
                 'condition'    => ['socketmodels_id'   => $_GET['socketmodels_id'] ?? 0,
                     'itemtype'           => $_GET['itemtype'],
@@ -97,12 +91,9 @@ switch ($action) {
 
 
     case 'get_item_breadcrum':
-        if (
-            (isset($_GET['itemtype']) && class_exists($_GET['itemtype']))
-            && isset($_GET['items_id']) && $_GET['items_id'] > 0
-        ) {
-            if (method_exists($_GET['itemtype'], 'getDcBreadcrumbSpecificValueToDisplay')) {
-                echo $_GET['itemtype']::getDcBreadcrumbSpecificValueToDisplay($_GET['items_id']);
+        if (isset($_GET['itemtype'], $_GET['items_id']) && class_exists($_GET['itemtype']) && $_GET['items_id'] > 0) {
+            if (method_exists($_GET['itemtype'], 'renderDcBreadcrumb')) {
+                echo $_GET['itemtype']::renderDcBreadcrumb($_GET['items_id']);
             }
         } else {
             echo "";

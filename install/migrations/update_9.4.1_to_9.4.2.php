@@ -32,23 +32,25 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+
+use function Safe\preg_replace;
+
 /**
  * Update from 9.4.1 to 9.4.2
  *
- * @return bool for success (will die for most error)
+ * @return bool
  **/
 function update941to942()
 {
     /**
-     * @var \DBmysql $DB
-     * @var \Migration $migration
+     * @var DBmysql $DB
+     * @var Migration $migration
      */
     global $DB, $migration;
 
     $updateresult     = true;
 
-    //TRANS: %s is the number of new version
-    $migration->displayTitle(sprintf(__('Update to %s'), '9.4.2'));
     $migration->setVersion('9.4.2');
 
     /* Remove trailing slash from 'url_base' config */
@@ -56,7 +58,7 @@ function update941to942()
         $DB->buildUpdate(
             'glpi_configs',
             [
-                'value' => new \QueryExpression(
+                'value' => new QueryExpression(
                     'TRIM(TRAILING ' . $DB->quoteValue('/') . ' FROM ' . $DB->quoteName('value') . ')'
                 ),
             ],
@@ -73,7 +75,7 @@ function update941to942()
     // on MariaDB but not on MySQL due to usage of "\d" in a REGEXP expression.
     // It has been fixed there for people who had not yet updated to 9.4.1 but have to
     // be put back here for people already having updated to 9.4.1.
-    $migration->displayMessage(sprintf(__('Fix URL of images in ITIL tasks, followups and solutions.')));
+    $migration->displayMessage(__('Fix URL of images in ITIL tasks, followups and solutions.'));
 
     // Search for contents that does not contains the itil object parameter after the docid parameter
     // (i.e. having a quote that ends the href just after the docid param value).
@@ -100,14 +102,13 @@ function update941to942()
         ],
     ];
 
-    $fix_content_fct = function ($content, $itil_id, $itil_fkey) use ($missing_param_pattern) {
+    $fix_content_fct = (fn($content, $itil_id, $itil_fkey)
         // Add itil object param between docid param ($1) and ending quote ($2)
-        return preg_replace(
+        => preg_replace(
             '/' . $missing_param_pattern . '/',
             '$1&amp;' . http_build_query([$itil_fkey => $itil_id]) . '$2',
             $content
-        );
-    };
+        ));
 
     foreach ($itil_mappings as $itil_type => $itil_specs) {
         $itil_fkey  = $itil_specs['itil_fkey'];
@@ -127,7 +128,7 @@ function update941to942()
             );
             foreach ($elements_to_fix as $data) {
                 $data['content'] = $DB->escape($fix_content_fct($data['content'], $data['items_id'], $itil_fkey));
-                $DB->updateOrDie($itil_element_table, $data, ['id' => $data['id']]);
+                $DB->update($itil_element_table, $data, ['id' => $data['id']]);
             }
         }
 
@@ -143,7 +144,7 @@ function update941to942()
         );
         foreach ($tasks_to_fix as $data) {
             $data['content'] = $DB->escape($fix_content_fct($data['content'], $data[$itil_fkey], $itil_fkey));
-            $DB->updateOrDie($task_table, $data, ['id' => $data['id']]);
+            $DB->update($task_table, $data, ['id' => $data['id']]);
         }
     }
     /** /Fix URL of images inside ITIL objects contents */

@@ -34,14 +34,20 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Features\AssignableItem;
+use Glpi\Features\AssignableItemInterface;
+use Glpi\Features\StateInterface;
 
 /**
  * @since 9.2
  */
 
 
-class Line extends CommonDBTM
+class Line extends CommonDBTM implements AssignableItemInterface, StateInterface
 {
+    use Glpi\Features\State;
+    use AssignableItem;
+
     // From CommonDBTM
     public $dohistory                   = true;
 
@@ -51,9 +57,18 @@ class Line extends CommonDBTM
 
     public static function getTypeName($nb = 0)
     {
-        return _n('Line', 'Lines', $nb);
+        return _n('Phone line', 'Phone lines', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
+    public static function getLogDefaultServiceName(): string
+    {
+        return 'financial';
+    }
 
     /**
      * @see CommonDBTM::useDeletedToLockIfDynamic()
@@ -72,11 +87,12 @@ class Line extends CommonDBTM
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addImpactTab($ong, $options);
-        $this->addStandardTab('Infocom', $ong, $options);
-        $this->addStandardTab('Contract_Item', $ong, $options);
-        $this->addStandardTab('Document_Item', $ong, $options);
-        $this->addStandardTab('Notepad', $ong, $options);
-        $this->addStandardTab('Log', $ong, $options);
+        $this->addStandardTab(Item_Line::class, $ong, $options);
+        $this->addStandardTab(Infocom::class, $ong, $options);
+        $this->addStandardTab(Contract_Item::class, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(Notepad::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
     }
@@ -130,7 +146,7 @@ class Line extends CommonDBTM
             'id'                 => '16',
             'table'              => $this->getTable(),
             'field'              => 'comment',
-            'name'               => __('Comments'),
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
             'datatype'           => 'text',
         ];
 
@@ -145,11 +161,11 @@ class Line extends CommonDBTM
 
         $tab[] = [
             'id'                 => '31',
-            'table'              => 'glpi_states',
+            'table'              => State::getTable(),
             'field'              => 'completename',
             'name'               => __('Status'),
             'datatype'           => 'dropdown',
-            'condition'          => ['is_visible_line' => 1],
+            'condition'          => $this->getStateVisibilityCriteria(),
         ];
 
         $tab[] = [
@@ -167,6 +183,17 @@ class Line extends CommonDBTM
             'field'              => 'completename',
             'name'               => Group::getTypeName(1),
             'condition'          => ['is_itemgroup' => 1],
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => 'glpi_groups_items',
+                    'joinparams'         => [
+                        'jointype'           => 'itemtype_item',
+                        'condition'          => ['NEWTABLE.type' => Group_Item::GROUP_TYPE_NORMAL],
+                    ],
+                ],
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
             'datatype'           => 'dropdown',
         ];
 
@@ -216,9 +243,26 @@ class Line extends CommonDBTM
         return $tab;
     }
 
-
     public static function getIcon()
     {
         return "ti ti-phone-calling";
+    }
+
+    public static function getMassiveActionsForItemtype(array &$actions, $itemtype, $is_deleted = false, ?CommonDBTM $checkitem = null)
+    {
+        global $CFG_GLPI;
+
+        parent::getMassiveActionsForItemtype($actions, $itemtype, $is_deleted, $checkitem);
+
+        $action_prefix = 'Item_Line' . MassiveAction::CLASS_ACTION_SEPARATOR;
+        if (in_array($itemtype, $CFG_GLPI['line_types'], true)) {
+            $actions[$action_prefix . 'add']    = "<i class='" . htmlescape(self::getIcon()) . "'></i>"
+                . _sx('button', 'Add a phone line');
+            $actions[$action_prefix . 'remove'] = _sx('button', 'Remove a phone line');
+        }
+        if ((is_a($itemtype, self::class, true)) && (static::canUpdate())) {
+            $actions[$action_prefix . 'add_item']    = _sx('button', 'Add an item');
+            $actions[$action_prefix . 'remove_item'] = _sx('button', 'Remove an item');
+        }
     }
 }

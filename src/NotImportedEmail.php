@@ -63,10 +63,11 @@ class NotImportedEmail extends CommonDBTM
         return _n('Refused email', 'Refused emails', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', MailCollector::class, self::class];
+    }
 
-    /**
-     * @see CommonDBTM::getSpecificMassiveActions()
-     **/
     public function getSpecificMassiveActions($checkitem = null)
     {
 
@@ -74,19 +75,13 @@ class NotImportedEmail extends CommonDBTM
         $actions = parent::getSpecificMassiveActions($checkitem);
 
         if ($isadmin) {
-            $prefix                          = __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR;
-            $actions[$prefix . 'delete_email'] = __('Delete emails');
-            $actions[$prefix . 'import_email'] = _x('button', 'Import');
+            $prefix                          = self::class . MassiveAction::CLASS_ACTION_SEPARATOR;
+            $actions[$prefix . 'delete_email'] = __s('Delete emails');
+            $actions[$prefix . 'import_email'] = _sx('button', 'Import');
         }
         return $actions;
     }
 
-
-    /**
-     * @since 0.85
-     *
-     * @see CommonDBTM::showMassiveActionsSubForm()
-     **/
     public static function showMassiveActionsSubForm(MassiveAction $ma)
     {
 
@@ -100,12 +95,6 @@ class NotImportedEmail extends CommonDBTM
         return parent::showMassiveActionsSubForm($ma);
     }
 
-
-    /**
-     * @since 0.85
-     *
-     * @see CommonDBTM::processMassiveActionsForOneItemtype()
-     **/
     public static function processMassiveActionsForOneItemtype(
         MassiveAction $ma,
         CommonDBTM $item,
@@ -216,10 +205,9 @@ class NotImportedEmail extends CommonDBTM
 
     public static function deleteLog()
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
-        $DB->truncate('glpi_notimportedemails');
+        $DB->delete('glpi_notimportedemails', [1]);
     }
 
 
@@ -230,10 +218,7 @@ class NotImportedEmail extends CommonDBTM
     {
 
         $tab = self::getAllReasons();
-        if (isset($tab[$reason_id])) {
-            return $tab[$reason_id];
-        }
-        return NOT_AVAILABLE;
+        return $tab[$reason_id] ?? NOT_AVAILABLE;
     }
 
 
@@ -269,13 +254,13 @@ class NotImportedEmail extends CommonDBTM
         }
         switch ($field) {
             case 'reason':
-                return self::getReason($values[$field]);
+                return htmlescape(self::getReason($values[$field]));
 
             case 'messageid':
                 $clean = ['<' => '',
                     '>' => '',
                 ];
-                return strtr($values[$field], $clean);
+                return htmlescape(strtr($values[$field], $clean));
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }

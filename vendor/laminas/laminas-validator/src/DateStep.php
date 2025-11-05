@@ -25,13 +25,13 @@ use function in_array;
 use function is_array;
 use function max;
 use function min;
-use function pow;
 use function preg_match;
 use function sprintf;
-use function strpos;
+use function str_starts_with;
 
 use const PHP_INT_MAX;
 
+/** @final */
 class DateStep extends Date
 {
     /**
@@ -74,6 +74,8 @@ class DateStep extends Date
     /**
      * Optional timezone to be used when the baseValue
      * and validation values do not contain timezone info
+     *
+     * @deprecated Since 2.61.0 - The timezone option is unused
      *
      * @var DateTimeZone
      */
@@ -118,6 +120,8 @@ class DateStep extends Date
     /**
      * Sets the base value from which the step should be computed
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @param string|int|DateTimeInterface $baseValue
      * @return $this
      */
@@ -130,6 +134,8 @@ class DateStep extends Date
     /**
      * Returns the base value from which the step should be computed
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @return string|int|DateTimeInterface
      */
     public function getBaseValue()
@@ -139,6 +145,8 @@ class DateStep extends Date
 
     /**
      * Sets the step date interval
+     *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
      *
      * @return $this
      */
@@ -151,6 +159,8 @@ class DateStep extends Date
     /**
      * Returns the step date interval
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @return DateInterval
      */
     public function getStep()
@@ -161,6 +171,8 @@ class DateStep extends Date
     /**
      * Returns the timezone option
      *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
+     *
      * @return DateTimeZone
      */
     public function getTimezone()
@@ -170,6 +182,8 @@ class DateStep extends Date
 
     /**
      * Sets the timezone option
+     *
+     * @deprecated Since 2.61.0 - All option setters and getters will be removed in 3.0
      *
      * @return $this
      */
@@ -192,7 +206,7 @@ class DateStep extends Date
     {
         // Custom week format support
         if (
-            strpos($this->format, 'Y-\WW') === 0
+            str_starts_with($this->format, 'Y-\WW')
             && preg_match('/^([0-9]{4})\-W([0-9]{2})/', $value, $matches)
         ) {
             $date = new DateTime();
@@ -204,7 +218,7 @@ class DateStep extends Date
         // Invalid dates can show up as warnings (ie. "2007-02-99")
         // and still return a DateTime object.
         $errors = DateTime::getLastErrors();
-        if ($errors['warning_count'] > 0) {
+        if (is_array($errors) && $errors['warning_count'] > 0) {
             if ($addErrors) {
                 $this->error(self::FALSEFORMAT);
             }
@@ -463,7 +477,7 @@ class DateStep extends Date
 
         // If we use PHP_INT_MAX DateInterval::__construct falls over with a bad format error
         // before we reach the max on 64 bit machines
-        $maxInteger = min(pow(2, 31), PHP_INT_MAX);
+        $maxInteger = min(2 ** 31, PHP_INT_MAX);
         // check for integer overflow and split $minimum interval if needed
         $maximumInterval        = max($intervalParts);
         $requiredStepIterations = 1;
@@ -473,7 +487,7 @@ class DateStep extends Date
             $minSteps               = floor($minSteps / $requiredStepIterations);
         }
 
-        return [(int) $minSteps, $minSteps ? (int) $requiredStepIterations : 0];
+        return [(int) $minSteps, $minSteps !== 0 ? (int) $requiredStepIterations : 0];
     }
 
     /**

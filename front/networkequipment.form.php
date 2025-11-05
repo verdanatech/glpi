@@ -33,11 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Event;
 
-include('../inc/includes.php');
-
-Session::checkRight("networking", READ);
+Session::checkRightsOr(NetworkEquipment::$rightname, [READ, READ_ASSIGNED, READ_OWNED]);
 
 if (!isset($_GET["id"])) {
     $_GET["id"] = "";
@@ -93,7 +93,7 @@ if (isset($_POST["add"])) {
 } elseif (isset($_POST["purge"])) {
     $netdevice->check($_POST["id"], PURGE);
 
-    $netdevice->delete($_POST, 1);
+    $netdevice->delete($_POST, true);
     Event::log(
         $_POST["id"],
         "networkequipment",

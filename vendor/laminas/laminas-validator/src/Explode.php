@@ -11,6 +11,10 @@ use function is_array;
 use function is_string;
 use function sprintf;
 
+/**
+ * @psalm-import-type ValidatorSpecification from ValidatorInterface
+ * @final
+ */
 class Explode extends AbstractValidator implements ValidatorPluginManagerAwareInterface
 {
     public const INVALID = 'explodeInvalid';
@@ -26,10 +30,10 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /** @var array */
     protected $messageVariables = [];
 
-    /** @var string */
+    /** @var non-empty-string */
     protected $valueDelimiter = ',';
 
-    /** @var ValidatorInterface */
+    /** @var ValidatorInterface|null */
     protected $validator;
 
     /** @var bool */
@@ -38,7 +42,9 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /**
      * Sets the delimiter string that the values will be split upon
      *
-     * @param string $delimiter
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
+     *
+     * @param non-empty-string $delimiter
      * @return $this
      */
     public function setValueDelimiter($delimiter)
@@ -50,7 +56,9 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /**
      * Returns the delimiter string that the values will be split upon
      *
-     * @return string
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
+     *
+     * @return non-empty-string
      */
     public function getValueDelimiter()
     {
@@ -59,6 +67,8 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
 
     /**
      * Set validator plugin manager
+     *
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
      *
      * @return void
      */
@@ -70,12 +80,14 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /**
      * Get validator plugin manager
      *
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
+     *
      * @return ValidatorPluginManager
      */
     public function getValidatorPluginManager()
     {
         if (! $this->pluginManager) {
-            $this->setValidatorPluginManager(new ValidatorPluginManager(new ServiceManager()));
+            $this->pluginManager = new ValidatorPluginManager(new ServiceManager());
         }
 
         return $this->pluginManager;
@@ -84,9 +96,11 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /**
      * Sets the Validator for validating each value
      *
-     * @param ValidatorInterface|array $validator
-     * @throws Exception\RuntimeException
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
+     *
+     * @param ValidatorInterface|ValidatorSpecification $validator
      * @return $this
+     * @throws Exception\RuntimeException
      */
     public function setValidator($validator)
     {
@@ -96,8 +110,9 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
                     'Invalid validator specification provided; does not include "name" key'
                 );
             }
-            $name      = $validator['name'];
-            $options   = $validator['options'] ?? [];
+            $name    = $validator['name'];
+            $options = $validator['options'] ?? [];
+            /** @psalm-suppress MixedAssignment $validator */
             $validator = $this->getValidatorPluginManager()->get($name, $options);
         }
 
@@ -114,7 +129,9 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
     /**
      * Gets the Validator for validating each value
      *
-     * @return ValidatorInterface
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
+     *
+     * @return ValidatorInterface|null
      */
     public function getValidator()
     {
@@ -123,6 +140,8 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
 
     /**
      * Set break on first failure setting
+     *
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
      *
      * @param  bool $break
      * @return $this
@@ -135,6 +154,8 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
 
     /**
      * Get break on first failure setting
+     *
+     * @deprecated Since 2.60.0 all option setters and getters are deprecated for removal in 3.0
      *
      * @return bool
      */
@@ -195,6 +216,6 @@ class Explode extends AbstractValidator implements ValidatorPluginManagerAwareIn
             }
         }
 
-        return ! $this->abstractOptions['messages'];
+        return $this->abstractOptions['messages'] === [];
     }
 }

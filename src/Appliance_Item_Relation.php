@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\DBAL\QueryExpression;
+
 class Appliance_Item_Relation extends CommonDBRelation
 {
     public static $itemtype_1 = 'Appliance_Item';
@@ -57,7 +59,6 @@ class Appliance_Item_Relation extends CommonDBRelation
      */
     public static function getTypes($all = false): array
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         $types = $CFG_GLPI['appliance_relation_types'];
@@ -74,13 +75,13 @@ class Appliance_Item_Relation extends CommonDBRelation
         return $types;
     }
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return Appliance_Item::canUpdate();
     }
 
 
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
         $app_item = new Appliance_Item();
         $app_item->getFromDB($this->fields[Appliance_Item::getForeignKeyField()]);
@@ -114,19 +115,19 @@ class Appliance_Item_Relation extends CommonDBRelation
             ($this->isNewItem() && (!isset($input['itemtype']) || empty($input['itemtype'])))
             || (isset($input['itemtype']) && empty($input['itemtype']))
         ) {
-            $error_detected[] = __('An item type is required');
+            $error_detected[] = __s('An item type is required');
         }
         if (
             ($this->isNewItem() && (!isset($input['items_id']) || empty($input['items_id'])))
             || (isset($input['items_id']) && empty($input['items_id']))
         ) {
-            $error_detected[] = __('An item is required');
+            $error_detected[] = __s('An item is required');
         }
         if (
             ($this->isNewItem() && (!isset($input[self::$items_id_1]) || empty($input[self::$items_id_1])))
             || (isset($input[self::$items_id_1]) && empty($input[self::$items_id_1]))
         ) {
-            $error_detected[] = __('An appliance item is required');
+            $error_detected[] = __s('An appliance item is required');
         }
 
         if (count($error_detected)) {
@@ -158,7 +159,7 @@ class Appliance_Item_Relation extends CommonDBRelation
         if (count($types)) {
             $clause = ['itemtype' => $types];
         } else {
-            $clause = [new \QueryExpression('true = false')];
+            $clause = [new QueryExpression('true = false')];
         }
         $extra_types_where = array_merge(
             $extra_types_where,
@@ -166,7 +167,6 @@ class Appliance_Item_Relation extends CommonDBRelation
         );
         return parent::countForMainItem($item, $extra_types_where);
     }
-
 
     /**
      * return an array of relations for a given Appliance_Item's id
@@ -177,10 +177,10 @@ class Appliance_Item_Relation extends CommonDBRelation
      */
     public static function getForApplianceItem(int $appliances_items_id = 0)
     {
-        /** @var \DBmysql $DB */
         global $DB;
 
         $iterator = $DB->request([
+            'SELECT' => ['id', 'itemtype', 'items_id'],
             'FROM'   => self::getTable(),
             'WHERE'  => [
                 Appliance_Item::getForeignKeyField() => $appliances_items_id,
@@ -190,11 +190,11 @@ class Appliance_Item_Relation extends CommonDBRelation
         $relations = [];
         foreach ($iterator as $row) {
             $itemtype = $row['itemtype'];
-            $item = new $itemtype();
+            $item = getItemForItemtype($itemtype);
             $item->getFromDB($row['items_id']);
-            $relations[$row['id']] = "<i class='" . $item->getIcon() . "' title='" . $item::getTypeName(1) . "'></i>" .
-                        "&nbsp;" . $item::getTypeName(1) .
-                        "&nbsp;-&nbsp;" . $item->getLink();
+            $relations[$row['id']] = "<i class='" . htmlescape($item->getIcon()) . "' title='" . htmlescape($item::getTypeName(1)) . "'></i>"
+                        . "&nbsp;" . htmlescape($item::getTypeName(1))
+                        . "&nbsp;-&nbsp;" . $item->getLink();
         }
 
         return $relations;
@@ -215,19 +215,18 @@ class Appliance_Item_Relation extends CommonDBRelation
     public static function showListForApplianceItem(int $appliances_items_id = 0, bool $canedit = true)
     {
         $relations_str = "";
-        foreach (Appliance_Item_Relation::getForApplianceItem($appliances_items_id) as $rel_id => $link) {
+        foreach (self::getForApplianceItem($appliances_items_id) as $rel_id => $link) {
             $del = "";
             if ($canedit) {
-                $del = "<i class='delete_relation pointer fas fa-times'
-                       data-relations-id='$rel_id'></i>";
+                $del = "<i class='delete_relation pointer ti ti-x' data-relations-id='" . htmlescape($rel_id) . "'></i>";
             }
             $relations_str .= "<li>$link $del</li>";
         }
 
-        return "<ul>$relations_str</ul>
-         <span class='pointer add_relation' data-appliances-items-id='{$appliances_items_id}'>
-            <i class='fa fa-plus' title='" . __('New relation') . "'></i>
-            <span class='sr-only'>" . __('New relation') . "</span>
+        return "<ul class='mb-0'>$relations_str</ul>
+         <span class='cursor-pointer add_relation' data-appliances-items-id='{$appliances_items_id}'>
+            <i class='ti ti-plus' title='" . __s('New relation') . "'></i>
+            <span class='sr-only'>" . __s('New relation') . "</span>
          </span>
       </td>";
     }
@@ -249,9 +248,8 @@ class Appliance_Item_Relation extends CommonDBRelation
     ) {
         if ($canedit) {
             $form_url  = Appliance_Item_Relation::getFormURL();
-            $modal_html = json_encode("
-                <form action='{$form_url}' method='POST'>
-                <p>"
+            $modal_html = "<form action='" . htmlescape($form_url) . "' method='POST'>"
+                . "<p>"
                 . Dropdown::showSelectItemFromItemtypes([
                     'items_id_name'   => 'items_id',
                     'itemtypes'       => Appliance_Item_Relation::getTypes(true),
@@ -261,41 +259,41 @@ class Appliance_Item_Relation extends CommonDBRelation
                     'checkright'     => true,
                     'display'        => false,
                 ])
-                . "</p>
-                <input type='hidden' name='appliances_items_id'>
-                " . Html::submit(_x('button', "Add"), ['name' => 'add']) . "
-            " . Html::closeForm(false));
+                . "</p>"
+                . "<input type='hidden' name='appliances_items_id'>"
+                . Html::submit(_x('button', "Add"), ['name' => 'add'])
+                . Html::closeForm(false);
 
             $crsf_token = Session::getNewCSRFToken();
 
-            $js = <<<JAVASCRIPT
-         $(function() {
-            $(document).on('click', '.add_relation', function() {
-               var appliances_items_id = $(this).data('appliances-items-id');
+            $js = "
+                $(function() {
+                    $(document).on('click', '.add_relation', function() {
+                        var appliances_items_id = $(this).data('appliances-items-id');
 
-               glpi_html_dialog({
-                  title: _x('button', "Add an item"),
-                  body: {$modal_html},
-                  id: 'add_relation_dialog',
-                  show: function() {
-                     $('#add_relation_dialog input[name=appliances_items_id]').val(appliances_items_id);
-                  },
-               })
-            });
+                        glpi_html_dialog({
+                            title: '" . jsescape(_x('button', "Add an item")) . "',
+                            body: '" . jsescape($modal_html) . "',
+                            id: 'add_relation_dialog',
+                            show: function() {
+                                $('#add_relation_dialog input[name=appliances_items_id]').val(appliances_items_id);
+                            },
+                        })
+                    });
 
-            $(document).on('click', '.delete_relation', function() {
-               var relations_id = $(this).data('relations-id');
+                    $(document).on('click', '.delete_relation', function() {
+                        var relations_id = $(this).data('relations-id');
 
-               $.post('{$form_url}', {
-                  'id': relations_id,
-                  '_glpi_csrf_token': '$crsf_token',
-                  'purge': 1,
-               }, function() {
-                  location.reload();
-               })
-            });
-         });
-JAVASCRIPT;
+                        $.post('" . jsescape($form_url) . "', {
+                            'id': relations_id,
+                            '_glpi_csrf_token': '" . jsescape($crsf_token) . "',
+                            'purge': 1,
+                        }, function() {
+                            location.reload();
+                        })
+                    });
+                });
+            ";
             return Html::scriptBlock($js);
         }
 

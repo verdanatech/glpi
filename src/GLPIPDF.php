@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use function Safe\glob;
+
 /**
  * @since 0.85
  */
@@ -60,7 +62,7 @@ class GLPIPDF extends TCPDF
     ];
     private array $config = [];
 
-    public function __construct(array $config = [], ?int $count = null, ?string $title = null)
+    public function __construct(array $config = [], ?int $count = null, ?string $title = null, bool $addpage = true)
     {
         if (
             isset($config['font'])
@@ -86,7 +88,7 @@ class GLPIPDF extends TCPDF
 
         if ($title !== null) {
             $this->SetTitle($title);
-            $this->SetHeaderData('', '', $title, '');
+            $this->SetHeaderData('', 0, $title, '');
         }
 
         $this->SetCreator('GLPI');
@@ -103,7 +105,9 @@ class GLPIPDF extends TCPDF
 
         //set auto page breaks
         $this->SetAutoPageBreak(true, $config['margin_bottom']);
-        $this->AddPage();
+        if ($addpage === true) {
+            $this->AddPage();
+        }
     }
 
     /**
@@ -111,10 +115,10 @@ class GLPIPDF extends TCPDF
      *
      * @see TCPDF::Header()
     **/
-    public function Header() // phpcs:ignore PSR1.Methods.CamelCapsMethodName
+    public function Header()
     {
         // Title
-        $this->Cell(0, $this->config['margin_bottom'], $this->title, 0, false, 'C', 0, '', 0, false, 'M', 'M');
+        $this->Cell(0, $this->config['margin_bottom'], $this->title, 0, 0, 'C', false, '', 0, false, 'M', 'M');
     }
 
 
@@ -123,7 +127,7 @@ class GLPIPDF extends TCPDF
      *
      * @see TCPDF::Footer()
     **/
-    public function Footer() // phpcs:ignore PSR1.Methods.CamelCapsMethodName
+    public function Footer()
     {
         // Position at 15 mm from bottom
         $this->SetY(-$this->config['margin_bottom']);
@@ -134,7 +138,7 @@ class GLPIPDF extends TCPDF
         $text .= sprintf(" - %s/%s", $this->getAliasNumPage(), $this->getAliasNbPages());
 
         // Page number
-        $this->Cell(0, $this->config['margin_footer'], $text, 0, false, 'C', 0, '', 0, false, 'T', 'M');
+        $this->Cell(0, $this->config['margin_footer'], $text, 0, 0, 'C', false, '', 0, false, 'T', 'M');
     }
 
     /**
@@ -153,11 +157,10 @@ class GLPIPDF extends TCPDF
         // only available inside the function scope, and will so not affect other elements from loop.
         // Also, varibales declared in font file will be automatically garbage collected (some are huge).
         $include_fct = function ($font_path) use (&$list) {
-            $name = null;
-            $type = null;
-
             include $font_path;
 
+            $name ??= null;
+            $type ??= null;
             if ($name === null) {
                 return; // Not a font file
             }
@@ -166,13 +169,13 @@ class GLPIPDF extends TCPDF
 
             // skip subfonts
             if (
-                ((substr($font, -1) == 'b') || (substr($font, -1) == 'i'))
+                ((str_ends_with($font, 'b')) || (str_ends_with($font, 'i')))
                 && isset($list[substr($font, 0, -1)])
             ) {
                 return;
             }
             if (
-                ((substr($font, -2) == 'bi'))
+                ((str_ends_with($font, 'bi')))
                 && isset($list[substr($font, 0, -2)])
             ) {
                 return;

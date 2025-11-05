@@ -33,22 +33,21 @@
  * ---------------------------------------------------------------------
  */
 
+require_once(__DIR__ . '/_check_webserver_config.php');
+
 use Glpi\Event;
-use Glpi\Http\Response;
-
-include('../inc/includes.php');
-
-Session::checkValidSessionId();
+use Glpi\Exception\Http\BadRequestHttpException;
+use Glpi\Exception\Http\NotFoundHttpException;
 
 $link = new ManualLink();
 if (array_key_exists('id', $_REQUEST) && !$link->getFromDB($_REQUEST['id'])) {
-    Response::sendError(404, 'No item found for given id', Response::CONTENT_TYPE_TEXT_HTML);
+    throw new NotFoundHttpException('No item found for given id');
 }
 
 if (array_key_exists('purge', $_POST) || array_key_exists('delete', $_POST)) {
     $link->check($_POST['id'], PURGE);
 
-    if ($link->delete($_POST, 1)) {
+    if ($link->delete($_POST, true)) {
         Event::log(
             $_POST['id'],
             'manuallinks',
@@ -107,5 +106,5 @@ if (array_key_exists('purge', $_POST) || array_key_exists('delete', $_POST)) {
         'items_id'    => $items_id,
     ]);
 } else {
-    Html::displayErrorAndDie('lost');
+    throw new BadRequestHttpException();
 }
