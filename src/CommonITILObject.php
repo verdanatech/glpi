@@ -8008,8 +8008,16 @@ abstract class CommonITILObject extends CommonDBTM
      *
      * @return array
      */
-    public function getAssociatedDocumentsCriteria($bypass_rights = false, ?User $user = null): array
+    public function getAssociatedDocumentsCriteria($bypass_rights = false/*, ?User $user = null*/): array
     {
+        $user = null;
+        if (func_num_args() == 2) {
+            $user = func_get_arg(1);
+        }
+        $user = null;
+        if (func_num_args() == 2) {
+            $user = func_get_arg(1);
+        }
         $user_id = $user ? $user->getID() : Session::getLoginUserID();
 
         $task_class = $this->getType() . 'Task';
