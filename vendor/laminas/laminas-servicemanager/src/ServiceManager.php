@@ -260,7 +260,7 @@ class ServiceManager implements ServiceLocatorInterface
     /**
      * {@inheritDoc}
      */
-    public function has($name): bool
+    public function has($name)
     {
         // Check static services and factories first to speedup the most common requests.
         return $this->staticServiceOrFactoryCanCreate($name) || $this->abstractFactoryCanCreate($name);

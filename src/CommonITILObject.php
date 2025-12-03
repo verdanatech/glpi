@@ -2125,9 +2125,13 @@ abstract class CommonITILObject extends CommonDBTM
 
         // If status changed from pending to anything else, remove pending reason
         if (
-            isset($this->input["status"])
-            && $this->input["status"] != self::WAITING  || isset($input["status"])
-            && $input["status"] != self::WAITING 
+                (
+                isset($this->input["status"])
+                && $this->input["status"] != self::WAITING
+            ) || (
+                isset($input["status"])
+                && $input["status"] != self::WAITING
+            )
         ) {
             PendingReason_Item::deleteForItem($this);
         }
@@ -4140,7 +4144,7 @@ abstract class CommonITILObject extends CommonDBTM
         $tab[] = [
             'id'                 => '82',
             'table'              => $this->getTable(),
-            'field'              => 'is_late',
+            'field'              => 'sla_ttr_is_late',
             'name'               => __('Time to resolve exceeded'),
             'datatype'           => 'bool',
             'massiveaction'      => false,
@@ -7457,7 +7461,7 @@ abstract class CommonITILObject extends CommonDBTM
                 'tu.type AS type',
             ],
             'FROM'      => "$users_table AS tu",
-            'LEFT JOIN' => [
+            'INNER JOIN' => [
                 User::getTable() . ' AS usr' => [
                     'ON' => [
                         'tu'  => 'users_id',
@@ -7476,7 +7480,7 @@ abstract class CommonITILObject extends CommonDBTM
                 'gt.type AS type',
             ],
             'FROM'      => "$groups_table AS gt",
-            'LEFT JOIN' => [
+            'INNER JOIN' => [
                 Group_User::getTable() . ' AS gu'   => [
                     'ON' => [
                         'gu'  => 'groups_id',
@@ -8004,16 +8008,12 @@ abstract class CommonITILObject extends CommonDBTM
      * Returns criteria that can be used to get documents related to current instance.
      *
      * @param bool      $bypass_rights  Whether to bypass rights checks (default: false)
-     * @param User|null $user           User for rights checking (default: null = current session rights)
+     * @FIXME uncomment @param User|null $user           User for rights checking (default: null = current session rights)
      *
      * @return array
      */
     public function getAssociatedDocumentsCriteria($bypass_rights = false/*, ?User $user = null*/): array
     {
-        $user = null;
-        if (func_num_args() == 2) {
-            $user = func_get_arg(1);
-        }
         $user = null;
         if (func_num_args() == 2) {
             $user = func_get_arg(1);
@@ -8279,7 +8279,8 @@ abstract class CommonITILObject extends CommonDBTM
             $itiltask->add([
                 '_tasktemplates_id'           => $tasktemplates_id,
                 $this->getForeignKeyField()   => $this->fields['id'],
-                'date'                        => $this->fields['date']
+                'date'                        => $this->fields['date'],
+                '_do_not_compute_status'      => $this->input['_do_not_compute_status'] ?? false,
             ]);
         }
     }

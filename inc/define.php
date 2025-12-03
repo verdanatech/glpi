@@ -36,7 +36,7 @@
 use Glpi\SocketModel;
 
 // Current version of GLPI
-define('GLPI_VERSION', '10.0.20');
+define('GLPI_VERSION', '10.0.21');
 
 $schema_file = sprintf('%s/install/mysql/glpi-empty.sql', GLPI_ROOT);
 define(
@@ -69,9 +69,12 @@ define("UNLOCK", 128);
 // dictionnaries
 $CFG_GLPI['languages'] = [
     //Code       Name in native lang          LANG FILE      jquery tinymce english name            standard plural number
-    'ar_SA'  => ['العَرَبِيَّةُ',                   'ar_SA.mo',    'ar',    'ar', 'arabic',               103],
-    //'az_AZ'  => ['Azerbaijani',               'az_AZ.mo',    'az',    'az', 'azeri',                2], //asked on transifex, not present
+    'ar_SA'  => ['العربية السعودية',          'ar_SA.mo',    'ar',    'ar_SA', 'arabic',            103],
+    'ar_IQ'  => ['العربية العراق',            'ar_IQ.mo',    'ar',    'ar', 'irak arabic',          103],
+    'ar_SY'  => ['العربية سوريا',             'ar_SY.mo',    'ar',    'ar', 'syria arabic',         103],
+    'az_AZ'  => ['Azərbaycan dili',           'az_AZ.mo',    'az',    'az', 'azerbaijani',          2],
     'bg_BG'  => ['Български',                 'bg_BG.mo',    'bg',    'bg', 'bulgarian',            2],
+    'bn_BD'  => ['বাংলা (বাংলাদেশ)',          'bn_BD.mo',    'bn',    'bn_BD', 'bengali',           2],
     'id_ID'  => ['Bahasa Indonesia',          'id_ID.mo',    'id',    'id', 'indonesian',           2],
     'ms_MY'  => ['Bahasa Melayu',             'ms_MY.mo',    'ms',    'ms', 'malay',                2],
     'ca_ES'  => ['Català',                    'ca_ES.mo',    'ca',    'ca', 'catalan',              2], // ca_CA
@@ -99,6 +102,7 @@ $CFG_GLPI['languages'] = [
     'hr_HR'  => ['Hrvatski',                  'hr_HR.mo',    'hr',    'hr', 'croatian',             2],
     'hu_HU'  => ['Magyar',                    'hu_HU.mo',    'hu',    'hu', 'hungarian',            2],
     'it_IT'  => ['Italiano',                  'it_IT.mo',    'it',    'it', 'italian',              2],
+    'km_KH'  => ['ខ្មែរ (កម្ពុជា)',              'km_KH.mo',    'km',    'km_KH', 'cambodgian khmer',  0],
     'kn'     => ['ಕನ್ನಡ',                      'kn.mo',       'en-GB', 'en', 'kannada',              2],
     'lv_LV'  => ['Latviešu',                  'lv_LV.mo',    'lv',    'lv', 'latvian',              2],
     'lt_LT'  => ['Lietuvių',                  'lt_LT.mo',    'lt',    'lt', 'lithuanian',           2],
@@ -131,7 +135,7 @@ $CFG_GLPI['languages'] = [
     'be_BY'  => ['Belarussian',               'be_BY.mo',    'be',    'be', 'belarussian',          3],
     'is_IS'  => ['íslenska',                  'is_IS.mo',    'is',    'en', 'icelandic',            2],
     'eo'     => ['Esperanto',                 'eo.mo',       'eo',    'en', 'esperanto',            2],
-    'es_CL'  => ['Español chileno',           'es_CL',       'es',    'es', 'spanish chilean',      2],
+    'es_CL'  => ['Español chileno',           'es_CL.mo',       'es',    'es', 'spanish chilean',      2],
 ];
 
 $DEFAULT_PLURAL_NUMBER = 2;

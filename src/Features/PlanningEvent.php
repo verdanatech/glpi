@@ -237,6 +237,9 @@ trait PlanningEvent
             $input['users_id_guests'] = exportArrayToDB(
                 ArrayNormalizer::normalizeValues($input['users_id_guests'], 'intval')
             );
+        } elseif (isset($input['users_id_guests']) && $input['users_id_guests'] === '') {
+            // If users_id_guests is present but empty, it means all guests were removed
+            $input['users_id_guests'] = exportArrayToDB([]);
         }
 
         return $input;
@@ -245,7 +248,7 @@ trait PlanningEvent
     public function encodeRrule(array $rrule = [])
     {
 
-        if ($rrule['freq'] == null) {
+        if (empty($rrule['freq'])) {
             return "";
         }
 
@@ -738,7 +741,7 @@ trait PlanningEvent
     {
         $rrule = json_decode($rrule, true) ?? [];
         $defaults = [
-            'freq'       => null,
+            'freq'       => '',
             'interval'   => 1,
             'until'      => null,
             'byday'      => [],
@@ -755,7 +758,7 @@ trait PlanningEvent
 
         $out = "<div class='card' style='padding: 5px; width: 100%;'>";
         $out .= Dropdown::showFromArray('rrule[freq]', [
-            null      => __("Never"),
+            ''        => __("Never"),
             'daily'   => __("Each day"),
             'weekly'  => __("Each week"),
             'monthly' => __("Each month"),
@@ -767,8 +770,8 @@ trait PlanningEvent
             'on_change' => "$(\"#toggle_ar\").toggle($(\"#dropdown_rrule_freq_$rand\").val().length > 0)",
         ]);
 
-        $display_tar = $rrule['freq'] == null ? "none" : "inline";
-        $display_ar  = $rrule['freq'] == null
+        $display_tar = empty($rrule['freq']) ? "none" : "inline";
+        $display_ar  = empty($rrule['freq'])
                      || !($rrule['interval'] > 1
                           || $rrule['until'] != null
                           || count($rrule['byday']) > 0

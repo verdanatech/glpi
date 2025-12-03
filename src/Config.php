@@ -1965,7 +1965,15 @@ class Config extends CommonDBTM
             }
         }
 
-        echo "<tr class='tab_bg_1'><td><pre class='section-content'>";
+        echo "<tr class='tab_bg_1'><td>";
+        if (!Glpi\Toolbox\VersionParser::isStableRelease($ver)) {
+            echo sprintf(
+                "<div class='alert alert-important alert-warning d-flex'><strong>⚠️ %1\$s ⚠️</strong></div>",
+                __("This version is UNSTABLE and some SECURITY FIXES may not be included.")
+            );
+        }
+        echo "<pre class='section-content'>";
+
         echo "GLPI $ver (" . $CFG_GLPI['root_doc'] . " => " . GLPI_ROOT . ")\n";
         echo "Installation mode: " . GLPI_INSTALL_MODE . "\n";
         echo "Current language:" . $oldlang . "\n";
@@ -1983,11 +1991,19 @@ class Config extends CommonDBTM
         );
         $msg = "Setup: ";
 
-        foreach (
-            ['max_execution_time', 'memory_limit', 'post_max_size', 'safe_mode',
-                'session.save_handler', 'upload_max_filesize', 'disable_functions',
-            ] as $key
-        ) {
+        $ini_keys = [
+            'disable_functions',
+            'max_execution_time',
+            'max_input_vars',
+            'memory_limit',
+            'post_max_size',
+            'session.cookie_secure',
+            'session.cookie_httponly',
+            'session.cookie_samesite',
+            'session.save_handler',
+            'upload_max_filesize',
+        ];
+        foreach ($ini_keys as $key) {
             $msg .= $key . '="' . ini_get($key) . '" ';
         }
         echo wordwrap($msg . "\n", $p['word_wrap_width'], "\n\t");

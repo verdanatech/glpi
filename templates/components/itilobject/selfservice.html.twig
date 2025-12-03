@@ -76,10 +76,12 @@
                         {% set actor_add_form %}
                             <div id="delegate_other{{ rand }}" class="card mt-2  {{ delegation_is_enabled ? "" : "d-none" }}">
                                 <div class="card-body">
-                                    {{ item.showActorAddFormOnCreate(
-                                        constant('CommonITILActor::REQUESTER'),
-                                        params
-                                    )|u.truncate(0) }}
+                                    {% if delegation_is_enabled %}
+                                        {{ item.showActorAddFormOnCreate(
+                                            constant('CommonITILActor::REQUESTER'),
+                                            params
+                                        )|u.truncate(0) }}
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endset %}
@@ -285,27 +287,22 @@ $(function () {
 
         if (is_for_me) {
             $('#delegate_other{{ rand }}').addClass("d-none");
+            $('#delegate_other{{ rand }} .card-body').html("");
         } else {
-            $('#delegate_other{{ rand }}').removeClass("d-none");
-        }
-
-        $('#delegate_other{{ rand }} .card-body')
-            .html("")
-            .load('{{ path('ajax/dropdownDelegationUsers.php') }}', {
-                'right': "delegate",
-                'nodelegate': (is_for_me ? 1 : 0),
-                '_users_id_requester': {{ params['_users_id_requester'] }},
-                '_users_id_requester_notif': {{ params['_users_id_requester_notif']|json_encode()|raw }},
-                'use_notification': {{ params['_users_id_requester_notif']['use_notification'] is array ? params['_users_id_requester_notif']['use_notification'][0] : params['_users_id_requester_notif']['use_notification'] }},
-                'entity_restrict':  {{ session('glpiactive_entity') }}
-            }, () => {
-                if (is_for_me) {
-                    $('#delegate_other{{ rand }}').addClass("d-none");
-                } else {
+            $('#delegate_other{{ rand }} .card-body')
+                .html("")
+                .load('{{ path('ajax/dropdownDelegationUsers.php') }}', {
+                    'right': "delegate",
+                    'nodelegate': (is_for_me ? 1 : 0),
+                    '_users_id_requester': {{ params['_users_id_requester'] }},
+                    '_users_id_requester_notif': {{ params['_users_id_requester_notif']|json_encode()|raw }},
+                    'use_notification': {{ params['_users_id_requester_notif']['use_notification'] is array ? params['_users_id_requester_notif']['use_notification'][0] : params['_users_id_requester_notif']['use_notification'] }},
+                    'entity_restrict':  {{ session('glpiactive_entity') }}
+                }, () => {
                     $('#delegate_other{{ rand }}').removeClass("d-none");
-                }
-            })
-        ;
+                })
+            ;
+        }
     });
 
     saveActorsToDom();

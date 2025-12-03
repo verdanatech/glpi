@@ -3,6 +3,50 @@
 The present file will list all changes made to the project; according to the
 [Keep a Changelog](http://keepachangelog.com/) project.
 
+## [10.0.21] 2025-12-03
+
+### Added
+
+### Changed
+- It is again possible to "Merge as Followup" into resolved/closed tickets.
+
+### Deprecated
+
+### Removed
+
+### API changes
+
+#### Added
+
+#### Changes
+
+#### Deprecated
+
+#### Removed
+
+
+## [10.0.20] 2025-09-10
+
+### Added
+
+### Changed
+- Assign contract Ticket rule action now works with update rules.
+
+### Deprecated
+
+### Removed
+
+### API changes
+
+#### Added
+
+#### Changes
+
+#### Deprecated
+
+#### Removed
+
+
 ## [10.0.19] 2025-07-16
 
 ### Added

@@ -1834,8 +1834,9 @@ class Ticket extends CommonITILObject
         // This to avoid plugins having their process broken.
         if (
             isset($input['check_delegatee'], $input['_users_id_requester'])
-            && $input['check_delegatee']
+            && $input['check_delegatee'] && !($input['nodelegate'] ?? false)
         ) {
+
             $requesters_ids = is_array($input['_users_id_requester'])
                 ? $input['_users_id_requester']
                 : [$input['_users_id_requester']];
@@ -2703,11 +2704,6 @@ class Ticket extends CommonITILObject
                     'used'         => $ma->getItems()['Ticket'],
                     'displaywith'  => ['id'],
                     'rand'         => $rand,
-                    'condition'    => [
-                        'NOT' => [
-                            'status' => array_merge(self::getSolvedStatusArray(), self::getClosedStatusArray()),
-                        ],
-                    ],
                 ];
                 echo "<table class='mx-auto'><tr>";
                 echo "<td><label for='dropdown__mergeticket$rand'>" . Ticket::getTypeName(1) . "</label></td><td colspan='3'>";
@@ -3098,7 +3094,7 @@ JAVASCRIPT;
         $tab[] = [
             'id'                 => '159',
             'table'              => 'glpi_tickets',
-            'field'              => 'is_late',
+            'field'              => 'sla_tto_is_late',
             'name'               => __('Time to own exceeded'),
             'datatype'           => 'bool',
             'massiveaction'      => false,
@@ -3129,7 +3125,7 @@ JAVASCRIPT;
         $tab[] = [
             'id'                 => '182',
             'table'              => $this->getTable(),
-            'field'              => 'is_late',
+            'field'              => 'ola_ttr_is_late',
             'name'               => __('Internal time to resolve exceeded'),
             'datatype'           => 'bool',
             'massiveaction'      => false,
@@ -3160,7 +3156,7 @@ JAVASCRIPT;
         $tab[] = [
             'id'                 => '187',
             'table'              => 'glpi_tickets',
-            'field'              => 'is_late',
+            'field'              => 'ola_tto_is_late',
             'name'               => __('Internal time to own exceeded'),
             'datatype'           => 'bool',
             'massiveaction'      => false,

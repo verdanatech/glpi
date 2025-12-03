@@ -466,15 +466,11 @@ class Auth extends CommonGLPI
 
                 // Update password if needed
                 if (self::needRehash($password_db)) {
-                    $input = [
-                        'id' => $row['id'],
-                    ];
-                    // Set glpiID to allow password update
-                    $_SESSION['glpiID'] = $input['id'];
-                    $input['password'] = $password;
-                    $input['password2'] = $password;
-                    $user = new User();
-                    $user->update($input);
+                    $DB->update(
+                        User::getTable(),
+                        ['password' => password_hash($password, PASSWORD_DEFAULT)],
+                        ['id' => $row['id']]
+                    );
                 }
                 $this->user->getFromDBByCrit(['id' => $row['id']]);
                 $this->extauth                  = 0;
@@ -680,6 +676,7 @@ class Auth extends CommonGLPI
 
                         if (self::checkPassword($cookie_token, $hash)) {
                             $this->user->fields['name'] = $user->fields['name'];
+                            $user->update(['id' => $user->getID(), 'last_login' => $_SESSION["glpi_currenttime"]]);
                             return true;
                         } else {
                             $this->addToError(__("Invalid cookie data"));
@@ -1028,7 +1025,11 @@ class Auth extends CommonGLPI
                     if (isset($email)) {
                         $this->user->fields['_useremails'] = $email;
                     }
-                    $this->user->update(Sanitizer::sanitize($this->user->fields));
+
+                    $input = $this->user->fields;
+                    unset($input['api_token'], $input['cookie_token'], $input['password_forget_token'], $input['personal_token']);
+
+                    $this->user->update(Sanitizer::sanitize($input));
                 } elseif ($CFG_GLPI["is_users_auto_add"]) {
                     // Auto add user
                     $input = $this->user->fields;

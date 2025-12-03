@@ -431,6 +431,15 @@ class AuthLDAP extends CommonDBTM
         if (!Config::canUpdate()) {
             return false;
         }
+
+        // warning and no form if can't read keyfile
+        $glpi_encryption_key = new GLPIKey();
+        if ($glpi_encryption_key->hasReadErrors()) {
+            $glpi_encryption_key->showReadErrors();
+
+            return false;
+        }
+
         if (empty($ID)) {
             $this->getEmpty();
             if (isset($options['preconfig'])) {
@@ -593,6 +602,13 @@ class AuthLDAP extends CommonDBTM
      */
     public function showFormAdvancedConfig()
     {
+        // warning and no form if can't read keyfile
+        $glpi_encryption_key = new GLPIKey();
+        if ($glpi_encryption_key->hasReadErrors()) {
+            $glpi_encryption_key->showReadErrors();
+
+            return;
+        }
 
         $ID = $this->getField('id');
         $hidden = '';
@@ -3044,7 +3060,9 @@ class AuthLDAP extends CommonDBTM
      */
     public function connect()
     {
-
+        if ($this->fields['is_active'] != 1) {
+            return false;
+        }
         return $this->connectToServer(
             $this->fields['host'],
             $this->fields['port'],
@@ -3089,13 +3107,7 @@ class AuthLDAP extends CommonDBTM
         $timeout = 0,
         bool $silent_bind_errors = false
     ) {
-        //Use an LDAP connection string
-        $ldapuri = sprintf(
-            '%s://%s:%s',
-            parse_url($host, PHP_URL_SCHEME) ?: 'ldap',
-            preg_replace('@^ldaps?://@', '', $host),
-            (int) $port
-        );
+        $ldapuri = self::buildUri($host, (int) $port);
         $ds = @ldap_connect($ldapuri);
 
         if ($ds === false) {
@@ -3157,7 +3169,11 @@ class AuthLDAP extends CommonDBTM
             }
         }
 
-        if ($use_tls) {
+        // Only use STARTTLS if TLS is requested and the connection is not already using LDAPS
+        // LDAPS (ldaps://) is already encrypted, so ldap_start_tls() should not be called
+        $scheme = parse_url($ldapuri, PHP_URL_SCHEME);
+        $is_ldaps = ($scheme !== null && strtolower($scheme) === 'ldaps');
+        if ($use_tls && !$is_ldaps) {
             if (!@ldap_start_tls($ds)) {
                 trigger_error(
                     static::buildError(
@@ -4844,5 +4860,23 @@ class AuthLDAP extends CommonDBTM
             (ldap_get_option($ds, LDAP_OPT_ERROR_STRING, $err_message) ? "\nerr string: " . $err_message : '')
         );
         return $message;
+    }
+
+    /**
+     * Use an LDAP connection string
+     *
+     * @param string $host
+     * @param int $port
+     *
+     * @return string
+     */
+    final public static function buildUri(string $host, int $port): string
+    {
+        return sprintf(
+            '%s://%s:%s',
+            strtolower(parse_url($host, PHP_URL_SCHEME) ?: 'ldap'),
+            preg_replace('@^ldaps?://@i', '', $host),
+            $port
+        );
     }
 }
