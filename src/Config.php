@@ -1966,6 +1966,7 @@ class Config extends CommonDBTM
         }
 
         echo "<tr class='tab_bg_1'><td>";
+        
         if (!Glpi\Toolbox\VersionParser::isStableRelease($ver)) {
             echo sprintf(
                 "<div class='alert alert-important alert-warning d-flex'><strong>⚠️ %1\$s ⚠️</strong></div>",
