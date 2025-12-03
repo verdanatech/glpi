@@ -116,11 +116,24 @@ class NotificationEventMailing extends NotificationEventAbstract
 
     public static function send(array $data)
     {
-        /**
-         * @var array $CFG_GLPI
-         * @var \DBmysql $DB
-         */
-        global $CFG_GLPI, $DB;
+    /**
+     * @var array $CFG_GLPI
+     * @var \DBmysql $DB
+     */
+    global $CFG_GLPI, $DB;
+
+    // =========================
+    // LOCK DE PROCESSAMENTO DA FILA
+    // =========================
+    $lockfile = sys_get_temp_dir() . '/glpi_mailqueue.lock';
+    $lock = fopen($lockfile, 'c');
+
+    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+        // Outro processo já está processando a fila
+        return 0;
+    }
+
+    try {
 
         $processed = [];
 
@@ -422,6 +435,13 @@ class NotificationEventMailing extends NotificationEventAbstract
         }
 
         return count($processed);
+    } finally {
+    // =========================
+    // LIBERAÇÃO SEGURA DO LOCK
+    // =========================
+    flock($lock, LOCK_UN);
+    fclose($lock);
+    }
     }
 
     /**
