@@ -1,4 +1,4 @@
-<?php
+f<?php
 
 declare(strict_types=1);
 
@@ -260,7 +260,7 @@ class ServiceManager implements ServiceLocatorInterface
     /**
      * {@inheritDoc}
      */
-    public function has($name)
+    public function has($name): bool
     {
         // Check static services and factories first to speedup the most common requests.
         return $this->staticServiceOrFactoryCanCreate($name) || $this->abstractFactoryCanCreate($name);
