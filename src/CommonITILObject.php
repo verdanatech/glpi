@@ -8018,6 +8018,7 @@ abstract class CommonITILObject extends CommonDBTM
         if (func_num_args() == 2) {
             $user = func_get_arg(1);
         }
+
         $user_id = $user ? $user->getID() : Session::getLoginUserID();
 
         $task_class = $this->getType() . 'Task';
