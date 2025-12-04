@@ -8034,7 +8034,7 @@ abstract class CommonITILObject extends CommonDBTM
         ];
 
         // documents associated to followups
-        if ($bypass_rights || ITILFollowup::canView()) {
+        if (isset($bypass_rights) || ITILFollowup::canView()) {
             $fup_crits = [
                 ITILFollowup::getTableField('itemtype') => $this->getType(),
                 ITILFollowup::getTableField('items_id') => $this->getID(),
@@ -8067,7 +8067,7 @@ abstract class CommonITILObject extends CommonDBTM
         }
 
         // documents associated to solutions
-        if ($bypass_rights || ITILSolution::canView()) {
+        if (isset($bypass_rights) || ITILSolution::canView()) {
             // Run the subquery separately. It's better for huge databases
             $iterator_tmp = $DB->request([
                 'SELECT' => 'id',
@@ -8107,7 +8107,7 @@ abstract class CommonITILObject extends CommonDBTM
         }
 
         // documents associated to tasks
-        if ($bypass_rights || $task_class::canView()) {
+        if (isset($bypass_rights) || $task_class::canView()) {
             $tasks_crit = [
                 $this->getForeignKeyField() => $this->getID(),
             ];
