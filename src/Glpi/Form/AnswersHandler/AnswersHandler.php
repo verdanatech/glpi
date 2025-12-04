@@ -47,6 +47,7 @@ use Glpi\Form\DelegationData;
 use Glpi\Form\Destination\AnswersSet_FormDestinationItem;
 use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\Form;
+use Glpi\Form\Question;
 use Glpi\Form\QuestionType\CustomMandatoryMessageInterface;
 use Glpi\Form\QuestionType\QuestionTypeValidationInterface;
 use Glpi\Form\Section;
@@ -119,7 +120,7 @@ final class AnswersHandler
             }
 
             // Check if the question is not answered (empty or not set)
-            if (empty($answer) || (is_string($answer) && empty(strip_tags($answer)))) {
+            if ($answer === null || (is_string($answer) && strip_tags($answer) === '') || (is_array($answer) && count($answer) === 0)) {
                 $message = __('This field is mandatory');
                 $type = $question->getQuestionType();
                 if ($type instanceof CustomMandatoryMessageInterface) {
@@ -224,7 +225,27 @@ final class AnswersHandler
         $result = $engine->computeVisibility();
 
         foreach (array_keys($answers) as $anwer_id) {
+            // If the question itself is hidden, remove it
             if (!$result->isQuestionVisible($anwer_id)) {
+                unset($answers[$anwer_id]);
+                continue;
+            }
+
+            // We now need to load the parent section to make sure it is not
+            // hidden too
+            $question = Question::getById($anwer_id);
+            if (!$question) {
+                unset($answers[$anwer_id]); // Unexpected data
+                continue;
+            }
+
+            $section = $question->getSection();
+            if (!$section) {
+                unset($answers[$anwer_id]); // Unexpected data
+                continue;
+            }
+
+            if (!$result->isSectionVisible($section->getId())) {
                 unset($answers[$anwer_id]);
             }
         }

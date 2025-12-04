@@ -55,6 +55,7 @@ class Reminder extends CommonDBVisible implements
         post_getEmpty as trait_post_getEmpty;
     }
     use VobjectConverterTrait;
+    /** @use Clonable<static> */
     use Clonable;
 
     // From CommonDBTM
@@ -625,7 +626,7 @@ class Reminder extends CommonDBVisible implements
                 'DISTINCT'        => true,
                 'FROM'            => 'glpi_reminders',
                 'WHERE'           => $visibility_criteria,
-                'ORDERBY'         => 'name',
+                'ORDERBY'         => 'glpi_reminders.name',
             ],
             self::getVisibilityCriteria()
         );

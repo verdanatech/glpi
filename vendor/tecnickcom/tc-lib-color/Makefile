@@ -83,6 +83,9 @@ COMPOSER=$(PHP) -d "apc.enable_cli=0" $(shell which composer)
 # phpDocumentor executable file
 PHPDOC=$(shell which phpDocumentor)
 
+# phpstan version
+PHPSTANVER=2.1.32
+
 # --- MAKE TARGETS ---
 
 # Display general help about this command
@@ -138,7 +141,7 @@ clean:
 # Fix code style violations
 .PHONY: codefix
 codefix:
-	./vendor/bin/phpcbf --ignore="./vendor/" --standard=psr12 src test
+	./vendor/bin/phpcbf --ignore="\./vendor/" --standard=psr12 src test
 
 # Build a DEB package for Debian-like Linux distributions
 .PHONY: deb
@@ -170,7 +173,7 @@ endif
 deps: ensuretarget
 	rm -rf ./vendor/*
 	($(COMPOSER) install -vvv --no-interaction)
-	curl --silent --show-error --fail --location --output ./vendor/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.1.2/phpstan.phar \
+	curl --silent --show-error --fail --location --output ./vendor/phpstan.phar https://github.com/phpstan/phpstan/releases/download/${PHPSTANVER}/phpstan.phar \
 	&& chmod +x ./vendor/phpstan.phar
 
 # Generate source code documentation
@@ -211,7 +214,7 @@ endif
 # Test source code for coding standard violations
 .PHONY: lint
 lint:
-	./vendor/bin/phpcs --ignore="./vendor/" --standard=phpcs.xml src test
+	./vendor/bin/phpcs --ignore="\./vendor/" --standard=phpcs.xml src test
 	./vendor/bin/phpmd src text codesize,unusedcode,naming,design --exclude */vendor/*
 	./vendor/bin/phpmd test text unusedcode,naming,design --exclude */vendor/*
 	php -r 'exit((int)version_compare(PHP_MAJOR_VERSION, "7", ">"));' || ./vendor/phpstan.phar analyse

@@ -394,7 +394,7 @@ class RuleCriteria extends CommonDBChild
 
             case Rule::PATTERN_UNDER:
                 $table  = getTableNameForForeignKeyField($criteria);
-                $values = getSonsOf($table, $pattern);
+                $values = getSonsOf($table, (int) $pattern);
                 if (isset($values[$field])) {
                     return true;
                 }
@@ -402,7 +402,7 @@ class RuleCriteria extends CommonDBChild
 
             case Rule::PATTERN_NOT_UNDER:
                 $table  = getTableNameForForeignKeyField($criteria);
-                $values = getSonsOf($table, $pattern);
+                $values = getSonsOf($table, (int) $pattern);
                 if (isset($values[$field])) {
                     return false;
                 }
@@ -636,7 +636,9 @@ class RuleCriteria extends CommonDBChild
      *
      * @param string $itemtype
      * @param array  $params
-     **/
+     *
+     * @return int|string
+     */
     public static function dropdownConditions($itemtype, $params = [])
     {
         $p['name']             = 'condition';

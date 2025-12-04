@@ -174,7 +174,10 @@ class AuthLDAP extends CommonDBTM
 
     public static $rightname = 'config';
 
-    /** connection caching stuff */
+    /**
+     * connection caching stuff
+     * @var array
+     */
     public static $conn_cache = [];
 
     public static $undisclosedFields = [
@@ -2832,6 +2835,10 @@ TWIG, $twig_params);
      */
     public function connect()
     {
+        if ($this->fields['is_active'] != 1) {
+            return false;
+        }
+
         return self::connectToServer(
             $this->fields['host'],
             $this->fields['port'],
@@ -2859,6 +2866,7 @@ TWIG, $twig_params);
      * @param string  $tls_certfile         TLS CERT file name within config directory (default '')
      * @param string  $tls_keyfile          TLS KEY file name within config directory (default '')
      * @param boolean $use_bind             do we need to do an ldap_bind? (true by default)
+     * @param int     $timeout
      * @param string  $tls_version          TLS VERSION (default '')
      * @param bool    $silent_bind_errors   Indicates whether bind errors must be silented
      *
@@ -3573,7 +3581,7 @@ TWIG, $twig_params);
                 // Use default from the current entity or global default
                 $entity = new Entity();
                 $entity->getFromDB($_SESSION['glpiactive_entity']);
-                $_REQUEST['authldaps_id'] = $entity->getField('authldaps_id');
+                $_REQUEST['authldaps_id'] = $entity->fields['authldaps_id'];
                 if ((int) $_REQUEST['authldaps_id'] <= 0) {
                     $defaultAuth = Auth::getDefaultAuth();
                     if ($defaultAuth instanceof AuthLDAP) {
@@ -3650,22 +3658,22 @@ TWIG, $twig_params);
 
             if (
                 $entity->getFromDB($_REQUEST['entities_id'])
-                && ($entity->getField('authldaps_id') > 0)
+                && $entity->fields['authldaps_id'] > 0
             ) {
                 $authldap->getFromDB($_REQUEST['authldaps_id']);
 
                 if ($_REQUEST['authldaps_id'] === 0) {
                     // authldaps_id wasn't submitted by the user -> take entity config
-                    $_REQUEST['authldaps_id'] = $entity->getField('authldaps_id');
+                    $_REQUEST['authldaps_id'] = $entity->fields['authldaps_id'];
                 }
 
-                $_REQUEST['basedn']       = $entity->getField('ldap_dn');
+                $_REQUEST['basedn']       = $entity->fields['ldap_dn'];
 
                 // No dn specified in entity : use standard one
-                $_REQUEST['basedn'] ??= $authldap->getField('basedn');
+                $_REQUEST['basedn'] ??= $authldap->fields['basedn'];
 
-                if ($entity->getField('entity_ldapfilter') !== 0) {
-                    $_REQUEST['entity_filter'] = $entity->getField('entity_ldapfilter');
+                if ((string) $entity->fields['entity_ldapfilter'] !== '') {
+                    $_REQUEST['entity_filter'] = $entity->fields['entity_ldapfilter'];
                 }
             } else {
                 if (
@@ -3682,7 +3690,7 @@ TWIG, $twig_params);
 
                 if ($_REQUEST['authldaps_id'] > 0) {
                     $authldap->getFromDB($_REQUEST['authldaps_id']);
-                    $_REQUEST['basedn'] = $authldap->getField('basedn');
+                    $_REQUEST['basedn'] = $authldap->fields['basedn'];
                 }
             }
 
@@ -3700,7 +3708,7 @@ TWIG, $twig_params);
 
                     if ($_REQUEST['authldaps_id'] > 0) {
                         $authldap->getFromDB($_REQUEST['authldaps_id']);
-                        $_REQUEST['basedn'] = $authldap->getField('basedn');
+                        $_REQUEST['basedn'] = $authldap->fields['basedn'];
                     }
                 }
             }
@@ -3709,7 +3717,7 @@ TWIG, $twig_params);
                 || $_REQUEST['ldap_filter'] === ''
             ) {
                 $authldap->getFromDB($_REQUEST['authldaps_id']);
-                $_REQUEST['basedn']      = $authldap->getField('basedn');
+                $_REQUEST['basedn']      = $authldap->fields['basedn'];
                 $_REQUEST['ldap_filter'] = self::buildLdapFilter($authldap);
             }
         }
@@ -3722,7 +3730,7 @@ TWIG, $twig_params);
         ) {
             $_REQUEST['authldaps_id'] = $servers[0]['id'];
             $authldap->getFromDB($_REQUEST['authldaps_id']);
-            $_REQUEST['basedn']      = $authldap->getField('basedn');
+            $_REQUEST['basedn']      = $authldap->fields['basedn'];
             if (($_REQUEST['ldap_filter'] ?? '') === '') {
                 $_REQUEST['ldap_filter'] = self::buildLdapFilter($authldap);
             }
@@ -3812,14 +3820,14 @@ TWIG, $twig_params);
                 }
             }
         } else {
-            $filter = "(" . $authldap->getField("login_field") . "=*)";
+            $filter = "(" . $authldap->fields["login_field"] . "=*)";
         }
 
         // If time restriction
         $begin_date = $_REQUEST['begin_date'] ?? null;
         $end_date   = $_REQUEST['end_date'] ?? null;
         $filter    .= self::addTimestampRestrictions($begin_date, $end_date);
-        $ldap_condition = $authldap->getField('condition');
+        $ldap_condition = $authldap->fields['condition'];
         // Add entity filter and filter filled in directory's configuration form
         return  "(&" . ($_REQUEST['entity_filter'] ?? '') . " $filter $ldap_condition)";
     }
@@ -4014,7 +4022,7 @@ TWIG, $twig_params);
         /** @var CommonDBTM $item */
         if (
             !$withtemplate
-            && $item->can($item->getField('id'), READ)
+            && $item->can($item->getID(), READ)
         ) {
             $ong     = [];
             $ong[1]  = self::createTabEntry(_x('button', 'Test'), 0, $item::class, "ti ti-stethoscope"); // test connexion
@@ -4360,6 +4368,11 @@ TWIG, $twig_params);
         return $users;
     }
 
+    /**
+     * @param array $input
+     *
+     * @return bool
+     */
     public function checkFilesExist(&$input)
     {
         if (
@@ -4425,6 +4438,12 @@ TWIG, $twig_params);
         }
     }
 
+    /**
+     * @param Connection $ds
+     * @param string $message
+     *
+     * @return string
+     */
     final public static function buildError($ds, string $message): string
     {
         $diag_message = '';

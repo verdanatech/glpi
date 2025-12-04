@@ -141,6 +141,7 @@ abstract class CommonItilObject_Item extends CommonDBRelation
                 ]
             ) > 0
         ) {
+            //TODO add Session::addMessageAfterRedirect() w/ relevant msg
             return false;
         }
 
@@ -189,7 +190,7 @@ abstract class CommonItilObject_Item extends CommonDBRelation
      */
     protected static function displayItemAddForm(CommonITILObject|TicketRecurrent $obj, array $options = [])
     {
-        if (!($obj instanceof static::$itemtype_1)) {
+        if (!(is_a($obj, static::$itemtype_1))) {
             return false;
         }
 
@@ -378,7 +379,7 @@ abstract class CommonItilObject_Item extends CommonDBRelation
      **/
     protected static function showForObject(CommonITILObject|TicketRecurrent $obj)
     {
-        if (!($obj instanceof static::$itemtype_1)) {
+        if (!(is_a($obj, static::$itemtype_1))) {
             return false;
         }
 
@@ -538,7 +539,14 @@ TWIG, $twig_params);
 
             if ($item::class === static::$itemtype_1) {
                 if ($_SESSION['glpishow_count_on_tabs']) {
-                    $nb = static::countForMainItem($item);
+                    $nb = count($_SESSION["glpiactiveprofile"]["helpdesk_item_type"]) > 0
+                        ? static::countForMainItem(
+                            $item,
+                            [
+                                'itemtype' => $_SESSION["glpiactiveprofile"]["helpdesk_item_type"],
+                            ]
+                        )
+                        : 0;
                 }
                 return static::createTabEntry(_n('Item', 'Items', Session::getPluralNumber()), $nb, $item::class);
             } elseif ($_SESSION['glpishow_count_on_tabs'] && is_subclass_of(static::$itemtype_1, CommonITILObject::class)) {
@@ -654,9 +662,10 @@ TWIG, $twig_params);
      *
      * @param CommonDBTM $item         CommonDBTM object
      * @param integer    $withtemplate (default 0)
+     * @param array      $options
      *
      * @return bool|void (display a table)
-     **/
+     */
     public static function showListForItem(CommonDBTM $item, $withtemplate = 0, $options = [])
     {
         global $DB;
@@ -1330,6 +1339,10 @@ TWIG, $twig_params);
 
     /**
      * Form for Followup on Massive action
+     *
+     * @param MassiveAction $ma
+     *
+     * @return void
      **/
     public static function showFormMassiveAction($ma)
     {
@@ -1604,13 +1617,23 @@ TWIG, $twig_params);
                 $options['value'] = $values[$field];
                 return Dropdown::show($values['itemtype'], $options);
             } else {
-                static::dropdownAllDevices($name, 0, 0);
+                static::dropdownAllDevices($name, '', 0);
                 return ' ';
             }
         }
         return parent::getSpecificValueToSelect($field, $name, $values, $options);
     }
 
+    /**
+     * @param string $myname
+     * @param string $itemtype
+     * @param int $items_id
+     * @param int $admin
+     * @param int $users_id
+     * @param int $entity_restrict
+     * @param array $options
+     * @return int
+     */
     public static function dropdownAllDevices(
         $myname,
         $itemtype,
@@ -1770,7 +1793,7 @@ TWIG, $twig_params);
      **/
     public static function itemAddForm(CommonITILObject|TicketRecurrent $object, $options = [])
     {
-        if (!($object instanceof static::$itemtype_1)) {
+        if (!(is_a($object, static::$itemtype_1))) {
             return;
         }
 

@@ -46,14 +46,22 @@ use function Safe\json_decode;
 
 class Dashboard extends CommonDBTM
 {
+    /** @var int */
     protected $id      = 0;
+    /** @var string */
     protected $key     = "";
+    /** @var string */
     protected $title   = "";
+    /** @var bool */
     protected $embed   = false;
+    /** @var ?array  */
     protected $items   = null;
+    /** @var ?array */
     protected $rights  = null;
+    /** @var string */
     protected $filters  = "";
 
+    /** @var array */
     public static $all_dashboards = [];
     public static $rightname = 'dashboard';
 
@@ -140,6 +148,33 @@ class Dashboard extends CommonDBTM
                     $iterator->getSql()
                 )
             );
+        }
+
+        if (\is_numeric($ID)) {
+            // Search also on the `id` field.
+            // This is mandatory to handle the `$this->getFromDB($this->getID());` reload case.
+            $iterator = $DB->request([
+                'FROM'  => self::getTable(),
+                'WHERE' => [
+                    'id' => $ID,
+                ],
+                'LIMIT' => 1,
+            ]);
+            if (count($iterator) == 1) {
+                $this->fields = $iterator->current();
+                $this->key    = $this->fields['key'];
+                $this->post_getFromDB();
+                return true;
+            } elseif (count($iterator) > 1) {
+                throw new TooManyResultsException(
+                    sprintf(
+                        '`%1$s::getFromDB()` expects to get one result, %2$s found in query "%3$s".',
+                        static::class,
+                        count($iterator),
+                        $iterator->getSql()
+                    )
+                );
+            }
         }
 
         return false;
@@ -594,6 +629,11 @@ class Dashboard extends CommonDBTM
         return true;
     }
 
+    /**
+     * @param bool $is_private
+     *
+     * @return bool
+     */
     public function setPrivate($is_private)
     {
         $this->load();
@@ -605,6 +645,9 @@ class Dashboard extends CommonDBTM
         ]);
     }
 
+    /**
+     * @return string (int as string... should be a boolean.)
+     */
     public function getPrivate()
     {
         $this->load();

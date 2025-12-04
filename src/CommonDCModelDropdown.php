@@ -41,6 +41,7 @@ use Glpi\Features\Clonable;
 abstract class CommonDCModelDropdown extends CommonDropdown
 {
     use AssetImage;
+    /** @use Clonable<static> */
     use Clonable;
 
     public $additional_fields_for_dictionnary = ['manufacturer'];
@@ -445,6 +446,9 @@ abstract class CommonDCModelDropdown extends CommonDropdown
     }
 
 
+    /**
+     * @return array
+     */
     public static function rawSearchOptionsToAdd()
     {
         $soptions = [];

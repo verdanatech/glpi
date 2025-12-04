@@ -50,8 +50,8 @@ class VirtualMachine extends InventoryAsset
 {
     use InventoryNetworkPort;
 
-    private $conf;
-    private $allports = [];
+    private Conf $conf;
+    private array $allports = [];
 
     private const VMCOMPONENTS = [
         'storages'  => Drive::class,
@@ -94,6 +94,11 @@ class VirtualMachine extends InventoryAsset
 
         foreach ($this->data as &$val) {
             $vm_val = clone($val);
+
+            if (!($vm_val instanceof stdClass)) {
+                throw new \LogicException();
+            }
+
             foreach ($mapping as $origin => $dest) {
                 if (property_exists($val, $origin)) {
                     $val->$dest = $val->$origin;

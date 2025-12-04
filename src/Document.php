@@ -68,6 +68,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
     protected static $forward_entity_to = ['Document_Item'];
 
     public static $rightname                   = 'document';
+    /** @var string */
     public static $tag_prefix                  = '#';
     protected $usenotepad               = true;
 
@@ -376,6 +377,8 @@ class Document extends CommonDBTM implements TreeBrowseInterface
 
     /**
      * Get max upload size from php config
+     *
+     * @return string
      **/
     public static function getMaxUploadSize()
     {
@@ -698,7 +701,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
         $request = [
             'FROM'      => 'glpi_documents_items',
             'COUNT'     => 'cpt',
-            'LEFT JOIN' => [
+            'INNER JOIN' => [
                 'glpi_knowbaseitems' => [
                     'FKEY' => [
                         'glpi_knowbaseitems'   => 'id',
@@ -713,7 +716,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
         ];
 
         if (array_key_exists('LEFT JOIN', $visibilityCriteria) && count($visibilityCriteria['LEFT JOIN']) > 0) {
-            $request['LEFT JOIN'] += $visibilityCriteria['LEFT JOIN'];
+            $request['LEFT JOIN'] = $visibilityCriteria['LEFT JOIN'];
         }
         if (array_key_exists('WHERE', $visibilityCriteria) && count($visibilityCriteria['WHERE']) > 0) {
             $request['WHERE'] += $visibilityCriteria['WHERE'];
@@ -799,8 +802,9 @@ class Document extends CommonDBTM implements TreeBrowseInterface
             'FROM'  => Document_Item::getTable(),
             'COUNT' => 'cpt',
             'WHERE' => [
-                'itemtype' => $itemtype,
-                'items_id' => $items_id,
+                'itemtype'     => $itemtype,
+                'items_id'     => $items_id,
+                'documents_id' => $this->getID(),
             ],
             'LIMIT' => 1, // Only need to see one result
         ])->current();
@@ -812,6 +816,11 @@ class Document extends CommonDBTM implements TreeBrowseInterface
         return true;
     }
 
+    /**
+     * @param ?class-string<CommonDBTM> $itemtype
+     *
+     * @return array
+     */
     public static function rawSearchOptionsToAdd($itemtype = null)
     {
         $tab = [];
@@ -1331,6 +1340,8 @@ class Document extends CommonDBTM implements TreeBrowseInterface
      * Is this file a valid file ? check based on file extension
      *
      * @param string $filename filename to clean
+     *
+     * @return string
      **/
     public static function isValidDoc($filename)
     {
@@ -1542,7 +1553,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
     /**
      * @since 0.85
      *
-     * @param $string
+     * @param string $string
      *
      * @return string
      **/

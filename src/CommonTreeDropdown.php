@@ -42,6 +42,7 @@ use Glpi\DBAL\QueryExpression;
  **/
 abstract class CommonTreeDropdown extends CommonDropdown
 {
+    /** @var bool $can_be_translated */
     public $can_be_translated = false;
 
 
@@ -82,6 +83,8 @@ abstract class CommonTreeDropdown extends CommonDropdown
     /**
      * Override this method to easily insert new tabs between the children tab
      * and the log tab.
+     *
+     * @param array $options
      */
     protected function insertTabs($options = []): array
     {
@@ -122,8 +125,10 @@ abstract class CommonTreeDropdown extends CommonDropdown
     /**
      * Compute completename based on parent one
      *
-     * @param $parentCompleteName string parent complete name
-     * @param $thisName           string item name
+     * @param string $parentCompleteName parent complete name
+     * @param string $thisName           item name
+     *
+     * @return string
      **/
     public static function getCompleteNameFromParents($parentCompleteName, $thisName)
     {
@@ -132,7 +137,9 @@ abstract class CommonTreeDropdown extends CommonDropdown
 
 
     /**
-     * @param $input
+     * @param array $input
+     *
+     * @return array
      **/
     public function adaptTreeFieldsFromUpdateOrAdd($input)
     {
@@ -238,10 +245,12 @@ abstract class CommonTreeDropdown extends CommonDropdown
 
 
     /**
-     * @param $ID
-     * @param $updateName
-     * @param $changeParent
-     **/
+     * @param int $ID
+     * @param bool $updateName
+     * @param bool $changeParent
+     *
+     * @return void
+     */
     public function regenerateTreeUnderID($ID, $updateName, $changeParent)
     {
         global $DB, $GLPI_CACHE;
@@ -863,6 +872,9 @@ TWIG, $twig_params);
     }
 
 
+    /**
+     * @return bool
+     */
     public function haveChildren()
     {
 
@@ -885,10 +897,10 @@ TWIG, $twig_params);
     /**
      * reformat text field describing a tree (such as completename)
      *
-     * @param $value string
+     * @param string $value
      *
      * @return string
-     **/
+     */
     public static function cleanTreeText($value)
     {
 

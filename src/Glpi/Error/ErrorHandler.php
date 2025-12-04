@@ -39,13 +39,13 @@ use Glpi\Error\ErrorDisplayHandler\CliDisplayHandler;
 use Glpi\Error\ErrorDisplayHandler\ConsoleErrorDisplayHandler;
 use Glpi\Error\ErrorDisplayHandler\ErrorDisplayHandler;
 use Glpi\Error\ErrorDisplayHandler\HtmlErrorDisplayHandler;
+use Monolog\Logger;
 use Override;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\ErrorHandler\ErrorHandler as BaseErrorHandler;
 use Throwable;
-
-use function Safe\ini_set;
+use Toolbox;
 
 /**
  * @phpstan-ignore class.extendsFinalByPhpDoc
@@ -274,8 +274,12 @@ final class ErrorHandler extends BaseErrorHandler
         // Define base reporting level
         $reporting_level = E_ALL;
 
+        // Convert error level to PSR log level
+        $monolog_level = Logger::toMonologLevel(GLPI_LOG_LVL);
+        $psr_level     = $monolog_level->toPsrLogLevel();
+
         // Compute max error level that should be reported
-        $env_report_value = self::PSR_ERROR_LEVEL_VALUES[GLPI_LOG_LVL];
+        $env_report_value = self::PSR_ERROR_LEVEL_VALUES[$psr_level];
 
         foreach (self::ERROR_LEVEL_MAP as $value => $log_level) {
             $psr_level_value = self::PSR_ERROR_LEVEL_VALUES[$log_level];
@@ -296,7 +300,7 @@ final class ErrorHandler extends BaseErrorHandler
      */
     private function disableNativeErrorDisplaying(): void
     {
-        ini_set('display_errors', 'Off');
+        Toolbox::safeIniSet('display_errors', 'Off');
     }
 
     private static function cleanPaths(string $message): string

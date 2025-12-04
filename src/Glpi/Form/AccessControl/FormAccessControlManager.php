@@ -70,7 +70,7 @@ final class FormAccessControlManager
 
     public function createMissingAccessControlsForForm(
         Form $form
-    ) {
+    ): void {
         $access_controls = $form->getAccessControls();
         $defined_strategies = $this->getDefinedStrategies($access_controls);
         $missing_strategies = $this->getMissingStrategies($defined_strategies);
@@ -86,7 +86,7 @@ final class FormAccessControlManager
 
     public function getActiveAccessControlsForForm(
         Form $form
-    ) {
+    ): array {
         $controls = $form->getAccessControls();
         $controls = array_filter(
             $controls,
@@ -149,17 +149,14 @@ final class FormAccessControlManager
      */
     public function sortAccessControls(array $controls): array
     {
-        // Sort by is_active + strategy weight
-        usort($controls, function (FormAccessControl $a, FormAccessControl $b) {
-            if ($a->fields['is_active'] && !$b->fields['is_active']) {
-                return -1;
-            } elseif (!$a->fields['is_active'] && $b->fields['is_active']) {
-                return 1;
-            } else {
-                $strategy = $a->getStrategy();
-                return $strategy->getWeight() <=> $strategy->getWeight();
-            }
-        });
+        // Sort by strategy weight
+        usort(
+            $controls,
+            fn(
+                FormAccessControl $a,
+                FormAccessControl $b,
+            ): int => $a->getStrategy()->getWeight() <=> $b->getStrategy()->getWeight()
+        );
 
         return $controls;
     }
@@ -301,7 +298,7 @@ final class FormAccessControlManager
     private function createMissingStrategyForForm(
         Form $form,
         ControlTypeInterface $missing_strategy
-    ) {
+    ): void {
         $form_access_control = new FormAccessControl();
         $strategy = $missing_strategy::class;
 

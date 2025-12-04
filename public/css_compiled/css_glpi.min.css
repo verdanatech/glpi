@@ -407,6 +407,7 @@ body.in_modal {
 
 table.table thead th {
   font-size: 0.625rem;
+  white-space: initial;
 }
 table tbody:not(:has(tr)) {
   display: none;
@@ -2284,6 +2285,7 @@ which broke styles of btn-group > .btn-check
   padding: 2px 4px;
   margin-bottom: 1rem;
   background-color: transparent;
+  color: inherit;
   box-shadow: none;
 }
 
@@ -2868,23 +2870,6 @@ body .flatpickr input.form-control {
  *
  * ---------------------------------------------------------------------
  */
-.floating-buttons {
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  z-index: 99999;
-}
-.floating-buttons #backtotop {
-  cursor: pointer;
-}
-.floating-buttons #backtotop:hover {
-  opacity: 0.8;
-}
-
-body.debug-active .floating-buttons {
-  bottom: 60px;
-}
-
 #maintenance-float {
   top: 0;
   left: 250px;
@@ -3153,6 +3138,10 @@ body.debug-active .floating-buttons {
   opacity: 0;
   visibility: hidden;
   overflow: hidden;
+}
+[data-glpi-form-editor-container] [data-glpi-conditions-editor-disabled] {
+  pointer-events: none;
+  cursor: wait;
 }
 
 .form-editor {
@@ -3599,6 +3588,9 @@ div:has(> [data-glpi-form-editor-section-details].d-none) {
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
+.form-renderer [data-glpi-form-renderer-question] {
+  scroll-margin-top: calc(var(--glpi-contextbar-height) + 16px);
+}
 .form-renderer [data-glpi-form-renderer-question]:has(select.is-invalid) .select2-container--default .select2-selection {
   border-color: var(--tblr-form-invalid-border-color) !important;
 }
@@ -3617,7 +3609,7 @@ div:has(> [data-glpi-form-editor-section-details].d-none) {
   top: unset;
 }
 .form-renderer [data-glpi-form-renderer-section] {
-  scroll-margin-top: 72px;
+  scroll-margin-top: calc(var(--glpi-contextbar-height) + 16px);
 }
 
 /*!

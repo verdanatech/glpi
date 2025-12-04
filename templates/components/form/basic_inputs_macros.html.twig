@@ -137,13 +137,24 @@
         'step': 1,
     }|merge(options) %}
 
+    {% if options.decimals is not defined and not options.readonly|default(false) and not options.disabled|default(false) %}
+        {# Automatically define the decimal count based on the configured step. #}
+        {% set decimals_part = options.step|split('.') %}
+        {% set decimals = decimals_part[1] is defined ? decimals_part[1]|length : 0 %}
+        {% set options = options|merge({'decimals': decimals}) %}
+    {% endif %}
+
     {% if value == "" %}
         {% set value = (options.min is defined ? options.min : 0) %}
     {% endif %}
 
     {% if options.step != 'any' and options.step|round(0, 'floor') != options.step %}
-        {# Only format number if not a whole number #}
-        {% set value = call('Html::formatNumber', [value, true]) %}
+        {% if options.decimals is defined %}
+            {% set value = call('Html::formatNumber', [value, true, options.decimals]) %}
+        {% else %}
+            {# Only format number if not a whole number #}
+            {% set value = call('Html::formatNumber', [value, true]) %}
+        {% endif %}
     {% endif %}
 
     {{ _self.input(name, value, options|merge({'type': 'number'})) }}
@@ -220,8 +231,11 @@
         'clearable': false,
         'input_addclass': '',
         'readonly': false,
+        'disabled': false,
         'maybeempty': false,
     }|merge(options) %}
+
+    {% set editable = not options.readonly and not options.disabled %}
 
     {% set options = {
         'id': name|safe_dom_id ~ '_' ~ options.rand
@@ -248,7 +262,7 @@
         {% endif %}
     {% endif %}
 
-    <div class="btn-group flex-grow-1 flatpickr d-flex" id="{{ options.id }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Enter or select a date') }}">
+    <div class="btn-group flex-grow-1 flatpickr d-flex" id="{{ options.id }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ editable ? __('Enter or select a date') : _n('Date', 'Dates', 1) }}">
         {{ _self.input(name, value, options|merge({
             'type': 'text',
             'id': options.id ~ '_input',
@@ -257,7 +271,7 @@
             'clearable': false
         })) }}
 
-        {% if not options.readonly %}
+        {% if editable %}
             {% set calendar_icon = options.enableTime ? 'ti ti-calendar-time' : 'ti ti-calendar' %}
             <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle>
                 <i class="{{ calendar_icon }}"></i>
@@ -272,32 +286,34 @@
         {% endif %}
     </div>
 
-    {% set locale = get_current_locale() %}
-    {% set date_format = options.enableTime ? 'Y-m-d H:i:S' : 'Y-m-d' %}
-    {% set alt_format = call('Toolbox::getDateFormat', ['js']) ~ (options.enableTime ? ' H:i:S' : '') %}
-    <script>
-        $(function() {
-            $("#{{ options.id|e('css')|e('js') }}").flatpickr({
-                wrap: true,
-                altInput: true,
-                dateFormat: '{{ date_format|e('js') }}',
-                altFormat: '{{ alt_format|e('js') }}',
-                enableTime: {{ options.enableTime ? "true" : "false" }},
-                enableSeconds: {{ options.enableTime ? "true" : "false" }},
-                weekNumbers: true,
-                time_24hr: true,
-                allowInput: {{ options.readonly ? 'false' : 'true' }},
-                clickOpens: {{ options.readonly ? 'false' : 'true' }},
-                locale: getFlatPickerLocale("{{ locale['language']|e('js') }}", "{{ locale['region']|e('js') }}"),
-                onClose(dates, currentdatestring, picker) {
-                    picker.setDate(picker.altInput.value, true, picker.config.altFormat)
-                },
-                plugins: [
-                    CustomFlatpickrButtons()
-                ]
+    {% if editable %}
+        {% set locale = get_current_locale() %}
+        {% set date_format = options.enableTime ? 'Y-m-d H:i:S' : 'Y-m-d' %}
+        {% set alt_format = call('Toolbox::getDateFormat', ['js']) ~ (options.enableTime ? ' H:i:S' : '') %}
+        <script>
+            $(function() {
+                $("#{{ options.id|e('css')|e('js') }}").flatpickr({
+                    wrap: true,
+                    altInput: true,
+                    dateFormat: '{{ date_format|e('js') }}',
+                    altFormat: '{{ alt_format|e('js') }}',
+                    enableTime: {{ options.enableTime ? "true" : "false" }},
+                    enableSeconds: {{ options.enableTime ? "true" : "false" }},
+                    weekNumbers: true,
+                    time_24hr: true,
+                    allowInput: {{ options.readonly ? 'false' : 'true' }},
+                    clickOpens: {{ options.readonly ? 'false' : 'true' }},
+                    locale: getFlatPickerLocale("{{ locale['language']|e('js') }}", "{{ locale['region']|e('js') }}"),
+                    onClose(dates, currentdatestring, picker) {
+                        picker.setDate(picker.altInput.value, true, picker.config.altFormat)
+                    },
+                    plugins: [
+                        CustomFlatpickrButtons()
+                    ]
+                });
             });
-        });
-    </script>
+        </script>
+    {% endif %}
 {% endmacro %}
 
 

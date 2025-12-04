@@ -47,13 +47,25 @@ abstract class CommonDropdown extends CommonDBTM
     // From CommonDBTM
     public $dohistory                   = true;
 
-    // For delete operation (entity will overload this value)
+    /**
+     * For delete operation (entity will overload this value)
+     *
+     * @var bool
+     */
     public $must_be_replace = false;
 
-    //Menu & navigation
+    /**
+     * Menu & navigation
+     *
+     * @var bool
+     */
     public $display_dropdowntitle  = true;
 
-    //This dropdown can be translated
+    /**
+     * Flag to determine whether dropdown can be translated.
+     *
+     * @var bool
+     */
     public $can_be_translated = true;
 
     public static $rightname = 'dropdown';
@@ -585,6 +597,8 @@ abstract class CommonDropdown extends CommonDBTM
     /**
      * Report if a dropdown have Child
      * Used to (dis)allow delete action
+     *
+     * @return bool
      **/
     public function haveChildren()
     {
@@ -597,6 +611,8 @@ abstract class CommonDropdown extends CommonDBTM
      * And propose a value to replace
      *
      * since 11.0.0 The `$target` parameter has been removed and its value is automatically computed.
+     *
+     * @return bool
      */
     public function showDeleteConfirmForm()
     {
@@ -667,6 +683,8 @@ abstract class CommonDropdown extends CommonDBTM
         echo "</td></tr></table>\n";
         Html::closeForm();
         echo "</div>";
+
+        return true;
     }
 
 
@@ -908,8 +926,10 @@ abstract class CommonDropdown extends CommonDBTM
     /**
      * Get links to Faq
      *
-     * @param $withname  boolean  also display name ? (false by default)
-     **/
+     * @param bool $withname also display name ? (false by default)
+     *
+     * @return string
+     */
     public function getLinks($withname = false)
     {
         global $CFG_GLPI;

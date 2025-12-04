@@ -35,8 +35,10 @@
 
 namespace Glpi\Api\HL;
 
+use Closure;
 use Glpi\Api\HL\Doc as Doc;
 use Glpi\Debug\Profiler;
+use GraphQL\Type\Definition\ListOfType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 use Throwable;
@@ -57,6 +59,9 @@ final class GraphQLGenerator
         return str_replace([' ', '-'], ['', '_'], $type_name);
     }
 
+    /**
+     * @return string
+     */
     public function getSchema()
     {
         Profiler::getInstance()->start('GraphQLGenerator::loadTypes', Profiler::CATEGORY_HLAPI);
@@ -87,7 +92,7 @@ final class GraphQLGenerator
         return $schema_str;
     }
 
-    private function writeType($type_name, ObjectType|callable $type): string
+    private function writeType(string $type_name, ObjectType|callable $type): string
     {
         $type_name = $this->normalizeTypeName($type_name);
         $type_str = "type $type_name {\n";
@@ -118,7 +123,7 @@ final class GraphQLGenerator
         return $type_str;
     }
 
-    private function loadTypes()
+    private function loadTypes(): void
     {
         $component_schemas = OpenAPIGenerator::getComponentSchemas($this->api_version);
         foreach ($component_schemas as $schema_name => $schema) {
@@ -173,6 +178,13 @@ final class GraphQLGenerator
         ]);
     }
 
+    /**
+     * @param array $property
+     * @param string|null $name
+     * @param string $prefix
+     *
+     * @return Type|ListOfType<Type|Closure>|Closure|null
+     */
     private function convertRESTPropertyToGraphQLType(array $property, ?string $name = null, string $prefix = '')
     {
         $type = $property['type'] ?? 'string';
@@ -191,7 +203,7 @@ final class GraphQLGenerator
         if ($type === Doc\Schema::TYPE_ARRAY) {
             $items = $property['items'];
             $graphql_type = $this->convertRESTPropertyToGraphQLType($items, $name, $prefix);
-            return Type::listOf($graphql_type);
+            return new ListOfType($graphql_type);
         }
 
         if ($type === Doc\Schema::TYPE_OBJECT) {
@@ -211,5 +223,6 @@ final class GraphQLGenerator
                 'fields' => $fields,
             ]);
         }
+        return null;
     }
 }

@@ -1050,7 +1050,7 @@ final class SQLProvider implements SearchProviderInterface
                             Problem::getType(),
                             'problems_id',
                             "glpi_problems_users",
-                            "glpi_problems_groups"
+                            "glpi_groups_problems"
                         )),
                     ],
                 ];
@@ -1142,7 +1142,17 @@ final class SQLProvider implements SearchProviderInterface
         return $dbi->analyseCrit($criteria);
     }
 
-    public static function getWhereCriteria($nott, $itemtype, $ID, $searchtype, $val, $meta = 0): ?array
+    /**
+     * @param bool $nott
+     * @param class-string<CommonDBTM> $itemtype
+     * @param int $ID
+     * @param string $searchtype
+     * @param string|int $val
+     * @param bool $meta
+     *
+     * @return ?array
+     */
+    public static function getWhereCriteria($nott, $itemtype, $ID, $searchtype, $val, $meta = false): ?array
     {
         global $DB;
 
@@ -4947,7 +4957,7 @@ final class SQLProvider implements SearchProviderInterface
             if (isset($data['search']['savedsearches_id'])) {
                 SavedSearch::updateExecutionTime(
                     (int) $data['search']['savedsearches_id'],
-                    $DBread->execution_time
+                    (int) $DBread->execution_time
                 );
             }
 
@@ -5449,11 +5459,12 @@ final class SQLProvider implements SearchProviderInterface
             ]
         );
 
+        $opt_itemtype = $so['itemtype'] ?? (isset($so['table']) ? getItemTypeForTable($so['table']) : null);
+
         if (isset($so["table"])) {
             $table        = $so["table"];
             $field        = $so["field"];
             $linkfield    = $so["linkfield"];
-            $opt_itemtype = $so['itemtype'] ?? getItemTypeForTable($table);
 
             /// TODO try to clean all specific cases using SpecificToDisplay
 
@@ -5688,30 +5699,33 @@ final class SQLProvider implements SearchProviderInterface
                     }
                     break;
                 case $table . ".completename":
-                    $completenames = [];
-                    for ($k = 0; $k < $data[$ID]['count']; $k++) {
-                        $completename = !empty($data[$ID][$k]['trans_completename'])
-                            ? $data[$ID][$k]['trans_completename']
-                            : $data[$ID][$k]['name'];
+                    if (($so["datatype"] ?? "") != "itemlink") {
+                        $completenames = [];
+                        for ($k = 0; $k < $data[$ID]['count']; $k++) {
+                            $completename = !empty($data[$ID][$k]['trans_completename'])
+                                ? $data[$ID][$k]['trans_completename']
+                                : $data[$ID][$k]['name'];
 
-                        if (empty($completename)) {
-                            continue;
+                            if (empty($completename)) {
+                                continue;
+                            }
+
+                            $completename = (new SanitizedStringsDecoder())->decodeHtmlSpecialCharsInCompletename($completename);
+
+                            if (
+                                $itemtype != $opt_itemtype
+                                && !$_SESSION['glpiuse_flat_dropdowntree_on_search_result'] //user doesn't want the completename
+                            ) {
+                                $split_name = explode(">", $completename);
+                                $completenames[] = htmlescape(trim(end($split_name)));
+                            } else {
+                                $completenames[] = htmlescape($completename);
+                            }
                         }
 
-                        $completename = (new SanitizedStringsDecoder())->decodeHtmlSpecialCharsInCompletename($completename);
-
-                        if (
-                            $itemtype != $opt_itemtype
-                            && !$_SESSION['glpiuse_flat_dropdowntree_on_search_result'] //user doesn't want the completename
-                        ) {
-                            $split_name = explode(">", $completename);
-                            $completenames[] = htmlescape(trim(end($split_name)));
-                        } else {
-                            $completenames[] = htmlescape($completename);
-                        }
+                        return implode(Search::LBBR, $completenames);
                     }
-
-                    return implode(Search::LBBR, $completenames);
+                    break;
 
                 case "glpi_documenttypes.icon":
                     if (!empty($data[$ID][0]['name'])) {
@@ -6478,9 +6492,19 @@ final class SQLProvider implements SearchProviderInterface
                                 $name = sprintf(__('%1$s (%2$s)'), $name, $data[$ID][$k]['id']);
                             }
                             if (isset($field) && $field === 'completename') {
-                                $name = (new SanitizedStringsDecoder())->decodeHtmlSpecialCharsInCompletename($data[$ID][$k]['name']);
+                                $name = (new SanitizedStringsDecoder())->decodeHtmlSpecialCharsInCompletename(
+                                    !empty($data[$ID][$k]['trans_completename'])
+                                        ? $data[$ID][$k]['trans_completename']
+                                        : $data[$ID][$k]['name']
+                                );
                                 $chunks = \explode(' > ', $name);
                                 $completename = '';
+                                if (
+                                    $itemtype != $opt_itemtype
+                                    && !$_SESSION['glpiuse_flat_dropdowntree_on_search_result'] //user doesn't want the completename
+                                ) {
+                                    $chunks = \array_slice($chunks, -1);
+                                }
                                 foreach ($chunks as $key => $element_name) {
                                     $class = $key === array_key_last($chunks) ? '' : 'class="text-muted"';
                                     $separator = $key === array_key_last($chunks) ? '' : ' &gt; ';

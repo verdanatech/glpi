@@ -51,6 +51,7 @@ use Glpi\Toolbox\ArrayNormalizer;
  **/
 class Profile extends CommonDBTM implements LinkableToTilesInterface
 {
+    /** @use Clonable<static> */
     use Clonable;
 
     // Specific ones
@@ -896,13 +897,9 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                             $fn_get_rights(NetworkName::class, 'central', [
                                 'label' => __('Internet'),
                             ]),
-                            $fn_get_rights(DeviceSimcard::class, 'central', [
+                            $fn_get_rights(Item_DeviceSimcard::class, 'central', [
                                 'label' => __('Simcard PIN/PUK'),
                                 'field' => 'devicesimcard_pinpuk',
-                                'rights'    => [
-                                    READ    => __('Read'),
-                                    UPDATE  => __('Update'),
-                                ],
                             ]),
                         ],
                     ],
@@ -1059,6 +1056,15 @@ class Profile extends CommonDBTM implements LinkableToTilesInterface
                                 'scope'     => 'entity',
                             ]),
                             $fn_get_rights(Grid::class, 'central', [
+                                'rights'    => [
+                                    READ   => __('Read'),
+                                    UPDATE => __('Update'),
+                                    CREATE => __('Create'),
+                                    PURGE  => [
+                                        'short' => __('Purge'),
+                                        'long'  => _x('button', 'Delete permanently'),
+                                    ],
+                                ],
                                 'label'     => __('All dashboards'),
                                 'field'     => 'dashboard',
                                 'scope'     => 'entity',

@@ -48,6 +48,7 @@ use Glpi\Socket;
 class Computer extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface, StateInterface
 {
     use DCBreadcrumb;
+    /** @use Clonable<static> */
     use Clonable;
     use Inventoriable;
     use Glpi\Features\State;
@@ -65,7 +66,11 @@ class Computer extends CommonDBTM implements AssignableItemInterface, DCBreadcru
         'Item_OperatingSystem',
     ];
     // Specific ones
-    ///Device container - format $device = array(ID,"device type","ID in device table","specificity value")
+    /**
+     * Device container - format $device = array(ID,"device type","ID in device table","specificity value")
+     *
+     * @var array
+     */
     public $devices                     = [];
 
     public static $rightname                   = 'computer';

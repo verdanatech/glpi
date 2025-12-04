@@ -253,8 +253,11 @@
                                             visibility_dropdown_field,
                                             __('Conditional visibility for submit button'),
                                             {
-                                                'is_horizontal' : false,
-                                                'full_width'    : true,
+                                                'is_horizontal'    : false,
+                                                'full_width'       : true,
+                                                'add_field_attribs': {
+                                                    'data-glpi-form-editor-submit-button-conditional-visibility-field': '',
+                                                },
                                             }
                                         ) }}
 
@@ -411,6 +414,10 @@
     {# Block has conditions modal #}
     {{ include('pages/admin/form/item_has_conditions_for_deletion_modal.html.twig') }}
     {{ include('pages/admin/form/item_has_conditions_for_new_question_type_modal.html.twig') }}
+    {{ include('pages/admin/form/section_element_has_conditions_for_deletion_modal.html.twig') }}
+
+    {# Delete non-empty section modal #}
+    {{ include('pages/admin/form/delete_non_empty_section_modal.html.twig') }}
 </form>
 
 {% if can_update %}

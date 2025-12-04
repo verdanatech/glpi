@@ -80,14 +80,15 @@ interface KanbanInterface
      */
     public static function getAllForKanban($active = true, $current_id = -1);
 
+
     /**
      * Get a list of all valid columns (without items) for the column based on the specified column field.
      * @since 9.5.0
-     * @param string $column_field The field used to represent columns (Ex: projectstates_id).
+     * @param string|null $column_field The field used to represent columns (Ex: projectstates_id).
      *       If no field is specified, all columns are returned.
-     * @param array $column_ids Array of column IDs to limit the result. These IDs are values of the column_field in the DB.
-     * @return array Array of columns in the format:
-     *       column_field => [id => [name, header_color, etc]]
+     * @param array<int> $column_ids Array of column IDs to limit the result. These IDs are values of the column_field in the DB.
+     * @param bool $get_default If true, the default columns are returned in addition to the requested ones in $column_ids.
+     * @return array<int, array{id: int|string, name: string, header_color: string, header_fg_color?: string, color_class?: string, drop_only?: bool}> Array of columns.
      */
     public static function getAllKanbanColumns($column_field = null, $column_ids = [], $get_default = false);
 
@@ -124,9 +125,25 @@ interface KanbanInterface
      */
     public function canOrderKanbanCard($ID);
 
+    /**
+     * @param class-string<\CommonDBTM> $itemtype
+     *
+     * @return array
+     */
     public static function getKanbanPluginFilters($itemtype);
 
+    /**
+     * @param bool $full
+     *
+     * @return string
+     */
     public static function getGlobalKanbanUrl(bool $full = true);
 
+    /**
+     * @param int $items_id
+     * @param bool $full
+     *
+     * @return string
+     */
     public function getKanbanUrlWithID(int $items_id, bool $full = true);
 }

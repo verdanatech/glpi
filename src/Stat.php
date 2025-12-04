@@ -1059,7 +1059,7 @@ class Stat extends CommonGLPI
                 if ($value == $value2) {
                     $categories = [$value];
                 } else {
-                    $categories = getSonsOf("glpi_itilcategories", $value);
+                    $categories = getSonsOf("glpi_itilcategories", (int) $value);
                 }
                 $WHERE["$table.itilcategories_id"] = $categories;
                 break;
@@ -1068,7 +1068,7 @@ class Stat extends CommonGLPI
                 if ($value == $value2) {
                     $locations = [$value];
                 } else {
-                    $locations = getSonsOf('glpi_locations', $value);
+                    $locations = getSonsOf('glpi_locations', (int) $value);
                 }
                 $WHERE["$table.locations_id"] = $locations;
                 break;
@@ -1080,7 +1080,7 @@ class Stat extends CommonGLPI
                 if ($value == $value2) {
                     $groups = [$value];
                 } else {
-                    $groups = getSonsOf("glpi_groups", $value);
+                    $groups = getSonsOf("glpi_groups", (int) $value);
                 }
 
                 $LEFTJOIN  = $LEFTJOINGROUP;
@@ -1650,7 +1650,7 @@ class Stat extends CommonGLPI
 
             $header_num = 1;
             if ($is_html_output) {
-                echo $output::showHeader($end_display - $start + 1, 2, 1);
+                echo $output::showHeader($end_display - $start + 1, 2, true);
                 echo $output::showNewLine();
                 echo $output::showHeaderItem(_sn('Associated element', 'Associated elements', $numrows), $header_num);
                 if ($view_entities) {

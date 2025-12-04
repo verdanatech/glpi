@@ -330,7 +330,7 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
         return FormCloneHelper::getInstance()->prepareQuestionInputForClone($input);
     }
 
-    private function prepareInput($input): array
+    private function prepareInput(array $input): array
     {
         $is_creating = ($input['id'] ?? 0) === 0;
 
@@ -400,6 +400,9 @@ final class Question extends CommonDBChild implements BlockInterface, Conditiona
                 }
             }
         }
+
+        $input = $this->removeSavedConditionsIfAlwaysVisible($input);
+        $input = $this->removeSavedConditionsIfNoValidation($input);
 
         return $input;
     }

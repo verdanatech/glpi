@@ -334,7 +334,9 @@ class DropdownTranslation extends CommonDBChild
      * Display all translated field for a dropdown
      *
      * @param CommonDropdown $item  A Dropdown item
-     **/
+     *
+     * @return void
+     */
     public static function showTranslations(CommonDropdown $item)
     {
         global $DB;
@@ -571,7 +573,9 @@ TWIG, $twig_params);
                 // The field is already translated in this language
                 if (count($iterator)) {
                     $current = $iterator->current();
-                    return $current['value'];
+                    if ($current['value'] !== null && $current['value'] !== "") {
+                        return $current['value'];
+                    }
                 }
             }
             // Get the value coming from the dropdown table
@@ -582,11 +586,13 @@ TWIG, $twig_params);
             ]);
             if (count($iterator)) {
                 $current = $iterator->current();
-                return $current[$field];
+                if ($current[$field] !== null && $current[$field] !== "") {
+                    return $current[$field];
+                }
             }
         }
 
-        return "";
+        return $value;
     }
 
     /**

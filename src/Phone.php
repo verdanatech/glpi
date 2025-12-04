@@ -46,6 +46,7 @@ use Glpi\Socket;
  **/
 class Phone extends CommonDBTM implements AssignableItemInterface, StateInterface
 {
+    /** @use Clonable<static> */
     use Clonable;
     use Inventoriable;
     use Glpi\Features\State;
@@ -538,7 +539,7 @@ class Phone extends CommonDBTM implements AssignableItemInterface, StateInterfac
 
 
     /**
-     * @param $itemtype
+     * @param ?class-string<CommonDBTM> $itemtype
      *
      * @return array
      */

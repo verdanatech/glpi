@@ -50,8 +50,8 @@ final class FakeProvider extends Provider
 {
     private static function getObscureNumberForString(string $string, int $max = 100): int
     {
-        // xxh3 should be the fastest hashing algorithm in PHP as of 8.1
-        return (int) abs((int) hexdec(hash('xxh3', $string)) % $max);
+        // xxh32 is pretty fast and produces a 8 bytes string that has an hexadecimal integer representation lower than `PHP_INT_MAX`
+        return (int) abs((int) hexdec(hash('xxh32', $string)) % $max);
     }
 
     /**
@@ -204,7 +204,18 @@ final class FakeProvider extends Provider
             default => throw new InvalidArgumentException("Invalid case: $case"),
         };
 
-        $icon = Ticket::getStatusIcon($case);
+        $icon = match ($case) {
+            'notold' => Ticket::getIcon(),
+            'late' => 'ti ti-clock',
+            'waiting_validation' => 'ti ti-eye',
+            'incoming' => Ticket::getIcon(),
+            'waiting' => 'ti ti-player-pause-filled',
+            'assigned' => 'ti ti-users',
+            'planned' => 'ti ti-calendar',
+            'solved' => 'ti ti-checkbox',
+            'closed' => 'ti ti-archive',
+            default => throw new InvalidArgumentException("Invalid case: $case"),
+        };
 
         return [
             'number'     => $number,

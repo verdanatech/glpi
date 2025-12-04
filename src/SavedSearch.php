@@ -51,6 +51,7 @@ use function Safe\preg_replace;
  **/
 class SavedSearch extends CommonDBTM implements ExtraVisibilityCriteria
 {
+    /** @use Clonable<static> */
     use Clonable;
 
     public static $rightname               = 'bookmark_public';
@@ -266,6 +267,12 @@ class SavedSearch extends CommonDBTM implements ExtraVisibilityCriteria
                  || $this->fields['users_id'] == Session::getLoginUserID());
         }
         return parent::canCreateItem();
+    }
+
+    public static function canView(): bool
+    {
+        // Always allow access, as user should always be able to see its private searches.
+        return true;
     }
 
     public function canViewItem(): bool
@@ -1225,6 +1232,17 @@ class SavedSearch extends CommonDBTM implements ExtraVisibilityCriteria
     public static function getIcon()
     {
         return "ti ti-bookmarks";
+    }
+
+    public static function getPostFormAction(string $form_action, bool $action_success): ?string
+    {
+        // For simplified interface users, always redirect back to the search page
+        if ($form_action === 'add' && $action_success && Session::getCurrentInterface() === 'helpdesk') {
+            return 'back';
+        }
+
+        // Use parent behavior for all other cases
+        return parent::getPostFormAction($form_action, $action_success);
     }
 
     public function getCloneRelations(): array

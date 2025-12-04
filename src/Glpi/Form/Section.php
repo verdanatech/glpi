@@ -137,12 +137,14 @@ final class Section extends CommonDBChild implements ConditionableVisibilityInte
         return parent::prepareInputForUpdate($input);
     }
 
-    private function prepareInput($input): array
+    private function prepareInput(array $input): array
     {
         if (isset($input['_conditions'])) {
             $input['conditions'] = json_encode($input['_conditions']);
             unset($input['_conditions']);
         }
+
+        $input = $this->removeSavedConditionsIfAlwaysVisible($input);
 
         return $input;
     }

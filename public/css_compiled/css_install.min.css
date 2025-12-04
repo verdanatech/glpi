@@ -375,6 +375,7 @@ body.in_modal {
 
 table.table thead th {
   font-size: 0.625rem;
+  white-space: initial;
 }
 table tbody:not(:has(tr)) {
   display: none;

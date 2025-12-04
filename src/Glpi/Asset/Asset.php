@@ -72,6 +72,7 @@ abstract class Asset extends CommonDBTM implements AssignableItemInterface, Stat
         post_updateItem as post_updateItemFromAssignableItem;
         canView as canViewFromAssignableItem;
     }
+    /** @use Clonable<static> */
     use Clonable;
     use \Glpi\Features\State;
     use Inventoriable;
@@ -152,7 +153,7 @@ abstract class Asset extends CommonDBTM implements AssignableItemInterface, Stat
             'id'        => '4',
             'table'     => $asset_type_class::getTable(),
             'field'     => 'name',
-            'name'      => $asset_type_class::getTypeName(1),
+            'name'      => $asset_type_class::getFieldLabel(),
             'datatype'  => 'dropdown',
             // Search class could not be able to retrieve the concrete type class when using `getItemTypeForTable()`
             // so we have to define an `itemtype` here.
@@ -163,7 +164,7 @@ abstract class Asset extends CommonDBTM implements AssignableItemInterface, Stat
             'id'        => '40',
             'table'     => $asset_model_class::getTable(),
             'field'     => 'name',
-            'name'      => $asset_model_class::getTypeName(1),
+            'name'      => $asset_model_class::getFieldLabel(),
             'datatype'  => 'dropdown',
             // Search class could not be able to retrieve the concrete model class when using `getItemTypeForTable()`
             // so we have to define an `itemtype` here.
@@ -352,6 +353,9 @@ abstract class Asset extends CommonDBTM implements AssignableItemInterface, Stat
         return $search_options;
     }
 
+    /**
+     * @return string[]
+     */
     public function getUnallowedFieldsForUnicity()
     {
         $not_allowed = parent::getUnallowedFieldsForUnicity();

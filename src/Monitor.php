@@ -48,6 +48,7 @@ use Glpi\Features\StateInterface;
 class Monitor extends CommonDBTM implements AssignableItemInterface, DCBreadcrumbInterface, StateInterface
 {
     use DCBreadcrumb;
+    /** @use Clonable<static> */
     use Clonable;
     use Inventoriable;
     use Glpi\Features\State;
@@ -514,7 +515,7 @@ class Monitor extends CommonDBTM implements AssignableItemInterface, DCBreadcrum
     }
 
     /**
-     * @param $itemtype
+     * @param class-string<CommonDBTM> $itemtype
      *
      * @return array
      */

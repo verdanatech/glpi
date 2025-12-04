@@ -48,6 +48,7 @@ use function Safe\ob_start;
  **/
 class Consumable extends CommonDBChild
 {
+    /** @use Clonable<static> */
     use Clonable;
 
     // From CommonDBTM
@@ -571,6 +572,11 @@ class Consumable extends CommonDBChild
         ]);
     }
 
+    /**
+     * @param User $user
+     *
+     * @return void
+     */
     public static function showForUser(User $user)
     {
         global $DB;

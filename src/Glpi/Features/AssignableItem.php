@@ -109,10 +109,13 @@ trait AssignableItem
     public static function getAssignableVisiblityCriteria(
         ?string $item_table_reference = null
     ): array {
-        $criteria = Session::getCurrentInterface() === "central"
-            ? self::getAssignableVisiblityCriteriaForCentral($item_table_reference)
-            : self::getAssignableVisiblityCriteriaForHelpdesk($item_table_reference)
-        ;
+        if (Session::isCron() || Session::isRightChecksDisabled()) {
+            $criteria = [new QueryExpression('1')];
+        } elseif (Session::getCurrentInterface() === "central") {
+            $criteria = self::getAssignableVisiblityCriteriaForCentral($item_table_reference);
+        } else {
+            $criteria = self::getAssignableVisiblityCriteriaForHelpdesk($item_table_reference);
+        }
 
         // Add another layer to the array to prevent losing duplicates keys if the
         // result of the function is merged with another array
@@ -335,21 +338,35 @@ trait AssignableItem
         $this->loadGroupFields();
     }
 
-    /** @see AssignableItemInterface::post_addItem() */
+    /**
+     * @see AssignableItemInterface::post_addItem()
+     *
+     * @return void
+     */
     public function post_addItem()
     {
         parent::post_addItem();
         $this->updateGroupFields();
     }
 
-    /** @see AssignableItemInterface::post_updateItem() */
+    /**
+     * @see AssignableItemInterface::post_updateItem()
+     *
+     * @param bool $history
+     *
+     *@return void
+     */
     public function post_updateItem($history = true)
     {
         parent::post_updateItem($history);
         $this->updateGroupFields();
     }
 
-    /** @see AssignableItemInterface::getEmpty() */
+    /**
+     * @see AssignableItemInterface::getEmpty()
+     *
+     * @return bool
+     */
     public function getEmpty()
     {
         if (!parent::getEmpty()) {
@@ -362,7 +379,7 @@ trait AssignableItem
         return true;
     }
 
-    private function loadGroupFields()
+    private function loadGroupFields(): void
     {
         global $DB;
 
@@ -386,7 +403,11 @@ trait AssignableItem
         }
     }
 
-    /** @see AssignableItemInterface::post_getFromDB() */
+    /**
+     * @see AssignableItemInterface::post_getFromDB()
+     *
+     * @return void
+     */
     public function post_getFromDB()
     {
         $this->loadGroupFields();

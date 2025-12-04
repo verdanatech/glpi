@@ -48,6 +48,7 @@ use Glpi\Features\Clonable;
  */
 class ConsumableItem extends CommonDBTM implements AssignableItemInterface
 {
+    /** @use Clonable<static> */
     use Clonable;
 
     use AssetImage;
@@ -316,6 +317,11 @@ class ConsumableItem extends CommonDBTM implements AssignableItemInterface
         return $tab;
     }
 
+    /**
+     * @param string $name
+     *
+     * @return array
+     */
     public static function cronInfo($name)
     {
         return ['description' => __('Send alarms on consumables')];
@@ -457,6 +463,9 @@ class ConsumableItem extends CommonDBTM implements AssignableItemInterface
         return $cron_status;
     }
 
+    /**
+     * @return array
+     */
     public function getEvents()
     {
         return ['alert' => __('Send alarms on consumables')];

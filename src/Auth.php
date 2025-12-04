@@ -78,10 +78,10 @@ class Auth extends CommonGLPI
     public $user_found = false;
 
     /**
-     * The user's email found during the validation part of the login workflow.
-     * @var ?string
+     * The user's emails found during the validation part of the login workflow.
+     * @var string[]
      */
-    private ?string $user_email = null;
+    private array $user_emails = [];
 
     /**
      * The authentication method determined during the validation part of the login workflow.
@@ -498,15 +498,11 @@ class Auth extends CommonGLPI
 
                 // Update password if needed
                 if (self::needRehash($password_db)) {
-                    $input = [
-                        'id' => $row['id'],
-                    ];
-                    // Set glpiID to allow password update
-                    $_SESSION['glpiID'] = $input['id'];
-                    $input['password'] = $password;
-                    $input['password2'] = $password;
-                    $user = new User();
-                    $user->update($input);
+                    $DB->update(
+                        User::getTable(),
+                        ['password' => password_hash($password, PASSWORD_DEFAULT)],
+                        ['id' => $row['id']]
+                    );
                 }
                 $this->user->getFromDBByCrit(['id' => $row['id']]);
                 $this->extauth                  = 0;
@@ -688,6 +684,7 @@ class Auth extends CommonGLPI
 
                         if (self::checkPassword($cookie_token, $hash)) {
                             $this->user->fields['name'] = $user->fields['name'];
+                            $user->update(['id' => $user->getID(), 'last_login' => $_SESSION["glpi_currenttime"]]);
                             return true;
                         } else {
                             $this->addToError(__("Invalid cookie data"));
@@ -824,7 +821,7 @@ class Auth extends CommonGLPI
                 $user_dn                           = false;
 
                 if (array_key_exists('_useremails', $this->user->fields)) {
-                    $this->user_email = $this->user->fields['_useremails'];
+                    $this->user_emails = $this->user->fields['_useremails'];
                 }
 
                 $ldapservers = [];
@@ -1067,10 +1064,14 @@ class Auth extends CommonGLPI
             } else {
                 if ($this->user_present) {
                     // Add the user e-mail if present
-                    if (isset($this->user_email)) {
-                        $this->user->fields['_useremails'] = $this->user_email;
+                    if (count($this->user_emails) > 0) {
+                        $this->user->fields['_useremails'] = $this->user_emails;
                     }
-                    $this->user->update($this->user->fields);
+
+                    $input = $this->user->fields;
+                    unset($input['api_token'], $input['cookie_token'], $input['password_forget_token'], $input['personal_token']);
+
+                    $this->user->update($input);
                 } elseif ($CFG_GLPI["is_users_auto_add"]) {
                     // Auto add user
                     $input = $this->user->fields;
@@ -1703,6 +1704,11 @@ class Auth extends CommonGLPI
 
     /**
      * Display the authentication source dropdown for login form
+     *
+     * @param bool $display
+     * @param int $rand
+     *
+     * @return string
      */
     public static function dropdownLogin(bool $display = true, $rand = 1)
     {
@@ -1726,6 +1732,9 @@ class Auth extends CommonGLPI
         return $out;
     }
 
+    /**
+     * @return string
+     */
     public static function getIcon()
     {
         return "ti ti-login";

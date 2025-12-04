@@ -148,7 +148,7 @@ final class Comment extends CommonDBChild implements
         ];
     }
 
-    private function prepareInput($input): array
+    private function prepareInput(array $input): array
     {
         // Set parent UUID
         if (
@@ -168,6 +168,8 @@ final class Comment extends CommonDBChild implements
             $input['conditions'] = json_encode($input['_conditions']);
             unset($input['_conditions']);
         }
+
+        $input = $this->removeSavedConditionsIfAlwaysVisible($input);
 
         return $input;
     }

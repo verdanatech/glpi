@@ -73,7 +73,7 @@ final class FormDestination extends CommonDBChild implements ConditionableCreati
     }
 
     #[Override]
-    public static function getIcon()
+    public static function getIcon(): string
     {
         return "ti ti-arrow-forward";
     }
@@ -283,6 +283,8 @@ final class FormDestination extends CommonDBChild implements ConditionableCreati
             $input['conditions'] = json_encode($input['_conditions']);
             unset($input['_conditions']);
         }
+
+        $input = $this->removeSavedConditionsIfAlwaysCreated($input);
 
         return $input;
     }
