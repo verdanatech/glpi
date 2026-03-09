@@ -351,7 +351,8 @@ class Dropdown
             $link_id         = Html::cleanId("comment_link_" . $params['name'] . $params['rand']);
             $kblink_id       = Html::cleanId("kb_link_" . $params['name'] . $params['rand']);
             $breadcrumb_id   = Html::cleanId("dc_breadcrumb_" . $params['name'] . $params['rand']);
-            $options_tooltip = ['contentid' => $comment_id,
+            $options_tooltip = [
+                'contentid' => $comment_id,
                 'linkid'    => $link_id,
                 'display'   => false,
             ];
@@ -577,7 +578,8 @@ class Dropdown
                         'glpi_dropdowntranslations AS namet' => [
                             'ON' => [
                                 'namet'  => 'items_id',
-                                $table   => 'id', [
+                                $table   => 'id',
+                                [
                                     'AND' => [
                                         'namet.itemtype'  => getItemTypeForTable($table),
                                         'namet.language'  => $_SESSION['glpilanguage'],
@@ -1061,9 +1063,39 @@ HTML;
      */
     public static function getGMTValues(): array
     {
-        $elements = [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3.5, -3, -2, -1, 0,
-            '+1', '+2', '+3', '+3.5', '+4', '+4.5', '+5', '+5.5', '+6', '+6.5', '+7',
-            '+8', '+9', '+9.5', '+10', '+11', '+12', '+13',
+        $elements = [
+            -12,
+            -11,
+            -10,
+            -9,
+            -8,
+            -7,
+            -6,
+            -5,
+            -4,
+            -3.5,
+            -3,
+            -2,
+            -1,
+            0,
+            '+1',
+            '+2',
+            '+3',
+            '+3.5',
+            '+4',
+            '+4.5',
+            '+5',
+            '+5.5',
+            '+6',
+            '+6.5',
+            '+7',
+            '+8',
+            '+9',
+            '+9.5',
+            '+10',
+            '+11',
+            '+12',
+            '+13',
         ];
 
         $values = [];
@@ -1128,7 +1160,8 @@ HTML;
                 $rand = mt_rand();
             }
 
-            $options = ['name' => $name,
+            $options = [
+                'name' => $name,
                 'id'   => Html::cleanId("dropdown_" . $name . $rand),
             ];
 
@@ -2006,7 +2039,8 @@ HTML;
         } else {
             $valuename = $p['toadd'][$valuekey];
         }
-        $param = ['value'               => $p['value'],
+        $param = [
+            'value'               => $p['value'],
             'valuename'           => $valuename,
             'width'               => $p['width'],
             'on_change'           => $p['on_change'],
@@ -2050,8 +2084,8 @@ HTML;
     {
 
         $formatted_number = is_numeric($value)
-         ? Html::formatNumber($value, false, $decimals)
-         : $value;
+            ? Html::formatNumber($value, false, $decimals)
+            : $value;
 
         if (strlen($unit) == 0) {
             return $formatted_number;
@@ -2350,7 +2384,7 @@ HTML;
         }
 
         if ($param["display_emptychoice"] && !$param["multiple"]) {
-            $elements = [ 0 => $param['emptylabel'] ] + $elements;
+            $elements = [0 => $param['emptylabel']] + $elements;
         }
 
         $original_field_name = $name;
@@ -2537,10 +2571,10 @@ HTML;
             $output  .= "<div class='invisible' id='selectallbuttons_" . htmlescape($field_id) . "'>";
             $output  .= "<div class='d-flex justify-content-around p-1'>";
             $output  .= "<a class='btn btn-sm' "
-                      . "onclick=\"selectAll('" . htmlescape(jsescape($field_id)) . "');$('#" . htmlescape(jsescape($field_id)) . "').select2('close');\">$select"
-                     . "</a> ";
+                . "onclick=\"selectAll('" . htmlescape(jsescape($field_id)) . "');$('#" . htmlescape(jsescape($field_id)) . "').select2('close');\">$select"
+                . "</a> ";
             $output  .= "<a class='btn btn-sm' onclick=\"deselectAll('" . htmlescape(jsescape($field_id)) . "');\">$deselect"
-                     . "</a>";
+                . "</a>";
             $output  .= "</div></div>";
 
             $multichecksappend_varname = "multichecksappend" . preg_replace('/[^\w]/', '_', $field_id);
@@ -2660,13 +2694,14 @@ HTML;
                 echo "&nbsp;";
 
                 echo "<span class='fa fa-info pointer'"
-                 . " title=\"" . __s('Duplicate the element as many times as there are connections')
-                 . "\"><span class='sr-only'>" . __s('Duplicate the element as many times as there are connections') . "</span></span>";
+                    . " title=\"" . __s('Duplicate the element as many times as there are connections')
+                    . "\"><span class='sr-only'>" . __s('Duplicate the element as many times as there are connections') . "</span></span>";
             }
         } else {
             if ($params['management_restrict'] == 2) {
                 $rand = mt_rand();
-                $values = [MANAGEMENT_UNITARY => __('Unit management'),
+                $values = [
+                    MANAGEMENT_UNITARY => __('Unit management'),
                     MANAGEMENT_GLOBAL  => __('Global management'),
                 ];
                 Dropdown::showFromArray($params['name'], $values, [
@@ -2679,9 +2714,9 @@ HTML;
                 if (!empty($params['withtemplate'])) {
                     echo "<input type='hidden' name='is_global' value='"
                         . htmlescape($params['management_restrict']) . "'>";
-                    echo(!$params['management_restrict'] ? __s('Unit management') : __s('Global management'));
+                    echo (!$params['management_restrict'] ? __s('Unit management') : __s('Global management'));
                 } else {
-                    echo(!$params['value'] ? __s('Unit management') : __s('Global management'));
+                    echo (!$params['value'] ? __s('Unit management') : __s('Global management'));
                 }
             }
         }
@@ -2804,8 +2839,8 @@ HTML;
         $rand = mt_rand();
         Dropdown::showFromArray('display_type', $values, ['rand' => $rand]);
         echo "<button type='submit' name='export' class='btn' "
-             . " title=\"" . _sx('button', 'Export') . "\">"
-             . "<i class='ti ti-device-floppy'></i><span class='sr-only'>" . _sx('button', 'Export') . "<span>";
+            . " title=\"" . _sx('button', 'Export') . "\">"
+            . "<i class='ti ti-device-floppy'></i><span class='sr-only'>" . _sx('button', 'Export') . "<span>";
     }
 
 
@@ -2857,7 +2892,8 @@ HTML;
         return self::showFromArray(
             'glpilist_limit',
             $values,
-            ['on_change' => $onchange,
+            [
+                'on_change' => $onchange,
                 'value'     => $list_limit,
                 'display'   => $display,
             ]
@@ -3031,8 +3067,10 @@ HTML;
                             "$table.completename" => ['LIKE', $search],
                         ],
                     ];
-                    if ($item->isField('code')) {
-                        $swhere["OR"]["$table.code"] = ['LIKE', $search];
+                    if (Session::getCurrentInterface() === 'central') {
+                        if ($item->isField('code')) {
+                            $swhere["OR"]["$table.code"] = ['LIKE', $search];
+                        }
                     }
                     if ($item->isField('alias')) {
                         $swhere["OR"]["$table.alias"] = ['LIKE', $search];
@@ -3123,7 +3161,8 @@ HTML;
                 $ljoin['glpi_dropdowntranslations AS namet'] = [
                     'ON' => [
                         'namet'  => 'items_id',
-                        $table   => 'id', [
+                        $table   => 'id',
+                        [
                             'AND' => [
                                 'namet.itemtype'  => $post['itemtype'],
                                 'namet.language'  => $_SESSION['glpilanguage'],
@@ -3138,7 +3177,8 @@ HTML;
                 $ljoin['glpi_dropdowntranslations AS namet2'] = [
                     'ON' => [
                         'namet2' => 'items_id',
-                        $table   => 'id', [
+                        $table   => 'id',
+                        [
                             'AND' => [
                                 'namet2.itemtype' => $post['itemtype'],
                                 'namet2.language' => $_SESSION['glpilanguage'],
@@ -3153,7 +3193,8 @@ HTML;
                 $ljoin['glpi_dropdowntranslations AS commentt'] = [
                     'ON' => [
                         'commentt'  => 'items_id',
-                        $table      => 'id', [
+                        $table      => 'id',
+                        [
                             'AND' => [
                                 'commentt.itemtype'  => $post['itemtype'],
                                 'commentt.language'  => $_SESSION['glpilanguage'],
@@ -3278,13 +3319,13 @@ HTML;
 
                                             if (isset($item->fields["comment"])) {
                                                 $addcomment
-                                                = DropdownTranslation::getTranslatedValue(
-                                                    $ID,
-                                                    $post['itemtype'],
-                                                    'comment',
-                                                    $_SESSION['glpilanguage'],
-                                                    $item->fields['comment']
-                                                );
+                                                    = DropdownTranslation::getTranslatedValue(
+                                                        $ID,
+                                                        $post['itemtype'],
+                                                        'comment',
+                                                        $_SESSION['glpilanguage'],
+                                                        $item->fields['comment']
+                                                    );
                                                 $title = sprintf(__('%1$s - %2$s'), $title, $addcomment);
                                             }
                                             $output2 = DropdownTranslation::getTranslatedValue(
@@ -3295,7 +3336,8 @@ HTML;
                                                 $item->fields['name']
                                             );
 
-                                            $temp = ['id'       => $work_parentID,
+                                            $temp = [
+                                                'id'       => $work_parentID,
                                                 'text'     => $output2,
                                                 'level'    => (int) $work_level,
                                                 'disabled' => true,
@@ -3315,8 +3357,8 @@ HTML;
                                     }
                                 } while (
                                     ($work_level >= 1)
-                                      && (!isset($last_level_displayed[$work_level])
-                                      || ($last_level_displayed[$work_level] != $work_parentID))
+                                    && (!isset($last_level_displayed[$work_level])
+                                        || ($last_level_displayed[$work_level] != $work_parentID))
                                 );
                                 // Add parents
                                 foreach ($parent_datas as $val) {
@@ -3346,7 +3388,8 @@ HTML;
                             $outputval = $data['alias'];
                             $title     = $data['alias'];
                         }
-                        if (isset($data['code']) && !empty($data['code'])) {
+
+                        if ((Session::getCurrentInterface() === 'central') && !empty($data['code'])) {
                             $outputval .= ' - ' . $data['code'];
                             $title     .= ' - ' . $data['code'];
                         }
@@ -3467,7 +3510,8 @@ HTML;
                 $ljoin['glpi_dropdowntranslations AS namet'] = [
                     'ON' => [
                         'namet'  => 'items_id',
-                        $table   => 'id', [
+                        $table   => 'id',
+                        [
                             'AND' => [
                                 'namet.itemtype'  => $post['itemtype'],
                                 'namet.language'  => $_SESSION['glpilanguage'],
@@ -3482,7 +3526,8 @@ HTML;
                 $ljoin['glpi_dropdowntranslations AS commentt'] = [
                     'ON' => [
                         'commentt'  => 'items_id',
-                        $table      => 'id', [
+                        $table      => 'id',
+                        [
                             'AND' => [
                                 'commentt.itemtype'  => $post['itemtype'],
                                 'commentt.language'  => $_SESSION['glpilanguage'],
@@ -3899,7 +3944,8 @@ HTML;
                 $relation_table  => [
                     'ON' => [
                         $table          => 'id',
-                        $relation_table => 'items_id_peripheral', [
+                        $relation_table => 'items_id_peripheral',
+                        [
                             'AND' => [
                                 $relation_table . '.itemtype_peripheral' => $post['itemtype'],
                             ],
@@ -4198,7 +4244,7 @@ HTML;
                     'WHERE'  => [
                         'users_id' => $userID,
                     ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive())
-                    + $itemtype::getSystemSQLCriteria(),
+                        + $itemtype::getSystemSQLCriteria(),
                     'ORDER'  => $item->getNameField(),
                 ];
 
@@ -4311,7 +4357,8 @@ HTML;
                                 Group_Item::getTable() => [
                                     'ON' => [
                                         $itemtable             => 'id',
-                                        Group_Item::getTable() => 'items_id', [
+                                        Group_Item::getTable() => 'items_id',
+                                        [
                                             'AND' => [
                                                 Group_Item::getTable() . '.itemtype' => $itemtype,
                                             ],
@@ -4323,7 +4370,7 @@ HTML;
                                 Group_Item::getTable() . '.type'      => Group_Item::GROUP_TYPE_NORMAL,
                                 Group_Item::getTable() . '.groups_id' => $groups,
                             ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive())
-                            + $itemtype::getSystemSQLCriteria(),
+                                + $itemtype::getSystemSQLCriteria(),
                             'GROUPBY' => $itemtable . '.id',
                             'ORDER'  => $item->getNameField(),
                         ];
@@ -4416,7 +4463,7 @@ HTML;
                         'WHERE'  => [
                             'users_id' => $userID,
                         ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive())
-                        + $itemtype::getSystemSQLCriteria(),
+                            + $itemtype::getSystemSQLCriteria(),
                     ];
 
                     if ($item->maybeDeleted()) {
@@ -4727,7 +4774,8 @@ HTML;
         if ($post['page'] == 1) {
             if (count($toadd)) {
                 foreach ($toadd as $key => $val) {
-                    $data[] = ['id' => $key,
+                    $data[] = [
+                        'id' => $key,
                         'text' => (string) $val,
                     ];
                 }
@@ -4766,7 +4814,8 @@ HTML;
                     $decimals = Toolbox::isFloat($i) ? Toolbox::getDecimalNumbers($post['step']) : 0;
                     $txt = Dropdown::getValueWithUnit($i, $post['unit'], $decimals);
                 }
-                $data[] = ['id' => $i,
+                $data[] = [
+                    'id' => $i,
                     'text' => (string) $txt,
                 ];
                 $count++;
@@ -5115,8 +5164,8 @@ HTML;
         }
 
         return ($json === true)
-         ? json_encode($return)
-         : $return;
+            ? json_encode($return)
+            : $return;
     }
 
     public static function resetItemtypesStaticCache(): void
