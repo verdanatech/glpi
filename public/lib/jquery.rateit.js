@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1042
+/***/ 1182
 () {
 
 /*! RateIt | v1.1.6 / 20/03/2024
@@ -421,7 +421,7 @@
 
 /***/ },
 
-/***/ 1043
+/***/ 1183
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -507,8 +507,8 @@ var __webpack_exports__ = {};
  */
 
 // RateIt jQuery plugin
-__webpack_require__(1042);
-__webpack_require__(1043);
+__webpack_require__(1182);
+__webpack_require__(1183);
 
 })();
 

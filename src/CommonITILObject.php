@@ -52,6 +52,7 @@ use Glpi\Plugin\Hooks;
 use Glpi\RichText\RichText;
 use Glpi\RichText\UserMention;
 use Glpi\Search\Output\HTMLSearchOutput;
+use Glpi\Search\Provider\SQLProvider;
 use Glpi\Team\Team;
 use Glpi\Urgency;
 use Safe\Exceptions\DatetimeException;
@@ -1870,6 +1871,9 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                     $allowed_fields[] = 'takeintoaccount_delay_stat';
                     $allowed_fields[] = 'takeintoaccountdate';
                 }
+                if (isset($input['_do_update_date_mod'])) {
+                    $allowed_fields[] = 'date_mod';
+                }
             }
 
             $ret = [];
@@ -1890,7 +1894,16 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
 
         // First get ticket template associated: entity and type/category
         $tt = $this->getITILTemplateFromInput($input);
-        if ($tt && count($tt->mandatory)) {
+
+        if (!$tt) {
+            return $input;
+        }
+
+        $tpl_class = static::getTemplateClass();
+        $input[$tpl_class::getForeignKeyField()] = $tt->getID();
+        $input[static::getTemplateFormFieldName()] = $tt->getID();
+
+        if (count($tt->mandatory)) {
             $mandatory_missing = [];
             $fieldsname        = $tt->getAllowedFieldsNames(true);
             foreach ($tt->mandatory as $key => $val) {
@@ -2954,7 +2967,7 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
         }
 
         // No name set name
-        $input["name"]    = ltrim($input["name"] ?? '');
+        $input["name"]    = Toolbox::substr(ltrim($input["name"] ?? ''), 0, 255);
         $input['content'] = ltrim($input['content'] ?? '');
         if (empty($input["name"])) {
             // Build name based on content
@@ -5230,7 +5243,7 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
             self::INCOMING, self::WAITING, self::CLOSED => 'circle-filled',
             self::ASSIGNED, self::SOLVED, Change::EVALUATION => 'circle',
             self::PLANNED => 'calendar',
-            self::ACCEPTED => 'check-circle-filled',
+            self::ACCEPTED => 'circle-check-filled',
             self::OBSERVED => 'eye',
             self::APPROVAL, Change::TEST => 'help',
             Change::QUALIFICATION => 'circle',
@@ -7693,6 +7706,15 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                         && $this instanceof Ticket
                         && Ticket::canCreate()
                     ;
+
+                    // Initialize fields that only exist for ChangeTask
+                    // 0 when is not a ticket
+                    if (!isset($followup_row['sourceitems_id'])) {
+                        $followup_row['sourceitems_id'] = 0;
+                    }
+                    if (!isset($followup_row['sourceof_items_id'])) {
+                        $followup_row['sourceof_items_id'] = 0;
+                    }
                     $timeline["ITILFollowup_" . $followups_id] = [
                         'type'     => ITILFollowup::class,
                         'item'     => $followup_row,
@@ -7723,6 +7745,14 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                         && $this instanceof Ticket
                         && Ticket::canCreate()
                     ;
+                    // Initialize fields that only exist for ChangeTask
+                    // 0 when is not a ticket
+                    if (!isset($task_row['sourceitems_id'])) {
+                        $task_row['sourceitems_id'] = 0;
+                    }
+                    if (!isset($task_row['sourceof_items_id'])) {
+                        $task_row['sourceof_items_id'] = 0;
+                    }
                     $timeline[$tltask::getType() . "_" . $tasks_id] = [
                         'type'     => $taskClass,
                         'item'     => $task_row,
@@ -7964,7 +7994,7 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                 '<span>%1$s%2$s (<span data-bs-toggle="popover" data-bs-html="true" data-bs-sanitize="true" data-bs-content="%3$s"><u>%4$s</u></span>)</span>',
                 '<i class="ti ti-refresh-alert text-warning me-1"></i>',
                 htmlescape(ITILReminder::getTypeName(1)),
-                $autoreminder_obj->fields['content'] ?? '',
+                htmlescape($autoreminder_obj->fields['content'] ?? ''),
                 htmlescape($autoreminder_obj->fields['name'])
             );
 
@@ -8594,10 +8624,11 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
      *
      * @param bool      $bypass_rights  Whether to bypass rights checks (default: false)
      * @param User|null $user           User for rights checking (default: null = current session rights)
+     * @param bool $for_anonymous_user Whether the user is an anonymous requester (default: false)
      *
      * @return array
      */
-    public function getAssociatedDocumentsCriteria($bypass_rights = false, ?User $user = null): array
+    public function getAssociatedDocumentsCriteria($bypass_rights = false, ?User $user = null, bool $for_anonymous_user = false): array
     {
         global $DB; // Used to get subquery results - better performance
 
@@ -8631,24 +8662,31 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
             $bypass_rights
             || ITILFollowup::canView()
             || (
-                $user !== null
+                !$for_anonymous_user
+                && $user !== null
                 && $user->hasRightsOr(static::$rightname, $can_view_itilobject[$this->getType()], $this->fields['entities_id'])
                 && $user->hasRight(ITILFollowup::$rightname, ITILFollowup::SEEPUBLIC, $this->fields['entities_id'])
             )
+            || $for_anonymous_user // anonymous user
         ) {
             $fup_crits = [
                 ITILFollowup::getTableField('itemtype') => $this->getType(),
                 ITILFollowup::getTableField('items_id') => $this->getID(),
             ];
             if (!$bypass_rights) {
-                $can_seeprivate = $user === null
-                    ? Session::haveRight(ITILFollowup::$rightname, ITILFollowup::SEEPRIVATE)
-                    : $user->hasRight(ITILFollowup::$rightname, ITILFollowup::SEEPRIVATE, $this->fields['entities_id']);
+                if ($for_anonymous_user) {
+                    // Anonymous user: can only see public followups
+                    $fup_crits[] = ['is_private' => 0];
+                } else {
+                    $can_seeprivate = $user === null
+                        ? Session::haveRight(ITILFollowup::$rightname, ITILFollowup::SEEPRIVATE)
+                        : $user->hasRight(ITILFollowup::$rightname, ITILFollowup::SEEPRIVATE, $this->fields['entities_id']);
 
-                if (!$can_seeprivate) {
-                    $fup_crits[] = [
-                        'OR' => ['is_private' => 0, 'users_id' => $user_id],
-                    ];
+                    if (!$can_seeprivate) {
+                        $fup_crits[] = [
+                            'OR' => ['is_private' => 0, 'users_id' => $user_id],
+                        ];
+                    }
                 }
             }
 
@@ -8672,9 +8710,11 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
             $bypass_rights
             || ITILSolution::canView()
             || (
-                $user !== null
+                !$for_anonymous_user
+                && $user !== null
                 && $user->hasRightsOr(static::$rightname, $can_view_itilobject[$this->getType()], $this->fields['entities_id'])
             )
+            || $for_anonymous_user // anonymous user
         ) {
             // Run the subquery separately. It's better for huge databases
             $iterator_tmp = $DB->request([
@@ -8740,10 +8780,12 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                 $bypass_rights
                 || $task_class::canView()
                 || (
-                    $user !== null
+                    !$for_anonymous_user
+                    && $user !== null
                     && $user->hasRightsOr(static::$rightname, $can_view_itilobject[$this->getType()], $this->fields['entities_id'])
                     && $user->hasRight($task_class::$rightname, $task_class::SEEPUBLIC, $this->fields['entities_id'])
                 )
+                || $for_anonymous_user // anonymous user
             )
         ) {
             $tasks_crit = [
@@ -8752,16 +8794,22 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
 
             if (!$bypass_rights) {
                 $private_task_crit = [];
-                $can_seeprivate = ($user === null)
-                    ? Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATE)
-                    : $user->hasRight($task_class::$rightname, CommonITILTask::SEEPRIVATE, $this->fields['entities_id']);
 
-                if (!$can_seeprivate) {
-                    $private_task_crit = [
-                        'is_private' => 0,
-                        'users_id' => $user_id,
-                        'users_id_tech' => $user_id,
-                    ];
+                if ($for_anonymous_user) {
+                    // Anonymous user: can only see public tasks
+                    $private_task_crit[] = ['is_private' => 0];
+                } else {
+                    $can_seeprivate = ($user === null)
+                        ? Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATE)
+                        : $user->hasRight($task_class::$rightname, CommonITILTask::SEEPRIVATE, $this->fields['entities_id']);
+
+                    if (!$can_seeprivate) {
+                        $private_task_crit = [
+                            'is_private' => 0,
+                            'users_id' => $user_id,
+                            'users_id_tech' => $user_id,
+                        ];
+                    }
                 }
                 if (Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATEGROUPS) && !empty($_SESSION["glpigroups"])) {
                     $private_task_crit['groups_id_tech'] = $_SESSION["glpigroups"];
@@ -8888,6 +8936,9 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
         ];
     }
 
+    /**
+     * Add associated items in database
+     */
     public function handleItemsIdInput(): void
     {
         if (!empty($this->input['items_id'])) {
@@ -9094,62 +9145,69 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
             // user/groups assignements
             foreach ($input["_add_validation"] as $key => $value) {
                 switch ($value) {
+                    // send approval request to manager(?s) of requester group(s)
+                    // requester groups are the new ones + the one already defined
                     case 'requester_supervisor':
+                        // groups set by input/rule
                         if (
                             isset($input['_groups_id_requester'])
                             && $input['_groups_id_requester']
                         ) {
-                            $users = Group_User::getGroupUsers(
+                            $managers = Group_User::getGroupUsers(
                                 $input['_groups_id_requester'],
                                 ['is_manager' => 1]
                             );
-                            foreach ($users as $data) {
+                            foreach ($managers as $manager) {
                                 $validations_to_send[] = [
                                     'itemtype_target' => User::class,
-                                    'items_id_target' => $data['id'],
+                                    'items_id_target' => $manager['id'],
                                 ];
                             }
                         }
-                        // Add to already set groups
+                        // Already set groups
                         foreach ($this->getGroups(CommonITILActor::REQUESTER) as $d) {
-                            $users = Group_User::getGroupUsers(
+                            $managers = Group_User::getGroupUsers(
                                 $d['groups_id'],
                                 ['is_manager' => 1]
                             );
-                            foreach ($users as $data) {
+                            foreach ($managers as $manager) {
                                 $validations_to_send[] = [
                                     'itemtype_target' => User::class,
-                                    'items_id_target' => $data['id'],
+                                    'items_id_target' => $manager['id'],
                                 ];
                             }
                         }
                         break;
 
+                        // send approval request to manager(?s) of tech group(s)
+                        // tech groups are the new ones + the one already defined
                     case 'assign_supervisor':
+                        // groups set by input/rule
                         if (
                             isset($input['_groups_id_assign'])
                             && $input['_groups_id_assign']
                         ) {
-                            $users = Group_User::getGroupUsers(
+                            $managers = Group_User::getGroupUsers(
                                 $input['_groups_id_assign'],
                                 ['is_manager' => 1]
                             );
-                            foreach ($users as $data) {
+                            foreach ($managers as $manager) {
                                 $validations_to_send[] = [
                                     'itemtype_target' => User::class,
-                                    'items_id_target' => $data['id'],
+                                    'items_id_target' => $manager['id'],
                                 ];
                             }
                         }
+                        // Already set groups
                         foreach ($this->getGroups(CommonITILActor::ASSIGN) as $d) {
-                            $users = Group_User::getGroupUsers(
+                            $managers = Group_User::getGroupUsers(
                                 $d['groups_id'],
                                 ['is_manager' => 1]
                             );
-                            foreach ($users as $data) {
+                            foreach ($managers as $manager) {
                                 $validations_to_send[] = [
                                     'itemtype_target' => User::class,
-                                    'items_id_target' => $data['id'],
+                                    'items_id_target' => $manager['id'],
                                 ];
                             }
                         }
@@ -9256,9 +9314,10 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                 }
             }
 
-            // Keep only one
+            // deduplicate validations to send
             $validations_to_send = array_unique($validations_to_send, SORT_REGULAR);
 
+            // create validation requests
             if (count($validations_to_send)) {
                 $values            = [];
                 $values[$self_fk]  = $this->fields['id'];
@@ -9777,6 +9836,10 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
 
     /**
      * Check if input contains a valid actor for given itemtype / actortype.
+     *
+     * @param array<string, mixed> $input
+     * @param class-string<CommonDBTM> $itemtype
+     * @param CommonITILActor::REQUESTER|CommonITILActor::ASSIGN|CommonITILActor::OBSERVER $actortype
      */
     private function hasValidActorInInput(array $input, string $itemtype, int $actortype): bool
     {
@@ -9890,9 +9953,9 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
         $WHERE += $criteria;
         $WHERE += getEntitiesRestrictCriteria();
         // visibility check hack so we don't have to load the complete DB info for every item
-        $visiblity_criteria = Search::addDefaultWhere(static::class);
-        if (!empty($visiblity_criteria)) {
-            $WHERE[] = new QueryExpression(Search::addDefaultWhere(static::class));
+        $visiblity_criteria = SQLProvider::getDefaultWhereCriteria($itemtype);
+        if ($visiblity_criteria !== []) {
+            $WHERE[] = SQLProvider::getDefaultWhereCriteria($itemtype);
         }
         $base_common_itil_query = [
             'SELECT' => [static::getTableField('id')],
@@ -9902,13 +9965,9 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
 
         // Add JOIN
         $linked_tables = [];
-        $default_joint = Search::addDefaultJoin(
-            $itemtype,
-            getTableForItemType($itemtype),
-            $linked_tables, // Passed by reference, must be a defined variable even if empty
-        );
-        if (!empty($default_joint)) {
-            $base_common_itil_query['LEFT JOIN'] = [new QueryExpression($default_joint)];
+        $default_join = SQLProvider::getDefaultJoinCriteria($itemtype, getTableForItemType($itemtype), $linked_tables);
+        if ($default_join !== []) {
+            $base_common_itil_query = array_merge_recursive($base_common_itil_query, $default_join);
         }
 
         // Load common_itil
@@ -10779,6 +10838,28 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                     $input['_locations_id_of_requester'] = $user->fields['locations_id'];
                     $input['users_default_groups'] = $user->fields['groups_id'];
                     $input['profiles_id'] = $user->fields['profiles_id']; //default profile
+                }
+            }
+        }
+
+        // set group of first fetched associated item - $input['_groups_id_of_item']
+        if (isset($input["items_id"])) {
+            $items = is_array($input["items_id"]) ? $input["items_id"] : [$input["items_id"]];
+            foreach ($items as $itemtype => $items_ids) {
+                if (!is_array($items_ids)) {
+                    continue;
+                }
+
+                $item = getItemForItemtype($itemtype);
+                if (!($item instanceof CommonDBTM)) {
+                    continue;
+                }
+
+                foreach ($items_ids as $id) {
+                    if ($item->getFromDB($id) && isset($item->fields['groups_id'])) {
+                        $input['_groups_id_of_item'] = $item->fields['groups_id'];
+                        break 2;
+                    }
                 }
             }
         }

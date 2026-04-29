@@ -885,6 +885,7 @@ __webpack_require__.r(__webpack_exports__);
 
 __webpack_require__(42);
 window.SwaggerUIBundle = swagger_ui_dist__WEBPACK_IMPORTED_MODULE_0__.SwaggerUIBundle;
+window.SwaggerUIStandalonePreset = swagger_ui_dist__WEBPACK_IMPORTED_MODULE_0__.SwaggerUIStandalonePreset;
 
 })();
 

@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1039
+/***/ 1179
 () {
 
 L.Control.Fullscreen = L.Control.extend({
@@ -160,13 +160,13 @@ L.control.fullscreen = function (options) {
 
 /***/ },
 
-/***/ 1030
+/***/ 1170
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (factory, window) {
     // define an AMD module that relies on 'leaflet'
     if (true) {
-        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1026),__webpack_require__(1031)], __WEBPACK_AMD_DEFINE_RESULT__ = (function (L, Spinner) {
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1166),__webpack_require__(1171)], __WEBPACK_AMD_DEFINE_RESULT__ = (function (L, Spinner) {
             factory(L, Spinner);
         }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -227,7 +227,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (facto
 
 /***/ },
 
-/***/ 1031
+/***/ 1171
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -616,7 +616,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ },
 
-/***/ 1035
+/***/ 1175
 () {
 
 /*
@@ -748,7 +748,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ },
 
-/***/ 1032
+/***/ 1172
 (__unused_webpack_module, exports) {
 
 /*
@@ -3472,7 +3472,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ },
 
-/***/ 1026
+/***/ 1166
 (__unused_webpack_module, exports) {
 
 /* @preserve
@@ -17990,7 +17990,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ },
 
-/***/ 1038
+/***/ 1178
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18000,7 +18000,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1040
+/***/ 1180
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18010,7 +18010,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1036
+/***/ 1176
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18020,7 +18020,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1034
+/***/ 1174
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18030,7 +18030,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1033
+/***/ 1173
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18040,7 +18040,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1027
+/***/ 1167
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18050,7 +18050,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1028
+/***/ 1168
 (module, __unused_webpack_exports, __webpack_require__) {
 
 "use strict";
@@ -18058,7 +18058,7 @@ module.exports = __webpack_require__.p + "leaflet/dist/images/marker-icon-2x.png
 
 /***/ },
 
-/***/ 1029
+/***/ 1169
 (module, __unused_webpack_exports, __webpack_require__) {
 
 "use strict";
@@ -18066,7 +18066,7 @@ module.exports = __webpack_require__.p + "leaflet/dist/images/marker-shadow.png"
 
 /***/ },
 
-/***/ 1037
+/***/ 1177
 (__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -18077,7 +18077,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   geocoder: () => (/* binding */ rt),
 /* harmony export */   geocoders: () => (/* binding */ it)
 /* harmony export */ });
-/* harmony import */ var leaflet__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1026);
+/* harmony import */ var leaflet__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1166);
 
 function l(i, t) {
   return Object.assign(t, i.geocodingQueryParams);
@@ -19146,7 +19146,7 @@ Object.assign(leaflet__WEBPACK_IMPORTED_MODULE_0__.Control, {
 
 /***/ },
 
-/***/ 1025
+/***/ 1165
 (__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -19395,7 +19395,7 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var leaflet_control_geocoder__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1037);
+/* harmony import */ var leaflet_control_geocoder__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1177);
 /**
  * ---------------------------------------------------------------------
  *
@@ -19431,25 +19431,25 @@ __webpack_require__.r(__webpack_exports__);
 
 // spin.js dependency
 // Spinner object have to be accessible in window context
-window.Spinner = (__webpack_require__(1025).Spinner);
+window.Spinner = (__webpack_require__(1165).Spinner);
 
 // Leaflet core lib
-__webpack_require__(1026);
-__webpack_require__(1027);
-__webpack_require__(1028); // image is not present in CSS and will not be copied automatically
-__webpack_require__(1029); // image is not present in CSS and will not be copied automatically
+__webpack_require__(1166);
+__webpack_require__(1167);
+__webpack_require__(1168); // image is not present in CSS and will not be copied automatically
+__webpack_require__(1169); // image is not present in CSS and will not be copied automatically
 
 // Leaflet plugins
-__webpack_require__(1030);
-__webpack_require__(1032);
-__webpack_require__(1033);
-__webpack_require__(1034);
-__webpack_require__(1035);
-__webpack_require__(1036);
+__webpack_require__(1170);
+__webpack_require__(1172);
+__webpack_require__(1173);
+__webpack_require__(1174);
+__webpack_require__(1175);
+__webpack_require__(1176);
 
-__webpack_require__(1038);
-__webpack_require__(1039);
-__webpack_require__(1040);
+__webpack_require__(1178);
+__webpack_require__(1179);
+__webpack_require__(1180);
 
 })();
 

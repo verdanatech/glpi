@@ -41,6 +41,6 @@
         </div>
     <div>
    {{ fields.numberField('document_max_size', config['document_max_size'], __('Document files maximum size (Mio)'), {
-      min: 1
+      min: 1, max:100
    }) }}
 {% endblock %}

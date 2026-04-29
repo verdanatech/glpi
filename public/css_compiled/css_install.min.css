@@ -238,6 +238,17 @@ body.in_modal {
   text-decoration: var(--tblr-link-hover-decoration);
 }
 
+.page > header .breadcrumb-item + .breadcrumb-item::before {
+  padding: 0;
+  padding-inline-end: var(--tblr-breadcrumb-item-padding-x);
+  float: unset;
+  transform: scale(1);
+}
+
+[dir=rtl] .page > header .breadcrumb-item + .breadcrumb-item::before {
+  --tblr-breadcrumb-divider: "\\";
+}
+
 .ti {
   font-size: 1.25em;
   text-align: left;
@@ -516,6 +527,12 @@ body pre {
   width: calc(-11px + 74.1666%);
 }
 
+.itil-object-fields .accordion-body {
+  padding-inline: 0.5rem;
+}
+.itil-object-fields .col-12.glpi-full-width .form-control-plaintext {
+  padding-block: 0;
+}
 .itil-object-fields .col-12.glpi-full-width .col-form-label {
   width: 28%;
 }
@@ -523,6 +540,16 @@ body pre {
   width: 72%;
 }
 
+@media (max-width: 1400px) {
+  .itil-object-fields .col-12.glpi-full-width .col-form-label {
+    padding-block-start: 0.5rem;
+    padding-block-end: 0.25rem;
+  }
+  .itil-object-fields .col-12.glpi-full-width .col-form-label,
+  .itil-object-fields .col-12.glpi-full-width .field-container {
+    width: 100%;
+  }
+}
 .horizontal-layout .text-muted-menu {
   color: var(--glpi-mainmenu-fg-muted) !important;
 }

@@ -270,6 +270,17 @@ body.in_modal {
   text-decoration: var(--tblr-link-hover-decoration);
 }
 
+.page > header .breadcrumb-item + .breadcrumb-item::before {
+  padding: 0;
+  padding-inline-end: var(--tblr-breadcrumb-item-padding-x);
+  float: unset;
+  transform: scale(1);
+}
+
+[dir=rtl] .page > header .breadcrumb-item + .breadcrumb-item::before {
+  --tblr-breadcrumb-divider: "\\";
+}
+
 .ti {
   font-size: 1.25em;
   text-align: left;
@@ -548,6 +559,12 @@ body pre {
   width: calc(-11px + 74.1666%);
 }
 
+.itil-object-fields .accordion-body {
+  padding-inline: 0.5rem;
+}
+.itil-object-fields .col-12.glpi-full-width .form-control-plaintext {
+  padding-block: 0;
+}
 .itil-object-fields .col-12.glpi-full-width .col-form-label {
   width: 28%;
 }
@@ -555,6 +572,16 @@ body pre {
   width: 72%;
 }
 
+@media (max-width: 1400px) {
+  .itil-object-fields .col-12.glpi-full-width .col-form-label {
+    padding-block-start: 0.5rem;
+    padding-block-end: 0.25rem;
+  }
+  .itil-object-fields .col-12.glpi-full-width .col-form-label,
+  .itil-object-fields .col-12.glpi-full-width .field-container {
+    width: 100%;
+  }
+}
 .horizontal-layout .text-muted-menu {
   color: var(--glpi-mainmenu-fg-muted) !important;
 }
@@ -1904,6 +1931,7 @@ input.form-check-input[type=checkbox]:disabled {
   background-color: var(--glpi-form-header-bg);
   color: var(--glpi-form-header-fg);
   border-color: var(--glpi-form-header-border-color);
+  padding: var(--tblr-card-cap-padding-y, 1rem) var(--tblr-card-cap-padding-x, 1.25rem);
 }
 .asset .card-header:not(.main-header),
 .navigationheader .card-header:not(.main-header),
@@ -6512,13 +6540,36 @@ div.search-input span.search-input-tag-input:last-of-type {
 .card-tabs #tabspanel.nav-tabs .nav-link .badge {
   margin-left: 5px;
 }
-.card-tabs.vertical .nav:not(.nav-underline) .nav-link {
-  border-bottom: 1px solid var(--glpi-tabs-border-color);
-  border-top-right-radius: 0;
+.card-tabs.vertical #tabspanel.nav-tabs {
+  /* 5. FIRST ITEM: Restore top border to close the list */
+  /* 6. LAST ITEM: Flatten bottom-right corner */
 }
-.card-tabs.vertical .nav:not(.nav-underline) .nav-link.active {
-  border-left-width: 5px;
+.card-tabs.vertical #tabspanel.nav-tabs .nav-link {
+  /* 1. VISIBILITY: Fix bottom border and remove overlap gap */
+  border-bottom: 1px solid var(--glpi-tabs-border-color) !important;
+  margin-bottom: 0 !important;
+  /* 2. LAYOUT: Remove top border (prevents double lines) */
+  border-top: 0 !important;
+  /* 3. CORNER FIX: Flatten the right side to attach to the panel */
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  /* 4. ACTIVE STATE: Restore the thick left border */
+}
+.card-tabs.vertical #tabspanel.nav-tabs .nav-link.active {
+  /* We force the width and style to ensure it appears */
+  border-left-width: 5px !important;
+  border-left-style: solid !important;
+  /* We explicitly inherit the color to ensure it stays Blue (or your theme color) */
+  border-left-color: var(--glpi-tabs-active-border-color) !important;
+  /* Ensure the right side remains open */
   border-right-color: transparent !important;
+}
+.card-tabs.vertical #tabspanel.nav-tabs .nav-item:first-child .nav-link {
+  border-top: 1px solid var(--glpi-tabs-border-color) !important;
+  border-top-left-radius: 4px;
+}
+.card-tabs.vertical #tabspanel.nav-tabs .nav-item:last-child .nav-link {
+  border-bottom-right-radius: 0 !important;
 }
 .card-tabs.horizontal #tabspanel.nav-tabs .nav-link {
   border-bottom-width: 1px;
@@ -17425,6 +17476,16 @@ expectations for forms tags and user mentions  */
   margin-left: 0.5rem;
   margin-right: -0.5rem;
 }
+.timeline-item .todo-list-state .task-state-checkbox {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin: 0;
+  cursor: pointer;
+}
+.timeline-item .todo-list-state .task-state-checkbox:disabled {
+  cursor: not-allowed;
+}
 .timeline-item .todo-list-state .state {
   display: inline-block;
   width: 20px;
@@ -18584,6 +18645,8 @@ input.submit:focus:not([disabled]):not(.disabled),
   /* ################--------------- Notepad  ---------------#################### */
   /* ################--------------- DB Slave---------------#################### */
   /** QUEUEMAIL **/
+  /* Prop open the FullCalendar scroller (the gray box) so the empty message doesn't overflow */
+  /* Apply the height safely to the empty wrappers and text */
   /** Badges */
   /** End badges */
   /* Primary color elements (white on blue BG) designed to be overridden from palettes */
@@ -19240,6 +19303,24 @@ input.submit:focus:not([disabled]):not(.disabled),
 #page .planning_on_central .fc-view-container *::before, #page .planning_on_central .fc-view-container *::after, .qtip .planning_on_central .fc-view-container *::before, .qtip .planning_on_central .fc-view-container *::after, .modal .modal-body .planning_on_central .fc-view-container *::before, .modal .modal-body .planning_on_central .fc-view-container *::after {
   min-height: 1em;
 }
+#page .planning_on_central .fc-view-container .fc-scroller, .qtip .planning_on_central .fc-view-container .fc-scroller, .modal .modal-body .planning_on_central .fc-view-container .fc-scroller {
+  min-height: 2em;
+}
+#page .planning_on_central .fc-view-container .fc-list-empty-wrap2,
+#page .planning_on_central .fc-view-container .fc-list-empty-wrap2 *, .qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2,
+.qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2 *, .modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2,
+.modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2 * {
+  min-height: 2em;
+}
+#page .planning_on_central .fc-view-container .fc-list-empty-wrap2::before, #page .planning_on_central .fc-view-container .fc-list-empty-wrap2::after,
+#page .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::before,
+#page .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::after, .qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2::before, .qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2::after,
+.qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::before,
+.qtip .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::after, .modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2::before, .modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2::after,
+.modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::before,
+.modal .modal-body .planning_on_central .fc-view-container .fc-list-empty-wrap2 *::after {
+  min-height: 2em;
+}
 #page .fa.bookmark_record, #page .fa.reset-search, .qtip .fa.bookmark_record, .qtip .fa.reset-search, .modal .modal-body .fa.bookmark_record, .modal .modal-body .fa.reset-search {
   font-size: 1.5em;
   color: #ccc !important;
@@ -19783,6 +19864,16 @@ div.banner-need-update {
 #planning_container .planning-view .fc-toolbar h2 {
   font-size: 1.2em;
 }
+#planning_container .planning-view .fc-button-primary {
+  background-color: var(--tblr-secondary) !important;
+  border-color: var(--tblr-secondary) !important;
+  color: var(--tblr-secondary-fg, #fff) !important;
+}
+#planning_container .planning-view .fc-button-primary:not(:disabled):active, #planning_container .planning-view .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--tblr-primary) !important;
+  border-color: var(--tblr-primary) !important;
+  color: var(--tblr-primary-fg, #fff) !important;
+}
 #planning_container .planning-view .event_today {
   background: #fcf8e3;
 }
@@ -19847,6 +19938,11 @@ div.banner-need-update {
 }
 #planning_container .planning-view .fc-list-empty-wrap2 {
   position: initial;
+}
+#planning_container .planning-view .fc-scroller:has(.fc-list-empty) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .planning_on_central .fc-head {

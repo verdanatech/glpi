@@ -2,7 +2,7 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1068
+/***/ 1208
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -44,17 +44,17 @@ class DDBaseImplement {
 
 /***/ },
 
-/***/ 1069
+/***/ 1209
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDDraggable: () => (/* binding */ DDDraggable)
 /* harmony export */ });
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1063);
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1060);
-/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1068);
-/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1203);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1200);
+/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1208);
+/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1207);
 /**
  * dd-draggable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
@@ -420,17 +420,17 @@ DDDraggable.originStyleProp = ['width', 'height', 'transform', 'transform-origin
 
 /***/ },
 
-/***/ 1070
+/***/ 1210
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDDroppable: () => (/* binding */ DDDroppable)
 /* harmony export */ });
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1063);
-/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1068);
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
-/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1067);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1203);
+/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1208);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1200);
+/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1207);
 /**
  * dd-droppable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
@@ -583,16 +583,16 @@ class DDDroppable extends _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__.DDBaseImple
 
 /***/ },
 
-/***/ 1064
+/***/ 1204
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDElement: () => (/* binding */ DDElement)
 /* harmony export */ });
-/* harmony import */ var _dd_resizable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1065);
-/* harmony import */ var _dd_draggable__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1069);
-/* harmony import */ var _dd_droppable__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1070);
+/* harmony import */ var _dd_resizable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1205);
+/* harmony import */ var _dd_draggable__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1209);
+/* harmony import */ var _dd_droppable__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1210);
 /**
  * dd-elements.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
@@ -687,16 +687,16 @@ class DDElement {
 
 /***/ },
 
-/***/ 1062
+/***/ 1202
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDGridStack: () => (/* binding */ DDGridStack)
 /* harmony export */ });
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1060);
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1063);
-/* harmony import */ var _dd_element__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1064);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1200);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1203);
+/* harmony import */ var _dd_element__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1204);
 /**
  * dd-gridstack.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
@@ -835,7 +835,7 @@ class DDGridStack {
 
 /***/ },
 
-/***/ 1063
+/***/ 1203
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -855,14 +855,14 @@ class DDManager {
 
 /***/ },
 
-/***/ 1066
+/***/ 1206
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDResizableHandle: () => (/* binding */ DDResizableHandle)
 /* harmony export */ });
-/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1067);
+/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1207);
 /**
  * dd-resizable-handle.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
@@ -979,17 +979,17 @@ DDResizableHandle.prefix = 'ui-resizable-';
 
 /***/ },
 
-/***/ 1065
+/***/ 1205
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DDResizable: () => (/* binding */ DDResizable)
 /* harmony export */ });
-/* harmony import */ var _dd_resizable_handle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1066);
-/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1068);
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1060);
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1063);
+/* harmony import */ var _dd_resizable_handle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1206);
+/* harmony import */ var _dd_base_impl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1208);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1200);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1203);
 /**
  * dd-resizable.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
@@ -1297,7 +1297,7 @@ DDResizable._originStyleProp = ['width', 'height', 'position', 'left', 'top', 'o
 
 /***/ },
 
-/***/ 1067
+/***/ 1207
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -1310,8 +1310,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   touchmove: () => (/* binding */ touchmove),
 /* harmony export */   touchstart: () => (/* binding */ touchstart)
 /* harmony export */ });
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1063);
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1060);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1203);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1200);
 /**
  * touch.ts 12.2.2
  * Copyright (c) 2021-2024 Alain Dumesny - see GridStack root license
@@ -1460,14 +1460,14 @@ function pointerleave(e) {
 
 /***/ },
 
-/***/ 1059
+/***/ 1199
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   GridStackEngine: () => (/* binding */ GridStackEngine)
 /* harmony export */ });
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1060);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1200);
 /**
  * gridstack-engine.ts 12.2.2
  * Copyright (c) 2021-2024  Alain Dumesny - see GridStack root license
@@ -2482,7 +2482,7 @@ GridStackEngine._idSeq = 0;
 
 /***/ },
 
-/***/ 1058
+/***/ 1198
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -2497,12 +2497,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   obsoleteOpts: () => (/* reexport safe */ _utils__WEBPACK_IMPORTED_MODULE_1__.obsoleteOpts),
 /* harmony export */   obsoleteOptsDel: () => (/* reexport safe */ _utils__WEBPACK_IMPORTED_MODULE_1__.obsoleteOptsDel)
 /* harmony export */ });
-/* harmony import */ var _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1059);
-/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1060);
-/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1061);
-/* harmony import */ var _dd_gridstack__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1062);
-/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1067);
-/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1063);
+/* harmony import */ var _gridstack_engine__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1199);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1200);
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(1201);
+/* harmony import */ var _dd_gridstack__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(1202);
+/* harmony import */ var _dd_touch__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1207);
+/* harmony import */ var _dd_manager__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(1203);
 /*!
  * GridStack 12.2.2
  * https://gridstackjs.com/
@@ -5041,7 +5041,7 @@ GridStack.GDRev = '12.2.2';
 
 /***/ },
 
-/***/ 1061
+/***/ 1201
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -5086,7 +5086,7 @@ const gridDefaults = {
 
 /***/ },
 
-/***/ 1060
+/***/ 1200
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -5673,7 +5673,7 @@ class Utils {
 
 /***/ },
 
-/***/ 1071
+/***/ 1211
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -5742,7 +5742,7 @@ var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var gridstack__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1058);
+/* harmony import */ var gridstack__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1198);
 /**
  * ---------------------------------------------------------------------
  *
@@ -5779,7 +5779,7 @@ __webpack_require__.r(__webpack_exports__);
 // Gridstack lib
 
 window.GridStack = gridstack__WEBPACK_IMPORTED_MODULE_0__.GridStack;
-__webpack_require__(1071);
+__webpack_require__(1211);
 
 })();
 

@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1455
+/***/ 1595
 (__unused_webpack_module, exports) {
 
 /*!
@@ -6279,7 +6279,7 @@
 
 /***/ },
 
-/***/ 1440
+/***/ 1580
 () {
 
 /*global jQuery */
@@ -6329,7 +6329,7 @@
 
 /***/ },
 
-/***/ 1462
+/***/ 1602
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6590,7 +6590,7 @@ var i18n = function (options) {
 
 /***/ },
 
-/***/ 1444
+/***/ 1584
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -6613,7 +6613,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -6653,7 +6653,7 @@ if ( !$.fn.even || !$.fn.odd ) {
 
 /***/ },
 
-/***/ 1445
+/***/ 1585
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -6676,7 +6676,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -6709,7 +6709,7 @@ return $.ui.keyCode = {
 
 /***/ },
 
-/***/ 1443
+/***/ 1583
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -6735,7 +6735,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -7227,7 +7227,7 @@ return $.ui.position;
 
 /***/ },
 
-/***/ 1446
+/***/ 1586
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -7250,7 +7250,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -7282,7 +7282,7 @@ return $.fn.scrollParent = function( includeHidden ) {
 
 /***/ },
 
-/***/ 1447
+/***/ 1587
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -7305,7 +7305,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -7341,7 +7341,7 @@ return $.fn.extend( {
 
 /***/ },
 
-/***/ 1442
+/***/ 1582
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;( function( factory ) {
@@ -7350,7 +7350,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -7368,7 +7368,7 @@ return $.ui.version = "1.14.2";
 
 /***/ },
 
-/***/ 1441
+/***/ 1581
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -7392,7 +7392,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 	if ( true ) {
 
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1437), __webpack_require__(1442) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [ __webpack_require__(1577), __webpack_require__(1582) ], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -8134,7 +8134,7 @@ return $.widget;
 
 /***/ },
 
-/***/ 1451
+/***/ 1591
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -8155,7 +8155,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function (factory) {
 	if (true) {
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437), __webpack_require__(1448)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577), __webpack_require__(1588)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -8687,7 +8687,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1452
+/***/ 1592
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -8708,7 +8708,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function (factory) {
 	if (true) {
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437), __webpack_require__(1448)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577), __webpack_require__(1588)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -9045,7 +9045,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1450
+/***/ 1590
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -9066,7 +9066,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function (factory) {
 	if (true) {
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437), __webpack_require__(1448)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577), __webpack_require__(1588)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -10063,7 +10063,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1448
+/***/ 1588
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -10086,7 +10086,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function (factory) {
 	if (true) {
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437), __webpack_require__(1449)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577), __webpack_require__(1589)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -17445,7 +17445,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1453
+/***/ 1593
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -17468,7 +17468,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function (factory) {
 	if (true) {
 		// AMD. Register as an anonymous module.
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437), __webpack_require__(1448)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577), __webpack_require__(1588)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -17962,7 +17962,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1437
+/***/ 1577
 (module, exports) {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -28686,7 +28686,7 @@ return jQuery;
 
 /***/ },
 
-/***/ 1461
+/***/ 1601
 (module, exports, __webpack_require__) {
 
 /* module decorator */ module = __webpack_require__.nmd(module);
@@ -28704,7 +28704,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.23';
+  var VERSION = '4.18.1';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -28712,7 +28712,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
   /** Error message constants. */
   var CORE_ERROR_TEXT = 'Unsupported core-js use. Try https://npms.io/search?q=ponyfill.',
       FUNC_ERROR_TEXT = 'Expected a function',
-      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`';
+      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`',
+      INVALID_TEMPL_IMPORTS_ERROR_TEXT = 'Invalid `imports` option passed into `_.template`';
 
   /** Used to stand-in for `undefined` hash values. */
   var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -30444,6 +30445,10 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      * embedded Ruby (ERB) as well as ES2015 template strings. Change the
      * following template settings to use alternative delimiters.
      *
+     * **Security:** See
+     * [threat model](https://github.com/lodash/lodash/blob/main/threat-model.md)
+     * — `_.template` is insecure and will be removed in v5.
+     *
      * @static
      * @memberOf _
      * @type {Object}
@@ -30992,7 +30997,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      * @name has
      * @memberOf SetCache
      * @param {*} value The value to search for.
-     * @returns {number} Returns `true` if `value` is found, else `false`.
+     * @returns {boolean} Returns `true` if `value` is found, else `false`.
      */
     function setCacheHas(value) {
       return this.__data__.has(value);
@@ -33063,7 +33068,9 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
     function baseUnset(object, path) {
       path = castPath(path, object);
 
-      // Prevent prototype pollution, see: https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg
+      // Prevent prototype pollution:
+      // https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg
+      // https://github.com/lodash/lodash/security/advisories/GHSA-f23m-r3pf-42rh
       var index = -1,
           length = path.length;
 
@@ -33071,32 +33078,17 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
         return true;
       }
 
-      var isRootPrimitive = object == null || (typeof object !== 'object' && typeof object !== 'function');
-
       while (++index < length) {
-        var key = path[index];
-
-        // skip non-string keys (e.g., Symbols, numbers)
-        if (typeof key !== 'string') {
-          continue;
-        }
+        var key = toKey(path[index]);
 
         // Always block "__proto__" anywhere in the path if it's not expected
         if (key === '__proto__' && !hasOwnProperty.call(object, '__proto__')) {
           return false;
         }
 
-        // Block "constructor.prototype" chains
-        if (key === 'constructor' &&
-            (index + 1) < length &&
-            typeof path[index + 1] === 'string' &&
-            path[index + 1] === 'prototype') {
-
-          // Allow ONLY when the path starts at a primitive root, e.g., _.unset(0, 'constructor.prototype.a')
-          if (isRootPrimitive && index === 0) {
-            continue;
-          }
-
+        // Block constructor/prototype as non-terminal traversal keys to prevent
+        // escaping the object graph into built-in constructors and prototypes.
+        if ((key === 'constructor' || key === 'prototype') && index < length - 1) {
           return false;
         }
       }
@@ -35653,7 +35645,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
 
     /**
      * Creates an array with all falsey values removed. The values `false`, `null`,
-     * `0`, `""`, `undefined`, and `NaN` are falsey.
+     * `0`, `-0`, `0n`, `""`, `undefined`, and `NaN` are falsy.
      *
      * @static
      * @memberOf _
@@ -36192,7 +36184,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
 
       while (++index < length) {
         var pair = pairs[index];
-        result[pair[0]] = pair[1];
+        baseAssignValue(result, pair[0], pair[1]);
       }
       return result;
     }
@@ -42852,6 +42844,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      * **Note:** JavaScript follows the IEEE-754 standard for resolving
      * floating-point values which can produce unexpected results.
      *
+     * **Note:** If `lower` is greater than `upper`, the values are swapped.
+     *
      * @static
      * @memberOf _
      * @since 0.7.0
@@ -42865,8 +42859,15 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      * _.random(0, 5);
      * // => an integer between 0 and 5
      *
+     * // when lower is greater than upper the values are swapped
+     * _.random(5, 0);
+     * // => an integer between 0 and 5
+     *
      * _.random(5);
      * // => also an integer between 0 and 5
+     *
+     * _.random(-5);
+     * // => an integer between -5 and 0
      *
      * _.random(5, true);
      * // => a floating-point number between 0 and 5
@@ -43469,6 +43470,10 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      * properties may be accessed as free variables in the template. If a setting
      * object is given, it takes precedence over `_.templateSettings` values.
      *
+     * **Security:** `_.template` is insecure and should not be used. It will be
+     * removed in Lodash v5. Avoid untrusted input. See
+     * [threat model](https://github.com/lodash/lodash/blob/main/threat-model.md).
+     *
      * **Note:** In the development build `_.template` utilizes
      * [sourceURLs](http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/#toc-sourceurl)
      * for easier debugging.
@@ -43576,11 +43581,17 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
         options = undefined;
       }
       string = toString(string);
-      options = assignInWith({}, options, settings, customDefaultsAssignIn);
+      options = assignWith({}, options, settings, customDefaultsAssignIn);
 
-      var imports = assignInWith({}, options.imports, settings.imports, customDefaultsAssignIn),
+      var imports = assignWith({}, options.imports, settings.imports, customDefaultsAssignIn),
           importsKeys = keys(imports),
           importsValues = baseValues(imports, importsKeys);
+
+      arrayEach(importsKeys, function(key) {
+        if (reForbiddenIdentifierChars.test(key)) {
+          throw new Error(INVALID_TEMPL_IMPORTS_ERROR_TEXT);
+        }
+      });
 
       var isEscaping,
           isEvaluating,
@@ -45935,7 +45946,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
 
 /***/ },
 
-/***/ 1435
+/***/ 1575
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -45945,7 +45956,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1436
+/***/ 1576
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -45955,7 +45966,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1454
+/***/ 1594
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -45965,7 +45976,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1457
+/***/ 1597
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -45975,7 +45986,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1458
+/***/ 1598
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -45985,14 +45996,14 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ },
 
-/***/ 1449
+/***/ 1589
 () {
 
 
 
 /***/ },
 
-/***/ 1456
+/***/ 1596
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -46016,7 +46027,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 (function( factory ) {
 	"use strict";
 	if(true) {
-		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -49488,14 +49499,14 @@ CHECKS.ie6 = {
 
 /***/ },
 
-/***/ 1439
+/***/ 1579
 (module) {
 
 module.exports = "/*!\n * jQuery Migrate - v3.5.2 - 2024-07-17T22:31Z\n * Copyright OpenJS Foundation and other contributors\n */\n( function( factory ) {\n\t\"use strict\";\n\n\tif ( typeof define === \"function\" && define.amd ) {\n\n\t\t// AMD. Register as an anonymous module.\n\t\tdefine( [ \"jquery\" ], function( jQuery ) {\n\t\t\treturn factory( jQuery, window );\n\t\t} );\n\t} else if ( typeof module === \"object\" && module.exports ) {\n\n\t\t// Node/CommonJS\n\t\t// eslint-disable-next-line no-undef\n\t\tmodule.exports = factory( require( \"jquery\" ), window );\n\t} else {\n\n\t\t// Browser globals\n\t\tfactory( jQuery, window );\n\t}\n} )( function( jQuery, window ) {\n\"use strict\";\n\njQuery.migrateVersion = \"3.5.2\";\n\n// Returns 0 if v1 == v2, -1 if v1 < v2, 1 if v1 > v2\nfunction compareVersions( v1, v2 ) {\n\tvar i,\n\t\trVersionParts = /^(\\d+)\\.(\\d+)\\.(\\d+)/,\n\t\tv1p = rVersionParts.exec( v1 ) || [ ],\n\t\tv2p = rVersionParts.exec( v2 ) || [ ];\n\n\tfor ( i = 1; i <= 3; i++ ) {\n\t\tif ( +v1p[ i ] > +v2p[ i ] ) {\n\t\t\treturn 1;\n\t\t}\n\t\tif ( +v1p[ i ] < +v2p[ i ] ) {\n\t\t\treturn -1;\n\t\t}\n\t}\n\treturn 0;\n}\n\nfunction jQueryVersionSince( version ) {\n\treturn compareVersions( jQuery.fn.jquery, version ) >= 0;\n}\n\n// A map from disabled patch codes to `true`. This should really\n// be a `Set` but those are unsupported in IE.\nvar disabledPatches = Object.create( null );\n\n// Don't apply patches for specified codes. Helpful for code bases\n// where some Migrate warnings have been addressed and it's desirable\n// to avoid needless patches or false positives.\njQuery.migrateDisablePatches = function() {\n\tvar i;\n\tfor ( i = 0; i < arguments.length; i++ ) {\n\t\tdisabledPatches[ arguments[ i ] ] = true;\n\t}\n};\n\n// Allow enabling patches disabled via `jQuery.migrateDisablePatches`.\n// Helpful if you want to disable a patch only for some code that won't\n// be updated soon to be able to focus on other warnings - and enable it\n// immediately after such a call:\n// ```js\n// jQuery.migrateDisablePatches( \"workaroundA\" );\n// elem.pluginViolatingWarningA( \"pluginMethod\" );\n// jQuery.migrateEnablePatches( \"workaroundA\" );\n// ```\njQuery.migrateEnablePatches = function() {\n\tvar i;\n\tfor ( i = 0; i < arguments.length; i++ ) {\n\t\tdelete disabledPatches[ arguments[ i ] ];\n\t}\n};\n\njQuery.migrateIsPatchEnabled = function( patchCode ) {\n\treturn !disabledPatches[ patchCode ];\n};\n\n( function() {\n\n// Support: IE9 only\n// IE9 only creates console object when dev tools are first opened\n// IE9 console is a host object, callable but doesn't have .apply()\nif ( !window.console || !window.console.log ) {\n\treturn;\n}\n\n// Need jQuery 3.x-4.x and no older Migrate loaded\nif ( !jQuery || !jQueryVersionSince( \"3.0.0\" ) ||\n\t\tjQueryVersionSince( \"5.0.0\" ) ) {\n\twindow.console.log( \"JQMIGRATE: jQuery 3.x-4.x REQUIRED\" );\n}\nif ( jQuery.migrateWarnings ) {\n\twindow.console.log( \"JQMIGRATE: Migrate plugin loaded multiple times\" );\n}\n\n// Show a message on the console so devs know we're active\nwindow.console.log( \"JQMIGRATE: Migrate is installed\" +\n\t( jQuery.migrateMute ? \"\" : \" with logging active\" ) +\n\t\", version \" + jQuery.migrateVersion );\n\n} )();\n\nvar warnedAbout = {};\n\n// By default each warning is only reported once.\njQuery.migrateDeduplicateWarnings = true;\n\n// List of warnings already given; public read only\njQuery.migrateWarnings = [];\n\n// Set to false to disable traces that appear with warnings\nif ( jQuery.migrateTrace === undefined ) {\n\tjQuery.migrateTrace = true;\n}\n\n// Forget any warnings we've already given; public\njQuery.migrateReset = function() {\n\twarnedAbout = {};\n\tjQuery.migrateWarnings.length = 0;\n};\n\nfunction migrateWarn( code, msg ) {\n\tvar console = window.console;\n\tif ( jQuery.migrateIsPatchEnabled( code ) &&\n\t\t( !jQuery.migrateDeduplicateWarnings || !warnedAbout[ msg ] ) ) {\n\t\twarnedAbout[ msg ] = true;\n\t\tjQuery.migrateWarnings.push( msg + \" [\" + code + \"]\" );\n\t\tif ( console && console.warn && !jQuery.migrateMute ) {\n\t\t\tconsole.warn( \"JQMIGRATE: \" + msg );\n\t\t\tif ( jQuery.migrateTrace && console.trace ) {\n\t\t\t\tconsole.trace();\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunction migrateWarnProp( obj, prop, value, code, msg ) {\n\tObject.defineProperty( obj, prop, {\n\t\tconfigurable: true,\n\t\tenumerable: true,\n\t\tget: function() {\n\t\t\tmigrateWarn( code, msg );\n\t\t\treturn value;\n\t\t},\n\t\tset: function( newValue ) {\n\t\t\tmigrateWarn( code, msg );\n\t\t\tvalue = newValue;\n\t\t}\n\t} );\n}\n\nfunction migrateWarnFuncInternal( obj, prop, newFunc, code, msg ) {\n\tvar finalFunc,\n\t\torigFunc = obj[ prop ];\n\n\tobj[ prop ] = function() {\n\n\t\t// If `msg` not provided, do not warn; more sophisticated warnings\n\t\t// logic is most likely embedded in `newFunc`, in that case here\n\t\t// we just care about the logic choosing the proper implementation\n\t\t// based on whether the patch is disabled or not.\n\t\tif ( msg ) {\n\t\t\tmigrateWarn( code, msg );\n\t\t}\n\n\t\t// Since patches can be disabled & enabled dynamically, we\n\t\t// need to decide which implementation to run on each invocation.\n\t\tfinalFunc = jQuery.migrateIsPatchEnabled( code ) ?\n\t\t\tnewFunc :\n\n\t\t\t// The function may not have existed originally so we need a fallback.\n\t\t\t( origFunc || jQuery.noop );\n\n\t\treturn finalFunc.apply( this, arguments );\n\t};\n}\n\nfunction migratePatchAndWarnFunc( obj, prop, newFunc, code, msg ) {\n\tif ( !msg ) {\n\t\tthrow new Error( \"No warning message provided\" );\n\t}\n\treturn migrateWarnFuncInternal( obj, prop, newFunc, code, msg );\n}\n\nfunction migratePatchFunc( obj, prop, newFunc, code ) {\n\treturn migrateWarnFuncInternal( obj, prop, newFunc, code );\n}\n\nif ( window.document.compatMode === \"BackCompat\" ) {\n\n\t// jQuery has never supported or tested Quirks Mode\n\tmigrateWarn( \"quirks\", \"jQuery is not compatible with Quirks Mode\" );\n}\n\nvar findProp,\n\tclass2type = {},\n\toldInit = jQuery.fn.init,\n\toldFind = jQuery.find,\n\n\trattrHashTest = /\\[(\\s*[-\\w]+\\s*)([~|^$*]?=)\\s*([-\\w#]*?#[-\\w#]*)\\s*\\]/,\n\trattrHashGlob = /\\[(\\s*[-\\w]+\\s*)([~|^$*]?=)\\s*([-\\w#]*?#[-\\w#]*)\\s*\\]/g,\n\n\t// Require that the \"whitespace run\" starts from a non-whitespace\n\t// to avoid O(N^2) behavior when the engine would try matching \"\\s+$\" at each space position.\n\trtrim = /^[\\s\\uFEFF\\xA0]+|([^\\s\\uFEFF\\xA0])[\\s\\uFEFF\\xA0]+$/g;\n\nmigratePatchFunc( jQuery.fn, \"init\", function( arg1 ) {\n\tvar args = Array.prototype.slice.call( arguments );\n\n\tif ( jQuery.migrateIsPatchEnabled( \"selector-empty-id\" ) &&\n\t\ttypeof arg1 === \"string\" && arg1 === \"#\" ) {\n\n\t\t// JQuery( \"#\" ) is a bogus ID selector, but it returned an empty set\n\t\t// before jQuery 3.0\n\t\tmigrateWarn( \"selector-empty-id\", \"jQuery( '#' ) is not a valid selector\" );\n\t\targs[ 0 ] = [];\n\t}\n\n\treturn oldInit.apply( this, args );\n}, \"selector-empty-id\" );\n\n// This is already done in Core but the above patch will lose this assignment\n// so we need to redo it. It doesn't matter whether the patch is enabled or not\n// as the method is always going to be a Migrate-created wrapper.\njQuery.fn.init.prototype = jQuery.fn;\n\nmigratePatchFunc( jQuery, \"find\", function( selector ) {\n\tvar args = Array.prototype.slice.call( arguments );\n\n\t// Support: PhantomJS 1.x\n\t// String#match fails to match when used with a //g RegExp, only on some strings\n\tif ( typeof selector === \"string\" && rattrHashTest.test( selector ) ) {\n\n\t\t// The nonstandard and undocumented unquoted-hash was removed in jQuery 1.12.0\n\t\t// First see if qS thinks it's a valid selector, if so avoid a false positive\n\t\ttry {\n\t\t\twindow.document.querySelector( selector );\n\t\t} catch ( err1 ) {\n\n\t\t\t// Didn't *look* valid to qSA, warn and try quoting what we think is the value\n\t\t\tselector = selector.replace( rattrHashGlob, function( _, attr, op, value ) {\n\t\t\t\treturn \"[\" + attr + op + \"\\\"\" + value + \"\\\"]\";\n\t\t\t} );\n\n\t\t\t// If the regexp *may* have created an invalid selector, don't update it\n\t\t\t// Note that there may be false alarms if selector uses jQuery extensions\n\t\t\ttry {\n\t\t\t\twindow.document.querySelector( selector );\n\t\t\t\tmigrateWarn( \"selector-hash\",\n\t\t\t\t\t\"Attribute selector with '#' must be quoted: \" + args[ 0 ] );\n\t\t\t\targs[ 0 ] = selector;\n\t\t\t} catch ( err2 ) {\n\t\t\t\tmigrateWarn( \"selector-hash\",\n\t\t\t\t\t\"Attribute selector with '#' was not fixed: \" + args[ 0 ] );\n\t\t\t}\n\t\t}\n\t}\n\n\treturn oldFind.apply( this, args );\n}, \"selector-hash\" );\n\n// Copy properties attached to original jQuery.find method (e.g. .attr, .isXML)\nfor ( findProp in oldFind ) {\n\tif ( Object.prototype.hasOwnProperty.call( oldFind, findProp ) ) {\n\t\tjQuery.find[ findProp ] = oldFind[ findProp ];\n\t}\n}\n\n// The number of elements contained in the matched element set\nmigratePatchAndWarnFunc( jQuery.fn, \"size\", function() {\n\treturn this.length;\n}, \"size\",\n\"jQuery.fn.size() is deprecated and removed; use the .length property\" );\n\nmigratePatchAndWarnFunc( jQuery, \"parseJSON\", function() {\n\treturn JSON.parse.apply( null, arguments );\n}, \"parseJSON\",\n\"jQuery.parseJSON is deprecated; use JSON.parse\" );\n\nmigratePatchAndWarnFunc( jQuery, \"holdReady\", jQuery.holdReady,\n\t\"holdReady\", \"jQuery.holdReady is deprecated\" );\n\nmigratePatchAndWarnFunc( jQuery, \"unique\", jQuery.uniqueSort,\n\t\"unique\", \"jQuery.unique is deprecated; use jQuery.uniqueSort\" );\n\n// Now jQuery.expr.pseudos is the standard incantation\nmigrateWarnProp( jQuery.expr, \"filters\", jQuery.expr.pseudos, \"expr-pre-pseudos\",\n\t\"jQuery.expr.filters is deprecated; use jQuery.expr.pseudos\" );\nmigrateWarnProp( jQuery.expr, \":\", jQuery.expr.pseudos, \"expr-pre-pseudos\",\n\t\"jQuery.expr[':'] is deprecated; use jQuery.expr.pseudos\" );\n\n// Prior to jQuery 3.1.1 there were internal refs so we don't warn there\nif ( jQueryVersionSince( \"3.1.1\" ) ) {\n\tmigratePatchAndWarnFunc( jQuery, \"trim\", function( text ) {\n\t\treturn text == null ?\n\t\t\t\"\" :\n\t\t\t( text + \"\" ).replace( rtrim, \"$1\" );\n\t}, \"trim\",\n\t\"jQuery.trim is deprecated; use String.prototype.trim\" );\n}\n\n// Prior to jQuery 3.2 there were internal refs so we don't warn there\nif ( jQueryVersionSince( \"3.2.0\" ) ) {\n\tmigratePatchAndWarnFunc( jQuery, \"nodeName\", function( elem, name ) {\n\t\treturn elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();\n\t}, \"nodeName\",\n\t\"jQuery.nodeName is deprecated\" );\n\n\tmigratePatchAndWarnFunc( jQuery, \"isArray\", Array.isArray, \"isArray\",\n\t\t\"jQuery.isArray is deprecated; use Array.isArray\"\n\t);\n}\n\nif ( jQueryVersionSince( \"3.3.0\" ) ) {\n\n\tmigratePatchAndWarnFunc( jQuery, \"isNumeric\",\n\t\tfunction( obj ) {\n\n\t\t\t// As of jQuery 3.0, isNumeric is limited to\n\t\t\t// strings and numbers (primitives or objects)\n\t\t\t// that can be coerced to finite numbers (gh-2662)\n\t\t\tvar type = typeof obj;\n\t\t\treturn ( type === \"number\" || type === \"string\" ) &&\n\n\t\t\t\t// parseFloat NaNs numeric-cast false positives (\"\")\n\t\t\t\t// ...but misinterprets leading-number strings, e.g. hex literals (\"0x...\")\n\t\t\t\t// subtraction forces infinities to NaN\n\t\t\t\t!isNaN( obj - parseFloat( obj ) );\n\t\t}, \"isNumeric\",\n\t\t\"jQuery.isNumeric() is deprecated\"\n\t);\n\n\t// Populate the class2type map\n\tjQuery.each( \"Boolean Number String Function Array Date RegExp Object Error Symbol\".\n\t\tsplit( \" \" ),\n\tfunction( _, name ) {\n\t\tclass2type[ \"[object \" + name + \"]\" ] = name.toLowerCase();\n\t} );\n\n\tmigratePatchAndWarnFunc( jQuery, \"type\", function( obj ) {\n\t\tif ( obj == null ) {\n\t\t\treturn obj + \"\";\n\t\t}\n\n\t\t// Support: Android <=2.3 only (functionish RegExp)\n\t\treturn typeof obj === \"object\" || typeof obj === \"function\" ?\n\t\t\tclass2type[ Object.prototype.toString.call( obj ) ] || \"object\" :\n\t\t\ttypeof obj;\n\t}, \"type\",\n\t\"jQuery.type is deprecated\" );\n\n\tmigratePatchAndWarnFunc( jQuery, \"isFunction\",\n\t\tfunction( obj ) {\n\t\t\treturn typeof obj === \"function\";\n\t\t}, \"isFunction\",\n\t\t\"jQuery.isFunction() is deprecated\" );\n\n\tmigratePatchAndWarnFunc( jQuery, \"isWindow\",\n\t\tfunction( obj ) {\n\t\t\treturn obj != null && obj === obj.window;\n\t\t}, \"isWindow\",\n\t\t\"jQuery.isWindow() is deprecated\"\n\t);\n}\n\n// Support jQuery slim which excludes the ajax module\nif ( jQuery.ajax ) {\n\nvar oldAjax = jQuery.ajax,\n\trjsonp = /(=)\\?(?=&|$)|\\?\\?/;\n\nmigratePatchFunc( jQuery, \"ajax\", function() {\n\tvar jQXHR = oldAjax.apply( this, arguments );\n\n\t// Be sure we got a jQXHR (e.g., not sync)\n\tif ( jQXHR.promise ) {\n\t\tmigratePatchAndWarnFunc( jQXHR, \"success\", jQXHR.done, \"jqXHR-methods\",\n\t\t\t\"jQXHR.success is deprecated and removed\" );\n\t\tmigratePatchAndWarnFunc( jQXHR, \"error\", jQXHR.fail, \"jqXHR-methods\",\n\t\t\t\"jQXHR.error is deprecated and removed\" );\n\t\tmigratePatchAndWarnFunc( jQXHR, \"complete\", jQXHR.always, \"jqXHR-methods\",\n\t\t\t\"jQXHR.complete is deprecated and removed\" );\n\t}\n\n\treturn jQXHR;\n}, \"jqXHR-methods\" );\n\n// Only trigger the logic in jQuery <4 as the JSON-to-JSONP auto-promotion\n// behavior is gone in jQuery 4.0 and as it has security implications, we don't\n// want to restore the legacy behavior.\nif ( !jQueryVersionSince( \"4.0.0\" ) ) {\n\n\t// Register this prefilter before the jQuery one. Otherwise, a promoted\n\t// request is transformed into one with the script dataType and we can't\n\t// catch it anymore.\n\tjQuery.ajaxPrefilter( \"+json\", function( s ) {\n\n\t\t// Warn if JSON-to-JSONP auto-promotion happens.\n\t\tif ( s.jsonp !== false && ( rjsonp.test( s.url ) ||\n\t\t\t\ttypeof s.data === \"string\" &&\n\t\t\t\t( s.contentType || \"\" )\n\t\t\t\t\t.indexOf( \"application/x-www-form-urlencoded\" ) === 0 &&\n\t\t\t\trjsonp.test( s.data )\n\t\t) ) {\n\t\t\tmigrateWarn( \"jsonp-promotion\", \"JSON-to-JSONP auto-promotion is deprecated\" );\n\t\t}\n\t} );\n}\n\n}\n\nvar oldRemoveAttr = jQuery.fn.removeAttr,\n\toldToggleClass = jQuery.fn.toggleClass,\n\trbooleans = /^(?:checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped)$/i,\n\trmatchNonSpace = /\\S+/g;\n\nmigratePatchFunc( jQuery.fn, \"removeAttr\", function( name ) {\n\tvar self = this,\n\t\tpatchNeeded = false;\n\n\tjQuery.each( name.match( rmatchNonSpace ), function( _i, attr ) {\n\t\tif ( rbooleans.test( attr ) ) {\n\n\t\t\t// Only warn if at least a single node had the property set to\n\t\t\t// something else than `false`. Otherwise, this Migrate patch\n\t\t\t// doesn't influence the behavior and there's no need to set or warn.\n\t\t\tself.each( function() {\n\t\t\t\tif ( jQuery( this ).prop( attr ) !== false ) {\n\t\t\t\t\tpatchNeeded = true;\n\t\t\t\t\treturn false;\n\t\t\t\t}\n\t\t\t} );\n\t\t}\n\n\t\tif ( patchNeeded ) {\n\t\t\tmigrateWarn( \"removeAttr-bool\",\n\t\t\t\t\"jQuery.fn.removeAttr no longer sets boolean properties: \" + attr );\n\t\t\tself.prop( attr, false );\n\t\t}\n\t} );\n\n\treturn oldRemoveAttr.apply( this, arguments );\n}, \"removeAttr-bool\" );\n\nmigratePatchFunc( jQuery.fn, \"toggleClass\", function( state ) {\n\n\t// Only deprecating no-args or single boolean arg\n\tif ( state !== undefined && typeof state !== \"boolean\" ) {\n\n\t\treturn oldToggleClass.apply( this, arguments );\n\t}\n\n\tmigrateWarn( \"toggleClass-bool\", \"jQuery.fn.toggleClass( boolean ) is deprecated\" );\n\n\t// Toggle entire class name of each element\n\treturn this.each( function() {\n\t\tvar className = this.getAttribute && this.getAttribute( \"class\" ) || \"\";\n\n\t\tif ( className ) {\n\t\t\tjQuery.data( this, \"__className__\", className );\n\t\t}\n\n\t\t// If the element has a class name or if we're passed `false`,\n\t\t// then remove the whole classname (if there was one, the above saved it).\n\t\t// Otherwise bring back whatever was previously saved (if anything),\n\t\t// falling back to the empty string if nothing was stored.\n\t\tif ( this.setAttribute ) {\n\t\t\tthis.setAttribute( \"class\",\n\t\t\t\tclassName || state === false ?\n\t\t\t\t\t\"\" :\n\t\t\t\t\tjQuery.data( this, \"__className__\" ) || \"\"\n\t\t\t);\n\t\t}\n\t} );\n}, \"toggleClass-bool\" );\n\nfunction camelCase( string ) {\n\treturn string.replace( /-([a-z])/g, function( _, letter ) {\n\t\treturn letter.toUpperCase();\n\t} );\n}\n\nvar origFnCss, internalCssNumber,\n\tinternalSwapCall = false,\n\tralphaStart = /^[a-z]/,\n\n\t// The regex visualized:\n\t//\n\t//                         /----------\\\n\t//                        |            |    /-------\\\n\t//                        |  / Top  \\  |   |         |\n\t//         /--- Border ---+-| Right  |-+---+- Width -+---\\\n\t//        |                 | Bottom |                    |\n\t//        |                  \\ Left /                     |\n\t//        |                                               |\n\t//        |                              /----------\\     |\n\t//        |          /-------------\\    |            |    |- END\n\t//        |         |               |   |  / Top  \\  |    |\n\t//        |         |  / Margin  \\  |   | | Right  | |    |\n\t//        |---------+-|           |-+---+-| Bottom |-+----|\n\t//        |            \\ Padding /         \\ Left /       |\n\t// BEGIN -|                                               |\n\t//        |                /---------\\                    |\n\t//        |               |           |                   |\n\t//        |               |  / Min \\  |    / Width  \\     |\n\t//         \\--------------+-|       |-+---|          |---/\n\t//                           \\ Max /       \\ Height /\n\trautoPx = /^(?:Border(?:Top|Right|Bottom|Left)?(?:Width|)|(?:Margin|Padding)?(?:Top|Right|Bottom|Left)?|(?:Min|Max)?(?:Width|Height))$/;\n\n// If this version of jQuery has .swap(), don't false-alarm on internal uses\nif ( jQuery.swap ) {\n\tjQuery.each( [ \"height\", \"width\", \"reliableMarginRight\" ], function( _, name ) {\n\t\tvar oldHook = jQuery.cssHooks[ name ] && jQuery.cssHooks[ name ].get;\n\n\t\tif ( oldHook ) {\n\t\t\tjQuery.cssHooks[ name ].get = function() {\n\t\t\t\tvar ret;\n\n\t\t\t\tinternalSwapCall = true;\n\t\t\t\tret = oldHook.apply( this, arguments );\n\t\t\t\tinternalSwapCall = false;\n\t\t\t\treturn ret;\n\t\t\t};\n\t\t}\n\t} );\n}\n\nmigratePatchFunc( jQuery, \"swap\", function( elem, options, callback, args ) {\n\tvar ret, name,\n\t\told = {};\n\n\tif ( !internalSwapCall ) {\n\t\tmigrateWarn( \"swap\", \"jQuery.swap() is undocumented and deprecated\" );\n\t}\n\n\t// Remember the old values, and insert the new ones\n\tfor ( name in options ) {\n\t\told[ name ] = elem.style[ name ];\n\t\telem.style[ name ] = options[ name ];\n\t}\n\n\tret = callback.apply( elem, args || [] );\n\n\t// Revert the old values\n\tfor ( name in options ) {\n\t\telem.style[ name ] = old[ name ];\n\t}\n\n\treturn ret;\n}, \"swap\" );\n\nif ( jQueryVersionSince( \"3.4.0\" ) && typeof Proxy !== \"undefined\" ) {\n\tjQuery.cssProps = new Proxy( jQuery.cssProps || {}, {\n\t\tset: function() {\n\t\t\tmigrateWarn( \"cssProps\", \"jQuery.cssProps is deprecated\" );\n\t\t\treturn Reflect.set.apply( this, arguments );\n\t\t}\n\t} );\n}\n\n// In jQuery >=4 where jQuery.cssNumber is missing fill it with the latest 3.x version:\n// https://github.com/jquery/jquery/blob/3.7.1/src/css.js#L216-L246\n// This way, number values for the CSS properties below won't start triggering\n// Migrate warnings when jQuery gets updated to >=4.0.0 (gh-438).\nif ( jQueryVersionSince( \"4.0.0\" ) ) {\n\n\t// We need to keep this as a local variable as we need it internally\n\t// in a `jQuery.fn.css` patch and this usage shouldn't warn.\n\tinternalCssNumber = {\n\t\tanimationIterationCount: true,\n\t\taspectRatio: true,\n\t\tborderImageSlice: true,\n\t\tcolumnCount: true,\n\t\tflexGrow: true,\n\t\tflexShrink: true,\n\t\tfontWeight: true,\n\t\tgridArea: true,\n\t\tgridColumn: true,\n\t\tgridColumnEnd: true,\n\t\tgridColumnStart: true,\n\t\tgridRow: true,\n\t\tgridRowEnd: true,\n\t\tgridRowStart: true,\n\t\tlineHeight: true,\n\t\topacity: true,\n\t\torder: true,\n\t\torphans: true,\n\t\tscale: true,\n\t\twidows: true,\n\t\tzIndex: true,\n\t\tzoom: true,\n\n\t\t// SVG-related\n\t\tfillOpacity: true,\n\t\tfloodOpacity: true,\n\t\tstopOpacity: true,\n\t\tstrokeMiterlimit: true,\n\t\tstrokeOpacity: true\n\t};\n\n\tif ( typeof Proxy !== \"undefined\" ) {\n\t\tjQuery.cssNumber = new Proxy( internalCssNumber, {\n\t\t\tget: function() {\n\t\t\t\tmigrateWarn( \"css-number\", \"jQuery.cssNumber is deprecated\" );\n\t\t\t\treturn Reflect.get.apply( this, arguments );\n\t\t\t},\n\t\t\tset: function() {\n\t\t\t\tmigrateWarn( \"css-number\", \"jQuery.cssNumber is deprecated\" );\n\t\t\t\treturn Reflect.set.apply( this, arguments );\n\t\t\t}\n\t\t} );\n\t} else {\n\n\t\t// Support: IE 9-11+\n\t\t// IE doesn't support proxies, but we still want to restore the legacy\n\t\t// jQuery.cssNumber there.\n\t\tjQuery.cssNumber = internalCssNumber;\n\t}\n} else {\n\n\t// Make `internalCssNumber` defined for jQuery <4 as well as it's needed\n\t// in the `jQuery.fn.css` patch below.\n\tinternalCssNumber = jQuery.cssNumber;\n}\n\nfunction isAutoPx( prop ) {\n\n\t// The first test is used to ensure that:\n\t// 1. The prop starts with a lowercase letter (as we uppercase it for the second regex).\n\t// 2. The prop is not empty.\n\treturn ralphaStart.test( prop ) &&\n\t\trautoPx.test( prop[ 0 ].toUpperCase() + prop.slice( 1 ) );\n}\n\norigFnCss = jQuery.fn.css;\n\nmigratePatchFunc( jQuery.fn, \"css\", function( name, value ) {\n\tvar camelName,\n\t\torigThis = this;\n\n\tif ( name && typeof name === \"object\" && !Array.isArray( name ) ) {\n\t\tjQuery.each( name, function( n, v ) {\n\t\t\tjQuery.fn.css.call( origThis, n, v );\n\t\t} );\n\t\treturn this;\n\t}\n\n\tif ( typeof value === \"number\" ) {\n\t\tcamelName = camelCase( name );\n\n\t\t// Use `internalCssNumber` to avoid triggering our warnings in this\n\t\t// internal check.\n\t\tif ( !isAutoPx( camelName ) && !internalCssNumber[ camelName ] ) {\n\t\t\tmigrateWarn( \"css-number\",\n\t\t\t\t\"Number-typed values are deprecated for jQuery.fn.css( \\\"\" +\n\t\t\t\tname + \"\\\", value )\" );\n\t\t}\n\t}\n\n\treturn origFnCss.apply( this, arguments );\n}, \"css-number\" );\n\nvar origData = jQuery.data;\n\nmigratePatchFunc( jQuery, \"data\", function( elem, name, value ) {\n\tvar curData, sameKeys, key;\n\n\t// Name can be an object, and each entry in the object is meant to be set as data\n\tif ( name && typeof name === \"object\" && arguments.length === 2 ) {\n\n\t\tcurData = jQuery.hasData( elem ) && origData.call( this, elem );\n\t\tsameKeys = {};\n\t\tfor ( key in name ) {\n\t\t\tif ( key !== camelCase( key ) ) {\n\t\t\t\tmigrateWarn( \"data-camelCase\",\n\t\t\t\t\t\"jQuery.data() always sets/gets camelCased names: \" + key );\n\t\t\t\tcurData[ key ] = name[ key ];\n\t\t\t} else {\n\t\t\t\tsameKeys[ key ] = name[ key ];\n\t\t\t}\n\t\t}\n\n\t\torigData.call( this, elem, sameKeys );\n\n\t\treturn name;\n\t}\n\n\t// If the name is transformed, look for the un-transformed name in the data object\n\tif ( name && typeof name === \"string\" && name !== camelCase( name ) ) {\n\n\t\tcurData = jQuery.hasData( elem ) && origData.call( this, elem );\n\t\tif ( curData && name in curData ) {\n\t\t\tmigrateWarn( \"data-camelCase\",\n\t\t\t\t\"jQuery.data() always sets/gets camelCased names: \" + name );\n\t\t\tif ( arguments.length > 2 ) {\n\t\t\t\tcurData[ name ] = value;\n\t\t\t}\n\t\t\treturn curData[ name ];\n\t\t}\n\t}\n\n\treturn origData.apply( this, arguments );\n}, \"data-camelCase\" );\n\n// Support jQuery slim which excludes the effects module\nif ( jQuery.fx ) {\n\nvar intervalValue, intervalMsg,\n\toldTweenRun = jQuery.Tween.prototype.run,\n\tlinearEasing = function( pct ) {\n\t\treturn pct;\n\t};\n\nmigratePatchFunc( jQuery.Tween.prototype, \"run\", function( ) {\n\tif ( jQuery.easing[ this.easing ].length > 1 ) {\n\t\tmigrateWarn(\n\t\t\t\"easing-one-arg\",\n\t\t\t\"'jQuery.easing.\" + this.easing.toString() + \"' should use only one argument\"\n\t\t);\n\n\t\tjQuery.easing[ this.easing ] = linearEasing;\n\t}\n\n\toldTweenRun.apply( this, arguments );\n}, \"easing-one-arg\" );\n\nintervalValue = jQuery.fx.interval;\nintervalMsg = \"jQuery.fx.interval is deprecated\";\n\n// Support: IE9, Android <=4.4\n// Avoid false positives on browsers that lack rAF\n// Don't warn if document is hidden, jQuery uses setTimeout (#292)\nif ( window.requestAnimationFrame ) {\n\tObject.defineProperty( jQuery.fx, \"interval\", {\n\t\tconfigurable: true,\n\t\tenumerable: true,\n\t\tget: function() {\n\t\t\tif ( !window.document.hidden ) {\n\t\t\t\tmigrateWarn( \"fx-interval\", intervalMsg );\n\t\t\t}\n\n\t\t\t// Only fallback to the default if patch is enabled\n\t\t\tif ( !jQuery.migrateIsPatchEnabled( \"fx-interval\" ) ) {\n\t\t\t\treturn intervalValue;\n\t\t\t}\n\t\t\treturn intervalValue === undefined ? 13 : intervalValue;\n\t\t},\n\t\tset: function( newValue ) {\n\t\t\tmigrateWarn( \"fx-interval\", intervalMsg );\n\t\t\tintervalValue = newValue;\n\t\t}\n\t} );\n}\n\n}\n\nvar oldLoad = jQuery.fn.load,\n\toldEventAdd = jQuery.event.add,\n\toriginalFix = jQuery.event.fix;\n\njQuery.event.props = [];\njQuery.event.fixHooks = {};\n\nmigrateWarnProp( jQuery.event.props, \"concat\", jQuery.event.props.concat,\n\t\"event-old-patch\",\n\t\"jQuery.event.props.concat() is deprecated and removed\" );\n\nmigratePatchFunc( jQuery.event, \"fix\", function( originalEvent ) {\n\tvar event,\n\t\ttype = originalEvent.type,\n\t\tfixHook = this.fixHooks[ type ],\n\t\tprops = jQuery.event.props;\n\n\tif ( props.length ) {\n\t\tmigrateWarn( \"event-old-patch\",\n\t\t\t\"jQuery.event.props are deprecated and removed: \" + props.join() );\n\t\twhile ( props.length ) {\n\t\t\tjQuery.event.addProp( props.pop() );\n\t\t}\n\t}\n\n\tif ( fixHook && !fixHook._migrated_ ) {\n\t\tfixHook._migrated_ = true;\n\t\tmigrateWarn( \"event-old-patch\",\n\t\t\t\"jQuery.event.fixHooks are deprecated and removed: \" + type );\n\t\tif ( ( props = fixHook.props ) && props.length ) {\n\t\t\twhile ( props.length ) {\n\t\t\t\tjQuery.event.addProp( props.pop() );\n\t\t\t}\n\t\t}\n\t}\n\n\tevent = originalFix.call( this, originalEvent );\n\n\treturn fixHook && fixHook.filter ?\n\t\tfixHook.filter( event, originalEvent ) :\n\t\tevent;\n}, \"event-old-patch\" );\n\nmigratePatchFunc( jQuery.event, \"add\", function( elem, types ) {\n\n\t// This misses the multiple-types case but that seems awfully rare\n\tif ( elem === window && types === \"load\" && window.document.readyState === \"complete\" ) {\n\t\tmigrateWarn( \"load-after-event\",\n\t\t\t\"jQuery(window).on('load'...) called after load event occurred\" );\n\t}\n\treturn oldEventAdd.apply( this, arguments );\n}, \"load-after-event\" );\n\njQuery.each( [ \"load\", \"unload\", \"error\" ], function( _, name ) {\n\n\tmigratePatchFunc( jQuery.fn, name, function() {\n\t\tvar args = Array.prototype.slice.call( arguments, 0 );\n\n\t\t// If this is an ajax load() the first arg should be the string URL;\n\t\t// technically this could also be the \"Anything\" arg of the event .load()\n\t\t// which just goes to show why this dumb signature has been deprecated!\n\t\t// jQuery custom builds that exclude the Ajax module justifiably die here.\n\t\tif ( name === \"load\" && typeof args[ 0 ] === \"string\" ) {\n\t\t\treturn oldLoad.apply( this, args );\n\t\t}\n\n\t\tmigrateWarn( \"shorthand-removed-v3\",\n\t\t\t\"jQuery.fn.\" + name + \"() is deprecated\" );\n\n\t\targs.splice( 0, 0, name );\n\t\tif ( arguments.length ) {\n\t\t\treturn this.on.apply( this, args );\n\t\t}\n\n\t\t// Use .triggerHandler here because:\n\t\t// - load and unload events don't need to bubble, only applied to window or image\n\t\t// - error event should not bubble to window, although it does pre-1.7\n\t\t// See http://bugs.jquery.com/ticket/11820\n\t\tthis.triggerHandler.apply( this, args );\n\t\treturn this;\n\t}, \"shorthand-removed-v3\" );\n\n} );\n\njQuery.each( ( \"blur focus focusin focusout resize scroll click dblclick \" +\n\t\"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave \" +\n\t\"change select submit keydown keypress keyup contextmenu\" ).split( \" \" ),\nfunction( _i, name ) {\n\n\t// Handle event binding\n\tmigratePatchAndWarnFunc( jQuery.fn, name, function( data, fn ) {\n\t\treturn arguments.length > 0 ?\n\t\t\tthis.on( name, null, data, fn ) :\n\t\t\tthis.trigger( name );\n\t},\n\t\"shorthand-deprecated-v3\",\n\t\"jQuery.fn.\" + name + \"() event shorthand is deprecated\" );\n} );\n\n// Trigger \"ready\" event only once, on document ready\njQuery( function() {\n\tjQuery( window.document ).triggerHandler( \"ready\" );\n} );\n\njQuery.event.special.ready = {\n\tsetup: function() {\n\t\tif ( this === window.document ) {\n\t\t\tmigrateWarn( \"ready-event\", \"'ready' event is deprecated\" );\n\t\t}\n\t}\n};\n\nmigratePatchAndWarnFunc( jQuery.fn, \"bind\", function( types, data, fn ) {\n\treturn this.on( types, null, data, fn );\n}, \"pre-on-methods\", \"jQuery.fn.bind() is deprecated\" );\nmigratePatchAndWarnFunc( jQuery.fn, \"unbind\", function( types, fn ) {\n\treturn this.off( types, null, fn );\n}, \"pre-on-methods\", \"jQuery.fn.unbind() is deprecated\" );\nmigratePatchAndWarnFunc( jQuery.fn, \"delegate\", function( selector, types, data, fn ) {\n\treturn this.on( types, selector, data, fn );\n}, \"pre-on-methods\", \"jQuery.fn.delegate() is deprecated\" );\nmigratePatchAndWarnFunc( jQuery.fn, \"undelegate\", function( selector, types, fn ) {\n\treturn arguments.length === 1 ?\n\t\tthis.off( selector, \"**\" ) :\n\t\tthis.off( types, selector || \"**\", fn );\n}, \"pre-on-methods\", \"jQuery.fn.undelegate() is deprecated\" );\nmigratePatchAndWarnFunc( jQuery.fn, \"hover\", function( fnOver, fnOut ) {\n\treturn this.on( \"mouseenter\", fnOver ).on( \"mouseleave\", fnOut || fnOver );\n}, \"pre-on-methods\", \"jQuery.fn.hover() is deprecated\" );\n\nvar rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([a-z][^\\/\\0>\\x20\\t\\r\\n\\f]*)[^>]*)\\/>/gi,\n\tmakeMarkup = function( html ) {\n\t\tvar doc = window.document.implementation.createHTMLDocument( \"\" );\n\t\tdoc.body.innerHTML = html;\n\t\treturn doc.body && doc.body.innerHTML;\n\t},\n\twarnIfChanged = function( html ) {\n\t\tvar changed = html.replace( rxhtmlTag, \"<$1></$2>\" );\n\t\tif ( changed !== html && makeMarkup( html ) !== makeMarkup( changed ) ) {\n\t\t\tmigrateWarn( \"self-closed-tags\",\n\t\t\t\t\"HTML tags must be properly nested and closed: \" + html );\n\t\t}\n\t};\n\n/**\n * Deprecated, please use `jQuery.migrateDisablePatches( \"self-closed-tags\" )` instead.\n * @deprecated\n */\nmigratePatchAndWarnFunc( jQuery, \"UNSAFE_restoreLegacyHtmlPrefilter\", function() {\n\tjQuery.migrateEnablePatches( \"self-closed-tags\" );\n}, \"legacy-self-closed-tags\",\n\"jQuery.UNSAFE_restoreLegacyHtmlPrefilter deprecated; use \" +\n\t\"`jQuery.migrateEnablePatches( \\\"self-closed-tags\\\" )`\" );\n\nmigratePatchFunc( jQuery, \"htmlPrefilter\", function( html ) {\n\twarnIfChanged( html );\n\treturn html.replace( rxhtmlTag, \"<$1></$2>\" );\n}, \"self-closed-tags\" );\n\n// This patch needs to be disabled by default as it re-introduces\n// security issues (CVE-2020-11022, CVE-2020-11023).\njQuery.migrateDisablePatches( \"self-closed-tags\" );\n\nvar origOffset = jQuery.fn.offset;\n\nmigratePatchFunc( jQuery.fn, \"offset\", function() {\n\tvar elem = this[ 0 ];\n\n\tif ( elem && ( !elem.nodeType || !elem.getBoundingClientRect ) ) {\n\t\tmigrateWarn( \"offset-valid-elem\", \"jQuery.fn.offset() requires a valid DOM element\" );\n\t\treturn arguments.length ? this : undefined;\n\t}\n\n\treturn origOffset.apply( this, arguments );\n}, \"offset-valid-elem\" );\n\n// Support jQuery slim which excludes the ajax module\n// The jQuery.param patch is about respecting `jQuery.ajaxSettings.traditional`\n// so it doesn't make sense for the slim build.\nif ( jQuery.ajax ) {\n\nvar origParam = jQuery.param;\n\nmigratePatchFunc( jQuery, \"param\", function( data, traditional ) {\n\tvar ajaxTraditional = jQuery.ajaxSettings && jQuery.ajaxSettings.traditional;\n\n\tif ( traditional === undefined && ajaxTraditional ) {\n\n\t\tmigrateWarn( \"param-ajax-traditional\",\n\t\t\t\"jQuery.param() no longer uses jQuery.ajaxSettings.traditional\" );\n\t\ttraditional = ajaxTraditional;\n\t}\n\n\treturn origParam.call( this, data, traditional );\n}, \"param-ajax-traditional\" );\n\n}\n\nmigratePatchAndWarnFunc( jQuery.fn, \"andSelf\", jQuery.fn.addBack, \"andSelf\",\n\t\"jQuery.fn.andSelf() is deprecated and removed, use jQuery.fn.addBack()\" );\n\n// Support jQuery slim which excludes the deferred module in jQuery 4.0+\nif ( jQuery.Deferred ) {\n\nvar oldDeferred = jQuery.Deferred,\n\ttuples = [\n\n\t\t// Action, add listener, callbacks, .then handlers, final state\n\t\t[ \"resolve\", \"done\", jQuery.Callbacks( \"once memory\" ),\n\t\t\tjQuery.Callbacks( \"once memory\" ), \"resolved\" ],\n\t\t[ \"reject\", \"fail\", jQuery.Callbacks( \"once memory\" ),\n\t\t\tjQuery.Callbacks( \"once memory\" ), \"rejected\" ],\n\t\t[ \"notify\", \"progress\", jQuery.Callbacks( \"memory\" ),\n\t\t\tjQuery.Callbacks( \"memory\" ) ]\n\t];\n\nmigratePatchFunc( jQuery, \"Deferred\", function( func ) {\n\tvar deferred = oldDeferred(),\n\t\tpromise = deferred.promise();\n\n\tfunction newDeferredPipe( /* fnDone, fnFail, fnProgress */ ) {\n\t\tvar fns = arguments;\n\n\t\treturn jQuery.Deferred( function( newDefer ) {\n\t\t\tjQuery.each( tuples, function( i, tuple ) {\n\t\t\t\tvar fn = typeof fns[ i ] === \"function\" && fns[ i ];\n\n\t\t\t\t// Deferred.done(function() { bind to newDefer or newDefer.resolve })\n\t\t\t\t// deferred.fail(function() { bind to newDefer or newDefer.reject })\n\t\t\t\t// deferred.progress(function() { bind to newDefer or newDefer.notify })\n\t\t\t\tdeferred[ tuple[ 1 ] ]( function() {\n\t\t\t\t\tvar returned = fn && fn.apply( this, arguments );\n\t\t\t\t\tif ( returned && typeof returned.promise === \"function\" ) {\n\t\t\t\t\t\treturned.promise()\n\t\t\t\t\t\t\t.done( newDefer.resolve )\n\t\t\t\t\t\t\t.fail( newDefer.reject )\n\t\t\t\t\t\t\t.progress( newDefer.notify );\n\t\t\t\t\t} else {\n\t\t\t\t\t\tnewDefer[ tuple[ 0 ] + \"With\" ](\n\t\t\t\t\t\t\tthis === promise ? newDefer.promise() : this,\n\t\t\t\t\t\t\tfn ? [ returned ] : arguments\n\t\t\t\t\t\t);\n\t\t\t\t\t}\n\t\t\t\t} );\n\t\t\t} );\n\t\t\tfns = null;\n\t\t} ).promise();\n\t}\n\n\tmigratePatchAndWarnFunc( deferred, \"pipe\", newDeferredPipe, \"deferred-pipe\",\n\t\t\"deferred.pipe() is deprecated\" );\n\tmigratePatchAndWarnFunc( promise, \"pipe\", newDeferredPipe, \"deferred-pipe\",\n\t\t\"deferred.pipe() is deprecated\" );\n\n\tif ( func ) {\n\t\tfunc.call( deferred, deferred );\n\t}\n\n\treturn deferred;\n}, \"deferred-pipe\" );\n\n// Preserve handler of uncaught exceptions in promise chains\njQuery.Deferred.exceptionHook = oldDeferred.exceptionHook;\n\n}\n\nreturn jQuery;\n} );\n"
 
 /***/ },
 
-/***/ 1049
+/***/ 1189
 (module) {
 
 /*
@@ -49529,7 +49540,7 @@ module.exports = function(src) {
 
 /***/ },
 
-/***/ 1460
+/***/ 1600
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -49542,7 +49553,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 ;(function (factory) {
   if (true) {
     // AMD. Register as an anonymous module.
-    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -56337,14 +56348,14 @@ S2.define('jquery.select2',[
 
 /***/ },
 
-/***/ 1459
+/***/ 1599
 (module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (factory) {
     "use strict";
 
     if (true) { // AMD
-        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1437)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1577)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -59250,10 +59261,10 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 
 /***/ },
 
-/***/ 1438
+/***/ 1578
 (__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
 
-__webpack_require__(1049)(__webpack_require__(1439))
+__webpack_require__(1189)(__webpack_require__(1579))
 
 /***/ }
 
@@ -59354,8 +59365,8 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var jquery_fancytree_dist_skin_awesome_ui_fancytree_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1454);
-/* harmony import */ var _tabler_core__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1455);
+/* harmony import */ var jquery_fancytree_dist_skin_awesome_ui_fancytree_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1594);
+/* harmony import */ var _tabler_core__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1595);
 /* harmony import */ var _tabler_core__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_tabler_core__WEBPACK_IMPORTED_MODULE_1__);
 /**
  * ---------------------------------------------------------------------
@@ -59391,38 +59402,38 @@ __webpack_require__.r(__webpack_exports__);
  */
 
 // Font-Awesome
-__webpack_require__(1435);
+__webpack_require__(1575);
 
 // Animate.css
-__webpack_require__(1436);
+__webpack_require__(1576);
 
 // jQuery
 // '$' and 'jQuery' objects have to be declared in global scope
-window.$ = window.jQuery = __webpack_require__(1437);
+window.$ = window.jQuery = __webpack_require__(1577);
 
-__webpack_require__(1438);
+__webpack_require__(1578);
 window.$.migrateMute  = true;
 window.$.migrateTrace = false;
 
 // jQuery plugins
-__webpack_require__(1440);
+__webpack_require__(1580);
 
 // jQuery UI widgets required by
 // - jquery-file-upload (widget)
 // - jquery.fancytree (widget, position, jquery-patch, keycode, scroll-parent, unique-id)
-__webpack_require__(1441);
-__webpack_require__(1443);
-__webpack_require__(1444);
-__webpack_require__(1445);
-__webpack_require__(1446);
-__webpack_require__(1447);
+__webpack_require__(1581);
+__webpack_require__(1583);
+__webpack_require__(1584);
+__webpack_require__(1585);
+__webpack_require__(1586);
+__webpack_require__(1587);
 
 // jQuery fancttree
-__webpack_require__(1448);
-__webpack_require__(1450);
-__webpack_require__(1451);
-__webpack_require__(1452);
-__webpack_require__(1453);
+__webpack_require__(1588);
+__webpack_require__(1590);
+__webpack_require__(1591);
+__webpack_require__(1592);
+__webpack_require__(1593);
 
 
 // Tabler
@@ -59430,16 +59441,16 @@ __webpack_require__(1453);
 window.bootstrap = _tabler_core__WEBPACK_IMPORTED_MODULE_1__.bootstrap;
 
 // qTip2
-__webpack_require__(1456);
-__webpack_require__(1457);
+__webpack_require__(1596);
+__webpack_require__(1597);
 
 // color input
-__webpack_require__(1458);
-__webpack_require__(1459);
+__webpack_require__(1598);
+__webpack_require__(1599);
 
 // Select2
 // use full for compat; see https://select2.org/upgrading/migrating-from-35
-__webpack_require__(1460);
+__webpack_require__(1600);
 // Apply CSS classes to dropdown based on select tag classes
 $.fn.select2.defaults.set(
    'adaptDropdownCssClass',
@@ -59450,12 +59461,12 @@ $.fn.select2.defaults.set(
 
 //Loadash
 //'_' object has to be declared in global scope
-window._ = __webpack_require__(1461);
+window._ = __webpack_require__(1601);
 
 // gettext.js
 // add translation function into global scope
 // signature is almost the same as for PHP functions, but accept extra arguments for string variables
-window.i18n = (__webpack_require__(1462)["default"])({domain: 'glpi'});
+window.i18n = (__webpack_require__(1602)["default"])({domain: 'glpi'});
 
 const escape_msgid = function (msgid) {
     return msgid.replace(/%(\d+)\$/g, '%%$1\$');

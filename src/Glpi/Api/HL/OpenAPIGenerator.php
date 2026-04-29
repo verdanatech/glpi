@@ -38,6 +38,7 @@ namespace Glpi\Api\HL;
 use CommonGLPI;
 use Glpi\Api\HL\Doc as Doc;
 use Glpi\Api\HL\Middleware\ResultFormatterMiddleware;
+use Glpi\Debug\Profiler;
 use Glpi\OAuth\Server;
 use ReflectionClass;
 use Session;
@@ -141,6 +142,14 @@ The High-Level REST API documentation shown here is dynamically generated from t
 If a plugin is not enabled, its routes will not be shown here.
 EOT;
 
+        $api_versions = Router::getAPIVersions();
+        foreach ($api_versions as $version_info) {
+            if ($version_info['version'] === $this->api_version && ($version_info['deprecated'] ?? false)) {
+                $description = "DEPRECATED - " . $description;
+                break;
+            }
+        }
+
         return [
             'title' => 'GLPI High-Level REST API',
             'description' => $description,
@@ -162,6 +171,7 @@ EOT;
 
         $controllers = Router::getInstance()->getControllers();
         foreach ($controllers as $controller) {
+            Profiler::getInstance()->start('OpenAPI Component Schemas Retrieval for ' . $controller::class, Profiler::CATEGORY_HLAPI);
             $known_schemas = $controller::getKnownSchemas($api_version);
             $short_name = (new ReflectionClass($controller))->getShortName();
             $controller_name = str_replace('Controller', '', $short_name);
@@ -215,6 +225,7 @@ EOT;
                 $schemas[$calculated_name]['x-controller'] = $controller::class;
                 $schemas[$calculated_name]['x-schemaname'] = $schema_name;
             }
+            Profiler::getInstance()->stop('OpenAPI Component Schemas Retrieval for ' . $controller::class);
         }
 
         return self::$component_schemas_cache[$api_version] = $schemas;
@@ -310,7 +321,14 @@ EOT;
                             foreach ($method_info['parameters'] ?? [] as $pk => $param) {
                                 if (array_key_exists('pattern', $param['schema'])) {
                                     foreach ($paths[$new_path][$method]['parameters'] as $existing_pk => $existing_param) {
-                                        if (($existing_param['name'] === $param['name']) && isset($existing_param['schema']['pattern']) && str_contains($existing_param['schema']['pattern'], '|')) {
+                                        if (
+                                            ($existing_param['name'] === $param['name'])
+                                            && isset($existing_param['schema']['pattern'])
+                                            && (
+                                                str_contains($existing_param['schema']['pattern'], '|')
+                                                || str_contains($param['schema']['pattern'], '|')
+                                            )
+                                        ) {
                                             $paths[$new_path][$method]['parameters'][$existing_pk]['schema']['pattern'] .= '|' . $param['schema']['pattern'];
                                         }
                                     }

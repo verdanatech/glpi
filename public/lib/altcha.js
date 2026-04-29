@@ -2,7 +2,7 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1464
+/***/ 1604
 (__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -3116,7 +3116,7 @@ Ho(Bo);
 
 /***/ },
 
-/***/ 1465
+/***/ 1605
 (__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
@@ -4338,8 +4338,8 @@ var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var altcha__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1464);
-/* harmony import */ var altcha_i18n_all__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1465);
+/* harmony import */ var altcha__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1604);
+/* harmony import */ var altcha_i18n_all__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1605);
 /**
  * ---------------------------------------------------------------------
  *

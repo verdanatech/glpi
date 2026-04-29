@@ -5,6 +5,7 @@ namespace GraphQL\Validator\Rules;
 use GraphQL\Error\Error;
 use GraphQL\Error\InvariantViolation;
 use GraphQL\Executor\Values;
+use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\FieldNode;
 use GraphQL\Language\AST\FragmentSpreadNode;
 use GraphQL\Language\AST\InlineFragmentNode;
@@ -18,6 +19,7 @@ use GraphQL\Language\Visitor;
 use GraphQL\Language\VisitorOperation;
 use GraphQL\Type\Definition\Directive;
 use GraphQL\Type\Definition\FieldDefinition;
+use GraphQL\Type\Introspection;
 use GraphQL\Validator\QueryValidationContext;
 
 /**
@@ -70,8 +72,8 @@ class QueryComplexity extends QuerySecurityRule
 
                     return Visitor::skipNode();
                 },
-                NodeKind::OPERATION_DEFINITION => [
-                    'leave' => function (OperationDefinitionNode $operationDefinition) use ($context): void {
+                NodeKind::DOCUMENT => [
+                    'leave' => function (DocumentNode $document) use ($context): void {
                         $errors = $context->getErrors();
 
                         if ($errors !== []) {
@@ -82,18 +84,24 @@ class QueryComplexity extends QuerySecurityRule
                             return;
                         }
 
-                        $this->queryComplexity = $this->fieldComplexity($operationDefinition->selectionSet);
+                        foreach ($document->definitions as $definition) {
+                            if (! $definition instanceof OperationDefinitionNode) {
+                                continue;
+                            }
 
-                        if ($this->queryComplexity <= $this->maxQueryComplexity) {
-                            return;
+                            $this->queryComplexity = $this->fieldComplexity($definition->selectionSet);
+
+                            if ($this->queryComplexity > $this->maxQueryComplexity) {
+                                $context->reportError(
+                                    new Error(static::maxQueryComplexityErrorMessage(
+                                        $this->maxQueryComplexity,
+                                        $this->queryComplexity
+                                    ))
+                                );
+
+                                return;
+                            }
                         }
-
-                        $context->reportError(
-                            new Error(static::maxQueryComplexityErrorMessage(
-                                $this->maxQueryComplexity,
-                                $this->queryComplexity
-                            ))
-                        );
                     },
                 ],
             ]
@@ -117,6 +125,11 @@ class QueryComplexity extends QuerySecurityRule
     {
         switch (true) {
             case $node instanceof FieldNode:
+                // Exclude __schema field and all nested content from complexity calculation
+                if ($node->name->value === Introspection::SCHEMA_FIELD_NAME) {
+                    return 0;
+                }
+
                 if ($this->directiveExcludesField($node)) {
                     return 0;
                 }
@@ -256,6 +269,10 @@ class QueryComplexity extends QuerySecurityRule
         return $this->maxQueryComplexity;
     }
 
+    /**
+     * Complexity of the first operation exceeding the defined limit, or, in case no operation
+     * exceeds the limit, complexity of the last defined operation.
+     */
     public function getQueryComplexity(): int
     {
         return $this->queryComplexity;

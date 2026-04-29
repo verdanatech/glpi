@@ -899,6 +899,7 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
 
     public function cleanDBonPurge()
     {
+        global $DB;
 
         // OlaLevel_Ticket does not extends CommonDBConnexity
         $olaLevel_ticket = new OlaLevel_Ticket();
@@ -917,6 +918,28 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
         // CommonITILTask does not extends CommonDBConnexity
         $tt = new TicketTask();
         $tt->deleteByCriteria(['tickets_id' => $this->fields['id']]);
+
+        // sourceof_items_id / sourceitems_id are not named properly for foreign keys so they cannot be handled by relation.constant.php
+        $DB->update(
+            ITILFollowup::getTable(),
+            ['sourceof_items_id' => 0],
+            ['sourceof_items_id' => $this->fields['id']]
+        );
+        $DB->update(
+            ITILFollowup::getTable(),
+            ['sourceitems_id' => 0],
+            ['sourceitems_id' => $this->fields['id']]
+        );
+        $DB->update(
+            TicketTask::getTable(),
+            ['sourceof_items_id' => 0],
+            ['sourceof_items_id' => $this->fields['id']]
+        );
+        $DB->update(
+            TicketTask::getTable(),
+            ['sourceitems_id' => 0],
+            ['sourceitems_id' => $this->fields['id']]
+        );
 
         $this->deleteChildrenAndRelationsFromDb(
             [
@@ -1276,7 +1299,12 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
         $slalevels_id = SlaLevel::getFirstSlaLevel($slas_id);
 
         $sla = new SLA();
-        if ($sla->getFromDB($slas_id)) {
+        $in_db = $sla->getFromDB($slas_id);
+        if (!$in_db) {
+            return;
+        }
+
+        if (!in_array($this->fields['status'], static::getReopenableStatusArray())) {
             $sla->clearInvalidLevels($this->fields['id']);
             $calendars_id = Entity::getUsedConfig(
                 'calendars_strategy',
@@ -1306,7 +1334,12 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
         $olalevels_id = OlaLevel::getFirstOlaLevel($slas_id);
 
         $ola = new OLA();
-        if ($ola->getFromDB($slas_id)) {
+        $in_db = $ola->getFromDB($slas_id);
+        if (!$in_db) {
+            return;
+        }
+
+        if (!in_array($this->fields['status'], static::getReopenableStatusArray())) {
             $ola->clearInvalidLevels($this->fields['id']);
             $calendars_id = Entity::getUsedConfig(
                 'calendars_strategy',
@@ -1501,7 +1534,8 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
 
             // Read again ticket to be sure that all data are up to date
             $this->getFromDB($this->fields['id']);
-            NotificationEvent::raiseEvent($mailtype, $this);
+            $trigger = $this->input['_trigger'] ?? null;
+            NotificationEvent::raiseEvent($mailtype, $this, [], $trigger);
         }
 
         $this->handleSatisfactionSurveyOnUpdate();
@@ -1571,9 +1605,6 @@ class Ticket extends CommonITILObject implements DefaultSearchRequestInterface
                                  'glpi_businesscriticities',
                                  $infocom->fields['businesscriticities_id']
                              );
-                        }
-                        if (isset($item->fields['groups_id'])) {
-                            $input['_groups_id_of_item'] = $item->fields['groups_id'];
                         }
                         break(2);
                     }
@@ -6044,16 +6075,25 @@ JAVASCRIPT;
     {
         global $DB;
 
-        //look for merged tickets
+        //look for merged tickets (only when the source ticket is deleted, i.e. actually merged)
         $merged = [];
         $iterator = $DB->request(
             [
                 'FROM' => Ticket_Ticket::getTable(),
-                'SELECT' => ['tickets_id_2'],
+                'SELECT' => [Ticket_Ticket::getTable() . '.tickets_id_2'],
                 'DISTINCT' => true,
+                'INNER JOIN' => [
+                    Ticket::getTable() => [
+                        'ON' => [
+                            Ticket_Ticket::getTable() => 'tickets_id_1',
+                            Ticket::getTable()        => 'id',
+                        ],
+                    ],
+                ],
                 'WHERE' => [
-                    'tickets_id_1' => $id,
-                    'link'        => Ticket_Ticket::SON_OF,
+                    Ticket_Ticket::getTable() . '.tickets_id_1' => $id,
+                    Ticket_Ticket::getTable() . '.link'         => Ticket_Ticket::SON_OF,
+                    Ticket::getTable() . '.is_deleted'          => 1,
                 ],
             ]
         );

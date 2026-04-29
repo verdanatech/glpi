@@ -216,7 +216,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_shared__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* vue v3.5.29
+* vue v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -471,7 +471,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/runtime-dom v3.5.29
+* @vue/runtime-dom v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -1254,7 +1254,9 @@ const patchProp = (el, key, prevValue, nextValue, namespace, parentComponent) =>
     }
   } else if (
     // #11081 force set props for possible async custom element
-    el._isVueCE && (/[A-Z]/.test(key) || !(0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.isString)(nextValue))
+    el._isVueCE && // #12408 check if it's declared prop or it's async custom element
+    (shouldSetAsPropForVueCE(el, key) || // @ts-expect-error _def is private
+    el._def.__asyncLoader && (/[A-Z]/.test(key) || !(0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.isString)(nextValue)))
   ) {
     patchDOMProp(el, (0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.camelize)(key), nextValue, parentComponent, key);
   } else {
@@ -1302,6 +1304,17 @@ function shouldSetAsProp(el, key, value, isSVG) {
   }
   return key in el;
 }
+function shouldSetAsPropForVueCE(el, key) {
+  const props = (
+    // @ts-expect-error _def is private
+    el._def.props
+  );
+  if (!props) {
+    return false;
+  }
+  const camelKey = (0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.camelize)(key);
+  return Array.isArray(props) ? props.some((prop) => (0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.camelize)(prop) === camelKey) : Object.keys(props).some((prop) => (0,_vue_runtime_core__WEBPACK_IMPORTED_MODULE_2__.camelize)(prop) === camelKey);
+}
 
 const REMOVAL = {};
 // @__NO_SIDE_EFFECTS__
@@ -1346,6 +1359,7 @@ class VueElement extends BaseClass {
     this._dirty = false;
     this._numberProps = null;
     this._styleChildren = /* @__PURE__ */ new WeakSet();
+    this._styleAnchors = /* @__PURE__ */ new WeakMap();
     this._ob = null;
     if (this.shadowRoot && _createApp !== createApp) {
       this._root = this.shadowRoot;
@@ -1374,7 +1388,8 @@ class VueElement extends BaseClass {
     }
     this._connected = true;
     let parent = this;
-    while (parent = parent && (parent.parentNode || parent.host)) {
+    while (parent = parent && // #12479 should check assignedSlot first to get correct parent
+    (parent.assignedSlot || parent.parentNode || parent.host)) {
       if (parent instanceof VueElement) {
         this._parent = parent;
         break;
@@ -1596,6 +1611,7 @@ class VueElement extends BaseClass {
               this._styles.forEach((s) => this._root.removeChild(s));
               this._styles.length = 0;
             }
+            this._styleAnchors.delete(this._def);
             this._applyStyles(newStyles);
             this._instance = null;
             this._update();
@@ -1620,7 +1636,7 @@ class VueElement extends BaseClass {
     }
     return vnode;
   }
-  _applyStyles(styles, owner) {
+  _applyStyles(styles, owner, parentComp) {
     if (!styles) return;
     if (owner) {
       if (owner === this._def || this._styleChildren.has(owner)) {
@@ -1629,11 +1645,19 @@ class VueElement extends BaseClass {
       this._styleChildren.add(owner);
     }
     const nonce = this._nonce;
+    const root = this.shadowRoot;
+    const insertionAnchor = parentComp ? this._getStyleAnchor(parentComp) || this._getStyleAnchor(this._def) : this._getRootStyleInsertionAnchor(root);
+    let last = null;
     for (let i = styles.length - 1; i >= 0; i--) {
       const s = document.createElement("style");
       if (nonce) s.setAttribute("nonce", nonce);
       s.textContent = styles[i];
-      this.shadowRoot.prepend(s);
+      root.insertBefore(s, last || insertionAnchor);
+      last = s;
+      if (i === 0) {
+        if (!parentComp) this._styleAnchors.set(this._def, s);
+        if (owner) this._styleAnchors.set(owner, s);
+      }
       if (!!(process.env.NODE_ENV !== "production")) {
         if (owner) {
           if (owner.__hmrId) {
@@ -1649,6 +1673,28 @@ class VueElement extends BaseClass {
         }
       }
     }
+  }
+  _getStyleAnchor(comp) {
+    if (!comp) {
+      return null;
+    }
+    const anchor = this._styleAnchors.get(comp);
+    if (anchor && anchor.parentNode === this.shadowRoot) {
+      return anchor;
+    }
+    if (anchor) {
+      this._styleAnchors.delete(comp);
+    }
+    return null;
+  }
+  _getRootStyleInsertionAnchor(root) {
+    for (let i = 0; i < root.childNodes.length; i++) {
+      const node = root.childNodes[i];
+      if (!(node instanceof HTMLStyleElement)) {
+        return node;
+      }
+    }
+    return null;
   }
   /**
    * Only called when shadowRoot is false
@@ -1712,8 +1758,8 @@ class VueElement extends BaseClass {
   /**
    * @internal
    */
-  _injectChildStyle(comp) {
-    this._applyStyles(comp.styles, comp);
+  _injectChildStyle(comp, parentComp) {
+    this._applyStyles(comp.styles, comp, parentComp);
   }
   /**
    * @internal
@@ -1743,6 +1789,7 @@ class VueElement extends BaseClass {
   _removeChildStyle(comp) {
     if (!!(process.env.NODE_ENV !== "production")) {
       this._styleChildren.delete(comp);
+      this._styleAnchors.delete(comp);
       if (this._childStyles && comp.__hmrId) {
         const oldStyles = this._childStyles.get(comp.__hmrId);
         if (oldStyles) {
@@ -2001,7 +2048,8 @@ const vModelText = {
     if (elValue === newValue) {
       return;
     }
-    if (document.activeElement === el && el.type !== "range") {
+    const rootNode = el.getRootNode();
+    if ((rootNode instanceof Document || rootNode instanceof ShadowRoot) && rootNode.activeElement === el && el.type !== "range") {
       if (lazy && value === oldValue) {
         return;
       }
@@ -2567,7 +2615,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_shared__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/runtime-core v3.5.29
+* @vue/runtime-core v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -3016,6 +3064,13 @@ function checkRecursiveUpdates(seen, fn) {
 }
 
 let isHmrUpdating = false;
+const setHmrUpdating = (v) => {
+  try {
+    return isHmrUpdating;
+  } finally {
+    isHmrUpdating = v;
+  }
+};
 const hmrDirtyComponents = /* @__PURE__ */ new Map();
 if (!!(process.env.NODE_ENV !== "production")) {
   (0,_vue_shared__WEBPACK_IMPORTED_MODULE_1__.getGlobalThis)().__VUE_HMR_RUNTIME__ = {
@@ -3509,6 +3564,7 @@ function createPathGetter(ctx, path) {
   };
 }
 
+const pendingMounts = /* @__PURE__ */ new WeakMap();
 const TeleportEndKey = /* @__PURE__ */ Symbol("_vte");
 const isTeleport = (type) => type.__isTeleport;
 const isTeleportDisabled = (props) => props && (props.disabled || props.disabled === "");
@@ -3550,88 +3606,84 @@ const TeleportImpl = {
       o: { insert, querySelector, createText, createComment }
     } = internals;
     const disabled = isTeleportDisabled(n2.props);
-    let { shapeFlag, children, dynamicChildren } = n2;
+    let { dynamicChildren } = n2;
     if (!!(process.env.NODE_ENV !== "production") && isHmrUpdating) {
       optimized = false;
       dynamicChildren = null;
     }
+    const mount = (vnode, container2, anchor2) => {
+      if (vnode.shapeFlag & 16) {
+        mountChildren(
+          vnode.children,
+          container2,
+          anchor2,
+          parentComponent,
+          parentSuspense,
+          namespace,
+          slotScopeIds,
+          optimized
+        );
+      }
+    };
+    const mountToTarget = (vnode = n2) => {
+      const disabled2 = isTeleportDisabled(vnode.props);
+      const target = vnode.target = resolveTarget(vnode.props, querySelector);
+      const targetAnchor = prepareAnchor(target, vnode, createText, insert);
+      if (target) {
+        if (namespace !== "svg" && isTargetSVG(target)) {
+          namespace = "svg";
+        } else if (namespace !== "mathml" && isTargetMathML(target)) {
+          namespace = "mathml";
+        }
+        if (parentComponent && parentComponent.isCE) {
+          (parentComponent.ce._teleportTargets || (parentComponent.ce._teleportTargets = /* @__PURE__ */ new Set())).add(target);
+        }
+        if (!disabled2) {
+          mount(vnode, target, targetAnchor);
+          updateCssVars(vnode, false);
+        }
+      } else if (!!(process.env.NODE_ENV !== "production") && !disabled2) {
+        warn$1("Invalid Teleport target on mount:", target, `(${typeof target})`);
+      }
+    };
+    const queuePendingMount = (vnode) => {
+      const mountJob = () => {
+        if (pendingMounts.get(vnode) !== mountJob) return;
+        pendingMounts.delete(vnode);
+        if (isTeleportDisabled(vnode.props)) {
+          mount(vnode, container, vnode.anchor);
+          updateCssVars(vnode, true);
+        }
+        mountToTarget(vnode);
+      };
+      pendingMounts.set(vnode, mountJob);
+      queuePostRenderEffect(mountJob, parentSuspense);
+    };
     if (n1 == null) {
       const placeholder = n2.el = !!(process.env.NODE_ENV !== "production") ? createComment("teleport start") : createText("");
       const mainAnchor = n2.anchor = !!(process.env.NODE_ENV !== "production") ? createComment("teleport end") : createText("");
       insert(placeholder, container, anchor);
       insert(mainAnchor, container, anchor);
-      const mount = (container2, anchor2) => {
-        if (shapeFlag & 16) {
-          mountChildren(
-            children,
-            container2,
-            anchor2,
-            parentComponent,
-            parentSuspense,
-            namespace,
-            slotScopeIds,
-            optimized
-          );
-        }
-      };
-      const mountToTarget = () => {
-        const target = n2.target = resolveTarget(n2.props, querySelector);
-        const targetAnchor = prepareAnchor(target, n2, createText, insert);
-        if (target) {
-          if (namespace !== "svg" && isTargetSVG(target)) {
-            namespace = "svg";
-          } else if (namespace !== "mathml" && isTargetMathML(target)) {
-            namespace = "mathml";
-          }
-          if (parentComponent && parentComponent.isCE) {
-            (parentComponent.ce._teleportTargets || (parentComponent.ce._teleportTargets = /* @__PURE__ */ new Set())).add(target);
-          }
-          if (!disabled) {
-            mount(target, targetAnchor);
-            updateCssVars(n2, false);
-          }
-        } else if (!!(process.env.NODE_ENV !== "production") && !disabled) {
-          warn$1(
-            "Invalid Teleport target on mount:",
-            target,
-            `(${typeof target})`
-          );
-        }
-      };
-      if (disabled) {
-        mount(container, mainAnchor);
-        updateCssVars(n2, true);
-      }
-      if (isTeleportDeferred(n2.props)) {
-        n2.el.__isMounted = false;
-        queuePostRenderEffect(() => {
-          mountToTarget();
-          delete n2.el.__isMounted;
-        }, parentSuspense);
-      } else {
-        mountToTarget();
-      }
-    } else {
-      if (isTeleportDeferred(n2.props) && n1.el.__isMounted === false) {
-        queuePostRenderEffect(() => {
-          TeleportImpl.process(
-            n1,
-            n2,
-            container,
-            anchor,
-            parentComponent,
-            parentSuspense,
-            namespace,
-            slotScopeIds,
-            optimized,
-            internals
-          );
-        }, parentSuspense);
+      if (isTeleportDeferred(n2.props) || parentSuspense && parentSuspense.pendingBranch) {
+        queuePendingMount(n2);
         return;
       }
+      if (disabled) {
+        mount(n2, container, mainAnchor);
+        updateCssVars(n2, true);
+      }
+      mountToTarget();
+    } else {
       n2.el = n1.el;
-      n2.targetStart = n1.targetStart;
       const mainAnchor = n2.anchor = n1.anchor;
+      const pendingMount = pendingMounts.get(n1);
+      if (pendingMount) {
+        pendingMount.flags |= 8;
+        pendingMounts.delete(n1);
+        queuePendingMount(n2);
+        return;
+      }
+      n2.targetStart = n1.targetStart;
       const target = n2.target = n1.target;
       const targetAnchor = n2.targetAnchor = n1.targetAnchor;
       const wasDisabled = isTeleportDisabled(n1.props);
@@ -3724,13 +3776,19 @@ const TeleportImpl = {
       target,
       props
     } = vnode;
+    let shouldRemove = doRemove || !isTeleportDisabled(props);
+    const pendingMount = pendingMounts.get(vnode);
+    if (pendingMount) {
+      pendingMount.flags |= 8;
+      pendingMounts.delete(vnode);
+      shouldRemove = false;
+    }
     if (target) {
       hostRemove(targetStart);
       hostRemove(targetAnchor);
     }
     doRemove && hostRemove(anchor);
     if (shapeFlag & 16) {
-      const shouldRemove = doRemove || !isTeleportDisabled(props);
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
         unmount(
@@ -4097,7 +4155,7 @@ function resolveTransitionHooks(vnode, props, state, instance, postClone) {
       callHook(hook, [el]);
     },
     enter(el) {
-      if (leavingVNodesCache[key] === vnode) return;
+      if (!isHmrUpdating && leavingVNodesCache[key] === vnode) return;
       let hook = onEnter;
       let afterHook = onAfterEnter;
       let cancelHook = onEnterCancelled;
@@ -5745,12 +5803,16 @@ function renderList(source, renderItem, cache, index) {
       );
     }
   } else if (typeof source === "number") {
-    if (!!(process.env.NODE_ENV !== "production") && !Number.isInteger(source)) {
-      warn$1(`The v-for range expect an integer value but got ${source}.`);
-    }
-    ret = new Array(source);
-    for (let i = 0; i < source; i++) {
-      ret[i] = renderItem(i + 1, i, void 0, cached && cached[i]);
+    if (!!(process.env.NODE_ENV !== "production") && (!Number.isInteger(source) || source < 0)) {
+      warn$1(
+        `The v-for range expects a positive integer value but got ${source}.`
+      );
+      ret = [];
+    } else {
+      ret = new Array(source);
+      for (let i = 0; i < source; i++) {
+        ret[i] = renderItem(i + 1, i, void 0, cached && cached[i]);
+      }
     }
   } else if ((0,_vue_shared__WEBPACK_IMPORTED_MODULE_1__.isObject)(source)) {
     if (source[Symbol.iterator]) {
@@ -6197,6 +6259,7 @@ function createPropsRestProxy(props, excludedKeys) {
 }
 function withAsyncContext(getAwaitable) {
   const ctx = getCurrentInstance();
+  const inSSRSetup = isInSSRComponentSetup;
   if (!!(process.env.NODE_ENV !== "production") && !ctx) {
     warn$1(
       `withAsyncContext called without active current instance. This is likely a bug.`
@@ -6204,13 +6267,25 @@ function withAsyncContext(getAwaitable) {
   }
   let awaitable = getAwaitable();
   unsetCurrentInstance();
+  if (inSSRSetup) {
+    setInSSRSetupState(false);
+  }
+  const restore = () => {
+    setCurrentInstance(ctx);
+    if (inSSRSetup) {
+      setInSSRSetupState(true);
+    }
+  };
   const cleanup = () => {
     if (getCurrentInstance() !== ctx) ctx.scope.off();
     unsetCurrentInstance();
+    if (inSSRSetup) {
+      setInSSRSetupState(false);
+    }
   };
   if ((0,_vue_shared__WEBPACK_IMPORTED_MODULE_1__.isPromise)(awaitable)) {
     awaitable = awaitable.catch((e) => {
-      setCurrentInstance(ctx);
+      restore();
       Promise.resolve().then(() => Promise.resolve().then(cleanup));
       throw e;
     });
@@ -6218,7 +6293,7 @@ function withAsyncContext(getAwaitable) {
   return [
     awaitable,
     () => {
-      setCurrentInstance(ctx);
+      restore();
       Promise.resolve().then(cleanup);
     }
   ];
@@ -7312,11 +7387,12 @@ function hasPropValueChanged(nextProps, prevProps, key) {
   }
   return nextProp !== prevProp;
 }
-function updateHOCHostEl({ vnode, parent }, el) {
+function updateHOCHostEl({ vnode, parent, suspense }, el) {
   while (parent) {
     const root = parent.subTree;
     if (root.suspense && root.suspense.activeBranch === vnode) {
-      root.el = vnode.el;
+      root.suspense.vnode.el = root.el = el;
+      vnode = root;
     }
     if (root === vnode) {
       (vnode = parent.vnode).el = el;
@@ -7324,6 +7400,9 @@ function updateHOCHostEl({ vnode, parent }, el) {
     } else {
       break;
     }
+  }
+  if (suspense && suspense.activeBranch === vnode) {
+    suspense.vnode.el = el;
   }
 }
 
@@ -8172,10 +8251,17 @@ function baseCreateRenderer(options, createHydrationFns) {
     }
     hostInsert(el, container, anchor);
     if ((vnodeHook = props && props.onVnodeMounted) || needCallTransitionHooks || dirs) {
+      const isHmr = !!(process.env.NODE_ENV !== "production") && isHmrUpdating;
       queuePostRenderEffect(() => {
-        vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode);
-        needCallTransitionHooks && transition.enter(el);
-        dirs && invokeDirectiveHook(vnode, null, parentComponent, "mounted");
+        let prev;
+        if (!!(process.env.NODE_ENV !== "production")) prev = setHmrUpdating(isHmr);
+        try {
+          vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode);
+          needCallTransitionHooks && transition.enter(el);
+          dirs && invokeDirectiveHook(vnode, null, parentComponent, "mounted");
+        } finally {
+          if (!!(process.env.NODE_ENV !== "production")) setHmrUpdating(prev);
+        }
       }, parentSuspense);
     }
   };
@@ -8591,7 +8677,10 @@ function baseCreateRenderer(options, createHydrationFns) {
           }
         } else {
           if (root.ce && root.ce._hasShadowRoot()) {
-            root.ce._injectChildStyle(type);
+            root.ce._injectChildStyle(
+              type,
+              instance.parent ? instance.parent.type : void 0
+            );
           }
           if (!!(process.env.NODE_ENV !== "production")) {
             startMeasure(instance, `render`);
@@ -9104,7 +9193,8 @@ function baseCreateRenderer(options, createHydrationFns) {
       shapeFlag,
       patchFlag,
       dirs,
-      cacheIndex
+      cacheIndex,
+      memo
     } = vnode;
     if (patchFlag === -2) {
       optimized = false;
@@ -9166,10 +9256,14 @@ function baseCreateRenderer(options, createHydrationFns) {
         remove(vnode);
       }
     }
-    if (shouldInvokeVnodeHook && (vnodeHook = props && props.onVnodeUnmounted) || shouldInvokeDirs) {
+    const shouldInvalidateMemo = memo != null && cacheIndex == null;
+    if (shouldInvokeVnodeHook && (vnodeHook = props && props.onVnodeUnmounted) || shouldInvokeDirs || shouldInvalidateMemo) {
       queuePostRenderEffect(() => {
         vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode);
         shouldInvokeDirs && invokeDirectiveHook(vnode, null, parentComponent, "unmounted");
+        if (shouldInvalidateMemo) {
+          vnode.el = null;
+        }
       }, parentSuspense);
     }
   };
@@ -9723,6 +9817,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
     pendingId: suspenseId++,
     timeout: typeof timeout === "number" ? timeout : -1,
     activeBranch: null,
+    isFallbackMountPending: false,
     pendingBranch: null,
     isInFallback: !isHydrating,
     isHydrating,
@@ -9772,7 +9867,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
             }
           };
         }
-        if (activeBranch) {
+        if (activeBranch && !suspense.isFallbackMountPending) {
           if (parentNode(activeBranch.el) === container2) {
             anchor = next(activeBranch);
           }
@@ -9785,6 +9880,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
           move(pendingBranch, container2, anchor, 0);
         }
       }
+      suspense.isFallbackMountPending = false;
       setActiveBranch(suspense, pendingBranch);
       suspense.pendingBranch = null;
       suspense.isInFallback = false;
@@ -9820,6 +9916,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
       triggerEvent(vnode2, "onFallback");
       const anchor2 = next(activeBranch);
       const mountFallback = () => {
+        suspense.isFallbackMountPending = false;
         if (!suspense.isInFallback) {
           return;
         }
@@ -9839,6 +9936,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
       };
       const delayEnter = fallbackVNode.transition && fallbackVNode.transition.mode === "out-in";
       if (delayEnter) {
+        suspense.isFallbackMountPending = true;
         activeBranch.transition.afterLeave = mountFallback;
       }
       suspense.isInFallback = true;
@@ -9873,6 +9971,7 @@ function createSuspenseBoundary(vnode, parentSuspense, parentComponent, containe
         if (instance.isUnmounted || suspense.isUnmounted || suspense.pendingId !== instance.suspenseId) {
           return;
         }
+        unsetCurrentInstance();
         instance.asyncResolved = true;
         const { vnode: vnode2 } = instance;
         if (!!(process.env.NODE_ENV !== "production")) {
@@ -10389,6 +10488,10 @@ function mergeProps(...args) {
         const incoming = toMerge[key];
         if (incoming && existing !== incoming && !((0,_vue_shared__WEBPACK_IMPORTED_MODULE_1__.isArray)(existing) && existing.includes(incoming))) {
           ret[key] = existing ? [].concat(existing, incoming) : incoming;
+        } else if (incoming == null && existing == null && // mergeProps({ 'onUpdate:modelValue': undefined }) should not retain
+        // the model listener.
+        !(0,_vue_shared__WEBPACK_IMPORTED_MODULE_1__.isModelListener)(key)) {
+          ret[key] = incoming;
         }
       } else if (key !== "") {
         ret[key] = toMerge[key];
@@ -11079,7 +11182,7 @@ function isMemoSame(cached, memo) {
   return true;
 }
 
-const version = "3.5.29";
+const version = "3.5.32";
 const warn = !!(process.env.NODE_ENV !== "production") ? warn$1 : _vue_shared__WEBPACK_IMPORTED_MODULE_1__.NOOP;
 const ErrorTypeStrings = ErrorTypeStrings$1 ;
 const devtools = !!(process.env.NODE_ENV !== "production") || true ? devtools$1 : 0;
@@ -11165,7 +11268,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_shared__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/reactivity v3.5.29
+* @vue/reactivity v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -12083,10 +12186,17 @@ function apply(self, method, fn, thisArg, wrappedRetFn, args) {
 }
 function reduce(self, method, fn, args) {
   const arr = shallowReadArray(self);
+  const needsWrap = arr !== self && !isShallow(self);
   let wrappedFn = fn;
+  let wrapInitialAccumulator = false;
   if (arr !== self) {
-    if (!isShallow(self)) {
+    if (needsWrap) {
+      wrapInitialAccumulator = args.length === 0;
       wrappedFn = function(acc, item, index) {
+        if (wrapInitialAccumulator) {
+          wrapInitialAccumulator = false;
+          acc = toWrapped(self, acc);
+        }
         return fn.call(this, acc, toWrapped(self, item), index, self);
       };
     } else if (fn.length > 3) {
@@ -12095,7 +12205,8 @@ function reduce(self, method, fn, args) {
       };
     }
   }
-  return arr[method](wrappedFn, ...args);
+  const result = arr[method](wrappedFn, ...args);
+  return wrapInitialAccumulator ? toWrapped(self, result) : result;
 }
 function searchProxy(self, method, args) {
   const arr = toRaw(self);
@@ -12385,15 +12496,14 @@ function createInstrumentations(readonly, shallow) {
       clear: createReadonlyMethod("clear")
     } : {
       add(value) {
-        if (!shallow && !isShallow(value) && !isReadonly(value)) {
-          value = toRaw(value);
-        }
         const target = toRaw(this);
         const proto = getProto(target);
-        const hadKey = proto.has.call(target, value);
+        const rawValue = toRaw(value);
+        const valueToAdd = !shallow && !isShallow(value) && !isReadonly(value) ? rawValue : value;
+        const hadKey = proto.has.call(target, valueToAdd) || (0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.hasChanged)(value, valueToAdd) && proto.has.call(target, value) || (0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.hasChanged)(rawValue, valueToAdd) && proto.has.call(target, rawValue);
         if (!hadKey) {
-          target.add(value);
-          trigger(target, "add", value, value);
+          target.add(valueToAdd);
+          trigger(target, "add", valueToAdd, valueToAdd);
         }
         return this;
       },
@@ -12756,16 +12866,16 @@ function toRefs(object) {
   return ret;
 }
 class ObjectRefImpl {
-  constructor(_object, _key, _defaultValue) {
+  constructor(_object, key, _defaultValue) {
     this._object = _object;
-    this._key = _key;
     this._defaultValue = _defaultValue;
     this["__v_isRef"] = true;
     this._value = void 0;
+    this._key = (0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isSymbol)(key) ? key : String(key);
     this._raw = toRaw(_object);
     let shallow = true;
     let obj = _object;
-    if (!(0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isArray)(_object) || !(0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isIntegerKey)(String(_key))) {
+    if (!(0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isArray)(_object) || (0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isSymbol)(this._key) || !(0,_vue_shared__WEBPACK_IMPORTED_MODULE_0__.isIntegerKey)(this._key)) {
       do {
         shallow = !isProxy(obj) || isShallow(obj);
       } while (shallow && (obj = obj["__v_raw"]));
@@ -13232,7 +13342,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/shared v3.5.29
+* @vue/shared v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -14135,7 +14245,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_shared__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/compiler-dom v3.5.29
+* @vue/compiler-dom v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -14982,7 +15092,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_shared__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(5);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* @vue/compiler-core v3.5.29
+* @vue/compiler-core v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -19249,7 +19359,7 @@ const transformFor = createStructuralDirectiveTransform(
           loop.body = createBlockStatement([
             createCompoundExpression([`const _memo = (`, memo.exp, `)`]),
             createCompoundExpression([
-              `if (_cached`,
+              `if (_cached && _cached.el`,
               ...keyExp ? [` && _cached.key === `, keyExp] : [],
               ` && ${context.helperString(
                 IS_MEMO_SAME
@@ -21001,7 +21111,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vue_runtime_dom__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(2);
 /* provided dependency */ var process = __webpack_require__(6);
 /**
-* vue v3.5.29
+* vue v3.5.32
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -21269,7 +21379,7 @@ module.exports = webpackAsyncContext;
 /******/ 		// This function allow to reference async chunks
 /******/ 		__webpack_require__.u = (chunkId) => {
 /******/ 			// return url for filenames based on template
-/******/ 			return "" + {"0":"/vue-sfc/CustomObject-FieldPreview-Field-vue","1":"/vue-sfc/CustomObject-FieldPreview-FieldDisplay-vue","2":"/vue-sfc/CustomObject-FieldPreview-Sidebar-vue","3":"/vue-sfc/Debug-Toolbar-vue","4":"/vue-sfc/Debug-Widget-ClientPerformance-vue","5":"/vue-sfc/Debug-Widget-Globals-vue","6":"/vue-sfc/Debug-Widget-HTTPRequests-vue","7":"/vue-sfc/Debug-Widget-Profiler-vue","8":"/vue-sfc/Debug-Widget-ProfilerTable-vue","9":"/vue-sfc/Debug-Widget-RequestSummary-vue","10":"/vue-sfc/Debug-Widget-RequestTimeline-vue","11":"/vue-sfc/Debug-Widget-SQLRequests-vue","12":"/vue-sfc/Debug-Widget-SearchOptions-vue","13":"/vue-sfc/Debug-Widget-ServerPerformance-vue","14":"/vue-sfc/Debug-Widget-ThemeSwitcher-vue","15":"/vue-sfc/Debug-WidgetButton-vue","16":"/vue-sfc/FuzzySearch-Modal-vue","17":"/vue-sfc/Kanban-AddItemForm-vue","18":"/vue-sfc/Kanban-Card-vue","19":"/vue-sfc/Kanban-Column-vue","20":"/vue-sfc/Kanban-Kanban-vue","21":"/vue-sfc/Kanban-KanbanApp-vue"}[chunkId] + "-" + {"0":"abbcadb692589953f06b","1":"2b80a2df25f946c79ecb","2":"4966d0cce2255ee87773","3":"0edf328211b111c4ca5a","4":"3ad0f4ce14bf9be67670","5":"75befcb97f7051c1c453","6":"3a533d5627bee1e70827","7":"de3b01f2562087110fb4","8":"58ce94047147c6da2417","9":"5cd81e588dd2db77da91","10":"9b0af6ecbf9a18dbd824","11":"34bb89dc6040b6f390a8","12":"a2e869fba3e4e1cf9440","13":"dc69a0a9cd799fdcb056","14":"267d5221d6ea687aff47","15":"664b9fd1951115d0bbd1","16":"3ed0ef93b7b5ab7dcb9d","17":"15a3dff341be7c8a1e7f","18":"46c41bb9c4420e7a3491","19":"1b3a2645e4e4320b1755","20":"05250ae85920281872dc","21":"2273cde098223a9bdf6d"}[chunkId] + ".js";
+/******/ 			return "" + {"0":"/vue-sfc/CustomObject-FieldPreview-Field-vue","1":"/vue-sfc/CustomObject-FieldPreview-FieldDisplay-vue","2":"/vue-sfc/CustomObject-FieldPreview-Sidebar-vue","3":"/vue-sfc/Debug-Toolbar-vue","4":"/vue-sfc/Debug-Widget-ClientPerformance-vue","5":"/vue-sfc/Debug-Widget-Globals-vue","6":"/vue-sfc/Debug-Widget-HTTPRequests-vue","7":"/vue-sfc/Debug-Widget-Profiler-vue","8":"/vue-sfc/Debug-Widget-ProfilerTable-vue","9":"/vue-sfc/Debug-Widget-RequestSummary-vue","10":"/vue-sfc/Debug-Widget-RequestTimeline-vue","11":"/vue-sfc/Debug-Widget-SQLRequests-vue","12":"/vue-sfc/Debug-Widget-SearchOptions-vue","13":"/vue-sfc/Debug-Widget-ServerPerformance-vue","14":"/vue-sfc/Debug-Widget-ThemeSwitcher-vue","15":"/vue-sfc/Debug-WidgetButton-vue","16":"/vue-sfc/FuzzySearch-Modal-vue","17":"/vue-sfc/Kanban-AddItemForm-vue","18":"/vue-sfc/Kanban-Card-vue","19":"/vue-sfc/Kanban-Column-vue","20":"/vue-sfc/Kanban-Kanban-vue","21":"/vue-sfc/Kanban-KanbanApp-vue"}[chunkId] + "-" + {"0":"9b9c4c9a4cad1772989b","1":"d9de701e518b59741e2c","2":"4966d0cce2255ee87773","3":"0edf328211b111c4ca5a","4":"3ad0f4ce14bf9be67670","5":"75befcb97f7051c1c453","6":"3a533d5627bee1e70827","7":"de3b01f2562087110fb4","8":"58ce94047147c6da2417","9":"5cd81e588dd2db77da91","10":"9b0af6ecbf9a18dbd824","11":"34bb89dc6040b6f390a8","12":"a2e869fba3e4e1cf9440","13":"dc69a0a9cd799fdcb056","14":"267d5221d6ea687aff47","15":"664b9fd1951115d0bbd1","16":"3ed0ef93b7b5ab7dcb9d","17":"15a3dff341be7c8a1e7f","18":"46c41bb9c4420e7a3491","19":"1b3a2645e4e4320b1755","20":"591e6f73c460914ce80c","21":"2273cde098223a9bdf6d"}[chunkId] + ".js";
 /******/ 		};
 /******/ 	})();
 /******/ 	

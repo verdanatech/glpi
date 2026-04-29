@@ -12729,10 +12729,6 @@
                 editorManager.focusedEditor = editor;
                 editor.dispatch('focus', { blurredEditor: focusedEditor });
                 editor.focus(true);
-                const browser = detect$1().browser;
-                if (editor.inline !== true && (browser.isSafari() || browser.isChromium())) {
-                    bringEditorIntoView(editor);
-                }
             }
         });
         editor.on('focusout', () => {

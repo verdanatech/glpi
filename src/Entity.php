@@ -43,6 +43,7 @@ use Glpi\Helpdesk\Tile\LinkableToTilesInterface;
 use Glpi\Helpdesk\Tile\TilesManager;
 use Glpi\ItemTranslation\Context\ProvideTranslationsInterface;
 use Glpi\ItemTranslation\Context\TranslationHandler;
+use Glpi\Search\DefaultSearchRequestInterface;
 use Glpi\UI\IllustrationManager;
 use Ramsey\Uuid\Uuid;
 
@@ -53,7 +54,10 @@ use function Safe\realpath;
 /**
  * Entity class
  */
-class Entity extends CommonTreeDropdown implements LinkableToTilesInterface, ProvideTranslationsInterface
+class Entity extends CommonTreeDropdown implements
+    LinkableToTilesInterface,
+    ProvideTranslationsInterface,
+    DefaultSearchRequestInterface
 {
     /** @use Clonable<static> */
     use Clonable;
@@ -258,6 +262,18 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface, Pro
         $GLPI_CACHE->delete($ckey);
 
         return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    #[Override]
+    public static function getDefaultSearchRequest(): array
+    {
+        return [
+            'sort'  => 1, //completename SO
+            'order' => 'ASC',
+        ];
     }
 
     public static function getTypeName($nb = 0)
@@ -3095,9 +3111,15 @@ class Entity extends CommonTreeDropdown implements LinkableToTilesInterface, Pro
      */
     public static function badgeCompletenameById(int $entity_id): ?string
     {
-        $entity = new self();
-        if ($entity->getFromDB($entity_id)) {
-            return self::badgeCompletename($entity->fields['completename']);
+        global $DB;
+        $it = $DB->request([
+            'SELECT' => 'completename',
+            'FROM'   => 'glpi_entities',
+            'WHERE'  => ['id' => $entity_id],
+            'LIMIT'  => 1,
+        ]);
+        if ($data = $it->current()) {
+            return self::badgeCompletename($data['completename']);
         }
         return null;
     }

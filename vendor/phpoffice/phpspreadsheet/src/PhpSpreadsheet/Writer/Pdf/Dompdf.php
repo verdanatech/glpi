@@ -44,43 +44,20 @@ class Dompdf extends Pdf
         $orientation = ($orientation == 'L') ? 'landscape' : 'portrait';
 
         //  Create PDF
-        $restoreHandler = false;
-        if (PHP_VERSION_ID >= self::$temporaryVersionCheck) {
-            // @codeCoverageIgnoreStart
-            set_error_handler(self::specialErrorHandler(...));
-            $restoreHandler = true;
-            // @codeCoverageIgnoreEnd
-        }
         $pdf = $this->createExternalWriterInstance();
         $pdf->setPaper($paperSize, $orientation);
 
         $pdf->loadHtml($this->generateHTMLAll());
         $pdf->render();
+        $this->callPageScript($pdf);
 
         //  Write to file
-        fwrite($fileHandle, $pdf->output() ?? '');
+        fwrite($fileHandle, $pdf->output());
 
-        if ($restoreHandler) {
-            restore_error_handler(); // @codeCoverageIgnore
-        }
         parent::restoreStateAfterSave();
     }
 
-    protected static int $temporaryVersionCheck = 80500;
-
-    /**
-     * Temporary handler for Php8.5 waiting for Dompdf release.
-     *
-     * @codeCoverageIgnore
-     */
-    public function specialErrorHandler(int $errno, string $errstr, string $filename, int $lineno): bool
+    protected function callPageScript(\Dompdf\Dompdf $pdf): void
     {
-        if ($errno === E_DEPRECATED) {
-            if (preg_match('/canonical|imagedestroy|http_get_last_response_headers/', $errstr) === 1) {
-                return true;
-            }
-        }
-
-        return false; // continue error handling
     }
 }

@@ -288,7 +288,8 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                 Planning::checkAlreadyPlanned(
                     $user,
                     $this->fields['plan_start_date'],
-                    $this->fields['plan_end_date']
+                    $this->fields['plan_end_date'],
+                    [self::class => [$this->fields['id']]],
                 );
             }
         }
@@ -607,36 +608,50 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
      */
     public function autoSetDate(array $input): array
     {
+        if (isset($input['real_start_date']) && $input['real_start_date'] === '') {
+            $input['real_start_date'] = null;
+        }
+        if (isset($input['real_end_date']) && $input['real_end_date'] === '') {
+            $input['real_end_date'] = null;
+        }
+
         $percent_done = (int) ($input['percent_done'] ?? $this->fields['percent_done'] ?? 0);
         $real_start_date = $input['real_start_date'] ?? $this->fields['real_start_date'] ?? null;
         $real_end_date = $input['real_end_date'] ?? $this->fields['real_end_date'] ?? null;
 
-        if ($percent_done < 100 && $real_end_date) {
+        if ($percent_done < 100 && $real_end_date && !array_key_exists('real_end_date', $input)) {
             $input['real_end_date'] = null;
         } elseif (
             isset($this->fields['percent_done'])
             && (int) $this->fields['percent_done'] === 100 && $percent_done < 100
+            && !array_key_exists('real_end_date', $input)
         ) {
             $input['real_end_date'] = null;
-        } elseif (($real_start_date && $real_end_date) || $percent_done === 0) {
-            // If both real start and end dates are set, or if the task is not started,
-            return $input;
-        } else {
-            // Set automatically the real start date if not set
-            if (empty($real_start_date) && $percent_done > 0) {
-                $input['real_start_date'] = Session::getCurrentTime();
+        }
+
+        if ($percent_done === 0) {
+            if (empty($input['real_start_date']) && empty($input['real_end_date'])) {
+                return $input;
             }
-            // Set automatically the real end date if not set
-            if (empty($real_end_date) && $percent_done === 100) {
-                $input['real_end_date'] = Session::getCurrentTime();
-            }
-            // Set automatically the effective duration if not set
-            if (!empty($input['real_start_date']) && !empty($input['real_end_date'])) {
-                $input['effective_duration'] = $this->autoSetEffectiveDuration(
-                    $input['real_start_date'],
-                    $input['real_end_date']
-                );
-            }
+        }
+
+        // Set automatically the real start date if not set
+        if (empty($real_start_date) && $percent_done > 0) {
+            $input['real_start_date'] = Session::getCurrentTime();
+        }
+        // Set automatically the real end date if not set
+        if (empty($real_end_date) && $percent_done === 100) {
+            $input['real_end_date'] = Session::getCurrentTime();
+        }
+
+        // Calculate effective duration when both dates are present
+        $final_start_date = $input['real_start_date'] ?? $this->fields['real_start_date'] ?? null;
+        $final_end_date = $input['real_end_date'] ?? $this->fields['real_end_date'] ?? null;
+        if (!empty($final_start_date) && !empty($final_end_date)) {
+            $input['effective_duration'] = $this->autoSetEffectiveDuration(
+                $final_start_date,
+                $final_end_date
+            );
         }
 
         return $input;
@@ -1202,7 +1217,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
      *
      * @return void|false
      **/
-    public static function showFor($item, int $withtemplate = 0)
+    public static function showFor($item)
     {
         global $DB;
 
@@ -1266,7 +1281,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
         }
         $criteria['ORDERBY'] = [$_GET["sort"] . " $order"];
 
-        $canedit = $item::class === Project::class && $item->canEdit($ID) && $withtemplate != 2;
+        $canedit = $item::class === Project::class && $item->canEdit($ID);
 
         switch ($item::class) {
             case Project::class:
@@ -1279,7 +1294,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                 return;
         }
 
-        if ($canedit && $withtemplate != 2) {
+        if ($canedit) {
             TemplateRenderer::getInstance()->display(
                 'components/tab/addlink_block.html.twig',
                 [
@@ -1289,7 +1304,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
             );
         }
 
-        if ($item::class === self::class && $item->can($ID, UPDATE) && $withtemplate != 2) {
+        if ($item::class === self::class && $item->can($ID, UPDATE)) {
             $twig_params = [
                 'projects_id' => $item->fields['projects_id'],
                 'projecttasks_id' => $ID,
@@ -1298,7 +1313,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
             // language=Twig
             echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
                 <div class="mb-3">
-                    <a class="btn btn-primary" href="{{ 'ProjectTask'|itemtype_form_path }}?projecttasks_id={{ projecttasks_id }}&amp;projects_id={{ projects_id }}">{{ btn_label }}</a>
+                    <a class="btn btn-primary" href="{{ 'ProjectTask'|itemtype_form_path }}?projecttasks_id={{ projecttasks_id }}&amp;projects_id={{ projects_id }}"><i class="ti ti-link"></i><span>{{ btn_label }}</span></a>
                 </div>
 TWIG, $twig_params);
         }
@@ -1439,7 +1454,7 @@ TWIG, $twig_params);
         switch ($item::class) {
             case Project::class:
             case self::class:
-                self::showFor($item, $withtemplate);
+                self::showFor($item);
                 break;
         }
         return true;
@@ -1867,7 +1882,7 @@ TWIG, $twig_params);
             ];
         }
 
-        if ($options['state_done']) {
+        if (!$options['state_done']) {
             $ADDWHERE['glpi_projecttasks.percent_done'] = ['<', 100];
             $ADDWHERE[] = [
                 'OR' => [
@@ -1937,54 +1952,53 @@ TWIG, $twig_params);
 
         if (count($iterator)) {
             foreach ($iterator as $data) {
-                if ($task->getFromDB($data["id"])) {
-                    if (isset($data['notp_date'])) {
-                        $data['plan_start_date'] = $data['notp_date'];
-                        $data['plan_end_date'] = $data['notp_edate'];
-                    }
-                    $key = $data["plan_start_date"]
-                      . "$$$" . "ProjectTask"
-                      . "$$$" . $data["id"]
-                      . "$$$" . $who . "$$$" . $whogroup;
-                    $interv[$key]['color']            = $options['color'];
-                    $interv[$key]['event_type_color'] = $options['event_type_color'];
-                    $interv[$key]['itemtype']         = 'ProjectTask';
-                    if (!$options['genical']) {
-                        $interv[$key]["url"] = Project::getFormURLWithID($task->fields['projects_id']);
-                    } else {
-                        $interv[$key]["url"] = $CFG_GLPI["url_base"]
-                                        . Project::getFormURLWithID($task->fields['projects_id'], false);
-                    }
-                    $interv[$key]["ajaxurl"] = $CFG_GLPI["root_doc"] . "/ajax/planning.php"
-                                          . "?action=edit_event_form"
-                                          . "&itemtype=ProjectTask"
-                                          . "&id=" . $data['id'];
-
-                    $interv[$key][$task::getForeignKeyField()] = $data["id"];
-                    $interv[$key]["id"]                        = $data["id"];
-                    $interv[$key]["users_id"]                  = $data["users_id"];
-
-                    if (strcmp($begin, $data["plan_start_date"]) > 0) {
-                        $interv[$key]["begin"] = $begin;
-                    } else {
-                        $interv[$key]["begin"] = $data["plan_start_date"];
-                    }
-
-                    if (strcmp($end, $data["plan_end_date"]) < 0) {
-                        $interv[$key]["end"]   = $end;
-                    } else {
-                        $interv[$key]["end"]   = $data["plan_end_date"];
-                    }
-
-                    $interv[$key]["name"]     = $task->fields["name"];
-                    $interv[$key]["content"]  = $task->fields["content"] !== null
-                    ? RichText::getSafeHtml($task->fields["content"])
-                    : '';
-                    $interv[$key]["status"]   = $task->fields["percent_done"];
-
-                    $ttask->getFromDB($data["id"]);
-                    $interv[$key]["editable"] = $ttask->canUpdateItem();
+                $task->getFromResultSet($data);
+                if (isset($data['notp_date'])) {
+                    $data['plan_start_date'] = $data['notp_date'];
+                    $data['plan_end_date'] = $data['notp_edate'];
                 }
+                $key = $data["plan_start_date"]
+                  . "$$$" . "ProjectTask"
+                  . "$$$" . $data["id"]
+                  . "$$$" . $who . "$$$" . $whogroup;
+                $interv[$key]['color']            = $options['color'];
+                $interv[$key]['event_type_color'] = $options['event_type_color'];
+                $interv[$key]['itemtype']         = 'ProjectTask';
+                if (!$options['genical']) {
+                    $interv[$key]["url"] = Project::getFormURLWithID($task->fields['projects_id']);
+                } else {
+                    $interv[$key]["url"] = $CFG_GLPI["url_base"]
+                                    . Project::getFormURLWithID($task->fields['projects_id'], false);
+                }
+                $interv[$key]["ajaxurl"] = $CFG_GLPI["root_doc"] . "/ajax/planning.php"
+                                      . "?action=edit_event_form"
+                                      . "&itemtype=ProjectTask"
+                                      . "&id=" . $data['id'];
+
+                $interv[$key][$task::getForeignKeyField()] = $data["id"];
+                $interv[$key]["id"]                        = $data["id"];
+                $interv[$key]["users_id"]                  = $data["users_id"];
+
+                if (strcmp($begin, $data["plan_start_date"]) > 0) {
+                    $interv[$key]["begin"] = $begin;
+                } else {
+                    $interv[$key]["begin"] = $data["plan_start_date"];
+                }
+
+                if (strcmp($end, $data["plan_end_date"]) < 0) {
+                    $interv[$key]["end"]   = $end;
+                } else {
+                    $interv[$key]["end"]   = $data["plan_end_date"];
+                }
+
+                $interv[$key]["name"]     = $task->fields["name"];
+                $interv[$key]["content"]  = $task->fields["content"] !== null
+                ? RichText::getSafeHtml($task->fields["content"])
+                : '';
+                $interv[$key]["status"]   = $task->fields["percent_done"];
+
+                $ttask->getFromDB($data["id"]);
+                $interv[$key]["editable"] = $ttask->canUpdateItem();
             }
         }
 

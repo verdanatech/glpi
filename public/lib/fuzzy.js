@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 1073
+/***/ 1213
 (module) {
 
 /*
@@ -151,7 +151,7 @@ fuzzy.filter = function(pattern, arr, opts) {
 
 /***/ },
 
-/***/ 1076
+/***/ 1216
 (module) {
 
 "use strict";
@@ -867,7 +867,7 @@ module.exports = hotkeys;
 
 /***/ },
 
-/***/ 1075
+/***/ 1215
 (module) {
 
 /*! hotkeys-js v3.13.15 | MIT © 2025 kenny wong <wowohoo@qq.com> https://jaywcjlove.github.io/hotkeys-js */
@@ -875,16 +875,16 @@ let isff="undefined"!=typeof navigator&&0<navigator.userAgent.toLowerCase().inde
 
 /***/ },
 
-/***/ 1074
+/***/ 1214
 (module, __unused_webpack_exports, __webpack_require__) {
 
 /* provided dependency */ var process = __webpack_require__(41);
 if (process.env.NODE_ENV === 'production') {
   // eslint-disable-next-line global-require
-  module.exports = __webpack_require__(1075);
+  module.exports = __webpack_require__(1215);
 } else {
   // eslint-disable-next-line global-require
-  module.exports = __webpack_require__(1076);
+  module.exports = __webpack_require__(1216);
 }
 
 
@@ -1154,7 +1154,7 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1074);
+/* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1214);
 /* harmony import */ var hotkeys_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(hotkeys_js__WEBPACK_IMPORTED_MODULE_0__);
 /**
  * ---------------------------------------------------------------------
@@ -1191,7 +1191,7 @@ __webpack_require__.r(__webpack_exports__);
 
 // Fuzzy base lib
 // 'fuzzy' object has to be declared in global scope
-window.fuzzy = __webpack_require__(1073);
+window.fuzzy = __webpack_require__(1213);
 
 // Required to open search menu with "CTRL+ALT+G"
 
