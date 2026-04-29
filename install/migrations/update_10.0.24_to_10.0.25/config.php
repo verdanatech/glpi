@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2026 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -33,24 +32,9 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
+/**
+ * @var \Migration $migration
+ */
 
-// Send UTF8 Headers
-header("Content-Type: text/html; charset=UTF-8");
-Html::header_nocache();
-
-Session::checkRight("config", UPDATE);
-
-$mailcollector = new MailCollector();
-
-if ($_REQUEST['action'] === "getFoldersList") {
-    if (
-        !array_key_exists('id', $_REQUEST)
-        || !$mailcollector->getFromDB($_REQUEST['id'])
-    ) {
-        Html::displayErrorAndDie(__('Mail collector must be saved before browsing folders.'));
-    }
-
-    $mailcollector->displayFoldersList($_REQUEST['input_id'] ?? '');
-}
+// Add configuration option to control document attachment for anonymous users in notifications
+$migration->addConfig(['attach_documents_to_notifications_for_anonymous' => 0]);

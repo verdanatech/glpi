@@ -378,21 +378,56 @@ class MailCollector extends CommonDBTM
         if ($type != 'pop') {
             echo Html::scriptBlock("$(function() {
 
-            $(document).on('click', '.get-imap-folder', function() {
+            var isNewItem = (" . (int) $ID . " <= 0);
+            var serverFieldNames = ['mail_server', 'server_type', 'server_ssl', 'server_tls', 'server_cert', 'server_rsh', 'server_secure', 'server_debug', 'server_mailbox', 'server_port'];
+            var form = $('input[name=\"mail_server\"]').closest('form');
+            var initialValues = {};
+
+            serverFieldNames.forEach(function(name) {
+               var el = form.find('[name=\"' + name + '\"]');
+               if (el.length) {
+                  initialValues[name] = el.val();
+               }
+            });
+
+            function hasServerFieldsChanged() {
+               for (var i = 0; i < serverFieldNames.length; i++) {
+                  var el = form.find('[name=\"' + serverFieldNames[i] + '\"]');
+                  if (el.length && el.val() !== initialValues[serverFieldNames[i]]) {
+                     return true;
+                  }
+               }
+               return false;
+            }
+
+            function updateFolderButtonsState() {
+               if (isNewItem || hasServerFieldsChanged()) {
+                  $('.get-imap-folder').addClass('disabled').attr('aria-disabled', 'true').css('pointer-events', 'none');
+               } else {
+                  $('.get-imap-folder').removeClass('disabled').removeAttr('aria-disabled').css('pointer-events', '');
+               }
+            }
+
+            updateFolderButtonsState();
+
+            serverFieldNames.forEach(function(name) {
+               form.on('change input', '[name=\"' + name + '\"]', updateFolderButtonsState);
+            });
+
+            $(document).on('click', '.get-imap-folder', function(e) {
+               if ($(this).hasClass('disabled')) {
+                  e.preventDefault();
+                  e.stopImmediatePropagation();
+                  return false;
+               }
+
                var input = $(this).prev('input');
 
-               var data = 'action=getFoldersList';
-               data += '&input_id=' + input.attr('id');
-               // Get form values without server_mailbox value to prevent filtering
-               data += '&' + $(this).closest('form').find(':not([name=\"server_mailbox\"])').serialize();
-               // Force empty value for server_mailbox
-               data += '&server_mailbox=';
-
-               // Ask for password if missing
-               if ($(this).closest('form').find('input[name=\"passwd\"]').val() == '') {
-                  var passwd = prompt(__('Please enter password to list folders'));
-                  data += '&passwd=' + encodeURIComponent(passwd);
-               }
+               const data = {
+                        action: 'getFoldersList',
+                        id: " . (int) $ID . ",
+                        input_id: input.attr('id')
+                    };
 
                glpi_ajax_dialog({
                   title: __('Select a folder'),
@@ -1791,6 +1826,17 @@ class MailCollector extends CommonDBTM
             }
 
             $contents = $this->getDecodedContent($part);
+
+            // Restore CRLF line endings for message/rfc822 (embedded email) attachments.
+            // The Laminas MIME parser strips all \r characters when splitting multipart
+            // boundaries (see Laminas\Mime\Decode::splitMime), which produces LF-only
+            // line endings. RFC 2822 requires CRLF, and without them, Quoted-Printable
+            // soft line breaks (=\r\n) become invalid (=\n), making the extracted EML
+            // unreadable in strict clients such as Outlook.
+            if (strtolower($content_type) === 'message/rfc822') {
+                $contents = preg_replace('/(?<!\r)\n/', "\r\n", $contents);
+            }
+
             if (file_put_contents($path . $filename, $contents)) {
                 $this->files[$filename] = $filename;
 
@@ -2402,12 +2448,13 @@ class MailCollector extends CommonDBTM
         $pattern = '/'
             . 'GLPI'
             . '_(?<uuid>[a-z0-9]+)' // uuid
-            . '(-(?<itemtype>[a-z]+)-(?<items_id>[0-9]+))?' // optional itemtype + items_id (only when related to an item)
+            . '(-(?<itemtype>[a-z\-]+)-(?<items_id>[0-9]+))?' // optional itemtype + items_id (only when related to an item)
             . '\/(?<event>[a-z_]+)' // event
             . '(\.[0-9]+\.[0-9]+)?' // optional time + rand (only when NOT related to an item OR when event is not the reference one)
             . '@.+'     // uname
             . '/i';
         if (preg_match($pattern, $header, $values) === 1) {
+            $values['itemtype'] = str_replace('-', '\\', $values['itemtype']); // restore backslashes in namespaced classes
             $values += $defaults;
             return $values;
         }

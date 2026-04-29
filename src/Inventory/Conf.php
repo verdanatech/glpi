@@ -562,7 +562,7 @@ class Conf extends CommonGLPI
             "inventory_frequency",
             [
                 'value' => $config['inventory_frequency'],
-                'min' => 1,
+                'min' => 4,
                 'max' => 240,
                 'rand' => $rand,
             ]

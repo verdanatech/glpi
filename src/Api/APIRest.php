@@ -40,6 +40,7 @@
 namespace Glpi\Api;
 
 use AllAssets;
+use GLPIKey;
 use GLPIUploadHandler;
 use stdClass;
 use Toolbox;
@@ -288,7 +289,7 @@ class APIRest extends API
                         $response = $this->getItems($itemtype, $this->parameters, $totalcount);
 
                         //add pagination headers
-                        $range = [0, $_SESSION['glpilist_limit']];
+                        $range = [0, $_SESSION['glpilist_limit'] - 1];
                         if (isset($this->parameters['range'])) {
                             $range = explode("-", $this->parameters['range']);
                         }
@@ -601,7 +602,7 @@ class APIRest extends API
 
         // try to retrieve session_token in header
         if (isset($headers['Session-Token'])) {
-            $parameters['session_token'] = $headers['Session-Token'];
+            $parameters['session_token'] = (new GLPIKey())->decrypt(\base64_decode(trim($headers['Session-Token'])));
         }
 
         // try to retrieve app_token in header

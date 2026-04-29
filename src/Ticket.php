@@ -7189,23 +7189,4 @@ JAVASCRIPT;
 
         return $options;
     }
-    public static function getValidations($id)
-    {
-        $user_id = Session::getLoginUserID();
-        global $DB;
-        $query = $DB->doQuery(
-            "SELECT 
-                * 
-            FROM glpi_plugin_formcreator_formanswers AS fa 
-            LEFT JOIN glpi_items_tickets AS it ON (fa.id = it.items_id) 
-            INNER JOIN glpi_ticketvalidations AS tv ON (it.tickets_id = tv.tickets_id) 
-            WHERE items_id = {$id} 
-            AND tv.users_id_validate = {$user_id} 
-            AND itemtype = 'PluginFormcreatorFormAnswer'"
-        );
-        if ($query->num_rows > 0) {
-            return true;
-        }
-        return false;
-    }
 }

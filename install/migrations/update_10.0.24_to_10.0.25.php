@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2026 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -33,24 +32,40 @@
  * ---------------------------------------------------------------------
  */
 
-$AJAX_INCLUDE = 1;
-include('../inc/includes.php');
+/**
+ * Update from 10.0.24 to 10.0.25
+ *
+ * @return bool for success (will die for most error)
+ **/
+function update10024to10025()
+{
+    /**
+     * @var \DBmysql $DB
+     * @var \Migration $migration
+     */
+    global $DB, $migration;
 
-// Send UTF8 Headers
-header("Content-Type: text/html; charset=UTF-8");
-Html::header_nocache();
+    $updateresult       = true;
+    $ADDTODISPLAYPREF   = [];
+    $DELFROMDISPLAYPREF = [];
+    $update_dir = __DIR__ . '/update_10.0.24_to_10.0.25/';
 
-Session::checkRight("config", UPDATE);
+    //TRANS: %s is the number of new version
+    $migration->displayTitle(sprintf(__('Update to %s'), '10.0.25'));
+    $migration->setVersion('10.0.25');
 
-$mailcollector = new MailCollector();
-
-if ($_REQUEST['action'] === "getFoldersList") {
-    if (
-        !array_key_exists('id', $_REQUEST)
-        || !$mailcollector->getFromDB($_REQUEST['id'])
-    ) {
-        Html::displayErrorAndDie(__('Mail collector must be saved before browsing folders.'));
+    $update_scripts = scandir($update_dir);
+    foreach ($update_scripts as $update_script) {
+        if (preg_match('/\.php$/', $update_script) !== 1) {
+            continue;
+        }
+        require $update_dir . $update_script;
     }
 
-    $mailcollector->displayFoldersList($_REQUEST['input_id'] ?? '');
+    // ************ Keep it at the end **************
+    $migration->updateDisplayPrefs($ADDTODISPLAYPREF, $DELFROMDISPLAYPREF);
+
+    $migration->executeMigration();
+
+    return $updateresult;
 }
