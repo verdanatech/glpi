@@ -405,7 +405,6 @@ class QuestionTypeItem extends AbstractQuestionType implements
         $name = $item->fields['name'];
         if(array_key_exists('completename',$item->fields)){
             $name = $item->fields['completename'];
-
         }
 
         // Append additional fields to match what is displayed in renderEndUserTemplate.
