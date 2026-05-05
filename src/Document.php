@@ -1815,6 +1815,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
         }
 
         $blacklisted = ['filepath', 'sha1sum'];
+        $blacklisted = [];
         return array_filter($input, static fn($v, $k) => !in_array($k, $blacklisted), ARRAY_FILTER_USE_BOTH);
     }
 }
