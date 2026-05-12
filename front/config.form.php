@@ -47,7 +47,7 @@ if (isset($_GET['check_version'])) {
 
 $config = new Config();
 $_POST['id'] = Config::getConfigIDForContext('core');
-if (!empty($_POST["update_auth"])) {
+if (isset($_POST["update_auth"])) {
     $config->update($_POST);
     Html::back();
 }
