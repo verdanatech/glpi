@@ -261,10 +261,25 @@ class QueuedWebhook extends CommonDBChild
 
             if (Toolbox::isUrlSafe($request_url)) {
                 try {
-                    $response = $client->request($queued_webhook->fields['http_method'], $request_url, [
+
+                    $body           = $queued_webhook->fields['body'];
+                    $decoded_body   = json_decode($body, true);
+
+                    $request_options = [
                         RequestOptions::HEADERS => $headers,
-                        RequestOptions::BODY => $queued_webhook->fields['body'],
-                    ]);
+                    ];
+
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $request_options[RequestOptions::JSON] = $decoded_body;
+                    } else {
+                        $request_options[RequestOptions::BODY] = $body;
+                    }
+
+                    $response = $client->request(
+                        $queued_webhook->fields['http_method'],
+                        $request_url,
+                        $request_options
+                    );
                 } catch (GuzzleException $e) {
                     if ($e instanceof RequestException) {
                         $response = $e->getResponse();
