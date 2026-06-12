@@ -102,14 +102,14 @@ final class HomePageTabs extends CommonGLPI
                 icon: RSSFeed::getIcon()
             );
         }
-
-        if (Grid::canViewOneDashboard()) {
+        if (Dashboard::canView()) {
+            if (Grid::canViewOneDashboard()) {
             $tabs[self::DASHBOARD_TAB] = self::createTabEntry(
                 text: __("Dashboard"),
                 icon: Dashboard::getIcon()
             );
         }
-
+     }
         return $tabs;
     }
 
