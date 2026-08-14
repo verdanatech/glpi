@@ -8825,7 +8825,7 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                         ];
                     }
                 }
-                if (Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATEGROUPS) && !empty($_SESSION["glpigroups"])) {
+                if (!$can_seeprivate && Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATEGROUPS) && !empty($_SESSION["glpigroups"])) {
                     $private_task_crit['groups_id_tech'] = $_SESSION["glpigroups"];
                 }
                 if (!empty($private_task_crit)) {
