@@ -535,7 +535,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
         ) {
             $input['_old_projecttasks_id'] = $this->fields['projecttasks_id'];
         }
-        $input = $this->autoSetDate($input);
+        // $input = $this->autoSetDate($input);
 
         return Project::checkPlanAndRealDates($input);
     }
@@ -576,7 +576,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
         if ((!isset($input['percent_done']))) {
             $input['percent_done'] = 0;
         }
-        $input = $this->autoSetDate($input);
+        // $input = $this->autoSetDate($input);
 
         $projectstate_id = $this->recalculateStatus($input);
         if ($projectstate_id !== false) {
