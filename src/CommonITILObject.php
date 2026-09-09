@@ -622,6 +622,11 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
             return false;
         }
 
+        $entities_id = $this->getEntitiesIdFromAddFromItemOptions($options);
+        if ($entities_id !== null) {
+            $options['entities_id'] = $entities_id;
+        }
+
         $this->restoreInputAndDefaults($ID, $options);
 
         $canupdate = !$ID || (Session::getCurrentInterface() == "central" && $this->canUpdateItem());
@@ -8823,10 +8828,11 @@ abstract class CommonITILObject extends CommonDBTM implements KanbanInterface, T
                             'users_id' => $user_id,
                             'users_id_tech' => $user_id,
                         ];
+
+                        if (Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATEGROUPS) && !empty($_SESSION["glpigroups"])) {
+                            $private_task_crit['groups_id_tech'] = $_SESSION["glpigroups"];
+                        }
                     }
-                }
-                if (Session::haveRight($task_class::$rightname, CommonITILTask::SEEPRIVATEGROUPS) && !empty($_SESSION["glpigroups"])) {
-                    $private_task_crit['groups_id_tech'] = $_SESSION["glpigroups"];
                 }
                 if (!empty($private_task_crit)) {
                     $tasks_crit[] = ['OR' => $private_task_crit];
