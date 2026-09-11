@@ -1,0 +1,3538 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QueryFunction;
+use Glpi\DBAL\QuerySubQuery;
+use Glpi\Event;
+use Glpi\Features\Clonable;
+use Glpi\Form\Category;
+use Glpi\Form\ServiceCatalog\ServiceCatalogLeafInterface;
+use Glpi\Knowbase\Aside\Article;
+use Glpi\Knowbase\Aside\Builder;
+use Glpi\Knowbase\EditorAction;
+use Glpi\Knowbase\EditorActionSeparator;
+use Glpi\Knowbase\EditorActionType;
+use Glpi\Knowbase\History\HistoryBuilder;
+use Glpi\Knowbase\LastUpdateInfo;
+use Glpi\RichText\RichText;
+use Glpi\Search\Output\HTMLSearchOutput;
+use Glpi\Security\ShareTokenManager;
+use Glpi\ShareableInterface;
+use Glpi\ShareToken;
+use Glpi\UI\IllustrationManager;
+
+use function Safe\json_decode;
+use function Safe\json_encode;
+use function Safe\parse_url;
+use function Safe\preg_match;
+use function Safe\preg_match_all;
+use function Safe\preg_replace;
+use function Safe\preg_replace_callback;
+
+/**
+ * KnowbaseItem Class
+ **/
+class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, ServiceCatalogLeafInterface, ShareableInterface
+{
+    /** @use Clonable<static> */
+    use Clonable;
+
+    // From CommonDBTM
+    public bool $dohistory    = true;
+
+    protected array $items     = [];
+
+    public const KNOWBASEADMIN = 1024;
+    public const READFAQ       = 2048;
+    public const PUBLISHFAQ    = 4096;
+    public const COMMENTS      = 8192;
+
+    // Special value meaning "no parent filter applied" (see `getListRequest()`/`showList()`).
+    public const int SEEALL = -1;
+
+    public static string $rightname   = 'knowbase';
+
+    public function getCloneRelations(): array
+    {
+        return [
+            Entity_KnowbaseItem::class,
+            Group_KnowbaseItem::class,
+            KnowbaseItem_Profile::class,
+            KnowbaseItem_User::class,
+            Document_Item::class,
+            Infocom::class,
+            KnowbaseItem_Item::class,
+            KnowbaseItemTranslation::class,
+        ];
+    }
+
+    /**
+     * @return string[]
+     */
+    #[Override]
+    public function getForbiddenSingleMassiveActions(): array
+    {
+        $excluded = parent::getForbiddenSingleMassiveActions();
+        $excluded[] = 'Document_Item:add';
+        $excluded[] = 'Document_Item:remove';
+        return $excluded;
+    }
+
+    public static function getTypeName($nb = 0)
+    {
+        return __('Knowledge base');
+    }
+
+    public static function getMenuShorcut()
+    {
+        return 'b';
+    }
+
+    public function getName($options = [])
+    {
+        return KnowbaseItemTranslation::getTranslatedValue($this);
+    }
+
+    public static function getMenuName()
+    {
+        if (!Session::haveRight(KnowbaseItem::$rightname, READ)) {
+            return __('FAQ');
+        }
+        return static::getTypeName(Session::getPluralNumber());
+    }
+
+    public static function canCreate(): bool
+    {
+        return Session::haveRightsOr(self::$rightname, [CREATE, self::PUBLISHFAQ]);
+    }
+
+    public static function canUpdate(): bool
+    {
+        return Session::haveRightsOr(self::$rightname, [UPDATE, self::KNOWBASEADMIN]);
+    }
+
+    public static function canDelete(): bool
+    {
+        return Session::haveRightsOr(self::$rightname, [DELETE, self::KNOWBASEADMIN]);
+    }
+
+    public static function canView(): bool
+    {
+        global $CFG_GLPI;
+
+        return (Session::haveRightsOr(self::$rightname, [READ, self::READFAQ])
+              || ((Session::getLoginUserID() === false) && $CFG_GLPI["use_public_faq"]));
+    }
+
+    public function canViewItem(): bool
+    {
+        // The root article is the entry point of the knowledge base: everyone
+        // allowed to read the knowledge base, administrators included, can view
+        // it, it has no visibility rules of its own. FAQ-only readers are not
+        // concerned: the root article is not part of the FAQ, see
+        // `getVisibilityCriteriaFAQ()` and `prepareInputForUpdate()`.
+        if ($this->isRoot()) {
+            return Session::haveRightsOr(self::$rightname, [READ, self::KNOWBASEADMIN]);
+        }
+
+        if ($this->fields['users_id'] === Session::getLoginUserID()) {
+            return true;
+        }
+        if (Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+            return true;
+        }
+
+        if ($this->fields["is_faq"]) {
+            return ((Session::haveRightsOr(self::$rightname, [READ, self::READFAQ])
+                  && $this->haveVisibilityAccess())
+                 || ((Session::getLoginUserID() === false) && $this->isPubliclyVisible()));
+        }
+        return (Session::haveRight(self::$rightname, READ) && $this->haveVisibilityAccess());
+    }
+
+    public function canUpdateItem(): bool
+    {
+        // The root article is the entry point of the knowledge base: everyone
+        // allowed to update the knowledge base can edit it, it has no visibility
+        // rules of its own (see `canViewItem()`).
+        if ($this->isRoot()) {
+            return Session::haveRightsOr(self::$rightname, [UPDATE, self::KNOWBASEADMIN]);
+        }
+
+        // Personal knowbase or visibility and write access
+        return (Session::haveRight(self::$rightname, self::KNOWBASEADMIN)
+              || (Session::getCurrentInterface() === "central"
+                  && $this->fields['users_id'] === Session::getLoginUserID())
+              || ((($this->fields["is_faq"] && Session::haveRight(self::$rightname, self::PUBLISHFAQ))
+                   || (!$this->fields["is_faq"]
+                       && Session::haveRight(self::$rightname, UPDATE)))
+                  && $this->haveVisibilityAccess()));
+    }
+
+    public function canDeleteItem(): bool
+    {
+        // The root article is the base of the knowledge base tree, it must
+        // always exist.
+        if ($this->isRoot()) {
+            return false;
+        }
+
+        return parent::canDeleteItem();
+    }
+
+    public function canPurgeItem(): bool
+    {
+        if ($this->isRoot()) {
+            return false;
+        }
+
+        return parent::canPurgeItem();
+    }
+
+    /**
+     * Check if current user can comment on KB entries
+     *
+     * @return bool
+     */
+    public function canComment()
+    {
+        return $this->can($this->getID(), READ) && Session::haveRight(self::$rightname, self::COMMENTS);
+    }
+
+    /**
+     * Id of the root article, which is the base of the knowledge base tree.
+     *
+     * The root article is created by the installation process, see
+     * `install/empty_data.php` and the 12.0.0 migration.
+     *
+     * @throws RuntimeException if the configuration value is missing, which can
+     *                          only happen on a corrupted installation.
+     */
+    public static function getRootId(): int
+    {
+        $root_id = self::getConfiguredRootId();
+        if ($root_id <= 0) {
+            throw new RuntimeException('The knowledge base root article is not defined.');
+        }
+
+        return $root_id;
+    }
+
+    /**
+     * Whether the knowledge base has a root article, see `getRootId()`.
+     *
+     * Only a corrupted installation has none; callers that can do without it
+     * must use this method instead of catching `getRootId()` exception.
+     */
+    public static function hasRoot(): bool
+    {
+        return self::getConfiguredRootId() > 0;
+    }
+
+    /**
+     * Whether the loaded article is the root article, see `getRootId()`.
+     */
+    public function isRoot(): bool
+    {
+        return self::isRootId((int) ($this->fields['id'] ?? 0));
+    }
+
+    /**
+     * Whether the given article id is the root article's one, see `getRootId()`.
+     */
+    public static function isRootId(int $id): bool
+    {
+        // Compared to the raw configuration value instead of `getRootId()`: this
+        // method is called from rights checks, which must not fail on an
+        // installation that has no root article (no article is the root then).
+        return $id > 0 && $id === self::getConfiguredRootId();
+    }
+
+    /**
+     * Configured id of the root article, 0 if there is none.
+     */
+    private static function getConfiguredRootId(): int
+    {
+        global $CFG_GLPI;
+
+        return (int) ($CFG_GLPI['root_knowbaseitems_id'] ?? 0);
+    }
+
+    public static function getSearchURL($full = true)
+    {
+        global $CFG_GLPI;
+
+        $dir = ($full ? $CFG_GLPI['root_doc'] : '');
+
+        if (Session::getCurrentInterface() === "central") {
+            return "$dir/front/knowbaseitem.php";
+        }
+        return "$dir/front/helpdesk.faq.php";
+    }
+
+    public static function getFormURL($full = true)
+    {
+        global $CFG_GLPI;
+
+        $dir = ($full ? $CFG_GLPI['root_doc'] : '');
+
+        if (Session::getCurrentInterface() === "central") {
+            return "$dir/front/knowbaseitem.form.php";
+        }
+        return "$dir/front/helpdesk.faq.php";
+    }
+
+    /**
+     * Get the form page URL for the current classe
+     *
+     * @param array   $params parameters to add to the URL
+     * @param bool $full  path or relative one
+     * @return string
+     **/
+    public static function getFormURLWithParam($params = [], $full = true): string
+    {
+        $url = self::getFormURL($full) . '?';
+
+        if (isset($params['_sol_to_kb'])) {
+            $url .= '&_sol_to_kb=' . $params['_sol_to_kb'];
+        }
+        if (isset($params['_fup_to_kb'])) {
+            $url .= '&_fup_to_kb=' . $params['_fup_to_kb'];
+        }
+        if (isset($params['_task_to_kb'])) {
+            $url .= '&_task_to_kb=' . $params['_task_to_kb'];
+        }
+        return $url;
+    }
+
+    /**
+     * @param array<string|array<string>>|null $menus
+     * @param array<string, mixed> $options
+     */
+    public static function displayFullPageForItem(
+        $id,
+        ?array $menus = null,
+        array $options = []
+    ): void {
+        // Load Tiptap editor for KB articles
+        Html::requireJs('tiptap');
+
+        parent::displayFullPageForItem($id, $menus, $options);
+    }
+
+    public function defineTabs($options = [])
+    {
+        $ong = [];
+        $this->addStandardTab(self::class, $ong, $options);
+        return $ong;
+    }
+
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    {
+        if (!$withtemplate) {
+            switch ($item::class) {
+                case self::class:
+                    $ong[1] = self::createTabEntry(self::getTypeName(1));
+                    return $ong;
+            }
+        }
+        return '';
+    }
+
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+    {
+        if (!$item instanceof self) {
+            return false;
+        }
+        switch ($tabnum) {
+            case 1:
+                return (bool) $item->showFull(['mode' => 'edit']);
+
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Actions done at the end of the getEmpty function
+     *
+     *@return void
+     **/
+    public function post_getEmpty()
+    {
+        if (
+            Session::haveRight(self::$rightname, self::PUBLISHFAQ)
+            && !Session::haveRight(KnowbaseItem::$rightname, UPDATE)
+        ) {
+            $this->fields["is_faq"] = 1;
+        }
+    }
+
+    /**
+     * Validate that the given article id can be used as a parent prefill for
+     * the current session: it must exist and be viewable by the current user.
+     *
+     * @return int|null Parent article id when readable, null otherwise.
+     */
+    public static function getReadablePrefilledParentId(int $parent_id): ?int
+    {
+        if ($parent_id <= 0) {
+            return null;
+        }
+        $parent = new self();
+        if (!$parent->getFromDB($parent_id) || !$parent->can($parent_id, READ)) {
+            return null;
+        }
+        return $parent_id;
+    }
+
+    public function post_addItem()
+    {
+        // Handle rich-text images and uploaded documents
+        $this->input = $this->addFiles(
+            $this->input,
+            [
+                'force_update'  => true,
+                'content_field' => 'answer',
+            ]
+        );
+
+        $answer = $this->relinkEmbeddedDocumentsFromLinkedItemContext($this->fields['answer'] ?? null);
+        if ($answer !== null && $answer !== ($this->fields['answer'] ?? null)) {
+            $this->fields['answer'] = $answer;
+            $this->input['answer'] = $answer;
+            $this->updateInDB(['answer']);
+        }
+
+        if (isset($this->input["_visibility"]['_type']) && !empty($this->input["_visibility"]["_type"])) {
+            $this->input["_visibility"]['knowbaseitems_id'] = $this->getID();
+            $item                                           = null;
+            if (isset($this->input["_visibility"]['entities_id']) && $this->input["_visibility"]['entities_id'] == -1) {
+                // "No restriction" value selected
+                $this->input["_visibility"]['entities_id'] = null;
+                $this->input["_visibility"]['no_entity_restriction'] = 1;
+            }
+            switch ($this->input["_visibility"]['_type']) {
+                case 'User':
+                    if (
+                        isset($this->input["_visibility"]['users_id'])
+                        && $this->input["_visibility"]['users_id']
+                    ) {
+                        $item = new KnowbaseItem_User();
+                    }
+                    break;
+
+                case 'Group':
+                    if (
+                        isset($this->input["_visibility"]['groups_id'])
+                        && $this->input["_visibility"]['groups_id']
+                    ) {
+                        $item = new Group_KnowbaseItem();
+                    }
+                    break;
+
+                case 'Profile':
+                    if (
+                        isset($this->input["_visibility"]['profiles_id'])
+                        && $this->input["_visibility"]['profiles_id']
+                    ) {
+                        $item = new KnowbaseItem_Profile();
+                    }
+                    break;
+
+                case 'Entity':
+                    $item = new Entity_KnowbaseItem();
+                    break;
+            }
+            if (!is_null($item)) {
+                $item->add($this->input["_visibility"]);
+                Event::log(
+                    $this->getID(),
+                    "knowbaseitem",
+                    4,
+                    "tools",
+                    //TRANS: %s is the user login
+                    sprintf(__('%s adds a target'), $_SESSION["glpiname"])
+                );
+            }
+        }
+
+        if (isset($this->input['_do_item_link']) && (bool) $this->input['_do_item_link']) {
+            $params = [
+                'knowbaseitems_id' => $this->getID(),
+                'itemtype'         => $this->input['_itemtype'],
+                'items_id'         => $this->input['_items_id'],
+            ];
+            $kb_item_item = new KnowbaseItem_Item();
+            $kb_item_item->add($params);
+        }
+
+        // Handle parent articles. Articles created without a parent are attached
+        // to the root article, so the knowledge base always is a single tree.
+        $this->setRootAsDefaultParent(on_creation: true);
+        $this->update1NTableData(KnowbaseItem_KnowbaseItem::class, "_parents");
+
+        NotificationEvent::raiseEvent('new', $this);
+    }
+
+    /**
+     * Recontextualize embedded document URLs from source item to current KnowbaseItem.
+     *
+     * @param ?string $answer
+     *
+     * @return ?string
+     */
+    private function relinkEmbeddedDocumentsFromLinkedItemContext(?string $answer): ?string
+    {
+        global $DB;
+
+        if ($answer === null || $answer === '') {
+            return $answer;
+        }
+
+        $source_itemtype = $this->input['_itemtype'] ?? null;
+        $source_items_id = $this->input['_items_id'] ?? null;
+        if (
+            !is_string($source_itemtype)
+            || !is_a($source_itemtype, CommonDBTM::class, true)
+            || !is_numeric($source_items_id)
+            || (int) $source_items_id <= 0
+        ) {
+            return $answer;
+        }
+        $source_items_id = (int) $source_items_id;
+
+        $matches = [];
+        preg_match_all('/(?:https?:\/\/[^"\'\s<>]+)?\/front\/document\.send\.php\?[^"\'\s<>]+/i', $answer, $matches);
+        if (count($matches[0]) === 0) {
+            return $answer;
+        }
+
+        $document_item = new Document_Item();
+        foreach (array_unique($matches[0]) as $document_url) {
+            if (!is_string($document_url) || $document_url === '') {
+                continue;
+            }
+
+            $decoded_url = html_entity_decode($document_url, ENT_QUOTES | ENT_HTML5);
+            $query = parse_url($decoded_url, PHP_URL_QUERY);
+            if (!is_string($query)) {
+                continue;
+            }
+
+            parse_str($query, $params);
+            $document_id = (int) ($params['docid'] ?? 0);
+            if (
+                $document_id <= 0
+                || ($params['itemtype'] ?? null) !== $source_itemtype
+                || (int) ($params['items_id'] ?? 0) !== $source_items_id
+            ) {
+                continue;
+            }
+
+            if (!$this->canRelinkEmbeddedDocumentFromSourceContext($document_id, $source_itemtype, $source_items_id)) {
+                continue;
+            }
+
+            $target_link = [
+                'documents_id' => $document_id,
+                'itemtype'     => self::class,
+                'items_id'     => $this->getID(),
+            ];
+            if (!$document_item->alreadyExists($target_link)) {
+                $document_item->add($target_link);
+            }
+
+            $params['itemtype'] = self::class;
+            $params['items_id'] = $this->getID();
+            $base_url = strtok($decoded_url, '?');
+            if ($base_url === false) {
+                continue;
+            }
+            $updated_url = htmlescape($base_url . '?' . http_build_query($params, '', '&amp;', PHP_QUERY_RFC3986));
+            $answer = str_replace($document_url, $updated_url, $answer);
+        }
+
+        return $answer;
+    }
+
+    /**
+     * Ensure a document can be safely re-linked from a source context.
+     *
+     * @param int    $document_id
+     * @param string $source_itemtype
+     * @param int    $source_items_id
+     *
+     * @return bool
+     */
+    private function canRelinkEmbeddedDocumentFromSourceContext(
+        int $document_id,
+        string $source_itemtype,
+        int $source_items_id
+    ): bool {
+        global $DB;
+
+        $source_link = $DB->request([
+            'FROM'  => Document_Item::getTable(),
+            'COUNT' => 'cpt',
+            'WHERE' => [
+                'documents_id' => $document_id,
+                'itemtype'     => $source_itemtype,
+                'items_id'     => $source_items_id,
+            ],
+            'LIMIT' => 1,
+        ])->current();
+
+        if (
+            (int) ($source_link['cpt'] ?? 0) <= 0
+            && !is_a($source_itemtype, CommonITILObject::class, true)
+        ) {
+            return false;
+        }
+
+        $document = new Document();
+        return $document->getFromDB($document_id)
+            && $document->canViewFile([
+                'itemtype' => $source_itemtype,
+                'items_id' => $source_items_id,
+            ]);
+    }
+
+    public function post_getFromDB()
+    {
+        // Users
+        $this->users    = KnowbaseItem_User::getUsers($this->fields['id']);
+
+        // Entities
+        $this->entities = Entity_KnowbaseItem::getEntities($this->fields['id']);
+
+        // Group / entities
+        $this->groups   = Group_KnowbaseItem::getGroups($this->fields['id']);
+
+        // Profile / entities
+        $this->profiles = KnowbaseItem_Profile::getProfiles($this->fields['id']);
+
+        // Load parent articles
+        $this->load1NTableData(KnowbaseItem_KnowbaseItem::class, '_parents');
+    }
+
+    public function pre_deleteItem()
+    {
+        // Last line of defense: `canDeleteItem()` and `canPurgeItem()` already
+        // forbid the action, but this hook is the single gate that every deletion
+        // goes through, including the code paths that do not check rights.
+        if ($this->isRoot()) {
+            Session::addMessageAfterRedirect(
+                msg: __s('The root article of the knowledge base cannot be deleted.'),
+                message_type: ERROR,
+            );
+
+            return false;
+        }
+
+        return parent::pre_deleteItem();
+    }
+
+    public function cleanDBonPurge()
+    {
+        // Collect the children that this purge would leave outside the tree
+        // before their links to the purged article are removed below.
+        $orphaned_children = $this->getChildrenWithoutOtherParent();
+
+        $this->deleteChildrenAndRelationsFromDb(
+            [
+                Entity_KnowbaseItem::class,
+                Group_KnowbaseItem::class,
+                KnowbaseItem_Favorite::class,
+                KnowbaseItem_KnowbaseItem::class,
+                KnowbaseItem_Item::class,
+                KnowbaseItem_Profile::class,
+                KnowbaseItem_User::class,
+                KnowbaseItemTranslation::class,
+                ShareToken::class,
+            ]
+        );
+
+        // Remove links where this article is the parent since
+        // deleteChildrenAndRelationsFromDb will not handle this part.
+        (new KnowbaseItem_KnowbaseItem())->deleteByCriteria(
+            ['knowbaseitems_id_parent' => $this->fields['id']]
+        );
+
+        // Attach the children that just lost their only parent back to the root
+        // article, so the knowledge base always is a single tree.
+        self::attachToRootArticle($orphaned_children);
+
+        // KnowbaseItem_Comment does not extends CommonDBConnexity
+        $kbic = new KnowbaseItem_Comment();
+        $kbic->deleteByCriteria(['knowbaseitems_id' => $this->fields['id']]);
+
+        // KnowbaseItem_Revision does not extends CommonDBConnexity
+        $kbir = new KnowbaseItem_Revision();
+        $kbir->deleteByCriteria(['knowbaseitems_id' => $this->fields['id']]);
+    }
+
+    /**
+     * Ids of the children of the loaded article that have no other parent, and
+     * would thus be left outside the knowledge base tree if the article is
+     * removed from it.
+     *
+     * @return int[]
+     */
+    private function getChildrenWithoutOtherParent(): array
+    {
+        $relation = new KnowbaseItem_KnowbaseItem();
+
+        $children_ids = array_map('intval', array_column(
+            $relation->find(['knowbaseitems_id_parent' => $this->fields['id']]),
+            'knowbaseitems_id'
+        ));
+        if ($children_ids === []) {
+            return [];
+        }
+
+        $parents_count = array_count_values(array_map('intval', array_column(
+            $relation->find(['knowbaseitems_id' => $children_ids]),
+            'knowbaseitems_id'
+        )));
+
+        return array_values(array_filter(
+            $children_ids,
+            static fn(int $child_id): bool => ($parents_count[$child_id] ?? 0) <= 1,
+        ));
+    }
+
+    /**
+     * Attach the given articles to the root article, ignoring the ones that
+     * can not have a parent.
+     *
+     * @param int[] $article_ids
+     */
+    private static function attachToRootArticle(array $article_ids): void
+    {
+        if ($article_ids === [] || !self::hasRoot()) {
+            return;
+        }
+
+        $root_id  = self::getRootId();
+        $relation = new KnowbaseItem_KnowbaseItem();
+        foreach ($article_ids as $article_id) {
+            if ($article_id === $root_id) {
+                continue;
+            }
+
+            $relation->add([
+                'knowbaseitems_id'        => $article_id,
+                'knowbaseitems_id_parent' => $root_id,
+            ]);
+        }
+    }
+
+    /**
+     * Check is this item if visible to everybody (anonymous users)
+     *
+     * @since 0.83
+     *
+     * @return bool
+     **/
+    public function isPubliclyVisible()
+    {
+        global $CFG_GLPI;
+
+        if (!$CFG_GLPI['use_public_faq']) {
+            return false;
+        }
+
+        if (!Session::isMultiEntitiesMode()) {
+            return true;
+        }
+
+        if (isset($this->entities[0])) { // Browse root entity rights
+            foreach ($this->entities[0] as $entity) {
+                if ($entity['is_recursive']) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public function haveVisibilityAccess()
+    {
+        // No public knowbaseitem right : no visibility check
+        if (!Session::haveRightsOr(self::$rightname, [self::READFAQ, READ])) {
+            return false;
+        }
+
+        // KB Admin
+        if (Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+            return true;
+        }
+
+        return parent::haveVisibilityAccess();
+    }
+
+    /**
+     * Return visibility joins to add to DBIterator parameters
+     *
+     * @since 9.2
+     *
+     * @param bool $forceall force all joins (false by default)
+     *
+     * @return array
+     */
+    public static function getVisibilityCriteria(bool $forceall = false): array
+    {
+        global $CFG_GLPI;
+
+        // Build common JOIN clause
+        $criteria = [
+            'LEFT JOIN' => self::getVisibilityCriteriaCommonJoin($forceall),
+        ];
+
+        // Handle anonymous users
+        if (!Session::getLoginUserID()) {
+            // Public FAQ is enabled; show FAQ, otherwise show nothing
+            $criteria['WHERE'] = $CFG_GLPI["use_public_faq"] ? self::getVisibilityCriteriaFAQ() : [new QueryExpression('false')];
+            return $criteria;
+        }
+
+        // Handle logged in users
+        // Show FAQ for helpdesk user, knowledge base for central users
+        $criteria['WHERE'] = Session::getCurrentInterface() === "helpdesk" || !Session::haveRight(self::$rightname, READ)
+            ? self::getVisibilityCriteriaFAQ()
+            : self::getVisibilityCriteriaKB();
+        return $criteria;
+    }
+
+    /**
+     * Common JOIN clause used by getVisibilityCriteria* methods
+     *
+     * @param bool $forceall Force all join ?
+     *
+     * @return array LEFT JOIN clause
+     */
+    private static function getVisibilityCriteriaCommonJoin(bool $forceall = false)
+    {
+        global $CFG_GLPI;
+
+        $join = [];
+
+        // Context checks - avoid doing unnecessary join if possible
+        $is_public_faq_context = !Session::getLoginUserID() && $CFG_GLPI["use_public_faq"];
+        $has_session_groups = count(($_SESSION["glpigroups"] ?? []));
+        $has_active_profile = isset($_SESSION["glpiactiveprofile"]['id']);
+        $has_active_entity = count(($_SESSION["glpiactiveentities"] ?? []));
+
+        // Add user restriction data
+        if ($forceall || Session::getLoginUserID()) {
+            $join['glpi_knowbaseitems_users'] = [
+                'ON' => [
+                    'glpi_knowbaseitems_users' => 'knowbaseitems_id',
+                    'glpi_knowbaseitems'       => 'id',
+                ],
+            ];
+        }
+
+        // Add group restriction data
+        if ($forceall || $has_session_groups) {
+            $join['glpi_groups_knowbaseitems'] = [
+                'ON' => [
+                    'glpi_groups_knowbaseitems' => 'knowbaseitems_id',
+                    'glpi_knowbaseitems'       => 'id',
+                ],
+            ];
+        }
+
+        // Add profile restriction data
+        if ($forceall || $has_active_profile) {
+            $join['glpi_knowbaseitems_profiles'] = [
+                'ON' => [
+                    'glpi_knowbaseitems_profiles' => 'knowbaseitems_id',
+                    'glpi_knowbaseitems'       => 'id',
+                ],
+            ];
+        }
+
+        // Add entity restriction data
+        if ($forceall || $has_active_entity || $is_public_faq_context) {
+            $join['glpi_entities_knowbaseitems'] = [
+                'ON' => [
+                    'glpi_entities_knowbaseitems' => 'knowbaseitems_id',
+                    'glpi_knowbaseitems'       => 'id',
+                ],
+            ];
+        }
+
+        return $join;
+    }
+
+    /**
+     * Get visibility criteria for articles displayed in the FAQ (seen by
+     * helpdesk and anonymous users)
+     * This mean any KB article tagged as 'is_faq' should be displayed
+     *
+     * @return array WHERE clause
+     */
+    private static function getVisibilityCriteriaFAQ(): array
+    {
+        // Specific case for anonymous users + multi entities
+        if (!Session::getLoginUserID()) {
+            $where = ['is_faq' => 1];
+            if (Session::isMultiEntitiesMode()) {
+                $where[Entity_KnowbaseItem::getTableField('entities_id')] = 0;
+                $where[Entity_KnowbaseItem::getTableField('is_recursive')] = 1;
+            }
+        } else {
+            $where = self::getVisibilityCriteriaKB();
+            $where['is_faq'] = 1;
+        }
+
+        return $where;
+    }
+
+    /**
+     * Get visibility criteria for articles displayed in the knowledge base
+     * (seen by central users)
+     * This mean any KB article with valid visibility criteria for the current
+     * user should be displayed
+     *
+     * @return array WHERE clause
+     */
+    private static function getVisibilityCriteriaKB(): array
+    {
+        // Special case for KB Admins
+        if (Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+            // See all articles
+            return [new QueryExpression('1')];
+        }
+
+        // Prepare the direct-visibility criteria, which will use an OR statement
+        // (the user can read the article if any of the author/user/group/profile/
+        // entity criteria are validated).
+        $direct_or = [];
+
+        // Special case: the user may be the article's author
+        $direct_or[] = [self::getTableField('users_id') => Session::getLoginUserID()];
+
+        // Filter on users
+        $direct_or[] = self::getVisibilityCriteriaKB_User();
+
+        // Filter on groups (if the current user have any)
+        if (count($_SESSION["glpigroups"] ?? [])) {
+            $direct_or[] = self::getVisibilityCriteriaKB_Group();
+        }
+
+        // Filter on profiles
+        $direct_or[] = self::getVisibilityCriteriaKB_Profile();
+
+        // Filter on entities
+        $direct_or[] = self::getVisibilityCriteriaKB_Entity();
+
+        // Inherited visibility: an article is also visible if any of its
+        // ancestors is directly visible. Build the inherited term from the
+        // direct terms BEFORE appending it (it must not contain itself).
+        $criteria = array_merge($direct_or, [self::getInheritedVisibilityCondition($direct_or)]);
+
+        // The root article is the entry point of the knowledge base: everyone
+        // allowed to read the knowledge base sees it, it has no visibility rules
+        // of its own. Appended after the inherited term on purpose, see
+        // `getInheritedVisibilityCondition()` for why it must not seed it.
+        $root_id = self::getConfiguredRootId();
+        if ($root_id > 0) {
+            $criteria[] = [self::getTableField('id') => $root_id];
+        }
+
+        return ['OR' => $criteria];
+    }
+
+    /**
+     * Build an `id IN (WITH RECURSIVE ...)` criterion that matches any article
+     * whose set of ancestors (via glpi_knowbaseitems_knowbaseitems) includes a
+     * directly-visible article. $direct_or is the set of direct-visibility OR
+     * terms (must NOT already contain the inherited term).
+     *
+     * @param array<int, mixed> $direct_or Direct-visibility OR terms
+     *
+     * @return array<string, mixed>
+     */
+    private static function getInheritedVisibilityCondition(array $direct_or): array
+    {
+        global $DB;
+
+        // Seed: ids of directly-visible articles (self-contained subquery).
+        $seed_where = ['OR' => $direct_or];
+
+        // The root article is the ancestor of every article: were it part of the
+        // seed, the whole knowledge base would inherit its visibility.
+        $root_id = self::getConfiguredRootId();
+        if ($root_id > 0) {
+            $seed_where = [
+                $seed_where,
+                ['NOT' => [self::getTableField('id') => $root_id]],
+            ];
+        }
+
+        $seed = new QuerySubQuery([
+            'SELECT'    => self::getTableField('id'),
+            'FROM'      => self::getTable(),
+            'LEFT JOIN' => self::getVisibilityCriteriaCommonJoin(true),
+            'WHERE'     => $seed_where,
+        ]);
+
+        // GLPI's iterator emits `?` placeholders and keeps the bound values
+        // aside; carry those params over to the QueryExpression so they are
+        // bound in order when this raw term is embedded in the outer query.
+        $seed_sql    = $seed->getQuery();
+        $seed_params = $seed->getParams();
+
+        $link = KnowbaseItem_KnowbaseItem::getTable();
+        $sql
+            = '(WITH RECURSIVE kb_visible (id) AS ('
+            . 'SELECT id FROM ' . $seed_sql . ' AS kb_seed'
+            . ' UNION '
+            . 'SELECT ' . $DB::quoteName($link . '.knowbaseitems_id')
+            . ' FROM ' . $DB::quoteName($link)
+            . ' INNER JOIN kb_visible ON '
+            . $DB::quoteName($link . '.knowbaseitems_id_parent') . ' = kb_visible.id'
+            . ') SELECT id FROM kb_visible)';
+
+        return [
+            self::getTableField('id') => ['IN', new QueryExpression($sql, null, $seed_params)],
+        ];
+    }
+
+    /**
+     * Get criteria used to filter knowledge base articles on users
+     *
+     * @return array
+     */
+    private static function getVisibilityCriteriaKB_User(): array
+    {
+        $user = Session::getLoginUserID();
+        return [
+            KnowbaseItem_User::getTableField('users_id') => $user,
+        ];
+    }
+
+    /**
+     * Get criteria used to filter knowledge base articles on groups
+     *
+     * @return array
+     */
+    private static function getVisibilityCriteriaKB_Group(): array
+    {
+        $groups = $_SESSION["glpigroups"] ?? [-1];
+        $entity_restriction = getEntitiesRestrictCriteria(
+            Group_KnowbaseItem::getTable(),
+            '',
+            '',
+            true,
+            true
+        );
+
+        return [
+            Group_KnowbaseItem::getTableField('groups_id') => $groups,
+            'OR' => [
+                Group_KnowbaseItem::getTableField('no_entity_restriction') => 1,
+            ] + $entity_restriction,
+        ];
+    }
+
+    /**
+     * Get criteria used to filter knowledge base articles on profiles
+     *
+     * @return array
+     */
+    private static function getVisibilityCriteriaKB_Profile(): array
+    {
+        $profile = $_SESSION["glpiactiveprofile"]['id'] ?? -1;
+        $entity_restriction = getEntitiesRestrictCriteria(
+            KnowbaseItem_Profile::getTable(),
+            '',
+            '',
+            true,
+            true
+        );
+
+        return [
+            KnowbaseItem_Profile::getTableField('profiles_id') => $profile,
+            'OR' => [
+                KnowbaseItem_Profile::getTableField('no_entity_restriction') => 1,
+            ] + $entity_restriction,
+        ];
+    }
+
+    /**
+     * Get criteria used to filter knowledge base articles on entity
+     *
+     * @return array
+     */
+    private static function getVisibilityCriteriaKB_Entity(): array
+    {
+        $entity_restriction = getEntitiesRestrictCriteria(
+            Entity_KnowbaseItem::getTable(),
+            '',
+            '',
+            true,
+            true
+        );
+
+        // All entities
+        if (!count($entity_restriction)) {
+            $entity_restriction = [
+                Entity_KnowbaseItem::getTableField('entities_id') => null,
+            ];
+        }
+
+        return $entity_restriction;
+    }
+
+    public function prepareInputForAdd($input)
+    {
+        // set title for question if empty
+        if (isset($input["name"]) && empty($input["name"])) {
+            $input["name"] = __('New item');
+        }
+
+        if (
+            Session::haveRight(self::$rightname, self::PUBLISHFAQ)
+            && !Session::haveRight(self::$rightname, UPDATE)
+        ) {
+            $input["is_faq"] = 1;
+        }
+        if (
+            !Session::haveRight(self::$rightname, self::PUBLISHFAQ)
+            && Session::haveRight(self::$rightname, UPDATE)
+        ) {
+            $input["is_faq"] = 0;
+        }
+
+        if (!isset($input['users_id'])) {
+            $input["users_id"] = Session::getLoginUserID();
+        }
+
+        return $this->prepareIllustrationInput($input);
+    }
+
+    public function prepareInputForUpdate($input)
+    {
+        // set title for question if empty
+        if (isset($input["name"]) && empty($input["name"])) {
+            $input["name"] = __('New item');
+        }
+
+        // The root article is the entry point of the knowledge base, not a
+        // piece of content to publish. Listing it in the FAQ or in the service
+        // catalog would offer it to readers that are not allowed to open it,
+        // down to anonymous users on a public FAQ, see `canViewItem()`.
+        if ($this->isRoot()) {
+            unset($input['is_faq'], $input['show_in_service_catalog']);
+        }
+
+        return $this->prepareIllustrationInput($input);
+    }
+
+    /**
+     * Drop the `illustration` field from $input when it is neither a known
+     * native icon nor an existing custom illustration file. The picker UI
+     * always submits valid values; this guards against direct POSTs.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function prepareIllustrationInput(array $input): array
+    {
+        if (!array_key_exists('illustration', $input)) {
+            return $input;
+        }
+
+        $manager = new IllustrationManager();
+        if (!$manager->isKnownIllustrationValue((string) $input['illustration'])) {
+            unset($input['illustration']);
+        }
+
+        return $input;
+    }
+
+    /**
+     * Make sure the `_parents` input never leaves the article outside the
+     * knowledge base tree: an article that would end up without any parent is
+     * attached to the root article instead.
+     *
+     * @param bool $on_creation Whether the article is being created, in which
+     *                          case an input that does not mention the parents
+     *                          at all must be defaulted too.
+     */
+    private function setRootAsDefaultParent(bool $on_creation): void
+    {
+        // The root article is the only one allowed to have no parent.
+        if (!is_array($this->input) || $this->isRoot()) {
+            return;
+        }
+
+        $parents = $this->input['_parents'] ?? null;
+
+        // See `update1NTableData()`: an input that does not target the parents
+        // at all must be left alone, unless the article has no parent yet.
+        $targets_parents = $parents !== null
+            || (bool) ($this->input['__parents_defined'] ?? false);
+        if (!$targets_parents && !$on_creation) {
+            return;
+        }
+
+        // Only an emptied input needs a default.
+        if (!empty($parents)) {
+            return;
+        }
+
+        // Guard against an installation that has no root article: a link to a
+        // missing article would be worse than no link at all.
+        if (!self::hasRoot()) {
+            return;
+        }
+        $root_id = self::getRootId();
+        if (countElementsInTable(self::getTable(), ['id' => $root_id]) === 0) {
+            return;
+        }
+
+        $this->input['_parents'] = [$root_id];
+    }
+
+    public function post_updateItem($history = true)
+    {
+        // Handle rich-text images and uploaded documents
+        $this->input = $this->addFiles(
+            $this->input,
+            [
+                'force_update'  => true,
+                'content_field' => 'answer',
+            ]
+        );
+
+        // Update parent articles. An article whose parents are all removed is
+        // attached back to the root article, so the knowledge base always is a
+        // single tree.
+        $this->setRootAsDefaultParent(on_creation: false);
+        $this->update1NTableData(KnowbaseItem_KnowbaseItem::class, '_parents');
+        NotificationEvent::raiseEvent('update', $this);
+    }
+
+    public function post_purgeItem()
+    {
+        NotificationEvent::raiseEvent('delete', $this);
+    }
+
+    /**
+     * @param array<string, mixed> $query_params
+     * @return array<string, mixed>
+     */
+    public function getFormOptionsFromUrl(array $query_params): array
+    {
+        $options = [];
+        if (isset($query_params['knowbaseitems_id_parent'])) {
+            $options['knowbaseitems_id_parent'] = $query_params['knowbaseitems_id_parent'];
+        }
+
+        // Parameters set by the "Save and add to the knowledge base" actions of
+        // the ITIL objects timeline, see self::getFormURLWithParam().
+        $itil_params = [
+            'item_itemtype',
+            'item_items_id',
+            '_fup_to_kb',
+            '_task_to_kb',
+            '_sol_to_kb',
+        ];
+        foreach ($itil_params as $itil_param) {
+            if (isset($query_params[$itil_param])) {
+                $options[$itil_param] = $query_params[$itil_param];
+            }
+        }
+
+        return $options;
+    }
+
+    public function showForm($ID, array $options = []): bool
+    {
+        // show kb item form
+        if (
+            !Session::haveRightsOr(
+                self::$rightname,
+                [UPDATE, self::PUBLISHFAQ, self::KNOWBASEADMIN]
+            )
+        ) {
+            return false;
+        }
+
+        $this->initFromItilObject($ID, $options);
+
+        $this->showFull(['mode' => 'add'] + $options);
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private function initFromItilObject(int $ID, array $options): void
+    {
+        if (
+            !self::isNewID($ID)
+            || empty($options['item_itemtype'])
+            || empty($options['item_items_id'])
+        ) {
+            return;
+        }
+
+        $item = getItemForItemtype($options['item_itemtype']);
+        if (
+            !($item instanceof CommonITILObject)
+            || !$item->can($options['item_items_id'], READ)
+        ) {
+            return;
+        }
+
+        $this->fields['name'] = $item->getField('name');
+
+        if (isset($options['_fup_to_kb'])) {
+            $followup = new ITILFollowup();
+            if ($followup->can($options['_fup_to_kb'], READ)) {
+                $this->fields['answer'] = $followup->getField('content');
+            }
+        } elseif (isset($options['_task_to_kb'])) {
+            $task = $item->getTaskClassInstance();
+            if ($task->can($options['_task_to_kb'], READ)) {
+                $this->fields['answer'] = $task->getField('content');
+            }
+        } elseif (isset($options['_sol_to_kb'])) {
+            // Unlike _fup_to_kb and _task_to_kb, _sol_to_kb does not contain
+            // the target solution it
+            $solution = new ITILSolution();
+            $found = $solution->getFromDBByCrit([
+                'itemtype' => $item::class,
+                'items_id' => $item->getID(),
+                ['NOT' => ['status' => CommonITILValidation::REFUSED]],
+            ]);
+            if ($found && $solution->can($solution->fields['id'], READ)) {
+                $this->fields['answer'] = $solution->getField('content');
+            }
+        }
+    }
+
+    /**
+     * Increase the view counter of the current knowbaseitem
+     *
+     * @return void
+     */
+    public function updateCounter()
+    {
+        global $DB;
+
+        // update counter view
+        $DB->update(
+            'glpi_knowbaseitems',
+            [
+                'view'   => new QueryExpression($DB::quoteName('view') . ' + 1'),
+            ],
+            [
+                'id' => $this->getID(),
+            ]
+        );
+    }
+
+    /**
+     * Print out (html) show item : question and answer
+     *
+     * @param array $options Array of options
+     *
+     * @return bool|string
+     **/
+    public function showFull($options = [])
+    {
+        global $CFG_GLPI;
+
+        if (!$this->can($this->fields['id'], READ)) {
+            return false;
+        }
+
+        $default_options = [
+            'display' => true,
+            'mode' => "view",
+        ];
+        $options = array_merge($default_options, $options);
+        $mode = $options['mode'];
+
+        $this->updateCounter();
+
+        $params = [
+            'item_id' => $mode === 'add' ? null : $this->fields['id'],
+            'subject' => $this->fields['name'],
+            'answer'  => $this->getAnswer(),
+            'mode'    => $mode,
+            'actions' => [],
+            'comment_anchor_max_length' => KnowbaseItem_Comment::MAX_ANCHOR_LENGTH,
+        ];
+
+        if ($mode === "edit" || $mode === "view") {
+            $can_update = $this->can($this->fields['id'], UPDATE);
+
+            // Add last update info
+            $last_update_info = $this->getLastUpdateInfo();
+            $params['last_update_date']            = $last_update_info->getRawDate();
+            $params['last_update_relative_date']   = $last_update_info->getRelativeDate();
+            $params['last_update_author_name']     = $last_update_info->getAuthorName();
+            $params['last_update_author_link']     = $last_update_info->getAuthorLink();
+            $params['last_update_can_view_author'] = $last_update_info->canViewAuthor();
+
+            // Add linked documents info
+            $documents = $this->getDocumentsInfo();
+            $params['documents']       = $documents;
+            $params['documents_count'] = count($documents);
+            $params['can_add_documents'] = $can_update;
+
+            // Data for document linking dropdown
+            if ($can_update) {
+                $used_document_ids = array_column($documents, 'id');
+                $params['used_document_ids']    = $used_document_ids;
+                $params['document_idor_token']  = Session::getNewIDORToken('Document', [
+                    'entity_restrict' => -1,
+                ]);
+            }
+
+            // Add associated items info
+            $items                         = $this->getAssociatedItemsInfo();
+            $params['related_items']       = $items;
+            $params['related_items_count'] = count($items);
+            $params['can_link_items']      = $can_update;
+
+            // Add child articles info
+            $child_articles = $this->getChildArticlesInfo();
+            $params['child_articles'] = $child_articles;
+
+            // Which footer tabs exist, and which one opens by default
+            $params['show_children_tab']  = $child_articles !== [];
+            $params['show_documents_tab'] = $documents !== [] || $can_update;
+            $params['show_items_tab']     = $items !== [] || $can_update;
+            $params['active_tab']         = match (true) {
+                $params['show_children_tab']  => 'children',
+                $params['show_documents_tab'] => 'documents',
+                default                       => 'items',
+            };
+
+            // General fields
+            $params['views']        = $this->fields['view'];
+            $params['can_edit']     = $can_update;
+            $params['illustration'] = $this->fields['illustration'] ?? '';
+
+            // Translations informations
+            $params['translations_count']    = KnowbaseItemTranslation::getNumberOfTranslationsForItem($this);
+            $params['existing_translations'] = array_values(KnowbaseItemTranslation::getAlreadyTranslatedForItem($this));
+            $params['default_language']      = $CFG_GLPI['language'];
+
+            // Visibility dates
+            $params['begin_date'] = $this->fields['begin_date'];
+            $params['end_date']   = $this->fields['end_date'];
+
+            // Comments
+            $params['can_comment']    = $this->canComment();
+            $params['comments_count'] = $this->canComment() ? countElementsInTable(KnowbaseItem_Comment::getTable(), [
+                'knowbaseitems_id' => $this->fields['id'],
+            ]) : 0;
+            $params['comment_anchors'] = $this->canComment()
+                ? KnowbaseItem_Comment::getAnchorsForItem($this)
+                : [];
+
+            // Add actions
+            $params['actions'] = $this->getEditorActions();
+
+            // Public sharing state (for the header "Share" button)
+            $params['is_published'] = (new ShareTokenManager())
+                ->hasActiveToken(self::class, $this->fields['id']);
+        } elseif ($mode === "add") {
+            $params['can_edit']     = $this->can(-1, CREATE);
+            $params['illustration'] = '';
+            // Nothing to comment on yet: the article doesn't exist until it's saved.
+            $params['can_comment']  = false;
+
+            $raw_parent_id = (int) ($options['knowbaseitems_id_parent'] ?? 0);
+            $prefilled_parent_id = self::getReadablePrefilledParentId($raw_parent_id);
+            if ($prefilled_parent_id !== null) {
+                $params['prefilled_parent'] = [
+                    'id' => $prefilled_parent_id,
+                ];
+            }
+
+            $params['is_published'] = false;
+        }
+
+        $out = TemplateRenderer::getInstance()->render(
+            'pages/tools/kb/article.html.twig',
+            $params,
+        );
+
+        if ($options['display']) {
+            echo $out;
+        } else {
+            return $out;
+        }
+
+        return true;
+    }
+
+    /**
+     * @return list<array{
+     *      'id': int,
+     *      'filename': string,
+     *      'extension': string,
+     *      'icon_class': string,
+     *      'color_class': string,
+     *      'download_url': string,
+     * }>
+     */
+    private function getDocumentsInfo(): array
+    {
+        global $DB;
+
+        // Get documents attached to the FAQ Item
+        $sort = 'filename';
+        $order = 'ASC';
+        $criteria = Document_Item::getDocumentForItemRequest($this, ["$sort $order"]);
+        $criteria['WHERE'][] = ['is_deleted' => '0'];
+        // Exclude inline images (uploaded via editor drag/drop or paste)
+        $criteria['WHERE'][] = [
+            'OR' => [
+                ['glpi_documents_items.timeline_position' => ['>', CommonITILObject::NO_TIMELINE]],
+                ['glpi_documents_items.timeline_position' => null],
+            ],
+        ];
+        $iterator = $DB->request($criteria);
+
+        $documents = [];
+        if (count($iterator) > 0) {
+            $document = new Document();
+            foreach ($iterator as $data) {
+                $doc_id = (int) $data["id"];
+
+                if ($document->getFromDB($doc_id)) {
+                    // Enrich documents data for main tab display
+                    $filename = (string) ($document->fields['filename'] ?? '');
+                    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                    $icon_and_color = self::getDocumentIconAndColor($extension);
+
+                    $documents[] = [
+                        'assoc_id' => $data['assocID'],
+                        'id' => $doc_id,
+                        'filename' => $filename,
+                        'extension' => $extension,
+                        'icon_class' => $icon_and_color['icon_class'],
+                        'color_class' => $icon_and_color['color_class'],
+                        'download_url' => $document->getDownloadUrl(),
+                    ];
+                }
+            }
+        }
+
+        return $documents;
+    }
+
+    /**
+     * @return list<array{
+     *      'id': int,
+     *      'items_id': int,
+     *      'itemtype': string,
+     *      'name': string,
+     *      'link_url': string,
+     *      'type_name': string,
+     *      'icon_class': string,
+     *      'color_class': string,
+     *      'sector': string,
+     * }>
+     */
+    private function getAssociatedItemsInfo(): array
+    {
+        // Fetch related items for the KB article
+        $related_items = [];
+        $linked_items_data = KnowbaseItem_Item::getItems($this);
+
+        foreach ($linked_items_data as $data) {
+            $linked_itemtype = $data['itemtype'];
+            $linked_items_id = $data['items_id'];
+
+            if (!is_a($linked_itemtype, CommonDBTM::class, true)) {
+                continue;
+            }
+            /** @var class-string<CommonDBTM> $linked_itemtype */
+
+            $linked_item = new $linked_itemtype();
+            if (!$linked_item->getFromDB($linked_items_id) || !$linked_item->can($linked_items_id, READ)) {
+                continue;
+            }
+
+            $icon_and_color = self::getRelatedItemIconAndColor($linked_itemtype);
+
+            $related_items[] = [
+                'id'          => $data['id'],
+                'items_id'    => $linked_items_id,
+                'itemtype'    => $linked_itemtype,
+                'name'        => $linked_item->getName(),
+                'link_url'    => $linked_item->getLinkURL(),
+                'type_name'   => $linked_itemtype::getTypeName(1),
+                'icon_class'  => $icon_and_color['icon_class'],
+                'color_class' => $icon_and_color['color_class'],
+                'sector'      => $icon_and_color['sector'],
+            ];
+        }
+
+        $writer_link = '';
+        if ($this->fields["users_id"]) {
+            $writer_link = getUserLink($this->fields["users_id"]);
+        }
+
+        return $related_items;
+    }
+
+    /**
+     * @return list<array{
+     *      'id': int,
+     *      'name': string,
+     *      'illustration': string,
+     *      'link_url': string,
+     * }>
+     */
+    private function getChildArticlesInfo(): array
+    {
+        global $DB;
+
+        // getListRequest()'s visibility cannot filter this query: inherited visibility matches every child of a readable parent.
+        $criteria = [
+            'SELECT'     => self::getTableField('id'),
+            'FROM'       => self::getTable(),
+            'INNER JOIN' => [
+                KnowbaseItem_KnowbaseItem::getTable() => [
+                    'FKEY' => [
+                        KnowbaseItem_KnowbaseItem::getTable() => 'knowbaseitems_id',
+                        self::getTable()                      => 'id',
+                    ],
+                ],
+            ],
+            'WHERE'      => [
+                KnowbaseItem_KnowbaseItem::getTableField('knowbaseitems_id_parent') => $this->fields['id'],
+            ],
+            'ORDER'      => [self::getTableField('name') . ' ASC'],
+        ];
+
+        // can() ignores the validity window, so apply it here exactly as getListRequest() does.
+        if (!Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+            $criteria['WHERE'][] = [
+                'OR' => [
+                    [self::getTableField('begin_date') => null],
+                    [self::getTableField('begin_date') => ['<', QueryFunction::now()]],
+                ],
+            ];
+            $criteria['WHERE'][] = [
+                'OR' => [
+                    [self::getTableField('end_date') => null],
+                    [self::getTableField('end_date') => ['>', QueryFunction::now()]],
+                ],
+            ];
+        }
+
+        $children = [];
+        $child = new self();
+        $rows = $DB->request($criteria);
+        foreach ($rows as $row) {
+            $child_id = (int) $row['id'];
+            if (!$child->can($child_id, READ)) {
+                continue;
+            }
+            $children[] = [
+                'id'           => $child_id,
+                'name'         => $child->getName(),
+                'illustration' => $child->fields['illustration'] ?? '',
+                'link_url'     => self::getFormURLWithID($child_id),
+            ];
+        }
+
+        return $children;
+    }
+
+    /** @return array<EditorAction|EditorActionSeparator> */
+    private function getEditorActions(): array
+    {
+        $actions = [];
+
+        // Navigation actions (require UPDATE)
+        if ($this->can($this->fields['id'], UPDATE)) {
+            $actions[] = new EditorAction(
+                label: __("History"),
+                icon: "ti ti-history",
+                type: EditorActionType::LOAD_SIDE_PANEL,
+                params: [
+                    'id' => $this->fields['id'],
+                    'key' => 'history',
+                ],
+                // 1 for initial revision
+                counter: 1 + countElementsInTable(KnowbaseItem_Revision::getTable(), [
+                    'knowbaseitems_id' => $this->fields['id'],
+                    'language' => '',
+                ]),
+            );
+
+            if ($this->canComment()) {
+                $actions[] = new EditorAction(
+                    label: __("Comments"),
+                    icon: "ti ti-message-circle",
+                    type: EditorActionType::LOAD_SIDE_PANEL,
+                    params: [
+                        'id' => $this->fields['id'],
+                        'key' => 'comments',
+                    ],
+                    counter: countElementsInTable(KnowbaseItem_Comment::getTable(), [
+                        'knowbaseitems_id' => $this->fields['id'],
+                    ]),
+                );
+            }
+
+            // None of the actions below applies to the root article.
+            if (!$this->isRoot()) {
+                $actions[] = new EditorAction(
+                    label: __("Service catalog"),
+                    icon: "ti ti-library",
+                    type: EditorActionType::OPEN_MODAL,
+                    params: [
+                        'id'    => $this->fields['id'],
+                        'key'   => 'SidePanel/service-catalog',
+                        'title' => __("Service catalog"),
+                        'icon'  => 'ti ti-library',
+                    ],
+                );
+
+                $label = __('Permissions');
+                $icon  = "ti ti-lock";
+                $actions[] = new EditorAction(
+                    label: $label,
+                    icon: $icon,
+                    type: EditorActionType::OPEN_MODAL,
+                    params: [
+                        'id'    => $this->fields['id'],
+                        'key'   => 'SidePanel/targets',
+                        'title' => $label,
+                        'icon'  => $icon,
+                    ],
+                );
+                $actions[] = new EditorAction(
+                    label: __('Schedule visibility'),
+                    icon: 'ti ti-calendar-clock',
+                    type: EditorActionType::OPEN_MODAL,
+                    params: [
+                        'id'    => $this->fields['id'],
+                        'key'   => 'SidePanel/schedule-visibility',
+                        'title' => __('Schedule visibility'),
+                    ],
+                );
+            }
+        }
+
+        // Include base actions that are available for articles in the aside
+        $management = $this->getAsideActions();
+        if ($management !== []) {
+            if ($actions !== []) {
+                $actions[] = new EditorActionSeparator();
+            }
+            array_push($actions, ...$management);
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Build the actions that will be available on the aside dots menu for
+     * the loaded article.
+     *
+     * @param bool $with_move Whether to offer "Move", which needs the occurrence
+     *                        context only an aside row provides.
+     *
+     * @return array<EditorAction|EditorActionSeparator>
+     */
+    public function getAsideActions(bool $with_move = false): array
+    {
+        $actions = [];
+
+        // Toggle actions
+        $toggles = [];
+        if (KnowbaseItem_Favorite::canCreate()) {
+            $toggles[] = new EditorAction(
+                label: __("Add to favorites"),
+                icon: "ti ti-star",
+                type: EditorActionType::TOGGLE_FAVORITE,
+                params: [
+                    'id'      => $this->fields['id'],
+                    'checked' => KnowbaseItem_Favorite::isFavoriteForCurrentUser($this->fields['id']) ? '1' : '0',
+                ],
+            );
+        }
+        // The root article is not part of the FAQ, see `prepareInputForUpdate()`.
+        if (!$this->isRoot() && $this->can($this->fields['id'], UPDATE)) {
+            $toggles[] = new EditorAction(
+                label: __("Add to FAQ"),
+                icon: "ti ti-bookmark",
+                type: EditorActionType::TOGGLE_VALUE,
+                params: [
+                    'id'      => $this->fields['id'],
+                    'field'   => 'is_faq',
+                    'checked' => $this->fields['is_faq'] ? '1' : '0',
+                ],
+            );
+        }
+        array_push($actions, ...$toggles);
+
+        $management = [];
+        // The root article is the base of the tree, it cannot be moved.
+        if ($with_move && !$this->isRoot() && $this->can($this->fields['id'], UPDATE)) {
+            $management[] = new EditorAction(
+                label: __("Move"),
+                icon: "ti ti-file-symlink",
+                type: EditorActionType::OPEN_MODAL,
+                params: [
+                    'id'    => $this->fields['id'],
+                    'key'   => 'MoveModal',
+                    'title' => __("Move article"),
+                    'icon'  => 'ti ti-file-symlink',
+                ],
+            );
+        }
+        if ($this->can($this->fields['id'], PURGE)) {
+            $management[] = new EditorAction(
+                label: __("Delete article"),
+                icon: "ti ti-trash",
+                type: EditorActionType::DELETE_ARTICLE,
+                params: [
+                    'id' => $this->fields['id'],
+                ],
+                is_danger: true,
+            );
+        }
+
+        if ($management !== [] && $toggles !== []) {
+            $actions[] = new EditorActionSeparator();
+        }
+        array_push($actions, ...$management);
+
+        return $actions;
+    }
+
+    public function getItemUrl(): string
+    {
+        return self::getFormURLWithID($this->getID());
+    }
+
+    public function canManageSharing(): bool
+    {
+        return $this->can($this->getID(), UPDATE);
+    }
+
+    public function allowsMultipleShareTokens(): bool
+    {
+        // The article header exposes a single "Publish to web" link.
+        return false;
+    }
+
+    public function getShareableViewTemplate(): string
+    {
+        return 'pages/tools/kb/shared_article.html.twig';
+    }
+
+    public function getShareableViewParams(): array
+    {
+        return [
+            'title'   => $this->fields['name'],
+            'content' => $this->fields['answer'],
+        ];
+    }
+
+    public function getLastUpdateInfo(): LastUpdateInfo
+    {
+        // Only the most recent event is needed here: building the whole history
+        // of an article that has been updated for years would cost hundreds of
+        // milliseconds on every display.
+        $history = (new HistoryBuilder($this))->buildHistory(limit: 1);
+        $event = $history->getLatestEvent();
+
+        $author = User::getById($event->getAuthor()) ?: null;
+        return new LastUpdateInfo(
+            author_link: $author?->getLinkUrl(),
+            author_name: $author?->getName(),
+            date: $event->getDate(),
+            can_view_author: $author ? $author->can($author->getID(), READ) : false,
+        );
+    }
+
+    /**
+     * Get Tabler icon class and Bootstrap color class for a document based on its extension.
+     *
+     * @param string $extension File extension (lowercase, without dot)
+     * @return array{icon_class: string, color_class: string}
+     */
+    public static function getDocumentIconAndColor(string $extension): array
+    {
+        return match ($extension) {
+            'pdf' => [
+                'icon_class' => 'ti-file-type-pdf',
+                'color_class' => 'text-danger',
+            ],
+            'doc', 'docx' => [
+                'icon_class' => 'ti-file-type-doc',
+                'color_class' => 'text-primary',
+            ],
+            'xls', 'xlsx' => [
+                'icon_class' => 'ti-file-spreadsheet',
+                'color_class' => 'text-success',
+            ],
+            'ppt', 'pptx' => [
+                'icon_class' => 'ti-presentation',
+                'color_class' => 'text-orange',
+            ],
+            'zip', 'rar', '7z' => [
+                'icon_class' => 'ti-file-zip',
+                'color_class' => 'text-warning',
+            ],
+            'txt', 'md' => [
+                'icon_class' => 'ti-file-text',
+                'color_class' => 'text-info',
+            ],
+            'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp' => [
+                'icon_class' => 'ti-photo',
+                'color_class' => 'text-purple',
+            ],
+            default => [
+                'icon_class' => 'ti-file',
+                'color_class' => 'text-secondary',
+            ],
+        };
+    }
+
+    /**
+     * Get icon class and color class for a related item based on its menu sector.
+     *
+     * @param class-string<CommonDBTM> $itemtype The itemtype class name
+     * @return array{icon_class: string, color_class: string, sector: string}
+     */
+    public static function getRelatedItemIconAndColor(string $itemtype): array
+    {
+        $sector = Html::getMenuSectorForItemtype($itemtype);
+
+        $color_mapping = [
+            'assets'     => 'text-azure',   // Blue
+            'helpdesk'   => 'text-yellow',  // Yellow
+            'tools'      => 'text-teal',    // Dark green
+            'management' => 'text-purple',  // Purple
+            'admin'      => 'text-orange',  // Orange
+        ];
+
+        $color_class = $color_mapping[$sector ?? ''] ?? 'text-secondary';
+
+        return [
+            'icon_class' => $itemtype::getIcon(),
+            'color_class' => $color_class,
+            'sector' => $sector ?? 'unknown',
+        ];
+    }
+
+    /**
+     * Print out an HTML form for Search knowbase item
+     *
+     * @param array $options   $_GET
+     *
+     * @return void
+     */
+    public function searchForm($options)
+    {
+        global $CFG_GLPI;
+
+        if (
+            !$CFG_GLPI["use_public_faq"]
+            && !Session::haveRightsOr(self::$rightname, [READ, self::READFAQ])
+        ) {
+            return;
+        }
+
+        // Default values of parameters
+        $params["contains"]                  = "";
+        if (is_array($options) && count($options)) {
+            foreach ($options as $key => $val) {
+                $params[$key] = $val;
+            }
+        }
+
+        if (
+            isset($options['item_itemtype'], $options['item_items_id'])
+            && !is_a($options['item_itemtype'], CommonDBTM::class, true)
+        ) {
+            unset($options['item_itemtype'], $options['item_items_id']);
+        }
+
+        $twig_params = [
+            'contains' => $params["contains"],
+            'options' => $options,
+            'btn_msg' => _x('button', 'Search'),
+        ];
+        // language=Twig
+        echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+            {% import 'components/form/basic_inputs_macros.html.twig' as inputs %}
+            <form method="get" action="{{ 'KnowbaseItem'|itemtype_search_path }}" class="d-flex justify-content-center">
+                {{ inputs.text('contains', contains, {additional_attributes: {size: 50}, input_addclass: 'me-1'}) }}
+                {{ inputs.submit('search', btn_msg, 1) }}
+                {% if options.item_itemtype is defined and options.item_items_id is defined %}
+                    {{ inputs.hidden('item_itemtype', options.item_itemtype) }}
+                    {{ inputs.hidden('item_items_id', options.item_items_id) }}
+                {% endif %}
+            </form>
+TWIG, $twig_params);
+    }
+
+    /**
+     * Build request for showList
+     *
+     * @since 0.83
+     *
+     * @param array $params (contains, knowbaseitems_id_parent, faq)
+     * @param string $type search type : browse / search (default search)
+     *
+     * @return array : SQL request
+     **/
+    public static function getListRequest(array $params, $type = 'search')
+    {
+        global $DB;
+
+        $params = array_replace([
+            'contains' => '',
+            'knowbaseitems_id_parent' => self::SEEALL,
+            'faq' => false,
+        ], $params);
+
+        // Mysql's MATCH AGAINST do not accept expressions that contains only spaces
+        if (trim($params['contains']) === '') {
+            $params['contains'] = '';
+        }
+
+        $criteria = [
+            'SELECT' => [
+                'glpi_knowbaseitems.*',
+                new QueryExpression(
+                    QueryFunction::count('glpi_knowbaseitems_users.id') . ' + '
+                    . QueryFunction::count('glpi_groups_knowbaseitems.id') . ' + '
+                    . QueryFunction::count('glpi_knowbaseitems_profiles.id') . ' + '
+                    . QueryFunction::count('glpi_entities_knowbaseitems.id') . ' AS '
+                    . $DB::quoteName('visibility_count')
+                ),
+            ],
+            'FROM'   => 'glpi_knowbaseitems',
+            'WHERE'     => [], //to be filled
+            'LEFT JOIN' => [], //to be filled
+            'GROUPBY'   => ['glpi_knowbaseitems.id'],
+        ];
+
+        // Lists kb Items
+        $restrict = self::getVisibilityCriteria(true);
+        $restrict_where = $restrict['WHERE'];
+        unset($restrict['WHERE'], $restrict['SELECT']);
+        $criteria = array_merge_recursive($criteria, $restrict);
+
+        switch ($type) {
+            case 'myunpublished':
+            case 'allmy':
+            case 'allunpublished':
+                break;
+
+            default:
+                // Build query
+                if (Session::getLoginUserID()) {
+                    $criteria['WHERE'] = array_merge(
+                        $criteria['WHERE'],
+                        $restrict_where
+                    );
+                } else {
+                    // Anonymous access
+                    if (Session::isMultiEntitiesMode()) {
+                        $criteria['WHERE']['glpi_entities_knowbaseitems.entities_id'] = 0;
+                        $criteria['WHERE']['glpi_entities_knowbaseitems.is_recursive'] = 1;
+                    }
+                }
+                break;
+        }
+
+        if ($params['faq']) { // helpdesk
+            $criteria['WHERE'][] = [
+                'OR' => [
+                    'glpi_knowbaseitems.is_faq' => 1,
+                    'glpi_knowbaseitems_users.users_id' => Session::getLoginUserID(),
+                ],
+            ];
+        }
+
+        if ($params['knowbaseitems_id_parent'] !== self::SEEALL) {
+            $criteria['LEFT JOIN'][KnowbaseItem_KnowbaseItem::getTable()] = [
+                'FKEY' => [
+                    KnowbaseItem_KnowbaseItem::getTable() => 'knowbaseitems_id',
+                    KnowbaseItem::getTable()              => 'id',
+                ],
+            ];
+            if ($params['knowbaseitems_id_parent'] > 0) {
+                $criteria['WHERE'][KnowbaseItem_KnowbaseItem::getTableField('knowbaseitems_id_parent')] = $params['knowbaseitems_id_parent'];
+            } elseif ($params['knowbaseitems_id_parent'] === 0) {
+                $criteria['WHERE'][KnowbaseItem_KnowbaseItem::getTableField('knowbaseitems_id_parent')] = null;
+            }
+        }
+
+        if (countElementsInTable('glpi_knowbaseitemtranslations') > 0) {
+            $criteria['LEFT JOIN']['glpi_knowbaseitemtranslations'] = [
+                'ON'  => [
+                    'glpi_knowbaseitems'             => 'id',
+                    'glpi_knowbaseitemtranslations'  => 'knowbaseitems_id', [
+                        'AND'                            => [
+                            'glpi_knowbaseitemtranslations.language' => $_SESSION['glpilanguage'],
+                        ],
+                    ],
+                ],
+            ];
+            $criteria['SELECT'][] = 'glpi_knowbaseitemtranslations.name AS transname';
+            $criteria['SELECT'][] = 'glpi_knowbaseitemtranslations.answer AS transanswer';
+        }
+
+        // a search with $contains
+        switch ($type) {
+            case 'allmy':
+                $criteria['WHERE']['glpi_knowbaseitems.users_id'] = Session::getLoginUserID();
+                break;
+
+            case 'myunpublished':
+                $criteria['WHERE']['glpi_knowbaseitems.users_id'] = Session::getLoginUserID();
+                $criteria['WHERE']['glpi_entities_knowbaseitems.entities_id'] = null;
+                $criteria['WHERE']['glpi_knowbaseitems_profiles.profiles_id'] = null;
+                $criteria['WHERE']['glpi_groups_knowbaseitems.groups_id'] = null;
+                $criteria['WHERE']['glpi_knowbaseitems_users.users_id'] = null;
+                break;
+
+            case 'allunpublished':
+                // Only published
+                $criteria['WHERE']['glpi_entities_knowbaseitems.entities_id'] = null;
+                $criteria['WHERE']['glpi_knowbaseitems_profiles.profiles_id'] = null;
+                $criteria['WHERE']['glpi_groups_knowbaseitems.groups_id'] = null;
+                $criteria['WHERE']['glpi_knowbaseitems_users.users_id'] = null;
+                break;
+
+            case 'allpublished':
+                $criteria['HAVING']['visibility_count'] = ['>', 0];
+                break;
+
+            case 'search':
+                // Publication window
+                $criteria['WHERE'][] = [
+                    [
+                        'OR'  => [
+                            ['glpi_knowbaseitems.begin_date'  => null],
+                            ['glpi_knowbaseitems.begin_date'  => ['<', QueryFunction::now()]],
+                        ],
+                    ], [
+                        'OR'  => [
+                            ['glpi_knowbaseitems.end_date'    => null],
+                            ['glpi_knowbaseitems.end_date'    => ['>', QueryFunction::now()]],
+                        ],
+                    ],
+                ];
+
+                if (((string) $params["contains"]) !== '') {
+                    $search = $params["contains"];
+                    $search_wilcard = self::computeBooleanFullTextSearch($search);
+
+                    if ($search_wilcard === '*') {
+                        break;
+                    }
+
+                    $addscore = [];
+                    if (countElementsInTable('glpi_knowbaseitemtranslations') > 0) {
+                        $addscore = [
+                            'glpi_knowbaseitemtranslations.name',
+                            'glpi_knowbaseitemtranslations.answer',
+                        ];
+                    }
+
+                    $expr = "(MATCH(" . $DB->quoteName('glpi_knowbaseitems.name') . ", " . $DB->quoteName('glpi_knowbaseitems.answer') . ")
+                           AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)";
+
+                    if ($addscore !== []) {
+                        foreach ($addscore as $addscore_field) {
+                            $expr .= " + MATCH(" . $DB->quoteName($addscore_field) . ")
+                                        AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)";
+                        }
+                    }
+                    $expr .= " ) AS SCORE ";
+                    $criteria['SELECT'][] = new QueryExpression($expr);
+
+                    $ors = [
+                        new QueryExpression(
+                            "MATCH(" . $DB->quoteName('glpi_knowbaseitems.name') . ",
+                        " . $DB->quoteName('glpi_knowbaseitems.answer') . ")
+                        AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)"
+                        ),
+                    ];
+
+                    if ($addscore !== []) {
+                        foreach ($addscore as $addscore_field) {
+                            $ors[] = [
+                                'NOT' => [$addscore_field => null],
+                                new QueryExpression(
+                                    "MATCH(" . $DB->quoteName($addscore_field) . ")
+                              AGAINST(" . $DB->quote($search_wilcard) . " IN BOOLEAN MODE)"
+                                ),
+                            ];
+                        }
+                    }
+
+                    $search_where =  $criteria['WHERE']; // Visibility restrict criteria
+
+                    $search_where[] = ['OR' => $ors];
+
+                    $criteria['ORDERBY'] = ['SCORE DESC'];
+
+                    // preliminar query to allow alternate search if no result with fulltext
+                    $search_criteria = [
+                        'COUNT'     => 'cpt',
+                        'LEFT JOIN' => $criteria['LEFT JOIN'],
+                        'FROM'      => 'glpi_knowbaseitems',
+                        'WHERE'     => $search_where,
+                    ];
+                    $search_iterator = $DB->request($search_criteria);
+                    $numrows_search = $search_iterator->current()['cpt'];
+
+                    if ($numrows_search <= 0) {// not result this fulltext try with alternate search
+                        $search1 = [/* 1 */   '/\\\"/',
+                            /* 2 */   "/\+/",
+                            /* 3 */   "/\*/",
+                            /* 4 */   "/~/",
+                            /* 5 */   "/</",
+                            /* 6 */   "/>/",
+                            /* 7 */   "/\(/",
+                            /* 8 */   "/\)/",
+                            /* 9 */   "/\-/",
+                        ];
+                        $contains = preg_replace($search1, "", $params["contains"]);
+                        $ors = [
+                            ["glpi_knowbaseitems.name"     => ['LIKE', Search::makeTextSearchValue($contains)]],
+                            ["glpi_knowbaseitems.answer"   => ['LIKE', Search::makeTextSearchValue($contains)]],
+                        ];
+                        if (countElementsInTable('glpi_knowbaseitemtranslations') > 0) {
+                            $ors[] = ["glpi_knowbaseitemtranslations.name"   => ['LIKE', Search::makeTextSearchValue($contains)]];
+                            $ors[] = ["glpi_knowbaseitemtranslations.answer" => ['LIKE', Search::makeTextSearchValue($contains)]];
+                        }
+                        $criteria['WHERE'][] = ['OR' => $ors];
+                    } else {
+                        $criteria['WHERE'] = $search_where;
+                    }
+                }
+                break;
+
+            case 'browse':
+                if (!Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+                    // Add visibility date
+                    $criteria['WHERE'][] = [
+                        'OR'  => [
+                            ['glpi_knowbaseitems.begin_date' => null],
+                            ['glpi_knowbaseitems.begin_date' => ['<', QueryFunction::now()]],
+                        ],
+                    ];
+                    $criteria['WHERE'][] = [
+                        'OR'  => [
+                            ['glpi_knowbaseitems.end_date' => null],
+                            ['glpi_knowbaseitems.end_date' => ['>', QueryFunction::now()]],
+                        ],
+                    ];
+                }
+
+                $criteria['ORDERBY'] = ['glpi_knowbaseitems.name ASC'];
+                break;
+        }
+
+        return $criteria;
+    }
+
+    /**
+     * Clean search for Boolean FullText
+     *
+     * @since 10.0.7
+     * @param string $search
+     *
+     * @return string
+     **/
+    private static function computeBooleanFullTextSearch(string $search): string
+    {
+        $word_chars        = '\p{L}\p{N}_';
+        $ponderation_chars = '+\-<>~';
+
+        // Remove any whitespace from begin/end
+        $search = preg_replace('/^[\p{Z}\h\v\r\n]+|[\p{Z}\h\v\r\n]+$/u', '', $search);
+
+        // Remove all symbols except word chars, ponderation chars, parenthesis, quotes, wildcards and spaces.
+        // @distance is not included, since it's unlikely a human will be using it through UI form
+        $search = preg_replace("/[^{$word_chars}{$ponderation_chars}()\"* ]/u", '', $search);
+
+        // Remove all ponderation chars, that can only precede a word and that are not preceded by either beginning of string, a space or an opening parenthesis
+        $search = preg_replace("/(?<!^| |\()[{$ponderation_chars}]/u", '', $search);
+        // Remove all ponderation chars that are not followed by a search term
+        // (they are followed by a space, a closing parenthesis or end fo string)
+        $search = preg_replace("/[{$ponderation_chars}]+( |\)|$)/u", '', $search);
+
+        // Remove all opening parenthesis that are located inside a searched term
+        // (they are preceded by a word char or a quote)
+        $search = preg_replace("/(?<=[{$word_chars}\"])\(/u", '', $search);
+        // Remove all closing parenthesis that are located inside a searched term
+        // (they are followed by a word char or a quote)
+        $search = preg_replace("/\)(?=[{$word_chars}\")])/u", '', $search);
+        // Remove empty parenthesis
+        $search = preg_replace("/\(\)/u", '', $search);
+        // Remove all parenthesis if count of closing does not match count of opening ones
+        if (mb_substr_count($search, '(') !== mb_substr_count($search, ')')) {
+            $search = preg_replace("/[()]/u", '', $search);
+        }
+
+        // Remove all asterisks that are not located at the end of a word
+        // (can be followed by a space, a closing parenthesis or end of string, and must be preceded by a word char)
+        $search = preg_replace("/(?<=[{$word_chars}])\*(?! |\)|$)/u", '', $search);
+
+        // Remove all double quotes
+        // - that are not located before a searched term
+        //   (can be preceded by beginning of string, an operator, a space or an opening parenthesis, and must be followed by a word char)
+        $search = preg_replace("/(?<=^|[{$ponderation_chars} (])\"(?![{$word_chars}])/u", '', $search);
+        // - that are not located after a searched term
+        //   (can be followed by a space, a closing parenthesis or end of string, and must be preceded by a word char)
+        $search = preg_replace("/(?<=[{$word_chars}])\"(?! |\)|$)/u", '', $search);
+        // - if the count is not even
+        if (mb_substr_count($search, '"') % 2 !== 0) {
+            $search = preg_replace("/\"/u", '', $search);
+        }
+
+        // Check if the new value is just the set of operators and spaces and if it is - set the value to an empty string
+        if (preg_match("/^[{$ponderation_chars}()\"* ]+$/u", $search)) {
+            $search = '';
+        }
+
+        // Remove extra spaces
+        $search = preg_replace('/\s+/u', ' ', trim($search));
+
+        // Add * foreach word when no boolean operator is used
+        if (!preg_match('/[^\p{L}\p{N}_ ]/u', $search)) {
+            $search = implode('* ', explode(' ', $search)) . '*';
+        }
+
+        return $search;
+    }
+
+    /**
+     * Print out list kb item
+     *
+     * @param array $options            $_GET
+     * @param string $type search type : browse / search (default search)
+     *
+     * @return void
+     */
+    public static function showList($options, $type = 'search')
+    {
+        global $CFG_GLPI;
+
+        $DBread = DBConnection::getReadConnection();
+
+        // Default values of parameters
+        $params = [
+            'faq' => !Session::haveRight(self::$rightname, READ),
+            'start' => 0,
+            'knowbaseitems_id_parent' => null,
+            'contains' => '',
+        ];
+
+        if (is_array($options)) {
+            $params = array_replace($params, $options);
+        }
+        switch ($type) {
+            case 'myunpublished':
+                if (!Session::haveRightsOr(self::$rightname, [UPDATE, self::PUBLISHFAQ])) {
+                    return;
+                }
+                break;
+
+            case 'allunpublished':
+                if (!Session::haveRight(self::$rightname, self::KNOWBASEADMIN)) {
+                    return;
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        if (!$params["start"]) {
+            $params["start"] = 0;
+        }
+
+        $criteria = self::getListRequest($params, in_array($type, ['search', 'solution'], true) ? 'search' : $type);
+
+        $main_iterator = $DBread->request($criteria);
+        $rows = count($main_iterator);
+        $numrows = $rows;
+
+        if ($type !== 'solution') {
+            // Get it from database
+            $parent = new self();
+            $title  = "";
+            if ($parent->getFromDB($params["knowbaseitems_id_parent"])) {
+                $title = $parent->fields['name'] ?: "(" . $params['knowbaseitems_id_parent'] . ")";
+                $title = sprintf(__('%1$s: %2$s'), self::getTypeName(1), $title);
+            }
+
+            Session::initNavigateListItems('KnowbaseItem', $title);
+            // force using getSearchUrl on list icon (when viewing a single article)
+            $_SESSION['glpilisturl']['KnowbaseItem'] = '';
+        }
+
+        $list_limit = $_SESSION['glpilist_limit'];
+
+        $showwriter = in_array($type, ['myunpublished', 'allunpublished', 'allmy']);
+
+        // Limit the result, if no limit applies, use prior result
+        if (
+            ($rows > $list_limit)
+            && !isset($_GET['export_all'])
+        ) {
+            $criteria['START'] = (int) $params['start'];
+            $criteria['LIMIT'] = (int) $list_limit;
+            $main_iterator = $DBread->request($criteria);
+            $numrows = count($main_iterator);
+        }
+
+        if ($numrows > 0) {
+            $output = new HTMLSearchOutput();
+
+            // Pager
+            $parameters = [
+                'start' => $params["start"],
+                'knowbaseitems_id_parent' => $params['knowbaseitems_id_parent'],
+                'contains' => $params["contains"],
+                'is_faq' => $params['faq'],
+                'type' => $type,
+            ];
+
+            if (isset($options['item_itemtype'], $options['item_items_id'])) {
+                $parameters += [
+                    'item_items_id' => $options['item_items_id'],
+                    'item_itemtype' => $options['item_itemtype'],
+                ];
+            }
+
+            $pager_url = Toolbox::getItemTypeSearchURL('KnowbaseItem');
+            if (!Session::getLoginUserID()) {
+                $pager_url = $CFG_GLPI['root_doc'] . "/front/helpdesk.faq.php";
+            }
+            Html::printPager(
+                $params['start'],
+                $rows,
+                $pager_url,
+                Toolbox::append_params($parameters),
+                'KnowbaseItem'
+            );
+
+            $nbcols = 1;
+            // Display List Header
+            echo $output::showHeader($numrows + 1, $nbcols);
+
+            echo $output::showNewLine();
+            $header_num = 1;
+            echo $output::showHeaderItem(__s('Subject'), $header_num);
+
+            if ($showwriter) {
+                echo $output::showHeaderItem(__s('Writer'), $header_num);
+            }
+            echo $output::showHeaderItem(__s('Parent articles'), $header_num);
+
+            echo $output::showHeaderItem(_sn('Associated element', 'Associated elements', Session::getPluralNumber()), $header_num);
+
+            if (isset($options['item_itemtype'], $options['item_items_id'])) {
+                echo $output::showHeaderItem('&nbsp;', $header_num);
+            }
+
+            // Num of the row (1=header_line)
+            $row_num = 1;
+            foreach ($main_iterator as $data) {
+                Session::addToNavigateListItems('KnowbaseItem', $data["id"]);
+                // Column num
+                $item_num = 1;
+                echo $output::showNewLine(($row_num - 1) % 2 === 1);
+                $row_num++;
+
+                $item = new self();
+                $item->getFromDB($data["id"]);
+                $name   = $data["name"];
+                $answer = $data["answer"];
+                // Manage translations
+                if (!empty($data['transname'])) {
+                    $name   = $data["transname"];
+                }
+                if (!empty($data['transanswer'])) {
+                    $answer = $data["transanswer"];
+                }
+
+                $toadd = '';
+                if (isset($options['item_itemtype'], $options['item_items_id'])) {
+                    $href  = " href='#' data-bs-toggle='modal' data-bs-target='#kbshow" . htmlescape($data['id']) . "'";
+                    $toadd = Ajax::createIframeModalWindow(
+                        'kbshow' . $data["id"],
+                        self::getFormURLWithID($data["id"]),
+                        ['display' => false]
+                    );
+                } else {
+                    $href = " href=\"" . htmlescape(self::getFormURLWithID($data["id"])) . "\" ";
+                }
+
+                $icon_class = "";
+                $fa_title = "";
+                if (
+                    $data['is_faq']
+                    && (!Session::isMultiEntitiesMode()
+                        || (isset($data['visibility_count'])
+                            && $data['visibility_count'] > 0))
+                ) {
+                    $icon_class = "ti-help faq";
+                    $fa_title = __s("This item is part of the FAQ");
+                } elseif (
+                    isset($data['visibility_count'])
+                    && $data['visibility_count'] <= 0
+                ) {
+                    $icon_class = "ti-eye-off not-published";
+                    $fa_title = __s("This item is not published yet");
+                }
+                $icon = $fa_title !== ''
+                    ? "<i class='ti $icon_class' title='$fa_title' aria-hidden='true'></i><span class='visually-hidden'>$fa_title</span> "
+                    : '';
+                echo $output::showItem(
+                    "<div class='kb'>$toadd $icon<a $href>" . Html::resume_text($name, 80) . "</a></div>
+                                   <div class='kb_resume'>" . Html::resume_text(RichText::getTextFromHtml($answer, false, false), 600) . "</div>",
+                    $item_num,
+                    $row_num
+                );
+
+
+                if ($showwriter) {
+                    echo $output::showItem(
+                        getUserLink($data["users_id"]),
+                        $item_num,
+                        $row_num
+                    );
+                }
+
+                $parents_names = [];
+                // Fetch this article's parent links directly (child = this article).
+                $parent_rows = (new KnowbaseItem_KnowbaseItem())->find(['knowbaseitems_id' => $data['id']]);
+                foreach ($parent_rows as $row) {
+                    $parent_id = (int) $row['knowbaseitems_id_parent'];
+                    $parent = new self();
+                    // Only expose parents the current user is allowed to view.
+                    if (!$parent->getFromDB($parent_id) || !$parent->can($parent_id, READ)) {
+                        continue;
+                    }
+
+                    $href = self::getFormURLWithID($parent_id);
+                    $parents_names[] = "<a class='kb-parent' href='" . htmlescape($href) . "'"
+                        . " data-parent-id='" . htmlescape($parent_id) . "'>"
+                        . htmlescape($parent->fields['name']) . '</a>';
+                }
+                echo $output::showItem(implode(', ', $parents_names), $item_num, $row_num);
+
+                echo "<td class='center'>";
+                $j = 0;
+                $iterator = $DBread->request([
+                    'FIELDS' => 'documents_id',
+                    'FROM'   => 'glpi_documents_items',
+                    'WHERE'  => [
+                        'items_id'  => $data["id"],
+                        'itemtype'  => KnowbaseItem::class,
+                    ] + getEntitiesRestrictCriteria('', '', '', true),
+                ]);
+                foreach ($iterator as $docs) {
+                    $doc = new Document();
+                    $doc->getFromDB($docs["documents_id"]);
+                    echo $doc->getDownloadLink();
+                    $j++;
+                    if ($j > 1) {
+                        echo "<br>";
+                    }
+                }
+                echo "</td>";
+
+                if (isset($options['item_itemtype'], $options['item_items_id'])) {
+                    $content = "<button type='button' class='btn btn-link use_solution' data-solution-id='" . htmlescape($data['id']) . "'>"
+                        . __s('Use as a solution') . "</button>";
+                    echo $output::showItem($content, $item_num, $row_num);
+                }
+
+                // End Line
+                echo $output::showEndLine();
+            }
+
+            // Display footer
+            echo $output::showFooter('', $numrows);
+            echo "<br>";
+            Html::printPager(
+                $params['start'],
+                $rows,
+                $pager_url,
+                Toolbox::append_params($parameters),
+                KnowbaseItem::class
+            );
+        } else {
+            echo "<div class='center b'>" . __s('No results found') . "</div>";
+        }
+    }
+
+    /**
+     * Print out list recent or popular kb/faq
+     *
+     * @param string $type    type : recent / popular / not published
+     * @param bool   $display if false, return html
+     *
+     * @return void|string
+     **/
+    public static function showRecentPopular(string $type = "", bool $display = true)
+    {
+        global $DB;
+
+        $faq = !Session::haveRight(self::$rightname, READ);
+
+        $criteria = [
+            'SELECT'    => ['glpi_knowbaseitems' => ['id', 'name', 'is_faq']],
+            'DISTINCT'  => true,
+            'FROM'      => self::getTable(),
+            'WHERE'     => [],
+            'LIMIT'     => 10,
+        ];
+
+        if ($type === "recent") {
+            $criteria['ORDERBY'] = self::getTable() . '.date_creation DESC';
+            $title   = __('Recent entries');
+        } elseif ($type === 'lastupdate') {
+            $criteria['ORDERBY'] = self::getTable() . '.date_mod DESC';
+            $title   = __('Last updated entries');
+        } else {
+            $criteria['ORDERBY'] = 'view DESC';
+            $title   = __('Most popular questions');
+        }
+
+        // Force all joins for not published to verify no visibility set
+        $restrict = self::getVisibilityCriteria(true);
+        unset($restrict['WHERE'], $restrict['SELECT']);
+        $criteria = array_merge($criteria, $restrict);
+
+        if (Session::getLoginUserID()) {
+            $restrict = self::getVisibilityCriteria();
+            $criteria['WHERE'] = array_merge($criteria['WHERE'], $restrict['WHERE']);
+        } else {
+            // Anonymous access
+            if (Session::isMultiEntitiesMode()) {
+                $criteria['WHERE']['glpi_entities_knowbaseitems.entities_id'] = 0;
+                $criteria['WHERE']['glpi_entities_knowbaseitems.is_recursive'] = 1;
+            }
+        }
+
+        // Only published
+        $criteria['WHERE'][] = [
+            'NOT'  => [
+                'glpi_entities_knowbaseitems.entities_id' => null,
+                'glpi_knowbaseitems_profiles.profiles_id' => null,
+                'glpi_groups_knowbaseitems.groups_id'     => null,
+                'glpi_knowbaseitems_users.users_id'       => null,
+            ],
+        ];
+
+        // Add visibility date
+        $criteria['WHERE'][] = [
+            'OR'  => [
+                ['glpi_knowbaseitems.begin_date' => null],
+                ['glpi_knowbaseitems.begin_date' => ['<', QueryFunction::now()]],
+            ],
+        ];
+        $criteria['WHERE'][] = [
+            'OR'  => [
+                ['glpi_knowbaseitems.end_date'   => null],
+                ['glpi_knowbaseitems.end_date'   => ['>', QueryFunction::now()]],
+            ],
+        ];
+
+        if ($faq) { // FAQ
+            $criteria['WHERE']['glpi_knowbaseitems.is_faq'] = 1;
+        }
+
+        if (countElementsInTable('glpi_knowbaseitemtranslations') > 0) {
+            $criteria['LEFT JOIN']['glpi_knowbaseitemtranslations'] = [
+                'ON'  => [
+                    'glpi_knowbaseitems'             => 'id',
+                    'glpi_knowbaseitemtranslations'  => 'knowbaseitems_id', [
+                        'AND'                            => [
+                            'glpi_knowbaseitemtranslations.language' => $_SESSION['glpilanguage'],
+                        ],
+                    ],
+                ],
+            ];
+            $criteria['SELECT'][] = 'glpi_knowbaseitemtranslations.name AS transname';
+            $criteria['SELECT'][] = 'glpi_knowbaseitemtranslations.answer AS transanswer';
+        }
+
+        $iterator = $DB->request($criteria);
+
+        $output = "";
+        if (count($iterator)) {
+            $twig_params = [
+                'title'    => $title,
+                'iterator' => $iterator,
+                'faq_tooltip' => __("This item is part of the FAQ"),
+            ];
+            // language=Twig
+            $output .= TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+                <div class="col-12 col-lg-4 px-2">
+                    <table class="table table-sm">
+                        <tr><th>{{ title }}</th></tr>
+                        {% for data in iterator %}
+                            {% set name = (data['transname'] ?? '') is not empty ? data['transname'] : data['name'] %}
+                            <tr>
+                                <td class="text-start">
+                                    <div class="kb">
+                                        {% if data['is_faq'] %}
+                                            <i class="ti ti-help faq" title="{{ faq_tooltip }}" aria-hidden="true"></i>
+                                            <span class="visually-hidden">{{ faq_tooltip }}</span>
+                                        {% endif %}
+                                        <a href="{{ 'KnowbaseItem'|itemtype_form_path(data['id']) }}" class="{{ data['is_faq'] ? 'faq' : 'knowbase' }}"
+                                           title="{{ name }}">{{ name|u.truncate(80, '(...)') }}</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+TWIG, $twig_params);
+        }
+
+        if ($display) {
+            echo $output;
+        } else {
+            return $output;
+        }
+    }
+
+    public function rawSearchOptions()
+    {
+        $tab = [];
+
+        $tab[] = [
+            'id'                 => 'common',
+            'name'               => __('Characteristics'),
+        ];
+
+        $tab[] = [
+            'id'                 => '1',
+            'table'              => static::getTable(),
+            'field'              => 'name',
+            'name'               => __('Subject'),
+            'datatype'           => 'itemlink',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '2',
+            'table'              => static::getTable(),
+            'field'              => 'id',
+            'name'               => __('ID'),
+            'massiveaction'      => false,
+            'datatype'           => 'number',
+        ];
+
+        $tab[] = [
+            'id'                 => '7',
+            'table'              => static::getTable(),
+            'field'              => 'answer',
+            'name'               => __('Content'),
+            'datatype'           => 'text',
+            'htmltext'           => true,
+        ];
+
+        $tab[] = [
+            'id'                 => '8',
+            'table'              => static::getTable(),
+            'field'              => 'is_faq',
+            'name'               => __('FAQ item'),
+            'datatype'           => 'bool',
+        ];
+
+        $tab[] = [
+            'id'                 => '9',
+            'table'              => static::getTable(),
+            'field'              => 'view',
+            'name'               => _n('View', 'Views', Session::getPluralNumber()),
+            'datatype'           => 'integer',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '10',
+            'table'              => static::getTable(),
+            'field'              => 'begin_date',
+            'name'               => __('Visibility start date'),
+            'datatype'           => 'datetime',
+        ];
+
+        $tab[] = [
+            'id'                 => '11',
+            'table'              => static::getTable(),
+            'field'              => 'end_date',
+            'name'               => __('Visibility end date'),
+            'datatype'           => 'datetime',
+        ];
+
+        $tab[] = [
+            'id'                 => '19',
+            'table'              => static::getTable(),
+            'field'              => 'date_mod',
+            'name'               => __('Last update'),
+            'datatype'           => 'datetime',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '121',
+            'table'              => static::getTable(),
+            'field'              => 'date_creation',
+            'name'               => __('Creation date'),
+            'datatype'           => 'datetime',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '70',
+            'table'              => 'glpi_users',
+            'field'              => 'name',
+            'name'               => User::getTypeName(1),
+            'massiveaction'      => false,
+            'datatype'           => 'dropdown',
+            'right'              => 'all',
+        ];
+
+        $tab[] = [
+            'id'                 => '79',
+            // Joined directly on the self-relation link table (rather than on
+            // KnowbaseItem's own table+`name`) to avoid colliding with the
+            // itemtype-specific "glpi_knowbaseitems.name" rendering case
+            // (used by option 1/Subject), which assumes a single, non-joined
+            // row and is incompatible with this option's forcegroupby shape.
+            // See `getSpecificValueToDisplay()` for the actual rendering.
+            'table'              => KnowbaseItem_KnowbaseItem::getTable(),
+            'field'              => 'knowbaseitems_id_parent',
+            'name'               => __('Parent article'),
+            'datatype'           => 'specific',
+            'itemtype'           => KnowbaseItem::class,
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+            // Without this, SQLProvider's default "equals" handling filters
+            // on "$table.id" (the link row's own id) instead of the field we
+            // actually declared above, since $table here is a joined table
+            // distinct from KnowbaseItem's own table.
+            'searchequalsonfield' => true,
+            'searchtype'         => ['equals', 'notequals'],
+            'joinparams'         => [
+                // Join from the current article (child) to its parent links
+                'jointype'  => 'child',
+                'linkfield' => 'knowbaseitems_id',
+            ],
+        ];
+
+        $tab[] = [
+            'id'                 => '13',
+            'table'              => 'glpi_knowbaseitems_items',
+            'field'              => 'items_id',
+            'name'               => _n('Associated element', 'Associated elements', Session::getPluralNumber()),
+            'datatype'           => 'specific',
+            'comments'           => true,
+            'nosort'             => true,
+            'nosearch'           => true,
+            'additionalfields'   => ['itemtype'],
+            'joinparams'         => [
+                'jointype'           => 'child',
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '131',
+            'table'              => 'glpi_knowbaseitems_items',
+            'field'              => 'itemtype',
+            'name'               => _n('Associated item type', 'Associated item types', Session::getPluralNumber()),
+            'datatype'           => 'itemtypename',
+            'itemtype_list'      => 'kb_types',
+            'nosort'             => true,
+            'additionalfields'   => ['itemtype'],
+            'joinparams'         => [
+                'jointype'           => 'child',
+            ],
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '80',
+            'table'              => Entity::getTable(),
+            'field'              => 'completename',
+            'name'               => _n('Target', 'Targets', 1) . ' - ' . Entity::getTypeName(1),
+            'datatype'           => 'dropdown',
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => Entity_KnowbaseItem::getTable(),
+                    'joinparams'         => [
+                        'jointype'           => 'child',
+                    ],
+                ],
+            ],
+        ];
+
+        $tab[] = [
+            'id'                 => '81',
+            'table'              => Profile::getTable(),
+            'field'              => 'name',
+            'name'               => _n('Target', 'Targets', 1) . ' - ' . Profile::getTypeName(1),
+            'datatype'           => 'dropdown',
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => KnowbaseItem_Profile::getTable(),
+                    'joinparams'         => [
+                        'jointype'           => 'child',
+                    ],
+                ],
+            ],
+        ];
+
+        $tab[] = [
+            'id'                 => '82',
+            'table'              => Group::getTable(),
+            'field'              => 'name',
+            'name'               => _n('Target', 'Targets', 1) . ' - ' . Group::getTypeName(1),
+            'datatype'           => 'dropdown',
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => Group_KnowbaseItem::getTable(),
+                    'joinparams'         => [
+                        'jointype'           => 'child',
+                    ],
+                ],
+            ],
+        ];
+
+        $tab[] = [
+            'id'                 => '83',
+            'table'              => User::getTable(),
+            'field'              => 'name',
+            'name'               => _n('Target', 'Targets', 1) . ' - ' . User::getTypeName(1),
+            'datatype'           => 'dropdown',
+            'forcegroupby'       => true,
+            'massiveaction'      => false,
+            'joinparams'         => [
+                'beforejoin'         => [
+                    'table'              => KnowbaseItem_User::getTable(),
+                    'joinparams'         => [
+                        'jointype'           => 'child',
+                    ],
+                ],
+            ],
+        ];
+
+        $tab[] = [
+            'id'                 => '89',
+            'table'              => KnowbaseItem_Favorite::getTable(),
+            'field'              => 'id',
+            'name'               => __('Is favorite'),
+            'datatype'           => 'bool',
+            'joinparams'         => [
+                'jointype'  => 'child',
+                'condition' => ['NEWTABLE.users_id' => Session::getLoginUserID()],
+            ],
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'   => 'service_catalog',
+            'name' => __('Service catalog'),
+        ];
+
+        $tab[] = [
+            'id'                 => '84',
+            'table'              => self::getTable(),
+            'field'              => 'show_in_service_catalog',
+            'name'               => __("Show in service catalog"),
+            'datatype'           => 'bool',
+        ];
+
+        $tab[] = [
+            'id'                 => '85',
+            'table'              => self::getTable(),
+            'field'              => 'is_pinned',
+            'name'               => __("Pin to top of the service catalog"),
+            'datatype'           => 'bool',
+        ];
+
+        $tab[] = [
+            'id'                 => '86',
+            'table'              => self::getTable(),
+            'field'              => 'description',
+            'name'               => __("Description"),
+            'datatype'           => 'text',
+        ];
+
+        $tab[] = [
+            'id'                 => '87',
+            'table'              => Category::getTable(),
+            'field'              => 'name',
+            'name'               => _n("Category", "Categories", 1),
+            'datatype'           => 'dropdown',
+        ];
+
+        $tab[] = [
+            'id'                 => '88',
+            'table'              => self::getTable(),
+            'field'              => 'illustration',
+            'name'               => __("Illustration"),
+            'datatype'           => 'text',
+            'search'             => false,
+        ];
+
+        // add objectlock search options
+        $tab = array_merge($tab, ObjectLock::rawSearchOptionsToAdd(get_class($this)));
+
+        return $tab;
+    }
+
+    #[Override]
+    public static function getSpecificValueToSelect($field, $name = '', $values = '', array $options = [])
+    {
+        if ($field === 'knowbaseitems_id_parent') {
+            $value = is_array($values) ? ($values[$field] ?? '') : $values;
+            return (string) self::dropdown([
+                'name'    => $name,
+                'value'   => $value,
+                'display' => false,
+                'width'   => $options['width'] ?? '100%',
+            ]);
+        }
+
+        return parent::getSpecificValueToSelect($field, $name, $values, $options);
+    }
+
+    public static function getSpecificValueToDisplay($field, $values, array $options = [])
+    {
+        if ($field === 'knowbaseitems_id_parent') {
+            $parent_id = (int) (is_array($values) ? ($values[$field] ?? 0) : $values);
+            if ($parent_id <= 0) {
+                return '';
+            }
+            $parent = new self();
+            // Only expose parents the current user is allowed to view.
+            if (!$parent->getFromDB($parent_id) || !$parent->can($parent_id, READ)) {
+                return '';
+            }
+            $name = $parent->fields['name'];
+            if ($options['html'] ?? false) {
+                return "<a href='" . htmlescape(self::getFormURLWithID($parent_id)) . "'>" . htmlescape($name) . '</a>';
+            }
+            return $name;
+        }
+
+        return parent::getSpecificValueToDisplay($field, $values, $options);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        if ($interface === 'central') {
+            $values = parent::getRights();
+            $values[self::KNOWBASEADMIN] = __('Knowledge base administration');
+            $values[self::PUBLISHFAQ]    = __('Publish in the FAQ');
+            $values[self::COMMENTS]      = __('Comment KB entries');
+        }
+        $values[self::READFAQ]       = __('Read the FAQ');
+        return $values;
+    }
+
+    public function pre_updateInDB()
+    {
+        // Only create a revision if the answer was modified.
+        // Name changes are tracked separately as "Renamed" events in the history.
+        if (!in_array('answer', $this->updates)) {
+            return;
+        }
+
+        $revision = new KnowbaseItem_Revision();
+        $kb = new KnowbaseItem();
+        $kb->getFromDB($this->getID());
+        $revision->createNew($kb);
+    }
+
+    /**
+     * Get KB answer with heading anchors. The HTML is returned raw — sanitization
+     * and display enrichments (lazy images, gallery, video iframes…) are applied
+     * by the `|enhanced_html` filter in the article templates.
+     *
+     * @return string
+     *
+     * @psalm-taint-source html
+     */
+    public function getAnswer()
+    {
+        $answer = KnowbaseItemTranslation::getTranslatedValue($this, 'answer');
+
+        $callback = static function ($matches) {
+            // 1 => tag name, 2 => existing attributes, 3 => title contents
+            $tpl = '<%tag%attrs id="%slug"><a href="#%slug">%icon</a>%title</%tag>';
+
+            $title = str_replace(
+                ['%tag', '%attrs', '%slug', '%title', '%icon'],
+                [
+                    $matches[1],
+                    $matches[2],
+                    Toolbox::slugify($matches[3]),
+                    $matches[3],
+                    '<svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"/></svg>',
+                ],
+                $tpl
+            );
+
+            return $title;
+        };
+        $pattern = '|<(h[1-6]{1})(.?[^>])?>(.+?)</h[1-6]{1}>|';
+        $answer = preg_replace_callback($pattern, $callback, $answer);
+
+        return $answer;
+    }
+
+    /**
+     * Get dropdown parameters from showVisibility method
+     *
+     * @return array{type: string, right: string, entity?: int, is_recursive?: bool, allusers: int}
+     */
+    protected function getShowVisibilityDropdownParams()
+    {
+        $params = parent::getShowVisibilityDropdownParams();
+        $params['right'] = $this->fields['is_faq'] ? 'faq' : 'knowbase';
+        $params['allusers'] = 1;
+        return $params;
+    }
+
+    /**
+     * Reverts item contents to specified revision
+     *
+     * @param int $revid Revision ID
+     *
+     * @return bool
+     */
+    public function revertTo($revid)
+    {
+        $revision = new KnowbaseItem_Revision();
+        $revision->getFromDB($revid);
+
+        $values = [
+            'id'     => $this->getID(),
+            'answer' => $revision->fields['answer'],
+        ];
+
+        if ($this->update($values)) {
+            Event::log(
+                $this->getID(),
+                "knowbaseitem",
+                5,
+                "tools",
+                //TRANS: %1$s is the user login, %2$s the revision number
+                sprintf(__('%1$s reverts item to revision %2$s'), $_SESSION["glpiname"], $revid)
+            );
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get ids of the viewable child articles of a given parent article
+     *
+     * @param int           $parent_id   id of the parent article
+     * @param KnowbaseItem  $kbi         used only for unit tests
+     *
+     * @return array        Array of ids
+     */
+    public static function getChildrenArticles($parent_id, $kbi = null)
+    {
+        global $DB;
+
+        if ($kbi === null) {
+            $kbi = new self();
+        }
+
+        $ids = $DB->request([
+            'SELECT' => self::getTable() . '.id',
+
+            'FROM'   => self::getTable(),
+            'LEFT JOIN' => [
+                'glpi_knowbaseitems_knowbaseitems' => [
+                    'ON' => [
+                        'glpi_knowbaseitems_knowbaseitems' => 'knowbaseitems_id',
+                        'glpi_knowbaseitems'               => 'id',
+                    ],
+                ],
+            ],
+            'WHERE' => ['glpi_knowbaseitems_knowbaseitems.knowbaseitems_id_parent' => $parent_id],
+        ]);
+
+        // Get array of ids
+        $ids = array_map(static fn($row) => $row['id'], iterator_to_array($ids, false));
+
+        // Filter on canViewItem
+        $ids = array_filter($ids, static function ($id) use ($kbi) {
+            $kbi->getFromDB($id);
+            return $kbi->can($kbi->getID(), READ);
+        });
+
+        // Avoid empty IN
+        if (count($ids) === 0) {
+            $ids[] = -1;
+        }
+
+        return $ids;
+    }
+
+    public static function getIcon()
+    {
+        return "ti ti-lifebuoy";
+    }
+
+    #[Override]
+    public function showFriendlyNameBadgeInForm(): bool
+    {
+        return false;
+    }
+
+    /**
+     * @param array $params
+     *
+     * @return array
+     */
+    public static function getAdditionalSearchCriteria($params)
+    {
+        if (!self::canView()) {
+            $params['criteria'][] = [
+                'link'          => "AND",
+                'field'         => '8', // is_faq
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => 2, // always false, to avoid any result
+            ];
+        } elseif (!Session::haveRight(KnowbaseItem::$rightname, READ)) {
+            $params['criteria'][] = [
+                'link'          => "AND",
+                'field'         => '8', // is_faq
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => 1,
+            ];
+        }
+
+        $unpublished = [
+            '0' => [
+                'link'          => "AND",
+                'field'         => '80', // entity
+                'searchtype'    => "notunder",
+                'virtual'       => true,
+                'value'         => 0,
+            ],
+            '1' => [
+                'link'          => "AND",
+                'field'         => '81', // profile
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => "0",
+            ],
+            '2' => [
+                'link'          => "AND",
+                'field'         => '82', // group
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => "0",
+            ],
+            '3' => [
+                'link'          => "AND",
+                'field'         => '83', // user
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => "0",
+            ],
+        ];
+        if (!Session::isMultiEntitiesMode()) {
+            $unpublished['0'] = [
+                'link'          => "AND",
+                'field'         => '8', // is_faq
+                'searchtype'    => "equals",
+                'virtual'       => true,
+                'value'         => 0,
+            ];
+        }
+        if (
+            !Session::haveRightsOr(self::$rightname, [UPDATE, self::PUBLISHFAQ, self::KNOWBASEADMIN])
+            || !isset($params['unpublished'])
+            || !$params['unpublished']
+        ) {
+            $params['criteria'][] = [
+                'link'     => "AND NOT",
+                'criteria' => $unpublished,
+            ];
+        }
+        return $params;
+    }
+
+    #[Override]
+    public function getServiceCatalogItemTitle(): string
+    {
+        return $this->fields['name'] ?? "";
+    }
+
+    #[Override]
+    public function getServiceCatalogItemDescription(): string
+    {
+        if (!empty($this->fields['description'])) {
+            return $this->fields['description'];
+        }
+
+        // No description: fall back to a plain-text excerpt of the answer, not the raw HTML.
+        $answer = RichText::getTextFromHtml($this->fields['answer'] ?? '', false, true);
+        return Html::resume_text($answer, 200);
+    }
+
+    #[Override]
+    public function getServiceCatalogItemIllustration(): string
+    {
+        // Fallback to a specific icon when using the home page search results
+        // as the service catalog data may not be specified in this case.
+        return $this->fields['illustration'] ?: "kb-faq";
+    }
+
+    #[Override]
+    public function isServiceCatalogItemPinned(): bool
+    {
+        return $this->fields['is_pinned'] ?? false;
+    }
+
+    #[Override]
+    public function getServiceCatalogLink(): string
+    {
+        return $this->getLinkURL();
+    }
+
+    #[Override]
+    public static function getSectorizedDetails(): array
+    {
+        if (Session::getCurrentInterface() == 'central') {
+            return ['tools', "knowbaseitem"];
+        } else {
+            return [];
+        }
+    }
+
+    public static function getAdditionalMenuLinks(): array
+    {
+        // Dummy parameter to prevent redirection to the root article.
+        return ['all_articles' => self::getSearchURL(false) . '?list=1'];
+    }
+
+    /** @return Article[] */
+    private function getCurrentArticleAndFavorites(int $current_id = 0): array
+    {
+        global $DB;
+
+        $user_id = Session::getLoginUserID();
+        if ($user_id === false) {
+            return [];
+        }
+
+        $criteria = self::getListRequest([], 'browse');
+        $criteria['SELECT'] = Builder::LIST_COLUMNS;
+
+        $is_favorite_condition = [
+            self::getTable() . '.id' => new QuerySubQuery([
+                'SELECT' => 'knowbaseitems_id',
+                'FROM'   => KnowbaseItem_Favorite::getTable(),
+                'WHERE'  => [
+                    KnowbaseItem_Favorite::getTable() . '.users_id' => $user_id,
+                ],
+            ]),
+        ];
+
+        if ($current_id > 0) {
+            $criteria['WHERE'][] = [
+                'OR' => [
+                    $is_favorite_condition,
+                    [self::getTable() . '.id' => $current_id],
+                ],
+            ];
+        } else {
+            $criteria['WHERE'][] = $is_favorite_condition;
+        }
+
+        $articles = [];
+        foreach ($DB->request($criteria) as $data) {
+            $articles[] = new Article(
+                id: (int) $data['id'],
+                title: $data['name'] ?? '',
+                illustration: $data['illustration'] ?? '',
+                link: self::getFormURLWithID($data['id']),
+                // Take note of the current article as we will render it in
+                // the favorite list even if it is not yet a favorite.
+                // This allow us to simply toggle its visibility if the user
+                // add it as a favorite (= no client side DOM rendering).
+                is_current: (int) $data['id'] === $current_id,
+            );
+        }
+
+        return $articles;
+    }
+
+    /**
+     * Ids of the aside articles the current user has unfolded.
+     *
+     * The knowledge base is folded by default, so this holds what the user
+     * opened. Articles unfolded because they lead to the article being read are
+     * not stored, see `Glpi\Knowbase\Aside\Builder`.
+     *
+     * @return int[]
+     */
+    public static function getUnfoldedIdsForCurrentUser(): array
+    {
+        $user_id = Session::getLoginUserID();
+        if ($user_id === false) {
+            return [];
+        }
+
+        $user = new User();
+        if (!$user->getFromDB($user_id)) {
+            return [];
+        }
+
+        $ids = json_decode($user->fields['unfolded_knowbaseitems'] ?? '[]', true);
+
+        return array_map('intval', array_values(is_array($ids) ? $ids : []));
+    }
+
+    /**
+     * Persist whether an aside article is unfolded for the current user.
+     */
+    public static function setUnfoldedForCurrentUser(int $id, bool $unfolded): void
+    {
+        $user_id = Session::getLoginUserID();
+        if ($user_id === false) {
+            return;
+        }
+
+        $ids = array_values(array_filter(
+            self::getUnfoldedIdsForCurrentUser(),
+            static fn(int $existing): bool => $existing !== $id,
+        ));
+        if ($unfolded) {
+            $ids[] = $id;
+        }
+
+        (new User())->update([
+            'id'                     => $user_id,
+            'unfolded_knowbaseitems' => json_encode($ids),
+        ]);
+    }
+
+    #[Override]
+    protected function getLeftSideContent(): ?string
+    {
+        $current_id = (int) ($this->fields['id'] ?? 0);
+        $favorites = $this->getCurrentArticleAndFavorites($current_id);
+
+        $current_is_favorite = KnowbaseItem_Favorite::isFavoriteForCurrentUser($current_id);
+        $has_other_favorites = array_filter($favorites, fn(Article $a) => !$a->is_current) !== [];
+
+        // Don't render the aside if we don't have any article.
+        $tree = (new Builder($current_id))->buildTree();
+        if ($tree->getArticles() === []) {
+            return null;
+        }
+
+        return TemplateRenderer::getInstance()->render(
+            'pages/tools/kb/aside.html.twig',
+            [
+                'tree'                => $tree,
+                'favorites'           => $favorites,
+                'current_is_favorite' => $current_is_favorite,
+                'has_other_favorites' => $has_other_favorites,
+                'can_create'          => self::canCreate(),
+                'can_update'          => self::canUpdate(),
+                'show_actions'        => self::canShowAsideActions(),
+                // The base of the tree: the aside refuses to drag it.
+                'root_id'             => self::hasRoot() ? self::getRootId() : 0,
+            ]
+        );
+    }
+
+    /**
+     * Whether the aside renders the per-article dots menu trigger. This is a
+     * cheap session-level check: the menu content itself (and its per-article
+     * permission gating) is lazy-loaded on demand, so we never load every tree
+     * article just to know if any action is available.
+     *
+     * Shared with `AsideSearchController`, which renders the same rows.
+     */
+    public static function canShowAsideActions(): bool
+    {
+        return KnowbaseItem_Favorite::canCreate()
+            || self::canUpdate()
+            || self::canPurge();
+    }
+}
