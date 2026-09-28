@@ -2073,8 +2073,8 @@ class Document extends CommonDBTM
         if (array_key_exists('filename', $_REQUEST)) {
             unset($input['filename']);
         }
-
-        $blacklisted = ['filepath', 'sha1sum'];
+        $blacklisted = [];
+        // $blacklisted = ['filepath', 'sha1sum'];
         return array_filter($input, static fn($v, $k) => !in_array($k, $blacklisted), ARRAY_FILTER_USE_BOTH);
     }
 }
