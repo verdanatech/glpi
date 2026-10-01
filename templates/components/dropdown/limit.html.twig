@@ -63,13 +63,6 @@
 {% for i in range(250, 999, 250) %}
    {% set options = options|merge([i]) %}
 {% endfor %}
-{% for i in range(1000, 4999, 1000) %}
-   {% set options = options|merge([i]) %}
-{% endfor %}
-{% for i in range(5000, 10000, 5000) %}
-   {% set options = options|merge([i]) %}
-{% endfor %}
-{% set options = options|merge([9999999]) %}
 {% set max = php_config('max_input_vars') %}
 {% if max > 10 %}
    {% set options = options|merge([max - 10]) %}
