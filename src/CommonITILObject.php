@@ -8358,7 +8358,6 @@ abstract class CommonITILObject extends CommonDBTM
                 $this->getForeignKeyField()   => $this->fields['id'],
                 'date'                        => $this->fields['date'],
                 '_do_not_compute_status'      => $this->input['_do_not_compute_status'] ?? false,
-                '_disablenotif'               => true,
             ]);
         }
     }
