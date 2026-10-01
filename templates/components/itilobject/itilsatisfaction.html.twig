@@ -1,0 +1,135 @@
+{#
+ # ---------------------------------------------------------------------
+ #
+ # GLPI - Gestionnaire Libre de Parc Informatique
+ #
+ # http://glpi-project.org
+ #
+ # @copyright 2015-2026 Teclib' and contributors.
+ # @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ #
+ # ---------------------------------------------------------------------
+ #
+ # LICENSE
+ #
+ # This file is part of GLPI.
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #
+ # ---------------------------------------------------------------------
+ #}
+
+{% import "components/form/fields_macros.html.twig" as fields %}
+
+{{ call_plugin_hook(constant('Glpi\\Plugin\\Hooks::PRE_ITEM_FORM'), {"item": item, 'options': params}) }}
+{% block more_fields %}
+    {% if url is defined %}
+        {{ fields.htmlField(
+            '',
+            '<a href="' ~ url|escape ~ '">' ~ url|escape ~ '</a>',
+            __('External survey'),
+            {
+                full_width: true
+            }
+        ) }}
+        {# Close wrapper div and form opened in timeline.html.twig (no buttons for external surveys) #}
+        </div>
+        </form>
+
+    {% else %}
+        {% if expired %}
+            {% set message = __('Satisfaction survey expired.') %}
+        {% else %}
+            {% set message = __('After 12 hours, you can no longer modify your response.') %}
+        {% endif %}
+        <twig:Alert
+            :content="message"
+        />
+        {% if item.fields['date_answered'] is empty and expired %}
+            {{ fields.htmlField(
+                '',
+                '',
+                __('No response given'),
+                {
+                    full_width: true
+                }
+            ) }}
+            {# Close wrapper div and form opened in timeline.html.twig (no buttons when expired without answer) #}
+            </div>
+            </form>
+        {% else %}
+            {{ fields.hiddenField(
+                parent_item.getForeignKeyField(),
+                parent_item.fields['id'],
+                '',
+                {
+                    'full_width': true,
+                }
+            ) }}
+
+            {% set rating_input %}
+                {{ include('components/form/rating.html.twig', {
+                    field_id: 'satisfaction_data',
+                    field_name: 'satisfaction',
+                    value: item.fields['satisfaction'],
+                    max: 5,
+                    readonly: false
+                }, with_context: false) }}
+            {% endset %}
+
+            {{ fields.htmlField(
+                'satisfaction',
+                rating_input,
+                __('Satisfaction with the resolution of the %s')|format(parent_item.getTypeName(1)),
+                {
+                    'full_width': true,
+                    'input_class': 'col-xxl-7 text-start',
+                }
+            ) }}
+
+            {{ fields.textareaField(
+                'comment',
+                item.fields['comment'],
+                _n('Comment', 'Comments', get_plural_number()),
+                {
+                    'full_width': true,
+                    'readonly': expired,
+                }
+            ) }}
+
+            {% if item.fields['date_answered'] > 0 %}
+
+                {{ fields.datetimeField(
+                    'date_answered',
+                    item.fields['date_answered'],
+                    __('Response date to the satisfaction survey.'),
+                    {
+                        'full_width': true,
+                        'readonly' : true
+                    }
+                ) }}
+
+            {% endif %}
+
+            {% if not expired %}
+                {{ include('components/form/buttons.html.twig') }}
+            {% else %}
+                {# Close wrapper div and form opened in timeline.html.twig (survey answered but now expired) #}
+                </div>
+                </form>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+{% endblock %}

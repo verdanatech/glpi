@@ -1,0 +1,158 @@
+/*!
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+.aspect-ratio-1 {
+    aspect-ratio: 1;
+}
+
+.border-secondary-hover {
+    border-color: transparent;
+
+    &:hover {
+        border-color: var(--tblr-secondary);
+    }
+
+    transition: border-color 0.3s;
+}
+
+.w-fit-content {
+    width: fit-content !important;
+}
+
+.force-full-width {
+    width: 100vw;
+    margin-inline-start: calc(50% - 50vw);
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.border-radius-0 {
+    border-radius: 0 !important;
+}
+
+// Alternative to d-flex, does not includes "!important".
+// This is needed when dealing with libraries that will attempt to hide an item
+// by changing its style to "display: none" (like html5sortable), which will fail
+// if the current property is marked as "!important".
+.d-flex-soft {
+    display: flex;
+}
+
+.fs-08x {
+    font-size: 0.8em !important;
+}
+
+.fs-2x {
+    font-size: 2em !important;
+}
+
+.fs-3x {
+    font-size: 3em !important;
+}
+
+.fs-5x {
+    font-size: 5em !important;
+}
+
+.flex-grow-30 {
+    flex-grow: 30;
+}
+
+.opacity-100-hover:hover {
+    opacity: 1 !important;
+}
+
+.min-height-110 {
+    min-height: 110px;
+}
+
+.pointer-events-none {
+    pointer-events: none;
+}
+
+.border-menu {
+    border-color: var(--glpi-mainmenu-bg) !important;
+}
+
+.hover-no-shadow:hover {
+    box-shadow: none !important;
+}
+
+.hover-bg:hover {
+    background-color: var(--glpi-hover-bg) !important;
+}
+
+.border-transparent {
+    border-color: transparent;
+}
+
+.min-width-200 {
+    min-width: 200px;
+}
+
+.auto-resize {
+    // Note: this is not yet supported by firefox
+    // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1832409
+    // A backlog entry has been added to review this and implement a fallback
+    // if it is still unsuported when we are ready to release the 12.0 version.
+    field-sizing: content;
+}
+
+.max-width-unset {
+    max-width: unset !important;
+}
+
+@media (hover: hover) {
+    .opacity-0-hoverable {
+        opacity: 0 !important;
+    }
+
+    .opacity-100-hoverable {
+        opacity: 100 !important;
+    }
+}
+
+.text-hover-link {
+    &:hover {
+        color: color-mix(
+            in srgb,
+            transparent,
+            var(--tblr-link-hover-color) var(--tblr-link-opacity, 100%)
+        ) !important;
+    }
+}
+
+.cursor-wait {
+    cursor: wait !important;
+}

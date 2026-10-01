@@ -1,0 +1,370 @@
+{#
+ # ---------------------------------------------------------------------
+ #
+ # GLPI - Gestionnaire Libre de Parc Informatique
+ #
+ # http://glpi-project.org
+ #
+ # @copyright 2015-2026 Teclib' and contributors.
+ # @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ #
+ # ---------------------------------------------------------------------
+ #
+ # LICENSE
+ #
+ # This file is part of GLPI.
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #
+ # ---------------------------------------------------------------------
+ #}
+
+{% macro get_cell(cell) %}
+    {% set bg_color = cell['bgcolor'] %}
+    {% set fg_color = call('Html::getInvertedColor', [bg_color]) %}
+    {% set tooltip %}
+        {{ __('Name') }}: {{ cell['name'] }}
+        {{ __('Serial') }}: {{ cell['serial'] }}
+        {{ __('Inventory number') }}: {{ cell['otherserial'] }}
+    {% endset %}
+    <div class="grid-stack-item room_orientation_{{ cell['room_orientation'] }}"
+         gs-id="{{ cell['id'] }}" gs-locked="true" gs-h="1" gs-w="1" gs-x="{{ cell['_x'] }}" gs-y="{{ cell['_y'] }}">
+        <div class="grid-stack-item-content" style="background-color: {{ bg_color }};"
+            data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true" data-bs-title="{{ tooltip|nl2br }}">
+            <a style="color: {{ fg_color }};" href="{{ 'Rack'|itemtype_form_path(cell['id']) }}">{{ cell['name'] }}</a>
+        </div>
+    </div>
+{% endmacro %}
+
+{{ call('Session::initNavigateListItems', ['Rack', __('%1$s = %2$s')|format('DCRoom'|itemtype_name, get_item_name(room))]) }}
+
+<div id="switchview">
+    <button id="sviewlist" class="btn btn-icon" title="{{ __('View as list') }}">
+        <i class="ti ti-list fs-2x" aria-hidden="true"></i>
+    </button>
+    <button id="sviewgraph" class="btn btn-icon selected" title="{{ __('View graphical representation') }}">
+        <i class="ti ti-layout-grid fs-2x" aria-hidden="true"></i>
+    </button>
+</div>
+
+<style>
+   :root {
+      --dcroom-grid-cellw: {{ cell_w }}px;
+      --dcroom-grid-cellh: {{ cell_h }}px;
+   }
+   {% for i in 0..cols %}
+       {% set left = i * (100 / cols) %}
+       {% set width = (i + 1) * (100 / cols) %}
+       .grid-stack > .grid-stack-item[gs-x="{{ i }}"] { left: {{ left }}%; }
+       .grid-stack > .grid-stack-item[gs-w="{{ i + 1 }}"] {
+          min-width: {{ width }}%;
+          width: {{ width }}%;
+       }
+   {% endfor %}
+</style>
+
+<div id="viewlist">
+    {{ include('components/datatable.html.twig', datatable_params, with_context = false) }}
+</div>
+
+<div id="viewgraph">
+    {% if outbound|length > 0 %}
+        <table class="outbound">
+            <thead>
+                <tr>
+                    <th>{{ __('Following elements are out of room bounds') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for out in outbound %}
+                    <tr>
+                        <td>{{ _self.get_cell(out) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    <div class="grid-room">
+        <span class="racks_view_controls">
+            {% if blueprint_url is not empty %}
+                <span class="mini_toggle active" id="toggle_blueprint">{{ __('Blueprint') }}</span>
+            {% endif %}
+            <span class="mini_toggle active" id="toggle_grid">{{ __('Grid') }}</span>
+            <div class="clearfix"></div>
+        </span>
+        <div class="dcroom-grid-layout">
+            <ul class="indexes indexes-x">
+                {% for axis_label in column_axis_labels %}
+                    <li class="dcroom-axis-label"
+                        data-axis="{{ constant('DCRoom::AXIS_COLUMN') }}"
+                        data-position="{{ axis_label.position }}"
+                        data-coordinate="{{ axis_label.coordinate }}"
+                        data-custom-label="{{ axis_label.custom_label }}">
+                        {% if can_edit_axis_labels %}
+                            <button type="button" class="dcroom-axis-label-button"
+                                    title="{{ axis_label.label }} ({{ __('Column') }}: {{ axis_label.coordinate }})"
+                                    aria-label="{{ __('Edit label for column %s')|format(axis_label.coordinate) }}">
+                                {{ axis_label.label }}
+                            </button>
+                        {% else %}
+                            <span title="{{ axis_label.label }} ({{ __('Column') }}: {{ axis_label.coordinate }})">{{ axis_label.label }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <ul class="indexes indexes-y">
+                {% for axis_label in row_axis_labels %}
+                    <li class="dcroom-axis-label"
+                        data-axis="{{ constant('DCRoom::AXIS_ROW') }}"
+                        data-position="{{ axis_label.position }}"
+                        data-coordinate="{{ axis_label.coordinate }}"
+                        data-custom-label="{{ axis_label.custom_label }}">
+                        {% if can_edit_axis_labels %}
+                            <button type="button" class="dcroom-axis-label-button"
+                                    title="{{ axis_label.label }} ({{ __('Row') }}: {{ axis_label.coordinate }})"
+                                    aria-label="{{ __('Edit label for row %s')|format(axis_label.coordinate) }}">
+                                {{ axis_label.label }}
+                            </button>
+                        {% else %}
+                            <span title="{{ axis_label.label }} ({{ __('Row') }}: {{ axis_label.coordinate }})">{{ axis_label.label }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <div class="dcroom-grid-canvas" style="width: {{ grid_w }}px; height: {{ grid_h }}px">
+                {% if blueprint_url is not empty %}
+                    <div class="blueprint"
+                         style="background: url('{{ blueprint_url }}') no-repeat top left/100% 100%; height: {{ grid_h }}px"></div>
+                {% endif %}
+                {% if room.canCreate() %}
+                    <div class="racks_add" style="width: {{ grid_w }}px; height: {{ grid_h }}px"></div>
+                {% endif %}
+                <div class="grid-stack grid-stack-{{ cols }}" style="width: {{ grid_w }}px">
+                    {% for cell in cells %}
+                        {{ _self.get_cell(cell) }}
+                    {% endfor %}
+                    <div class="grid-stack-item lock-bottom" gs-no-resize="true" gs-no-move="true" gs-h="1"
+                         gs-w="{{ cols }}" gs-x="0" gs-y="{{ rows }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    $('#sviewlist').on('click', (e) => {
+        $('#viewlist').show();
+        $('#viewgraph').hide();
+        $(e.currentTarget).addClass('selected');
+        $('#sviewgraph').removeClass('selected');
+    });
+    $('#sviewgraph').on('click', (e) => {
+        $('#viewgraph').show();
+        $('#viewlist').hide();
+        $(e.currentTarget).addClass('selected');
+        $('#sviewlist').removeClass('selected');
+    });
+    $('#toggle_blueprint').on('click', (e) => {
+        $(e.currentTarget).toggleClass('active');
+        $('#viewgraph').toggleClass('clear_blueprint');
+    });
+    $('#toggle_grid').on('click', (e) => {
+        $(e.currentTarget).toggleClass('active');
+        $('#viewgraph').toggleClass('clear_grid');
+    });
+
+    const dcroom_grid = GridStack.init({
+        column: {{ cols }},
+        maxRow: {{ rows + 1 }},
+        cellHeight: '{{ cell_h }}',
+        margin: 0,
+        float: true,
+        disableOneColumnMode: true,
+        animate: true,
+        removeTimeout: 100,
+        disableResize: true,
+    });
+
+    {% if can_edit_axis_labels %}
+        const axis_labels_container = document.querySelector('#viewgraph .dcroom-grid-layout');
+        axis_labels_container.addEventListener('click', (event) => {
+            const button = event.target.closest('.dcroom-axis-label-button');
+            if (button === null) {
+                return;
+            }
+
+            const axis_label = button.closest('.dcroom-axis-label');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'dcroom-axis-label-input';
+            input.maxLength = {{ constant('DCRoom::AXIS_LABEL_MAX_LENGTH') }};
+            input.value = axis_label.dataset.customLabel;
+            input.placeholder = axis_label.dataset.coordinate;
+            input.setAttribute('aria-label', button.getAttribute('aria-label'));
+            button.replaceWith(input);
+            input.focus();
+            input.select();
+
+            let cancelled = false;
+            let saving = false;
+            const restore_button = (restore_focus = false) => {
+                if (input.isConnected) {
+                    input.replaceWith(button);
+                }
+                if (restore_focus) {
+                    button.focus();
+                }
+            };
+            const save = async (restore_focus = false) => {
+                if (cancelled || saving || !input.isConnected) {
+                    return;
+                }
+                const label = input.value.trim();
+                if (label === axis_label.dataset.customLabel) {
+                    restore_button(restore_focus);
+                    return;
+                }
+                saving = true;
+                input.disabled = true;
+
+                try {
+                    const response = await fetch('{{ path('glpi_dcroom_axis_label_update', {'id': room.getID()}) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        },
+                        body: new URLSearchParams({
+                            axis: axis_label.dataset.axis,
+                            position: axis_label.dataset.position,
+                            label,
+                        }),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data = await response.json();
+                    axis_label.dataset.customLabel = label;
+                    button.textContent = data.label;
+                    const coordinate_name = axis_label.dataset.axis === '{{ constant('DCRoom::AXIS_COLUMN') }}'
+                        ? '{{ __('Column')|e('js') }}'
+                        : '{{ __('Row')|e('js') }}';
+                    button.title = `${data.label} (${coordinate_name}: ${axis_label.dataset.coordinate})`;
+                    restore_button(restore_focus);
+                } catch {
+                    restore_button(restore_focus);
+                    glpi_toast_error('{{ __('Unable to save the room axis label.')|e('js') }}');
+                }
+            };
+
+            input.addEventListener('keydown', (key_event) => {
+                if (key_event.key === 'Enter') {
+                    key_event.preventDefault();
+                    save(true);
+                } else if (key_event.key === 'Escape') {
+                    key_event.preventDefault();
+                    cancelled = true;
+                    restore_button(true);
+                }
+            });
+            input.addEventListener('blur', () => save());
+        });
+    {% endif %}
+
+    // append cells for adding racks
+    for (let y = 1; y <= {{ rows }}; y++) {
+        for (let x = 1; x <= {{ cols }}; x++) {
+            $('.racks_add')
+                .append(`
+                    <div class="cell_add" data-x="${x}" data-y="${y}"
+                        data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="${__('Insert a rack here')}">
+                    </div>
+                `);
+        }
+    }
+
+    let pos_before_drag = {x: 0, y: 0};
+    let dirty = false;
+    let is_dragged = false;
+
+    dcroom_grid
+        .on('change', (event, items) => {
+            if (dirty) {
+                return;
+            }
+            const grid = $(event.target).data('gridstack');
+
+            $.each(items, (index, item) => {
+                $.post('{{ path('ajax/rack.php') }}', {
+                    id: item.id,
+                    dcrooms_id: {{ room.getID() }},
+                    action: 'move_rack',
+                    x: item.x + 1,
+                    y: item.y + 1,
+                }).then((answer) => {
+                    if (!answer.status) {
+                        dirty = true;
+                        grid.update(item.el, pos_before_drag);
+                        dirty = false;
+                        displayAjaxMessageAfterRedirect();
+                    }
+                });
+            });
+        })
+        .on('dragstart', (event) => {
+            is_dragged = true;
+            const element = $(event.target);
+            const node    = element[0].gridstackNode;
+
+            // store position before drag
+            pos_before_drag = {
+                x: Number(node.x),
+                y: Number(node.y),
+            };
+        })
+        .on('dragstart', () => {
+            setTimeout(() => { // prevent unwanted click (cannot find another way)
+                is_dragged = false;
+            }, 50);
+        });
+
+    $('.grid-stack').on('click', (event) => {
+        const el_url  = $(event.target).find('a').attr('href');
+
+        if (el_url && !is_dragged) {
+            window.location = el_url;
+        }
+    });
+
+    $('#viewgraph .cell_add').on('click', (e) => {
+        const cell = $(e.currentTarget);
+        if (cell.find('div').length === 0) {
+            const _x = cell.data('x');
+            const _y = cell.data('y');
+
+            glpi_ajax_dialog({
+                url : "{{ path('ajax/rack.php') }}",
+                method: 'GET',
+                dialogclass: 'modal-xl',
+                params: {
+                    action: 'show_rack_form',
+                    racks_id: -1,
+                    room: {{ room.getID() }},
+                    position: _x + ',' + _y,
+                }
+            });
+        }
+    });
+    initTooltips(document.getElementById('viewgraph'));
+</script>

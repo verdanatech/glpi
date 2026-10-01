@@ -1,0 +1,326 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+/**
+ * @since 9.2
+ */
+
+
+/**
+ * Main purpose of this table/object is to store temporary OLA levels for tickets while replaying them.
+ */
+class OlaLevel_Ticket extends CommonDBTM
+{
+    #[Override]
+    public static function getTypeName($nb = 0)
+    {
+        return __('OLA level for Ticket');
+    }
+
+    /**
+     * Retrieve an item from the database
+     *
+     *
+     * @since 9.1 2 mandatory parameters
+     * @param int               $ID      ID of the item to get
+     * @param SLM::TTR|SLM::TTO $olaType
+     *
+     * @return bool
+     **/
+    public function getFromDBForTicket($ID, $olaType)
+    {
+        global $DB;
+
+        $iterator = $DB->request([
+            'SELECT'       => [static::getTable() . '.id'],
+            'FROM'         => static::getTable(),
+            'LEFT JOIN'   => [
+                'glpi_olalevels'  => [
+                    'FKEY'   => [
+                        static::getTable()   => 'olalevels_id',
+                        'glpi_olalevels'     => 'id',
+                    ],
+                ],
+                'glpi_olas'       => [
+                    'FKEY'   => [
+                        'glpi_olalevels'     => 'olas_id',
+                        'glpi_olas'          => 'id',
+                    ],
+                ],
+            ],
+            'WHERE'        => [
+                static::getTable() . '.tickets_id'  => $ID,
+                'glpi_olas.type'                    => $olaType,
+            ],
+            'LIMIT'        => 1,
+        ]);
+        if (count($iterator) === 1) {
+            $row = $iterator->current();
+            return $this->getFromDB($row['id']);
+        }
+        return false;
+    }
+
+    /**
+     * Delete entries for a ticket
+     *
+     *
+     * @since 9.1 2 parameters mandatory
+     * @param int               $tickets_id Ticket ID
+     * @param SLM::TTR|SLM::TTO $olaType    Type of OLA
+     *
+     * @return void
+     **/
+    public function deleteForTicket($tickets_id, $olaType)
+    {
+        global $DB;
+
+        $iterator = $DB->request([
+            'SELECT'    => 'glpi_olalevels_tickets.id',
+            'FROM'      => 'glpi_olalevels_tickets',
+            'LEFT JOIN' => [
+                'glpi_olalevels'  => [
+                    'ON' => [
+                        'glpi_olalevels_tickets'   => 'olalevels_id',
+                        'glpi_olalevels'           => 'id',
+                    ],
+                ],
+                'glpi_olas'       => [
+                    'ON' => [
+                        'glpi_olalevels'  => 'olas_id',
+                        'glpi_olas'       => 'id',
+                    ],
+                ],
+            ],
+            'WHERE'     => [
+                'glpi_olalevels_tickets.tickets_id' => $tickets_id,
+                'glpi_olas.type'                    => $olaType,
+            ],
+        ]);
+
+        foreach ($iterator as $data) {
+            $this->delete(['id' => $data['id']]);
+        }
+    }
+
+    /**
+     * Give cron information
+     *
+     * @param string $name task's name
+     *
+     * @return array
+     * @used-by CronTask
+     **/
+    public static function cronInfo($name)
+    {
+        switch ($name) {
+            case 'olaticket':
+                return ['description' => __('Automatic actions of OLA')];
+        }
+        return [];
+    }
+
+    /**
+     * Execute a specific OLAlevel for a ticket and add next level to todo
+     *
+     * @since 9.1   2 parameters mandatory
+     * @since 11.?  $olaType parameter removed
+     * @param array{id: int, tickets_id: int, olalevels_id:int, olas_id: int} $data data of an entry of olalevels_tickets
+     *
+     * @return void
+     **/
+    public static function doLevelForTicket(array $data)
+    {
+        $ticket = new Ticket();
+        $olalevelticket = new self();
+        $items_ola = new Item_Ola();
+
+        // cleanup, remove unrelevant db entries
+        // - ticket not found (or deleted)
+        if (!$ticket->getFromDB($data['tickets_id']) || $ticket->isDeleted()) {
+            $olalevelticket->delete(['id' => $data['id']]);
+
+            return;
+        }
+
+        if ($ticket->isClosed()) {
+            $olalevelticket->delete(['id' => $data['id']]);
+
+            return;
+        }
+
+        if ($ticket->isSolved()) {
+            // no deletion : keep olaLevel_Ticket db entry in case of solution not validated
+
+            return;
+        }
+
+        // - no associated ola not found
+        if (!$items_ola->getFromDBByCrit([
+            'olas_id' => (int) $data['olas_id'],
+            'items_id' => (int) $ticket->fields['id'],
+            'itemtype' => Ticket::class,
+        ])) {
+            $olalevelticket->delete(['id' => $data['id']]);
+
+            return;
+        }
+
+        // No execution for tto if ticket has been taken into account
+        if ($items_ola->fields['end_time']) {
+            $olalevelticket->delete(['id' => $data['id']]);
+
+            return;
+        }
+
+        // search all actors of a ticket
+        foreach ($ticket->getUsers(CommonITILActor::REQUESTER) as $user) {
+            $ticket->fields['_users_id_requester'][] = $user['users_id'];
+        }
+        foreach ($ticket->getUsers(CommonITILActor::ASSIGN) as $user) {
+            $ticket->fields['_users_id_assign'][] = $user['users_id'];
+        }
+        foreach ($ticket->getUsers(CommonITILActor::OBSERVER) as $user) {
+            $ticket->fields['_users_id_observer'][] = $user['users_id'];
+        }
+
+        foreach ($ticket->getGroups(CommonITILActor::REQUESTER) as $group) {
+            $ticket->fields['_groups_id_requester'][] = $group['groups_id'];
+        }
+        foreach ($ticket->getGroups(CommonITILActor::ASSIGN) as $group) {
+            $ticket->fields['_groups_id_assign'][] = $group['groups_id'];
+        }
+        foreach ($ticket->getGroups(CommonITILActor::OBSERVER) as $group) {
+            $ticket->fields['_groups_id_observer'][] = $group['groups_id'];
+        }
+
+        foreach ($ticket->getSuppliers(CommonITILActor::ASSIGN) as $supplier) {
+            $ticket->fields['_suppliers_id_assign'][] = $supplier['suppliers_id'];
+        }
+
+        $olalevel = new OlaLevel();
+        $ola = new OLA();
+
+        $input = [
+            'id' => $ticket->getID(),
+            '_auto_update' => true,
+        ];
+
+        if (
+            $olalevel->getRuleWithCriteriasAndActions($data['olalevels_id'], true, true)
+            && $ola->getFromDB($data['olas_id'])
+        ) {
+            $doit = true;
+            if (count($olalevel->criterias)) {
+                $doit = $olalevel->checkCriterias($ticket->fields);
+            }
+            // Process rules
+            if ($doit) {
+                $input = $olalevel->executeActions($input, [], $ticket->fields);
+            }
+        }
+
+        // Put next level in todo list
+        if (
+            $next = $olalevel->getNextOlaLevel(
+                $data['olas_id'],
+                $data['olalevels_id']
+            )
+        ) {
+            $ola->addLevelToDo($ticket, $next, $data['olas_id']);
+        }
+
+        $olalevelticket->delete(['id' => $data['id']]);
+        $ticket->update($input);
+    }
+
+    /**
+     * Replay all task needed for a specific ticket
+     *
+     *
+     * @since 9.1    2 parameters mandatory
+     * @param int               $tickets_id Ticket ID
+     * @param SLM::TTR|SLM::TTO $olaType    Type of ola
+     *
+     * @return void
+     */
+    public static function replayForTicket($tickets_id, $olaType)
+    {
+        global $DB;
+
+        $now = Session::getCurrentTime();
+        $criteria = [
+            'SELECT'    => [
+                'glpi_olalevels_tickets.*',
+                'glpi_olas.id AS olas_id',
+            ],
+            'FROM'      => 'glpi_olalevels_tickets',
+            'LEFT JOIN' => [
+                'glpi_olalevels'  => [
+                    'ON' => [
+                        'glpi_olalevels_tickets'   => 'olalevels_id',
+                        'glpi_olalevels'           => 'id',
+                    ],
+                ],
+                'glpi_olas'       => [
+                    'ON' => [
+                        'glpi_olalevels'  => 'olas_id',
+                        'glpi_olas'       => 'id',
+                    ],
+                ],
+            ],
+            'WHERE'     => [
+                'glpi_olalevels_tickets.date'       => ['<', $now],
+                'glpi_olalevels_tickets.tickets_id' => $tickets_id,
+                'glpi_olas.type'                    => $olaType,
+            ],
+        ];
+
+        $last_escalation = -1;
+        do {
+            $iterator = $DB->request($criteria);
+            $number = count($iterator);
+            if ($number === 1) {
+                $data = $iterator->current();
+                if ($data['id'] === $last_escalation) {
+                    // Possible infinite loop. Trying to apply exact same SLA assignment.
+                    break;
+                }
+                self::doLevelForTicket($data);
+                $last_escalation = $data['id'];
+            }
+        } while ($number === 1);
+    }
+}

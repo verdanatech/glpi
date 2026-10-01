@@ -1,0 +1,113 @@
+{#
+ # ---------------------------------------------------------------------
+ #
+ # GLPI - Gestionnaire Libre de Parc Informatique
+ #
+ # http://glpi-project.org
+ #
+ # @copyright 2015-2026 Teclib' and contributors.
+ # @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ #
+ # ---------------------------------------------------------------------
+ #
+ # LICENSE
+ #
+ # This file is part of GLPI.
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #
+ # ---------------------------------------------------------------------
+ #}
+
+{% extends "layout/page_without_tabs.html.twig" %}
+
+{% set title = __('Inventory') %}
+{% set menu = ["admin", "glpi\\inventory\\inventory"] %}
+
+{% block content_title %}{{ __('Inventory') }}{% endblock %}
+
+{% block content_body %}
+<div class="container-fluid">
+    <div class="search_page">
+        <div class="search-container mt-3">
+            <div class="card card-sm search-card border rounded-3 overflow-hidden">
+                <div class="search-header m-2 d-flex align-items-center justify-content-between">
+                    <div class='btn-group flex-wrap'>
+                        <span class="btn bg-blue-lt d-inline-flex align-items-center gap-2 pe-none" aria-disabled="true">
+                            <i class='ti ti-check' aria-hidden="true"></i>
+                            {{ __('Import process is complete.') }}
+                        </span>
+                    </div>
+                    <div class='btn-group flex-wrap ms-2'>
+                        <a href="javascript:history.back();" class="btn btn-primary">
+                            <i class='ti ti-arrow-left me-1' aria-hidden="true"></i>
+                            {{ __('Back') }}
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive-md m-2 border rounded-2 overflow-hidden">
+                    <table class="search-results table table-hover table-card align-middle mb-0">
+                        <caption class="visually-hidden">{{ __('Inventory files import results') }}</caption>
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="text-uppercase text-secondary small fw-medium">{{ __('Filename') }}</th>
+                                <th scope="col" class="text-uppercase text-secondary small fw-medium">{{ __('Result') }}</th>
+                                <th scope="col" class="text-uppercase text-secondary small fw-medium">{{ _n('Item', 'Items', get_plural_number()) }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for filename, result in imported_files %}
+                            <tr>
+                                <td>
+                                    <span class="d-inline-flex align-items-center gap-2">
+                                        <i class="ti ti-file text-secondary" aria-hidden="true"></i>
+                                        {{ filename }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="{{ result.isSuccess() ? 'text-success' : 'text-danger' }} d-inline-flex align-items-center gap-1">
+                                        <i class="ti {{ result.isSuccess() ? 'ti-check' : 'ti-alert-triangle' }}" aria-hidden="true"></i>
+                                        <span class="visually-hidden">{{ result.isSuccess() ? __('Success') : _n('Error', 'Errors', 1) }}</span>
+                                        {{ result.getMessage() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if result.getItems() is empty %}
+                                        {{ __('Import denied (no log)') }}
+                                    {% else %}
+                                        {% for item in result.getItems() %}
+                                            <div>
+                                                <span>
+                                                <i class="{{ item.getIcon() }}" aria-hidden="true"></i>
+                                                {{ get_item_link(item) }}
+                                                </span>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">{{ __('No file imported') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content_body %}

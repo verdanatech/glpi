@@ -1,0 +1,675 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+use Safe\Exceptions\JsonException;
+
+/**
+ * Return foreign key field name for a table
+ *
+ * @param string $table table name
+ *
+ * @return string|''
+ *      field name used for a foreign key to the parameter table,
+ *      or an empty string if the table name does match the GLPI table name pattern
+ */
+function getForeignKeyFieldForTable(string $table): string
+{
+    return (new DbUtils())->getForeignKeyFieldForTable($table);
+}
+
+/**
+ * Check if field is a foreign key field
+ *
+ * @since 0.84
+ *
+ * @param string $field field name
+ *
+ * @return bool
+ */
+function isForeignKeyField(string $field): bool
+{
+    return (new DbUtils())->isForeignKeyField($field);
+}
+
+/**
+ * Return foreign key field name for an itemtype
+ *
+ * @param class-string<CommonDBTM> $itemtype itemtype
+ *
+ * @return string field name used for a foreign key to the parameter itemtype
+ */
+function getForeignKeyFieldForItemType(string $itemtype): string
+{
+    return getForeignKeyFieldForTable(getTableForItemType($itemtype));
+}
+
+/**
+ * Return table name for a given foreign key name
+ *
+ * @param string $fkname foreign key name
+ *
+ * @return string|''
+ *      table name corresponding to a foreign key name
+ *      or an empty string if the foreign key name does match the GLPI foreign key name pattern
+ */
+function getTableNameForForeignKeyField(string $fkname): string
+{
+    return (new DbUtils())->getTableNameForForeignKeyField($fkname);
+}
+
+/**
+ * Return ItemType for a table
+ *
+ * @param string $table table name
+ *
+ * @return class-string<CommonDBTM>|null
+ *      itemtype corresponding to a table name parameter,
+ *      or null if no valid itemtype is attached to the table
+ */
+function getItemTypeForTable(string $table): ?string
+{
+    return (new DbUtils())->getItemTypeForTable($table);
+}
+
+/**
+ * Return an item instance for the corresponding table.
+ */
+function getItemForTable(string $table): ?CommonDBTM
+{
+    return (new DbUtils())->getItemForTable($table);
+}
+
+/**
+ * Return ItemType for a foreign key
+ *
+ * @param string $fkname
+ *
+ * @return class-string<CommonDBTM>|null
+ *      Itemtype class for the fkname parameter,
+ *      or null if no valid itemtype is attached to the foreign key field
+ */
+function getItemtypeForForeignKeyField(string $fkname): ?string
+{
+    return (new DbUtils())->getItemtypeForForeignKeyField($fkname);
+}
+
+/**
+ * Return an item instance for the corresponding foreign key field.
+ */
+function getItemForForeignKeyField(string $fkname): ?CommonDBTM
+{
+    return (new DbUtils())->getItemForForeignKeyField($fkname);
+}
+
+/**
+ * Return table name for an item type
+ *
+ * @param class-string<CommonDBTM> $itemtype itemtype
+ *
+ * @return string table name corresponding to the itemtype parameter
+ */
+function getTableForItemType(string $itemtype): string
+{
+    return (new DbUtils())->getTableForItemType($itemtype);
+}
+
+/**
+ * Get new item objet for an itemtype
+ *
+ * @since 0.83
+ *
+ * @template T of CommonDBTM
+ * @param class-string<T>|string $itemtype
+ * @return ($itemtype is class-string<T> ? T : false)
+ */
+function getItemForItemtype(string $itemtype): CommonGLPI|false
+{
+    return (new DbUtils())->getItemForItemtype($itemtype);
+}
+
+/**
+ * Return the plural of a string
+ *
+ * @param string $string input string
+ *
+ * @return string plural of the parameter string
+ */
+function getPlural(string $string): string
+{
+    return (new DbUtils())->getPlural($string);
+}
+
+/**
+ * Return the singular of a string
+ *
+ * @param string $string input string
+ *
+ * @return string singular of the parameter string
+ */
+function getSingular(string $string): string
+{
+    return (new DbUtils())->getSingular($string);
+}
+
+/**
+ * Count the number of elements in a table.
+ *
+ * @param string|string[]     $table     table name(s)
+ * @param array<mixed, mixed> $condition filtering criteria
+ *
+ * @return int Number of elements in table
+ */
+function countElementsInTable(string|array $table, array $condition = []): int
+{
+    return (new DbUtils())->countElementsInTable($table, $condition);
+}
+
+/**
+ * Count the number of elements in a table.
+ *
+ * @param string|string[]            $table     table name(s)
+ * @param string                     $field     field name
+ * @param array<mixed, mixed> $condition filtering criteria
+ *
+ * @return int nb of elements in table
+ */
+function countDistinctElementsInTable(string|array $table, string $field, array $condition = []): int
+{
+    return (new DbUtils())->countDistinctElementsInTable($table, $field, $condition);
+}
+
+/**
+ * Count the number of elements in a table for a specific entity
+ *
+ * @param string|string[]            $table     table name(s)
+ * @param string|array<mixed, mixed> $condition filtering criteria
+ *
+ * @return int Number of elements in table
+ * @deprecated 12.0.0
+ */
+function countElementsInTableForMyEntities($table, $condition = [])
+{
+    $dbu = new DbUtils();
+    return $dbu->countElementsInTableForMyEntities($table, $condition);
+}
+
+/**
+ * Count the number of elements in a table for a specific entity
+ *
+ * @param string|string[]     $table     table name(s)
+ * @param int                 $entity    the entity ID
+ * @param array<mixed, mixed> $condition filtering criteria
+ * @param bool                $recursive Whether to recurse or not. If true, will be conditionned on item recursivity
+ *
+ * @return int number of elements in table
+ */
+function countElementsInTableForEntity(string|array $table, int $entity, array $condition = [], bool $recursive = true): int
+{
+    return (new DbUtils())->countElementsInTableForEntity($table, $entity, $condition, $recursive);
+}
+
+/**
+ * Get data from a table in an array.
+ * /!\ CAUTION TO USE ONLY FOR SMALL TABLES OR USING A STRICT CONDITION
+ *
+ * @param string              $table    Table name
+ * @param array<mixed, mixed> $criteria filtering criteria
+ * @param bool                $usecache Use cache (false by default)
+ *
+ * @return array Array containing all the data
+ *
+ * @since 9.5.0
+ */
+function getAllDataFromTable(string $table, array $criteria = [], bool $usecache = false): array
+{
+    return (new DbUtils())->getAllDataFromTable($table, $criteria, $usecache);
+}
+
+/**
+ * Get the Name of the element of a Dropdown Tree table
+ *
+ * @param string  $table       Dropdown Tree table
+ * @param int     $ID          ID of the element
+ * @param bool    $withcomment whether to get the array with the comments
+ * @param bool    $translate   whether to get translated values
+ *
+ * @return ($withcomment is true ? array{name: string, comment: string} : string)
+ *
+ * @see DbUtils::getTreeValueCompleteName
+ */
+function getTreeLeafValueName(string $table, int $ID, bool $withcomment = false, bool $translate = true): array|string
+{
+    return (new DbUtils())->getTreeLeafValueName($table, $ID, $withcomment, $translate);
+}
+
+/**
+ * Get completename of a Dropdown Tree table
+ *
+ * @param string  $table       Dropdown Tree table
+ * @param int     $ID          ID of the element
+ * @param bool    $withcomment whether to get the array with the comments
+ * @param bool    $translate   whether to get translated values
+ * @param bool    $tooltip     whether to get a tooltip for additional comments
+ * @param string  $default     default value returned when item not exists
+ *
+ * @return ($withcomment is true ? array{name: string, comment: string} : string)
+ *
+ * @see DbUtils::getTreeLeafValueName
+ *
+ * @since 11.0.0 Usage of the `$withcomment` parameter is deprecated.
+ */
+function getTreeValueCompleteName(
+    string $table,
+    int $ID,
+    bool $withcomment = false,
+    bool $translate = true,
+    bool $tooltip = true,
+    string $default = '&nbsp;'
+): array|string {
+    if ($withcomment) {
+        Toolbox::deprecated('Usage of the `$withcomment` parameter is deprecated. Use `Dropdown::getDropdownComments()` instead.');
+    }
+
+    return (new DbUtils())->getTreeValueCompleteName($table, $ID, $withcomment, $translate, $tooltip, $default);
+}
+
+/**
+ * Get the tree value name (corresponds to the relative completename).
+ *
+ * @param string  $table     table name
+ * @param int     $ID        integer  value ID
+ * @param string  $wholename current name to complete (use for recursivity) (default '')
+ * @param int     $level     current level of recursion (default 0)
+ *
+ * @return array{0: string, 1:int}
+ * @deprecated 12.0.0
+ */
+function getTreeValueName($table, $ID, $wholename = "", $level = 0)
+{
+    return (new DbUtils())->getTreeValueName($table, $ID, $wholename, $level);
+}
+
+/**
+ * Get the ancestors of an item in a tree dropdown.
+ *
+ * @param string    $table    Table name
+ * @param int|int[] $items_id The IDs of the items. If an array is passed, the result will be the union of the ancestors of each item.
+ *
+ * @return int[] IDs of the ancestors.
+ */
+function getAncestorsOf(string $table, int|array $items_id): array
+{
+    return (new DbUtils())->getAncestorsOf($table, $items_id);
+}
+
+/**
+ * Get the sons of an item in a tree dropdown.
+ *
+ * @param string  $table table name
+ * @param int     $IDf   The ID of the father
+ *
+ * @return int[] IDs of the sons
+ */
+function getSonsOf(string $table, int $IDf): array
+{
+    return (new DbUtils())->getSonsOf($table, $IDf);
+}
+
+/**
+ * Get the sons and the ancestors of an item in a tree dropdown.
+ *
+ * @since 0.84
+ *
+ * @param string $table table name
+ * @param int    $IDf   The ID of the father
+ *
+ * @return int[] IDs of the sons and the ancestors
+ */
+function getSonsAndAncestorsOf(string $table, int $IDf): array
+{
+    return (new DbUtils())->getSonsAndAncestorsOf($table, $IDf);
+}
+
+/**
+ * Get the sons of an item in a tree dropdown
+ *
+ * @param string  $table table name
+ * @param int     $IDf   The ID of the father
+ *
+ * @return array<int, array{name: string, tree: array<int, mixed>}> Recursive tree
+ * @deprecated 12.0.0
+ */
+function getTreeForItem($table, $IDf)
+{
+    return (new DbUtils())->getTreeForItem($table, $IDf);
+}
+
+/**
+ * Construct a tree from a list structure
+ *
+ * @param array<int, array{name: string, parent: int}>  $list
+ * @param int                                           $root root of the tree
+ *
+ * @return array<int, array{name: string, tree: array<int, mixed>}> Recursive tree
+ * @deprecated 12.0.0
+ */
+function contructTreeFromList($list, $root)
+{
+    return (new DbUtils())->constructTreeFromList($list, $root);
+}
+
+/**
+ * Construct a list from a tree structure
+ *
+ * @param array<int, array{tree: array<int, mixed>}> $tree   recursive tree
+ * @param int                                        $parent root of the tree
+ *
+ * @return array<int, int> list of items in the tree
+ * @deprecated 12.0.0
+ */
+function contructListFromTree($tree, $parent = 0)
+{
+    return (new DbUtils())->constructListFromTree($tree, $parent);
+}
+
+/**
+ * Format a user name.
+ *
+ * @param int       $ID           ID of the user.
+ * @param string|null   $login        login of the user
+ * @param string|null   $realname     realname of the user
+ * @param string|null   $firstname    firstname of the user
+ * @param int       $link         include link
+ * @param int       $cut          IGNORED PARAMETER
+ * @param bool       $force_config force order and id_visible to use common config
+ *
+ * @return string
+ *
+ * @since 11.0 `$link` parameter is deprecated
+ * @since 11.0 `$cut` parameter is ignored
+ */
+function formatUserName(
+    int $ID,
+    ?string $login,
+    ?string $realname,
+    ?string $firstname,
+    int $link = 0,
+    int $cut = 0,
+    bool $force_config = false
+): string {
+    $dbu = new DbUtils();
+
+    if ((bool) $cut) {
+        trigger_error('`$cut` parameter is now ignored.', E_USER_WARNING);
+    }
+
+    if ((bool) $link) {
+        Toolbox::deprecated('`$link` parameter is deprecated. Use `formatUserLink()` instead.');
+        return $dbu->formatUserLink($ID, $login, $realname, $firstname);
+    }
+
+    return $dbu->formatUserName($ID, $login, $realname, $firstname, 0, 0, $force_config);
+}
+
+/**
+ * Format a user link.
+ *
+ * @param int       $id           ID of the user.
+ * @param string|null   $login        login of the user
+ * @param string|null   $realname     realname of the user
+ * @param string|null   $firstname    firstname of the user
+ *
+ * @return string
+ */
+function formatUserLink(int $id, ?string $login, ?string $realname, ?string $firstname): string
+{
+    return (new DbUtils())->formatUserLink($id, $login, $realname, $firstname);
+}
+
+/**
+ * Get name of the user with the given ID.
+ *
+ * @param int|string $ID ID of the user or a special string value including 'myself' and 'requester_manager'
+ * @param int<0, 2> $link
+ *      0 = No link
+ *      1 = Show link to user.form.php
+ *      2 = return array with comments and link
+ * @param bool      $disable_anon   disable anonymization of username
+ *
+ * @return string|array
+ * @phpstan-return ($link is 2 ? array{name: string, link: string, comment: string} : string)
+ *
+ * @since 11.0 `$link` parameter is deprecated.
+ */
+function getUserName(int|string $ID, int $link = 0, bool $disable_anon = false): array|string
+{
+    if ($link !== 0) {
+        Toolbox::deprecated('Usage of `$link` parameter is deprecated. See `DbUtils::getUserName()`.');
+    }
+    return (new DbUtils())->getUserName($ID, $link, $disable_anon);
+}
+
+/**
+ * Get link of the given user.
+ *
+ * @param int $id
+ *
+ * @return string
+ */
+function getUserLink(int $id): string
+{
+    return (new DbUtils())->getUserLink($id);
+}
+
+/**
+ * Determine if an index exists in database
+ *
+ * @param string $table table of the index
+ * @param string $field name of the index
+ *
+ * @return bool
+ */
+function isIndex(string $table, string $field): bool
+{
+    return (new DbUtils())->isIndex($table, $field);
+}
+
+/**
+ * Determine if a foreign key exists in database
+ *
+ * @param string $table
+ * @param string $keyname
+ *
+ * @return bool
+ */
+function isForeignKeyContraint(string $table, string $keyname): bool
+{
+    return (new DbUtils())->isForeignKeyContraint($table, $keyname);
+}
+
+/**
+ * Create a new name using a autoname field defined in a template
+ *
+ * @param string  $objectName  autoname template
+ * @param string  $field       field to autoname
+ * @param bool $isTemplate  true if create an object from a template
+ * @param string  $itemtype    item type
+ * @param int $entities_id limit generation to an entity (default -1)
+ *
+ * @return string new auto string
+ */
+function autoName(string $objectName, string $field, bool $isTemplate, string $itemtype, int $entities_id = -1): string
+{
+    return (new DbUtils())->autoName($objectName, $field, $isTemplate, $itemtype, $entities_id);
+}
+
+/**
+ * Add dates for request
+ *
+ * @param string $field  table.field to request
+ * @param string $begin  begin date
+ * @param string $end    end date
+ *
+ * @return array
+ */
+function getDateCriteria(string $field, string $begin, string $end): array
+{
+    return (new DbUtils())->getDateCriteria($field, $begin, $end);
+}
+
+/**
+ * Export an array to be stored in a simple field in the database
+ *
+ * @param array|'' $TAB Array to export / encode (one level depth)
+ *
+ * @return string containing encoded array
+ * @throws JsonException
+ */
+function exportArrayToDB(array|string $TAB): string
+{
+    return (new DbUtils())->exportArrayToDB($TAB);
+}
+
+/**
+ * Import an array encoded in a simple field in the database
+ *
+ * @param string|null $DATA data readed in DB to import
+ *
+ * @return mixed Array containing data. Some legacy data may not have been stored as a JSON array string, so it may return a scalar value.
+ */
+function importArrayFromDB(?string $DATA): mixed
+{
+    return (new DbUtils())->importArrayFromDB($DATA);
+}
+
+/**
+ * Get hour from sql
+ *
+ * @param string $time datetime time
+ *
+ * @return string
+ * @deprecated 12.0.0
+ */
+function get_hour_from_sql($time)
+{
+    return (new DbUtils())->getHourFromSql($time);
+}
+
+
+/**
+ * Get the $RELATION array. It defines all relations between tables in the DB;
+ * plugins may add their own stuff
+ *
+ * @return array<string, array<string, string|list<string|array{0: string, 1: string}>>>
+ */
+function getDbRelations(): array
+{
+    return (new DbUtils())->getDbRelations();
+}
+
+/**
+ * Get SQL request to restrict to current entities of the user
+ *
+ * @param string        $separator        separator in the begin of the request (default AND)
+ * @param string        $table            table where apply the limit (if needed, multiple tables queries)
+ * @param string        $field            field where apply the limit (id != entities_id)
+ * @param int|int[]|''  $value            entity to restrict (if not set use $_SESSION['glpiactiveentities_string'])
+ * @param bool          $is_recursive     need to use recursive process to find item
+ *                                        (field need to be named recursive)
+ * @param bool          $complete_request need to use a complete request and not a simple one
+ *                                        when have acces to all entities (used for reminders)
+ *
+ * @return string the WHERE clause to restrict
+ *
+ * @deprecated 12.0.0
+ */
+function getEntitiesRestrictRequest(
+    $separator = "AND",
+    $table = "",
+    $field = "",
+    $value = '',
+    $is_recursive = false,
+    $complete_request = false
+) {
+    Toolbox::deprecated('Use getEntitiesRestrictCriteria() instead.');
+
+    return (new DbUtils())->getEntitiesRestrictRequest(
+        $separator,
+        $table,
+        $field,
+        $value,
+        $is_recursive,
+        $complete_request
+    );
+}
+
+/**
+ * Get criteria to restrict to current entities of the user
+ *
+ * @since 9.2
+ *
+ * @param string        $table            table where apply the limit (if needed, multiple tables queries)
+ * @param string        $field            field where apply the limit (id != entities_id)
+ * @param int|int[]|''  $value            entity to restrict (if not set use $_SESSION['glpiactiveentities'])
+ * @param bool|'auto'   $is_recursive     need to use recursive process to find item
+ *                                        (field need to be named recursive) (false by default, set to 'auto' to automatic detection)
+ * @param bool          $complete_request need to use a complete request and not a simple one
+ *                                        when have acces to all entities (used for reminders)
+ *
+ * @return array<mixed, mixed>
+ */
+function getEntitiesRestrictCriteria(
+    string $table = '',
+    string $field = '',
+    int|array|string $value = '',
+    bool|string $is_recursive = false,
+    bool $complete_request = false
+): array {
+    $dbu = new DbUtils();
+    $res = $dbu->getEntitiesRestrictCriteria(
+        $table,
+        $field,
+        $value,
+        $is_recursive,
+        $complete_request
+    );
+
+    // Add another layer to the array to prevent losing duplicates keys if the
+    // result of the function is merged with another array
+    if (count($res)) {
+        $res = [crc32(serialize($res)) => $res];
+    }
+    return $res;
+}

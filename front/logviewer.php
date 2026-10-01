@@ -1,0 +1,95 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+require_once(__DIR__ . '/_check_webserver_config.php');
+
+use Glpi\Exception\Http\NotFoundHttpException;
+use Glpi\System\Log\LogParser;
+use Glpi\System\Log\LogViewer;
+
+global $CFG_GLPI;
+
+$filepath = $_REQUEST['filepath'] ?? null;
+
+// no file to view specified -> redirect to list of system logs
+if ($filepath === null) {
+    Html::redirect($CFG_GLPI["root_doc"] . "/front/logs.php");
+}
+
+$logparser = new LogParser();
+if ($logparser->getFullPath($filepath) === null) {
+    throw new NotFoundHttpException('Not found');
+}
+
+LogParser::checkReAuthenticationOrRedirect();
+
+// download log file
+if (($_GET['action'] ?? '') === 'download_log_file') {
+    LogViewer::checkReAuthenticationOrRedirect();
+    Session::checkRight(LogViewer::$rightname, READ);
+    return $logparser->download($filepath);
+}
+// empty log file
+elseif (($_POST['action'] ?? '') === 'empty') {
+    // LogViewer just has a READ right, so UPDATE is checked on Config
+    Config::checkReAuthenticationOrRedirect();
+    Session::checkRight(Config::$rightname, UPDATE);
+    $logparser->empty($filepath);
+    Html::back();
+}
+// delete log file
+elseif (($_POST['action'] ?? '') === 'delete') {
+    Config::checkReAuthenticationOrRedirect();
+    Session::checkRight(Config::$rightname, UPDATE); // LogViewer just has a READ right, so UPDATE is checked on Config
+    $logparser->delete($filepath);
+    Html::redirect($CFG_GLPI["root_doc"] . "/front/logs.php");
+}
+// display logs
+else {
+    LogViewer::checkReAuthenticationOrRedirect();
+    Session::checkRight(LogViewer::$rightname, READ);
+    Html::header(
+        LogViewer::getTypeName(Session::getPluralNumber()),
+        '',
+        'admin',
+        'glpi\system\log\logviewer',
+        'logfile'
+    );
+
+    $logviewer = new LogViewer();
+    $logviewer->showLogFile($filepath);
+
+    Html::footer();
+}

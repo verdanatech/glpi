@@ -1,0 +1,937 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\DBAL\QuerySubQuery;
+
+use function Safe\strtotime;
+
+/**
+ * LevelAgreement base Class for OLA & SLA
+ * @since 9.2
+ **/
+abstract class LevelAgreement extends CommonDBChild
+{
+    // From CommonDBTM
+    public bool $dohistory          = true;
+    public static string $rightname       = 'slm';
+
+    // From CommonDBChild
+    public static string $itemtype = SLM::class;
+    public static string $items_id = 'slms_id';
+
+    protected static string $prefix            = '';
+
+    /** @var ''|class-string<LevelAgreementLevel> */
+    protected static $levelclass        = '';
+
+    /** @var class-string<CommonDBTM> */
+    protected static $levelticketclass;
+
+
+    /**
+     * Display a specific OLA or SLA warning.
+     * Called into the above showForm() function
+     *
+     * @return void
+     */
+    abstract public function showFormWarning();
+
+    /**
+     * Return the text needed for a confirmation of adding level agreement to a ticket
+     *
+     * @return string[]
+     */
+    abstract public function getAddConfirmation(): array;
+
+    /**
+     * Get table fields
+     *
+     * @param SLM::TTO|SLM::TTR $subtype
+     *
+     * @return array{0: string, 1: string} 'date' and 'sla' field names
+     */
+    public static function getFieldNames($subtype)
+    {
+        $dateField = null;
+        $laField  = null;
+
+        switch ($subtype) {
+            case SLM::TTO:
+                $dateField = 'time_to_own';
+                $laField   = static::$prefix . 's_id_tto';
+                break;
+
+            case SLM::TTR:
+                $dateField = 'time_to_resolve';
+                $laField   = static::$prefix . 's_id_ttr';
+                break;
+        }
+        return [$dateField, $laField];
+    }
+
+    public static function getWaitingFieldName(): string
+    {
+        return static::$prefix . '_waiting_duration';
+    }
+
+    public function defineTabs($options = [])
+    {
+        $ong = [];
+        $this->addDefaultFormTab($ong);
+        $this->addStandardTab(static::$levelclass, $ong, $options);
+        $this->addStandardTab(Rule::class, $ong, $options);
+        $this->addStandardTab(Ticket::class, $ong, $options);
+
+        return $ong;
+    }
+
+    /**
+     * Define calendar of the ticket using the SLA/OLA when using this calendar as sla/ola-s calendar
+     *
+     * @param int $calendars_id calendars_id of the ticket
+     *
+     * @return void
+     */
+    public function setTicketCalendar($calendars_id)
+    {
+        if ($this->fields['use_ticket_calendar']) {
+            $this->fields['calendars_id'] = $calendars_id;
+        }
+    }
+
+    public function post_getEmpty()
+    {
+        $this->fields['number_time'] = 4;
+        $this->fields['definition_time'] = 'hour';
+    }
+
+    #[Override]
+    public function showForm($ID, array $options = [])
+    {
+        // Get SLM object
+        $slm = new SLM();
+        if (isset($options['parent'])) {
+            $slm = $options['parent'];
+        } else {
+            $slm->getFromDB($this->fields['slms_id']);
+        }
+
+        if ($ID > 0) {
+            $this->check($ID, READ);
+        } else {
+            // Create item
+            $options[static::$items_id] = $slm->getID();
+
+            // force itemtype of parent
+            static::$itemtype = get_class($slm);
+
+            if ($ID == 0 || $ID == -1) {
+                $options[static::$items_id] = $options['parent']->fields["id"];
+                $this->check(-1, CREATE, $options);
+            }
+        }
+
+        TemplateRenderer::getInstance()->display('/pages/service-levels/levelagreement.html.twig', [
+            'item'    => $this,
+            'params'  => $options,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Get possibles keys and labels for the definition_time field
+     *
+     * @return array<string, string>
+     *
+     * @since 10.0.0
+     */
+    public static function getDefinitionTimeValues(): array
+    {
+        return [
+            'minute' => _n('Minute', 'Minutes', Session::getPluralNumber()),
+            'hour'   => _n('Hour', 'Hours', Session::getPluralNumber()),
+            'day'    => _n('Day', 'Days', Session::getPluralNumber()),
+            'month'  => _n('Month', 'Months', Session::getPluralNumber()),
+        ];
+    }
+
+    /**
+     * Get the matching label for a given key (definition_time field)
+     *
+     * @param string $value
+     *
+     * @return string
+     *
+     * @since 10.0.0
+     */
+    public static function getDefinitionTimeLabel(string $value): string
+    {
+        return self::getDefinitionTimeValues()[$value] ?? "";
+    }
+
+    /**
+     * Get a level for a given action
+     *
+     * since 10.0
+     *
+     * @param mixed $nextaction
+     *
+     * @return false|LevelAgreementLevel
+     * @used-by templates/components/itilobject/service_levels.html.twig
+     */
+    public function getLevelFromAction($nextaction)
+    {
+        if ($nextaction === false) {
+            return false;
+        }
+
+        $pre  = static::$prefix;
+        $nextlevel  = getItemForItemtype(static::$levelclass);
+        if (!$nextlevel->getFromDB($nextaction->fields[$pre . 'levels_id'])) {
+            return false;
+        }
+
+        return $nextlevel;
+    }
+
+    /**
+     * Get then next levelagreement action for a given ticket and "LA" type
+     *
+     * since 10.0
+     *
+     * @param Ticket            $ticket
+     * @param SLM::TTO|SLM::TTR $type
+     *
+     * @return false|OlaLevel_Ticket|SlaLevel_Ticket
+     * @used-by templates/components/itilobject/service_levels.html.twig
+     */
+    public function getNextActionForTicket(Ticket $ticket, int $type)
+    {
+        /** @var OlaLevel_Ticket|SlaLevel_Ticket $nextaction */
+        $nextaction = getItemForItemtype(static::$levelticketclass);
+        if (!$nextaction->getFromDBForTicket($ticket->fields["id"], $type)) {
+            return false;
+        }
+
+        return $nextaction;
+    }
+
+    /**
+     * Print the HTML for a SLM
+     *
+     * @param SLM $slm Slm item
+     *
+     * @return void
+     */
+    public static function showForSLM(SLM $slm)
+    {
+        if (!$slm->can($slm->fields['id'], READ)) {
+            return;
+        }
+
+        $instID   = $slm->fields['id'];
+        $la       = new static();
+        $calendar = new Calendar();
+        $rand     = mt_rand();
+        $canedit  = $slm->canEdit($instID) && Session::getCurrentInterface() === 'central';
+
+        if ($canedit) {
+            $twig_params = [
+                'instID' => $instID,
+                'rand'   => $rand,
+                'la'     => $la,
+                'slm'    => $slm,
+                'btn_msg' => __('Add a new item'),
+            ];
+            // language=Twig
+            echo TemplateRenderer::getInstance()->renderFromStringTemplate(<<<TWIG
+                <div id="showLa{{ instID }}{{ rand }}"></div>
+                <script>
+                    function viewAddEditLa{{ instID }}{{ rand }}(item_id = -1) {
+                        $('#showLa{{ instID }}{{ rand }}').load("{{ config('root_doc') }}/ajax/viewsubitem.php", {
+                            type: "{{ la.getType() }}",
+                            parenttype: "{{ slm.getType() }}",
+                            {{ slm.getForeignKeyField() }}: {{ instID }},
+                            id: item_id,
+                        });
+                    }
+                    $(() => {
+                        $('#levelagreement{{ instID }}').on('click', 'tbody tr', function () {
+                            viewAddEditLa{{ instID }}{{ rand }}($(this).data('id'));
+                        });
+                    });
+                </script>
+                <div class="text-center mb-3">
+                    <button name="new_la" type="button" class="btn btn-primary" onclick="viewAddEditLa{{ instID }}{{ rand }}();">{{ btn_msg }}</button>
+                </div>
+TWIG, $twig_params);
+        }
+
+        // list
+        $laList = $la->find(['slms_id' => $instID]);
+
+        $entries = [];
+        foreach ($laList as $val) {
+            $la->getFromResultSet($val);
+            $link = '';
+            if ($slm->fields['use_ticket_calendar']) {
+                $link = __s('Calendar of the ticket');
+            } elseif (!$slm->fields['calendars_id']) {
+                $link =  __s('24/7');
+            } elseif ($calendar->getFromDB($slm->fields['calendars_id'])) {
+                $link = $calendar->getLink();
+            }
+
+            $entry = [
+                'itemtype' => static::class,
+                'id'       => $val['id'],
+                'row_class' => 'cursor-pointer',
+                'name'     => $la->getLink(),
+                'type'     => $la::getSpecificValueToDisplay('type', $la->fields['type']),
+                'maximum_time' => $la::getSpecificValueToDisplay('number_time', [
+                    'number_time'     => $la->fields['number_time'],
+                    'definition_time' => $la->fields['definition_time'],
+                ]),
+                'calendar' => $link,
+            ];
+
+            // ola have a groups_id field, not sla
+            if ($la->isField('groups_id')) {
+                $group = new Group();
+                $group->getFromDB($la->fields['groups_id']);
+                $group_name = $group->getName();
+                $entry['group'] = $group_name;
+            }
+
+            $entries[] = $entry;
+        }
+
+        $twig_params = [
+            'datatable_id' => 'levelagreement' . $instID,
+            'is_tab' => true,
+            'nofilter' => true,
+            'nosort' => true,
+            'columns' => [
+                'name' => __('Name'),
+                'type' => _n('Type', 'Types', 1),
+                'maximum_time' => __('Maximum time'),
+                'calendar' => _n('Calendar', 'Calendars', 1),
+            ],
+            'formatters' => [
+                'name' => 'raw_html',
+                'calendar' => 'raw_html',
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'showmassiveactions' => $canedit,
+            'massiveactionparams' => [
+                'num_displayed' => count($entries),
+                'container'     => 'mass' . static::class . mt_rand(),
+            ],
+        ];
+
+        // ola have a groups_id field, not sla
+        if ($la->isField('groups_id')) {
+            $twig_params['columns']['group'] = Group::getTypeName(1);
+        }
+
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', $twig_params);
+    }
+
+    /**
+     * Display a list of rule for the current sla/ola
+     * @return void
+     */
+    public function showRulesList()
+    {
+        global $DB;
+
+        $field      = match (static::class) {
+            SLA::class => static::getFieldNames($this->fields['type'])[1],
+            OLA::class => 'olas_id',
+            default => throw new RuntimeException('Unexpected LevelAgreement class : ' . static::class),
+        };
+
+        $rule    = new RuleTicket();
+        $canedit = self::canUpdate();
+
+        $rules_id_list = iterator_to_array($DB->request([
+            'SELECT'          => 'rules_id',
+            'DISTINCT'        => true,
+            'FROM'            => 'glpi_ruleactions',
+            'WHERE'           => [
+                'field' => $field,
+                'value' => $this->getID(),
+            ],
+        ]));
+        $nb = count($rules_id_list);
+
+        $entries = [];
+        foreach ($rules_id_list as $data) {
+            $rule->getFromDB($data['rules_id']);
+            $entries[] = [
+                'itemtype' => RuleTicket::class,
+                'id'       => $rule->getID(),
+                'rule'     => $canedit ? $rule->getLink() : htmlescape($rule->fields["name"]),
+                'active'   => Dropdown::getYesNo($rule->fields["is_active"]),
+                'description' => $rule->fields["description"],
+            ];
+        }
+
+        TemplateRenderer::getInstance()->display('components/datatable.html.twig', [
+            'is_tab' => true,
+            'nofilter' => true,
+            'nosort' => true,
+            'columns' => [
+                'rule' => RuleTicket::getTypeName($nb),
+                'active' => __('Active'),
+                'description' => __('Description'),
+            ],
+            'formatters' => [
+                'rule' => 'raw_html',
+            ],
+            'entries' => $entries,
+            'total_number' => count($entries),
+            'showmassiveactions' => $canedit,
+            'massiveactionparams' => [
+                'num_displayed' => count($entries),
+                'container'     => 'mass' . RuleTicket::class . mt_rand(),
+                'specific_actions' => [
+                    'update' => _x('button', 'Update'),
+                    'purge'  => _x('button', 'Delete permanently'),
+                ],
+            ],
+        ]);
+    }
+
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    {
+        if (!$withtemplate) {
+            $nb = 0;
+            switch ($item::class) {
+                case 'SLM':
+                    /** @var SLM $item */
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = countElementsInTable(
+                            self::getTable(),
+                            ['slms_id' => $item->getID()]
+                        );
+                    }
+                    return self::createTabEntry(static::getTypeName($nb), $nb, $item::class);
+            }
+        }
+        return '';
+    }
+
+    /**
+     * @param SLM $item
+     * @param int $tabnum
+     * @param int $withtemplate
+     */
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+    {
+        if ($item::class === 'SLM') {
+            self::showForSLM($item);
+        }
+
+        return true;
+    }
+
+    public function rawSearchOptions()
+    {
+        $tab = [];
+
+        $tab[] = [
+            'id'                 => 'common',
+            'name'               => __('Characteristics'),
+        ];
+
+        $tab[] = [
+            'id'                 => '1',
+            'table'              => static::getTable(),
+            'field'              => 'name',
+            'name'               => __('Name'),
+            'datatype'           => 'itemlink',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '2',
+            'table'              => static::getTable(),
+            'field'              => 'id',
+            'name'               => __('ID'),
+            'massiveaction'      => false,
+            'datatype'           => 'number',
+        ];
+
+        $tab[] = [
+            'id'                 => '5',
+            'table'              => static::getTable(),
+            'field'              => 'number_time',
+            'name'               => _x('hour', 'Time'),
+            'datatype'           => 'specific',
+            'massiveaction'      => false,
+            'nosearch'           => true,
+            'additionalfields'   => ['definition_time'],
+        ];
+
+        $tab[] = [
+            'id'                 => '6',
+            'table'              => static::getTable(),
+            'field'              => 'end_of_working_day',
+            'name'               => __('End of working day'),
+            'datatype'           => 'bool',
+            'massiveaction'      => false,
+        ];
+
+        $tab[] = [
+            'id'                 => '7',
+            'table'              => static::getTable(),
+            'field'              => 'type',
+            'name'               => _n('Type', 'Types', 1),
+            'datatype'           => 'specific',
+        ];
+
+        $tab[] = [
+            'id'                 => '8',
+            'table'              => 'glpi_slms',
+            'field'              => 'name',
+            'name'               => __('SLM'),
+            'datatype'           => 'dropdown',
+        ];
+
+        $tab[] = [
+            'id'                 => '16',
+            'table'              => static::getTable(),
+            'field'              => 'comment',
+            'name'               => _n('Comment', 'Comments', Session::getPluralNumber()),
+            'datatype'           => 'text',
+        ];
+
+        $tab[] = [
+            'id'              => '80',
+            'table'           => Entity::getTable(),
+            'field'           => 'completename',
+            'name'            => Entity::getTypeName(1),
+            'massiveaction'   => false,
+            'datatype'        => 'dropdown',
+        ];
+
+        $tab[] = [
+            'id'            => '86',
+            'table'         => static::getTable(),
+            'field'         => 'is_recursive',
+            'name'          => __('Child entities'),
+            'datatype'      => 'bool',
+            'massiveaction' => false,
+        ];
+
+        return $tab;
+    }
+
+    public static function getSpecificValueToDisplay($field, $values, array $options = [])
+    {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        switch ($field) {
+            case 'number_time':
+                switch ($values['definition_time']) {
+                    case 'minute':
+                        return htmlescape(sprintf(_n('%d minute', '%d minutes', $values[$field]), $values[$field]));
+                    case 'hour':
+                        return htmlescape(sprintf(_n('%d hour', '%d hours', $values[$field]), $values[$field]));
+                    case 'day':
+                        return htmlescape(sprintf(_n('%d day', '%d days', $values[$field]), $values[$field]));
+                }
+                break;
+
+            case 'type':
+                return htmlescape(self::getOneTypeName($values[$field]));
+        }
+        return parent::getSpecificValueToDisplay($field, $values, $options);
+    }
+
+    public static function getSpecificValueToSelect($field, $name = '', $values = '', array $options = [])
+    {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        $options['display'] = false;
+        switch ($field) {
+            case 'type':
+                $options['value'] = $values[$field];
+                return self::getTypeDropdown($options);
+        }
+        return parent::getSpecificValueToSelect($field, $name, $values, $options);
+    }
+
+    /**
+     * Get delay (due time duration) in seconds for the current agreement
+     *
+     * The time to own or to resolve duration
+     *
+     * @return int own/resolution time (default 0)
+     **/
+    public function getTime()
+    {
+        if (isset($this->fields['id'])) {
+            return match ($this->fields['definition_time']) {
+                'minute' => $this->fields['number_time'] * MINUTE_TIMESTAMP,
+                'hour'   => $this->fields['number_time'] * HOUR_TIMESTAMP,
+                'day'    => $this->fields['number_time'] * DAY_TIMESTAMP,
+                'month'  => $this->fields['number_time'] * MONTH_TIMESTAMP,
+                default   => 0
+            };
+        }
+        return 0;
+    }
+
+    /**
+     * Elapsed time between two dates in seconds
+     *
+     * @param string $start start date formated 'Y-m-d H:i:s'
+     * @param string $end end date formated 'Y-m-d H:i:s'
+     *
+     * @return int elapsed time in seconds
+     **/
+    public function getActiveTimeBetween($start, $end)
+    {
+        // Mirror Calendar::getActiveTimeBetween(): the `'NULL'` SQL sentinel string
+        // and empty bounds are not parseable dates and would make `Safe\strtotime()`
+        // throw an uncaught `DatetimeException` (e.g. on the "No calendar" branch
+        // below). Return early instead.
+        if (empty($start) || empty($end) || $start === 'NULL' || $end === 'NULL') {
+            return 0;
+        }
+
+        if ($end < $start) {
+            return 0;
+        }
+
+        if (isset($this->fields['id'])) {
+            $cal          = new Calendar();
+
+            // Based on a calendar
+            if ($this->fields['calendars_id'] > 0) {
+                if ($cal->getFromDB($this->fields['calendars_id'])) {
+                    return $cal->getActiveTimeBetween($start, $end);
+                }
+            } else { // No calendar
+                $timestart = strtotime($start);
+                $timeend   = strtotime($end);
+                return ($timeend - $timestart);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Get due date for current agreement
+     *
+     * @param string  $start_date        datetime start date ('Y-m-d H:i:s')
+     * @param int $additional_delay  integer  additional delay to add or substract (for waiting time)
+     *
+     * @return string|null  due datetime 'Y-m-d H:i:s' (NULL if sla/ola not exists)
+     **/
+    public function computeDate($start_date, $additional_delay = 0)
+    {
+        if (isset($this->fields['id'])) {
+            $delay = $this->getTime();
+            // Based on a calendar
+            if ($this->fields['calendars_id'] > 0) {
+                $cal          = new Calendar();
+                $work_in_days = ($this->fields['definition_time'] === 'day' || $this->fields['definition_time'] === 'month');
+
+                if ($cal->getFromDB($this->fields['calendars_id']) && $cal->hasAWorkingDay()) {
+                    return $cal->computeEndDate(
+                        $start_date,
+                        $delay,
+                        (int) $additional_delay,
+                        $work_in_days,
+                        $this->fields['end_of_working_day']
+                    );
+                }
+            }
+
+            // No calendar defined or invalid calendar
+            if ($this->fields['number_time'] >= 0) {
+                $starttime = strtotime($start_date);
+                $endtime   = $starttime + $delay + (int) $additional_delay;
+                return date('Y-m-d H:i:s', $endtime);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Should calculation on this LevelAgreement target date be done using
+     * the "work_in_day" parameter set to true ?
+     *
+     * @return bool
+     */
+    public function shouldUseWorkInDayMode(): bool
+    {
+        return
+            $this->fields['definition_time'] === 'day'
+            || $this->fields['definition_time'] === 'month'
+        ;
+    }
+
+    /**
+     * Get execution date of a level
+     *
+     * @param string  $start_date        start date
+     * @param int $levels_id         sla/ola level id
+     * @param int $additional_delay  additional delay to add or substract (for waiting time)
+     *
+     * @return string|null  execution date time (NULL if ola/sla not exists)
+     **/
+    public function computeExecutionDate($start_date, $levels_id, $additional_delay = 0)
+    {
+        if (isset($this->fields['id'])) {
+            $level = getItemForItemtype(static::$levelclass);
+            $fk = getForeignKeyFieldForItemType(static::class);
+
+            if ($level->getFromDB($levels_id)) { // level exists
+                if ((int) $level->fields[$fk] === (int) $this->fields['id']) { // correct level
+                    $delay        = $this->getTime();
+
+                    // Based on a calendar
+                    if ($this->fields['calendars_id'] > 0) {
+                        $cal = new Calendar();
+                        if ($cal->getFromDB($this->fields['calendars_id']) && $cal->hasAWorkingDay()) {
+                            // Take SLA into account
+                            $date_with_sla = $cal->computeEndDate(
+                                $start_date,
+                                $delay,
+                                0,
+                                $this->shouldUseWorkInDayMode(),
+                                $this->fields['end_of_working_day']
+                            );
+
+                            // Take waiting duration time into account
+                            $date_with_waiting_time = $cal->computeEndDate(
+                                $date_with_sla,
+                                $additional_delay,
+                            );
+
+                            // Take current SLA escalation level into account
+                            $date_with_sla_and_escalation_level = $cal->computeEndDate(
+                                $date_with_waiting_time,
+                                $level->fields['execution_time'],
+                                0,
+                                $level->shouldUseWorkInDayMode(),
+                            );
+
+                            return $date_with_sla_and_escalation_level;
+                        }
+                    }
+                    // No calendar defined or invalid calendar
+                    $delay    += $additional_delay + $level->fields['execution_time'];
+                    $starttime = strtotime($start_date);
+                    $endtime   = $starttime + $delay;
+                    return date('Y-m-d H:i:s', $endtime);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get types
+     *
+     * @return array array of types
+     **/
+    public static function getTypes()
+    {
+        return [
+            SLM::TTO => __('Time to own'),
+            SLM::TTR => __('Time to resolve'),
+        ];
+    }
+
+    /**
+     * Get types name
+     *
+     * @param  int $type
+     * @return string  name
+     **/
+    public static function getOneTypeName($type)
+    {
+        $types = self::getTypes();
+        return $types[$type] ?? null;
+    }
+
+    /**
+     * Get SLA types dropdown
+     *
+     * @param array $options
+     *
+     * @return string
+     */
+    public static function getTypeDropdown($options)
+    {
+        return Dropdown::showFromArray($options['name'] ?? 'type', self::getTypes(), $options);
+    }
+
+    public function prepareInputForAdd($input)
+    {
+        if (
+            $input['definition_time'] !== 'day'
+            && $input['definition_time'] !== 'month'
+        ) {
+            $input['end_of_working_day'] = 0;
+        }
+
+        // Copy calendar settings from SLM
+        $slm = new SLM();
+        if (array_key_exists('slms_id', $input) && $slm->getFromDB($input['slms_id'])) {
+            $input['use_ticket_calendar'] = $slm->fields['use_ticket_calendar'];
+            $input['calendars_id'] = $slm->fields['calendars_id'];
+        }
+
+        return $input;
+    }
+
+    public function prepareInputForUpdate($input)
+    {
+        if (
+            isset($input['definition_time']) && ($input['definition_time'] !== 'day'
+            && $input['definition_time'] !== 'month')
+        ) {
+            $input['end_of_working_day'] = 0;
+        }
+
+        // Copy calendar settings from SLM
+        $slm = new SLM();
+        if (
+            array_key_exists('slms_id', $input)
+            && (int) $input['slms_id'] !== (int) $this->fields['slms_id']
+            && $slm->getFromDB($input['slms_id'])
+        ) {
+            $input['use_ticket_calendar'] = $slm->fields['use_ticket_calendar'];
+            $input['calendars_id'] = $slm->fields['calendars_id'];
+        }
+
+        return $input;
+    }
+
+    /**
+     * Remove all levels to do for a ticket
+     *
+     * @param Ticket $ticket object
+     *
+     * @return void
+     **/
+    public static function deleteLevelsToDo(Ticket $ticket)
+    {
+        $levelticket = getItemForItemtype(static::$levelticketclass);
+        $levelticket->deleteByCriteria(['tickets_id' => $ticket->fields['id']]);
+    }
+
+    public function post_clone($source, $history)
+    {
+        // Clone levels
+        $classname = static::class;
+        $fk        = getForeignKeyFieldForItemType($classname);
+        $level     = getItemForItemtype(static::$levelclass);
+        foreach ($level->find([$fk => $source->getID()]) as $data) {
+            $level->getFromDB($data['id']);
+            $level->clone([$fk => $this->getID()]);
+        }
+    }
+
+    /**
+     * Getter for the protected $levelclass static property
+     *
+     * @return class-string<LevelAgreementLevel>
+     */
+    public function getLevelClass(): string
+    {
+        return static::$levelclass;
+    }
+
+    /**
+     * Getter for the protected $levelticketclass static property
+     *
+     * @return class-string<CommonDBTM>
+     */
+    public function getLevelTicketClass(): string
+    {
+        return static::$levelticketclass;
+    }
+
+    /**
+     * Remove levels todo of the current level agreement for a given ticket
+     *
+     * @param int $tickets_id
+     *
+     * @return void
+     */
+    public function clearInvalidLevels(int $tickets_id): void
+    {
+        // CLear levels of others LA of the same type
+        // e.g. if a new LA TTR was assigned, clear levels from others (= previous) LA TTR
+        $level_ticket_class = $this->getLevelTicketClass();
+        $level_ticket = getItemForItemtype($level_ticket_class);
+        $level_class = $this->getLevelClass();
+        $levels = $level_ticket->find([
+            'tickets_id' => $tickets_id,
+            [$level_class::getForeignKeyField() => ['!=', $this->getID()]],
+            [
+                $level_class::getForeignKeyField() => new QuerySubQuery([
+                    'SELECT' => 'id',
+                    'FROM' => $level_class::getTable(),
+                    'WHERE' => [
+                        static::getForeignKeyField() => new QuerySubQuery([
+                            'SELECT' => 'id',
+                            'FROM' => static::getTable(),
+                            'WHERE' => ['type' => $this->fields['type']],
+                        ]),
+                    ],
+                ]),
+            ],
+        ]);
+
+        // Delete invalid levels
+        foreach ($levels as $level) {
+            $level_ticket->delete(['id' => $level['id']]);
+        }
+    }
+}

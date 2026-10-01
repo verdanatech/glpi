@@ -1,0 +1,311 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+namespace Glpi\Controller\Knowbase;
+
+use Entity_KnowbaseItem;
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\Controller\AbstractController;
+use Glpi\Controller\CrudControllerTrait;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\NotFoundHttpException;
+use Glpi\RichText\RichText;
+use Glpi\RichText\VideoEmbedRenderer;
+use Group_KnowbaseItem;
+use KnowbaseItem;
+use KnowbaseItem_Comment;
+use KnowbaseItem_Profile;
+use KnowbaseItem_User;
+use Session;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Routing\Attribute\Route;
+
+use function Safe\json_decode;
+
+final class KnowbaseItemController extends AbstractController
+{
+    use CrudControllerTrait;
+
+    #[Route(
+        "/Knowbase/KnowbaseItem/{knowbaseitems_id}/Content",
+        name: "knowbaseitem_content",
+        requirements: [
+            'knowbaseitems_id' => '\d+',
+        ]
+    )]
+    public function content(Request $request): Response
+    {
+        $id = $request->attributes->getInt('knowbaseitems_id');
+        $kbitem = new KnowbaseItem();
+        if (!$kbitem->getFromDB($id)) {
+            throw new NotFoundHttpException();
+        }
+        if (!$kbitem->can($id, READ)) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $safe = RichText::getSafeHtml($kbitem->fields['answer'], false);
+        return new Response((new VideoEmbedRenderer())->renderAllAsLink($safe));
+    }
+
+    #[Route(
+        "/Knowbase/KnowbaseItem/{knowbaseitems_id}/Full",
+        name: "knowbaseitem_full",
+        requirements: [
+            'knowbaseitems_id' => '\d+',
+        ]
+    )]
+    public function full(Request $request): Response
+    {
+        $id = $request->attributes->getInt('knowbaseitems_id');
+        if (!KnowbaseItem::canView()) {
+            throw new AccessDeniedHttpException();
+        }
+        $kbitem = new KnowbaseItem();
+        if (!$kbitem->getFromDB($id)) {
+            throw new NotFoundHttpException();
+        } elseif (!$kbitem->can($id, READ)) {
+            throw new AccessDeniedHttpException();
+        }
+
+        return new StreamedResponse(static function () use ($kbitem) {
+            $kbitem->showFull();
+        });
+    }
+
+    #[Route(
+        "/Knowbase/KnowbaseItem/{knowbaseitems_id}/Answer",
+        name: "knowbaseitem_update_answer",
+        methods: ["POST"],
+        requirements: [
+            'knowbaseitems_id' => '\d+',
+        ]
+    )]
+    public function updateAnswer(Request $request): JsonResponse
+    {
+        $id = $request->attributes->getInt('knowbaseitems_id');
+
+        $kbitem = new KnowbaseItem();
+        if (!$kbitem->getFromDB($id)) {
+            throw new NotFoundHttpException();
+        }
+
+        if (!$kbitem->can($id, UPDATE)) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $answer = $data['answer'] ?? null;
+
+        if ($answer === null) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => __('Missing answer content'),
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Sanitize HTML content to prevent XSS. KB video placeholders are preserved
+        // by the sanitizer (inert data-video-* attributes).
+        $answer = RichText::getSafeHtml($answer);
+
+        $update_data = [
+            'id' => $id,
+            'answer' => $answer,
+        ];
+
+        // Handle optional title update
+        if (isset($data['name'])) {
+            $name = strip_tags(trim($data['name']));
+            if ($name === '') {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => __('Title cannot be empty'),
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            $update_data['name'] = $name;
+        }
+
+        if (isset($data['illustration'])) {
+            $update_data['illustration'] = $data['illustration'];
+        }
+
+        $success = $kbitem->update($update_data);
+
+        if ($success) {
+            // The saved content still carries these comments' passage, at an edited quote.
+            $refreshed = $data['comment_anchors'] ?? [];
+            if (is_array($refreshed) && $refreshed !== []) {
+                (new KnowbaseItem_Comment())->refreshAnchorsForItem($kbitem, $refreshed);
+            }
+
+            // The saved content no longer carries these comments' quoted passage.
+            $orphaned = $data['orphaned_comment_ids'] ?? [];
+            if (is_array($orphaned) && $orphaned !== []) {
+                (new KnowbaseItem_Comment())->clearAnchorsForItem($kbitem, $orphaned);
+            }
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => __('Article saved successfully'),
+            ]);
+        }
+
+        return new JsonResponse([
+            'success' => false,
+            'message' => __('Failed to save the article'),
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+
+    #[Route(
+        "/Knowbase/KnowbaseItem/Search/{itemtype}/{items_id}",
+        name: "knowbaseitem_search",
+        requirements: [
+            'items_id' => '\d+',
+        ]
+    )]
+    public function search(Request $request): Response
+    {
+        global $CFG_GLPI, $DB;
+
+        $itemtype = $request->attributes->get('itemtype');
+        $items_id = $request->attributes->getInt('items_id');
+        $start = $request->query->getInt('start');
+        $contains = $request->query->get('contains');
+
+        // Search a solution
+        if (empty($contains)) {
+            if (in_array($itemtype, $CFG_GLPI['kb_types'], true) && $item = getItemForItemtype($itemtype)) {
+                if ($item->can($items_id, READ)) {
+                    $contains = $item->fields['name'];
+                }
+            }
+        }
+
+        $criteria = KnowbaseItem::getListRequest([
+            'contains' => $contains,
+        ]);
+        $count_criteria = $criteria;
+        $criteria['START'] = $start;
+        $criteria['LIMIT'] = $_SESSION['glpilist_limit'];
+        unset($count_criteria['SELECT'], $count_criteria['ORDERBY'], $count_criteria['GROUPBY']);
+        $count_criteria['COUNT'] = 'cpt';
+
+        $it = $DB->request($criteria);
+        $total_count = $DB->request($count_criteria)->current()['cpt'] ?? 0;
+        $results = [];
+
+        foreach ($it as $data) {
+            $icon_class = "";
+            $icon_title = "";
+            if (
+                $data['is_faq']
+                && (!Session::isMultiEntitiesMode()
+                    || (isset($data['visibility_count'])
+                        && $data['visibility_count'] > 0))
+            ) {
+                $icon_class = "ti ti-help faq";
+                $icon_title = __("This item is part of the FAQ");
+            } elseif (
+                isset($data['visibility_count'])
+                && $data['visibility_count'] <= 0
+            ) {
+                $icon_class = "ti ti-eye-off not-published";
+                $icon_title = __("This item is not published yet");
+            }
+
+            $results[] = [
+                'id' => $data['id'],
+                'name' => $data['name'],
+                'content_preview' => mb_substr(
+                    string: RichText::getTextFromHtml(
+                        content: $data['answer'],
+                        preserve_line_breaks: true
+                    ),
+                    start: 0,
+                    length: GLPI_TEXT_MAXSIZE
+                ),
+                'url' => KnowbaseItem::getFormURLWithID($data['id']),
+                'icon' => $icon_class,
+                'icon_title' => $icon_title,
+            ];
+        }
+
+        $twig_params = [
+            'contains' => $contains,
+            'results' => $results,
+            'itemtype' => $itemtype,
+            'items_id' => $items_id,
+            'is_ajax' => $request->query->getBoolean('ajax_reload'),
+            'count' => $total_count,
+            'start' => $start,
+        ];
+
+        return new StreamedResponse(static function () use ($twig_params) {
+            TemplateRenderer::getInstance()->display('pages/tools/search_knowbaseitem.html.twig', $twig_params);
+        });
+    }
+
+    private const ALLOWED_PERMISSION_TYPES = [
+        'KnowbaseItem_User'    => KnowbaseItem_User::class,
+        'Group_KnowbaseItem'   => Group_KnowbaseItem::class,
+        'Entity_KnowbaseItem'  => Entity_KnowbaseItem::class,
+        'KnowbaseItem_Profile' => KnowbaseItem_Profile::class,
+    ];
+
+    #[Route(
+        "/Knowbase/KnowbaseItem/Permission/{itemtype}/{permission_id}",
+        name: "knowbaseitem_delete_permission",
+        methods: ["POST"],
+        requirements: [
+            'itemtype' => 'KnowbaseItem_User|Group_KnowbaseItem|Entity_KnowbaseItem|KnowbaseItem_Profile',
+            'permission_id' => '\d+',
+        ]
+    )]
+    public function deletePermission(Request $request): JsonResponse
+    {
+        $itemtype = $request->attributes->get('itemtype');
+        $permission_id = (int) $request->attributes->get('permission_id');
+
+        if (!isset(self::ALLOWED_PERMISSION_TYPES[$itemtype])) {
+            throw new NotFoundHttpException();
+        }
+
+        $this->purge(self::ALLOWED_PERMISSION_TYPES[$itemtype], $permission_id);
+
+        return new JsonResponse(['success' => true]);
+    }
+}
