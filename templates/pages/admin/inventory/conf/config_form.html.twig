@@ -157,7 +157,7 @@
                             })) }}
                         {{ fields.dropdownNumberField('inventory_frequency', config['inventory_frequency'], __('Inventory frequency (in hours)'),
                             field_options|merge({
-                                min: 1, max: 240
+                                min: 4, max: 240
                             })) }}
                         {{ fields.dropdownField('Entity', 'entities_id_default', config['entities_id_default']|default(0), __('Default entity'), field_options) }}
                         {{ fields.sliderField('import_monitor_on_partial_sn', config['import_monitor_on_partial_sn'], __('Import monitor on serial partial match'), field_options) }}
