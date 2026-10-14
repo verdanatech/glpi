@@ -340,7 +340,7 @@ class InstallCommand extends AbstractConfigureCommand implements ConfigurationCo
             return self::ERROR_SCHEMA_CREATION_FAILED;
         }
 
-        (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
+        // (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
 
         $this->handTelemetryActivation($input, $output);
 

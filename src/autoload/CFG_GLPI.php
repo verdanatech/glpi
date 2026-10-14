@@ -46,7 +46,7 @@ global $CFG_GLPI;
 $CFG_GLPI = [];
 
 // set the default app_name
-$CFG_GLPI['app_name'] = 'GLPI';
+$CFG_GLPI['app_name'] = 'Verdanadesk';
 
 // Languages data.
 // The `languages` and `main_languages` arrays are derived from the canonical

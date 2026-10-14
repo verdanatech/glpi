@@ -734,8 +734,9 @@ class Document extends CommonDBTM implements TreeBrowseInterface
         $visibilityCriteria = KnowbaseItem::getVisibilityCriteria();
 
         $request = [
+            'SELECT'    => 'glpi_knowbaseitems.id',
+            'DISTINCT'  => true,
             'FROM'      => 'glpi_documents_items',
-            'COUNT'     => 'cpt',
             'INNER JOIN' => [
                 'glpi_knowbaseitems' => [
                     'FKEY' => [
@@ -757,9 +758,15 @@ class Document extends CommonDBTM implements TreeBrowseInterface
             $request['WHERE'] += $visibilityCriteria['WHERE'];
         }
 
-        $result = $DB->request($request)->current();
+        // The criteria have no publication window: `canViewItem()` checks it.
+        $kb = new KnowbaseItem();
+        foreach ($DB->request($request) as $row) {
+            if ($kb->getFromDB($row['id']) && $kb->canViewItem()) {
+                return true;
+            }
+        }
 
-        return $result['cpt'] > 0;
+        return false;
     }
 
     /**
@@ -795,6 +802,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
             'WHERE' => [
                 'documents_id' => $this->fields['id'],
                 'OR' => $conditions,
+                ...Document_Item::getPrivacyRestrictionCriteria(),
             ],
         ])->current();
 
@@ -835,6 +843,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
             'WHERE' => [
                 'documents_id' => $this->fields['id'],
                 $itil->getAssociatedDocumentsCriteria(),
+                ...Document_Item::getPrivacyRestrictionCriteria(),
             ],
             'LIMIT' => 1, // Only need to see one result
         ])->current();
@@ -884,6 +893,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
                 'itemtype'     => $itemtype,
                 'items_id'     => $items_id,
                 'documents_id' => $this->getID(),
+                ...Document_Item::getPrivacyRestrictionCriteria(),
             ],
         ])->current();
 
@@ -1909,8 +1919,7 @@ class Document extends CommonDBTM implements TreeBrowseInterface
             unset($input['filename']);
         }
 
-        // $blacklisted = ['filepath', 'sha1sum'];
-        $blacklisted = [];
+        $blacklisted = ['filepath', 'sha1sum'];
         return array_filter($input, static fn($v, $k) => !in_array($k, $blacklisted), ARRAY_FILTER_USE_BOTH);
     }
 }

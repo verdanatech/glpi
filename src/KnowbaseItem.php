@@ -38,6 +38,7 @@ use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Glpi\DBAL\QueryIdentifier;
 use Glpi\DBAL\QuerySubQuery;
+use Glpi\DBAL\QueryValue;
 use Glpi\Event;
 use Glpi\Features\Clonable;
 use Glpi\Form\Category;
@@ -182,12 +183,28 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
             return true;
         }
 
+        // Editors keep access to manage a scheduled or expired article.
+        if (!$this->isInPublicationWindow() && !$this->canUpdateItem()) {
+            return false;
+        }
+
         if ($this->fields["is_faq"]) {
             return ((Session::haveRightsOr(self::$rightname, [READ, self::READFAQ])
                 && $this->haveVisibilityAccess())
                 || ((Session::getLoginUserID() === false) && $this->isPubliclyVisible()));
         }
         return (Session::haveRight(self::$rightname, READ) && $this->haveVisibilityAccess());
+    }
+
+    /**
+     * Same window as the list requests: `begin_date < NOW() < end_date`, a null bound is open.
+     */
+    private function isInPublicationWindow(): bool
+    {
+        $now = Session::getCurrentTime() ?? date('Y-m-d H:i:s');
+
+        return (empty($this->fields['begin_date']) || $this->fields['begin_date'] < $now)
+            && (empty($this->fields['end_date']) || $this->fields['end_date'] > $now);
     }
 
     public function canUpdateItem(): bool
@@ -1482,6 +1499,11 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria, S
         if ($mode === "edit" || $mode === "view") {
             $can_update = $this->can($this->fields['id'], UPDATE);
 
+            // The title is edited in place, and its save writes the original name.
+            if (!$can_update) {
+                $params['subject'] = $this->getName();
+            }
+
             // Add last update info
             $last_update_info = $this->getLastUpdateInfo();
             $params['last_update_date']            = $last_update_info->getRawDate();
@@ -2441,7 +2463,16 @@ TWIG, $twig_params);
                     ];
                 }
 
-                $criteria['ORDERBY'] = ['glpi_knowbaseitems.name ASC'];
+                // Sort on the title the reader sees: the translation if any, else the original.
+                $criteria['ORDERBY'] = isset($criteria['LEFT JOIN']['glpi_knowbaseitemtranslations'])
+                    ? [QueryFunction::ifnull(
+                        QueryFunction::nullif(
+                            new QueryIdentifier('glpi_knowbaseitemtranslations.name'),
+                            new QueryValue('')
+                        ),
+                        new QueryIdentifier('glpi_knowbaseitems.name')
+                    )]
+                    : ['glpi_knowbaseitems.name ASC'];
                 break;
         }
 
@@ -3569,7 +3600,7 @@ TWIG, $twig_params);
         }
 
         $criteria = self::getListRequest([], 'browse');
-        $criteria['SELECT'] = Builder::LIST_COLUMNS;
+        $criteria['SELECT'] = Builder::getListColumns($criteria);
 
         $is_favorite_condition = [
             self::getTable() . '.id' => new QuerySubQuery([
@@ -3596,7 +3627,7 @@ TWIG, $twig_params);
         foreach ($DB->request($criteria) as $data) {
             $articles[] = new Article(
                 id: (int) $data['id'],
-                title: $data['name'] ?? '',
+                title: ($data['transname'] ?? '') !== '' ? (string) $data['transname'] : ($data['name'] ?? ''),
                 illustration: $data['illustration'] ?? '',
                 link: self::getFormURLWithID($data['id']),
                 // Take note of the current article as we will render it in

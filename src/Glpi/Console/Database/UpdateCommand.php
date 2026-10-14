@@ -258,7 +258,7 @@ class UpdateCommand extends AbstractCommand implements ConfigurationCommandInter
             return self::ERROR_UPDATE_FAILED;
         }
 
-        (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
+        // (new CacheManager())->resetAllCaches(); // Ensure cache will not use obsolete data
 
         $this->handTelemetryActivation($input, $output);
 
