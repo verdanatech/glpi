@@ -1,0 +1,95 @@
+{#
+ # ---------------------------------------------------------------------
+ #
+ # GLPI - Gestionnaire Libre de Parc Informatique
+ #
+ # http://glpi-project.org
+ #
+ # @copyright 2015-2026 Teclib' and contributors.
+ # @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ #
+ # ---------------------------------------------------------------------
+ #
+ # LICENSE
+ #
+ # This file is part of GLPI.
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #
+ # ---------------------------------------------------------------------
+ #}
+
+{% macro alert(alert_type = "", title = "", messages = [], icon = "", important = false) %}
+    {% do call('Toolbox::deprecated', ['Twig alert macros are deprecated. Use the Alert Twig component instead.']) %}
+    {% set _message = '' %}
+    {% if messages is iterable %}
+        {% for message in messages %}
+            {% if _message %}
+                {% set _message = _message ~ "\n" %}
+            {% endif %}
+
+            {% set _message = _message ~ message %}
+        {% endfor %}
+    {% else %}
+        {% set _message = messages %}
+    {% endif %}
+
+    {{ component('Alert', {
+        color: alert_type ?: 'info',
+        heading: title,
+        content: _message,
+        icon: icon,
+        important: important,
+    }) }}
+{% endmacro %}
+
+{% macro alert_success(title = "", messages = [], important = false) %}
+   {{ _self.alert(
+      'success',
+      title,
+      messages,
+      "ti ti-check",
+      important
+   ) }}
+{% endmacro %}
+
+{% macro alert_info(title = "", messages = [], important = false) %}
+   {{ _self.alert(
+      'info',
+      title,
+      messages,
+      "ti ti-info-circle",
+      important
+   ) }}
+{% endmacro %}
+
+{% macro alert_warning(title = "", messages = [], important = false) %}
+   {{ _self.alert(
+      'warning',
+      title,
+      messages,
+      "ti ti-alert-triangle",
+      important
+   ) }}
+{% endmacro %}
+
+{% macro alert_danger(title = "", messages = [], important = false) %}
+   {{ _self.alert(
+      'danger',
+      title,
+      messages,
+      "ti ti-exclamation-circle",
+      important
+   ) }}
+{% endmacro %}

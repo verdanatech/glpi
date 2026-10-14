@@ -1,0 +1,1037 @@
+/*!
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+"use strict";
+(self["webpackChunk_glpi_glpi"] = self["webpackChunk_glpi_glpi"] || []).push([[11],{
+
+/***/ 103
+(module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(25);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(26);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, `
+#debug-sql-request-table thead tr th[data-v-b1b46442] {
+        cursor: pointer;
+}
+#debug-sql-request-table tbody tr td[data-v-b1b46442]:nth-of-type(3) {
+        max-width: 50vw;
+        white-space: break-spaces;
+}
+#debug-sql-request-table tbody tr td[data-v-b1b46442]:nth-of-type(4) {
+        white-space: nowrap;
+}
+#debug-sql-request-table[data-v-b1b46442] span.mtk1 {
+        color: var(--tblr-body-color);
+}
+#debug-sql-request-table code[data-v-b1b46442] {
+        color: var(--tblr-body-color);
+}
+#debug-sql-request-table .sql-params-panel[data-v-b1b46442] {
+        max-height: 40vh;
+        overflow: auto;
+}
+#debug-sql-request-table .param-index[data-v-b1b46442] {
+        min-width: 2rem;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+}
+#debug-sql-request-table .param-type[data-v-b1b46442] {
+        min-width: 4rem;
+}
+#debug-sql-request-table .param-value[data-v-b1b46442] {
+        word-break: break-word;
+}
+`, "",{"version":3,"sources":["webpack://./js/src/vue/Debug/Widget/SQLRequests.vue"],"names":[],"mappings":";AAsTI;QACI,eAAe;AACnB;AACA;QACI,eAAe;QACf,yBAAyB;AAC7B;AACA;QACI,mBAAmB;AACvB;AACA;QACI,6BAA6B;AACjC;AACA;QACI,6BAA6B;AACjC;AACA;QACI,gBAAgB;QAChB,cAAc;AAClB;AACA;QACI,eAAe;QACf,iBAAiB;QACjB,kCAAkC;AACtC;AACA;QACI,eAAe;AACnB;AACA;QACI,sBAAsB;AAC1B","sourcesContent":["<script setup>\n    /* global copyTextToClipboard */\n    /* global _ */\n    import {computed, reactive, ref, watch} from \"vue\";\n\n    const props = defineProps({\n        initial_request: {\n            type: Object,\n            required: false\n        },\n        ajax_requests: {\n            type: Array,\n            required: false\n        },\n        current_profile: {\n            type: Object,\n            required: false\n        },\n    });\n\n    const is_global_mode = computed(() => {\n        return props.current_profile === undefined && props.ajax_requests !== undefined;\n    });\n\n    function getCombinedSQLData() {\n        const sql_data = {\n            total_requests: 0,\n            total_duration: 0,\n            queries: {}\n        };\n        if (is_global_mode.value) {\n            sql_data.queries[props.initial_request.id] = props.initial_request.sql.queries;\n            props.ajax_requests.forEach((request) => {\n                if (request.profile && request.profile.sql !== undefined) {\n                    sql_data.queries[request.id] = request.profile.sql.queries;\n                }\n            });\n        } else {\n            sql_data.queries[props.current_profile.id] = props.current_profile.sql.queries;\n        }\n        $.each(sql_data.queries, (request_id, data) => {\n            // update the total counters\n            data.forEach((query) => {\n                sql_data.total_requests += 1;\n                sql_data.total_duration += query['time'];\n            });\n        });\n\n        return sql_data;\n    }\n\n    // Longest bound value shown as-is; the copy button always yields the full value.\n    const MAX_PARAM_LENGTH = 512;\n\n    function formatParamValue(value) {\n        if (value === null || value === undefined) {\n            return {type: 'NULL', display: 'NULL'};\n        }\n        if (typeof value === 'boolean') {\n            return {type: 'bool', display: value ? 'true' : 'false'};\n        }\n        if (typeof value === 'number') {\n            return {type: 'number', display: String(value)};\n        }\n        if (typeof value === 'object') {\n            // Should not happen, but never render \"[object Object]\"\n            return {type: 'object', display: JSON.stringify(value)};\n        }\n\n        const full = String(value);\n        // Neutralize control chars so a binary payload cannot wreck the layout\n        // eslint-disable-next-line no-control-regex -- matching control chars is the point here\n        let display = full.replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, '\\uFFFD');\n        let suffix = '';\n        if (display.length > MAX_PARAM_LENGTH) {\n            display = display.substring(0, MAX_PARAM_LENGTH);\n            suffix = ` … (${full.length} chars)`;\n        }\n        return {type: 'string', display: `'${display}'${suffix}`};\n    }\n\n    function buildParamsList(params) {\n        if (params === null || params === undefined) {\n            return [];\n        }\n        // Params are positional, but PHP may serialize them as an object if they have string keys\n        const entries = Array.isArray(params)\n            ? params.map((value, i) => [String(i + 1), value])\n            : Object.entries(params);\n\n        return entries.map(([label, value]) => ({label: label, raw: value, ...formatParamValue(value)}));\n    }\n\n    const sorted_col = ref(is_global_mode.value ? 'request_id' : 'num');\n    const sort_dir = ref('asc');\n    const sorted_queries_data = computed(() => {\n        let sorted = [];\n\n        const sql_data = getCombinedSQLData();\n        $.each(sql_data.queries, (request_id, data) => {\n            data.forEach((query) => {\n                // Profiles recorded before prepared statements (or by plugins) have no raw_query\n                const raw_query = query['raw_query'] !== undefined && query['raw_query'] !== null\n                    ? query['raw_query']\n                    : query['query'];\n                const params_list = buildParamsList(query['params']);\n                sorted.push({\n                    request_id: request_id,\n                    num: query['num'],\n                    time: query['time'],\n                    query: query['query'],\n                    raw_query: raw_query,\n                    params_list: params_list,\n                    has_params: params_list.length > 0,\n                    has_raw_query: raw_query !== query['query'],\n                    rows: query['rows'],\n                    warnings: _.escape(query['warnings']),\n                    errors: _.escape(query['errors']),\n                });\n            });\n        });\n\n        // Filter by current profile id\n        if (!is_global_mode.value) {\n            sorted = sorted.filter((query) => {\n                return query.request_id === props.current_profile.id;\n            });\n        }\n\n        // Sort by column\n        sorted.sort((a, b) => {\n            let a_val = a[sorted_col.value];\n            let b_val = b[sorted_col.value];\n            if (sorted_col.value === 'time') {\n                a_val = parseFloat(a_val);\n                b_val = parseFloat(b_val);\n            }\n            if (a_val === b_val) {\n                return 0;\n            }\n            if (sort_dir.value === 'asc') {\n                return a_val < b_val ? -1 : 1;\n            } else {\n                return a_val > b_val ? -1 : 1;\n            }\n        });\n        return sorted;\n    });\n\n    function setSortedCol(col) {\n        if (sorted_col.value === col) {\n            if (sort_dir.value === 'asc') {\n                sort_dir.value = 'desc';\n            } else {\n                sort_dir.value = 'asc';\n            }\n        } else {\n            sorted_col.value = col;\n            sort_dir.value = 'asc';\n        }\n    }\n    function copyToClipboard(e, text, normalize_whitespace = true) {\n        // Normalize whitespace as spaces and trim\n        copyTextToClipboard(normalize_whitespace ? text.replace(/\\s+/g, ' ').trim() : text);\n\n        // change temporary the button icon to a check then after a while return to the original icon\n        const icon = $(e.currentTarget).find('i');\n        icon.removeClass('ti-clipboard-copy').addClass('ti-check');\n        setTimeout(() => {\n            icon.removeClass('ti-check').addClass('ti-clipboard-copy');\n        }, 1000);\n    }\n\n    function cleanSQLQuery(query) {\n        const newline_keywords = ['UNION', 'FROM', 'WHERE', 'INNER JOIN', 'LEFT JOIN', 'ORDER BY', 'SORT'];\n        const post_newline_keywords = ['UNION'];\n        query = query.replace(/\\n/g, ' ');\n\n        return Promise.resolve(window.GLPI.Monaco.colorizeText(query, 'sql')).then((html) => {\n            // get all 'span' elements with mtk6 class (keywords) and insert the needed line breaks\n            const newline_before_selector = newline_keywords.map((keyword) => `span.mtk6:contains(${CSS.escape(keyword)})`).join(',');\n            const post_newline_selector = post_newline_keywords.map((keyword) => `span.mtk6:contains(${CSS.escape(keyword)})`).join(',');\n            return $($.parseHTML(html)).find(newline_before_selector).before('</br>').end().find(post_newline_selector).after('</br>').end().html();\n        });\n    }\n\n    const colorized_queries = reactive(new Map());\n    const expanded_rows = reactive(new Set());\n\n    function rowKey(query) {\n        return `${query.request_id}-${query.num}`;\n    }\n\n    // Both the interpolated and the prepared query may be colorized, hence the field suffix\n    function codeKey(query, field) {\n        return `${rowKey(query)}-${field}`;\n    }\n\n    function ensureColorized(key, sql) {\n        if (colorized_queries.has(key)) {\n            return;\n        }\n        // Show uncolored query until the colorized version is ready\n        colorized_queries.set(key, _.escape(sql));\n        cleanSQLQuery(sql).then((html) => {\n            colorized_queries.set(key, html);\n        });\n    }\n\n    function isExpanded(query) {\n        return expanded_rows.has(rowKey(query));\n    }\n\n    function toggleParams(query) {\n        const key = rowKey(query);\n        if (expanded_rows.has(key)) {\n            expanded_rows.delete(key);\n            return;\n        }\n        expanded_rows.add(key);\n        // Only colorize the prepared query for rows the user actually opens\n        if (query.has_raw_query) {\n            ensureColorized(codeKey(query, 'raw_query'), query.raw_query);\n        }\n    }\n\n    function copyParams(e, query) {\n        copyToClipboard(e, JSON.stringify(query.params_list.map((param) => param.raw), null, 2), false);\n    }\n\n    watch(() => sorted_queries_data.value, () => {\n        sorted_queries_data.value.forEach((query) => {\n            ensureColorized(codeKey(query, 'query'), query.query);\n        });\n    }, {\n        immediate: true,\n        deep: true\n    });\n</script>\n\n<template>\n    <div class=\"overflow-auto py-2 px-3\">\n        <table id=\"debug-sql-request-table\" class=\"table card-table\">\n            <thead>\n                <tr>\n                    <th v-if=\"is_global_mode\" @click=\"setSortedCol('request_id')\">Request ID</th>\n                    <th @click=\"setSortedCol('num')\">Number</th>\n                    <th @click=\"setSortedCol('query')\">Query</th>\n                    <th @click=\"setSortedCol('time')\">Time</th>\n                    <th @click=\"setSortedCol('rows')\">Rows</th>\n                    <th @click=\"setSortedCol('warnings')\">Warnings</th>\n                    <th @click=\"setSortedCol('errors')\">Errors</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr v-for=\"query in sorted_queries_data\" :key=\"query.request_id + '-' + query.num\">\n                    <td v-if=\"is_global_mode\"><button class=\"btn btn-link request-link\">{{ query.request_id }}</button></td>\n                    <td>{{ query.num }}</td>\n                    <td>\n                        <div class=\"d-flex align-items-start\" style=\"max-width: 50vw;\">\n                            <div style=\"max-width: 50vw; white-space: break-spaces;\" class=\"w-100\">\n                                <code class=\"d-block cm-s-default border-0\" v-html=\"colorized_queries.get(codeKey(query, 'query'))\"></code>\n                            </div>\n                            <button type=\"button\" @click=\"copyToClipboard($event, query.query)\" class=\"ms-1 copy-code btn btn-sm btn-ghost-secondary\" title=\"Copy query to clipboard\">\n                                <i class=\"ti ti-clipboard-copy\" aria-hidden=\"true\"></i>\n                            </button>\n                        </div>\n                        <template v-if=\"query.has_params\">\n                            <button type=\"button\" class=\"toggle-sql-params btn btn-sm btn-ghost-secondary px-1 py-0 mt-1\"\n                                    :aria-expanded=\"isExpanded(query)\" aria-label=\"Toggle prepared statement and parameters\"\n                                    @click=\"toggleParams(query)\">\n                                <i :class=\"isExpanded(query) ? 'ti ti-chevron-down' : 'ti ti-chevron-right'\" aria-hidden=\"true\"></i>\n                                <span class=\"ms-1\">Prepared statement</span>\n                                <span class=\"badge bg-secondary text-secondary-fg ms-1\">{{ query.params_list.length }}</span>\n                            </button>\n                            <div v-if=\"isExpanded(query)\" class=\"sql-params-panel border rounded p-2 mt-1\">\n                                <div v-if=\"query.has_raw_query\" class=\"d-flex align-items-start\">\n                                    <div style=\"white-space: break-spaces;\" class=\"w-100\">\n                                        <code class=\"d-block cm-s-default border-0\" v-html=\"colorized_queries.get(codeKey(query, 'raw_query'))\"></code>\n                                    </div>\n                                    <button type=\"button\" @click=\"copyToClipboard($event, query.raw_query)\" class=\"ms-1 copy-raw-query btn btn-sm btn-ghost-secondary\" title=\"Copy prepared query to clipboard\">\n                                        <i class=\"ti ti-clipboard-copy\" aria-hidden=\"true\"></i>\n                                    </button>\n                                </div>\n                                <div class=\"d-flex align-items-start mt-2\">\n                                    <ul class=\"sql-params-list list-unstyled mb-0 w-100\">\n                                        <li v-for=\"param in query.params_list\" :key=\"param.label\" class=\"d-flex\">\n                                            <span class=\"param-index text-muted me-2\">{{ param.label }}</span>\n                                            <span class=\"param-type text-muted me-2\">{{ param.type }}</span>\n                                            <span class=\"param-value font-monospace\">{{ param.display }}</span>\n                                        </li>\n                                    </ul>\n                                    <button type=\"button\" @click=\"copyParams($event, query)\" class=\"ms-1 copy-params btn btn-sm btn-ghost-secondary\" title=\"Copy parameters to clipboard\">\n                                        <i class=\"ti ti-clipboard-copy\" aria-hidden=\"true\"></i>\n                                    </button>\n                                </div>\n                            </div>\n                        </template>\n                    </td>\n                    <td>{{ query.time.toFixed(1) }}&nbsp;ms</td>\n                    <td>{{ query.rows }}</td>\n                    <td>{{ query.warnings }}</td>\n                    <td>{{ query.errors }}</td>\n                </tr>\n            </tbody>\n        </table>\n    </div>\n</template>\n\n<style scoped>\n    #debug-sql-request-table thead tr th {\n        cursor: pointer;\n    }\n    #debug-sql-request-table tbody tr td:nth-of-type(3) {\n        max-width: 50vw;\n        white-space: break-spaces;\n    }\n    #debug-sql-request-table tbody tr td:nth-of-type(4) {\n        white-space: nowrap;\n    }\n    #debug-sql-request-table::v-deep(span.mtk1) {\n        color: var(--tblr-body-color);\n    }\n    #debug-sql-request-table code {\n        color: var(--tblr-body-color);\n    }\n    #debug-sql-request-table .sql-params-panel {\n        max-height: 40vh;\n        overflow: auto;\n    }\n    #debug-sql-request-table .param-index {\n        min-width: 2rem;\n        text-align: right;\n        font-variant-numeric: tabular-nums;\n    }\n    #debug-sql-request-table .param-type {\n        min-width: 4rem;\n    }\n    #debug-sql-request-table .param-value {\n        word-break: break-word;\n    }\n</style>\n"],"sourceRoot":""}]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ },
+
+/***/ 26
+(module) {
+
+
+
+/*
+  MIT License http://www.opensource.org/licenses/mit-license.php
+  Author Tobias Koppers @sokra
+*/
+module.exports = function (cssWithMappingToString) {
+  var list = [];
+
+  // return the list of modules as css string
+  list.toString = function toString() {
+    return this.map(function (item) {
+      var content = "";
+      var needLayer = typeof item[5] !== "undefined";
+      if (item[4]) {
+        content += "@supports (".concat(item[4], ") {");
+      }
+      if (item[2]) {
+        content += "@media ".concat(item[2], " {");
+      }
+      if (needLayer) {
+        content += "@layer".concat(item[5].length > 0 ? " ".concat(item[5]) : "", " {");
+      }
+      content += cssWithMappingToString(item);
+      if (needLayer) {
+        content += "}";
+      }
+      if (item[2]) {
+        content += "}";
+      }
+      if (item[4]) {
+        content += "}";
+      }
+      return content;
+    }).join("");
+  };
+
+  // import a list of modules into the list
+  list.i = function i(modules, media, dedupe, supports, layer) {
+    if (typeof modules === "string") {
+      modules = [[null, modules, undefined]];
+    }
+    var alreadyImportedModules = {};
+    if (dedupe) {
+      for (var k = 0; k < this.length; k++) {
+        var id = this[k][0];
+        if (id != null) {
+          alreadyImportedModules[id] = true;
+        }
+      }
+    }
+    for (var _k = 0; _k < modules.length; _k++) {
+      var item = [].concat(modules[_k]);
+      if (dedupe && alreadyImportedModules[item[0]]) {
+        continue;
+      }
+      if (typeof layer !== "undefined") {
+        if (typeof item[5] === "undefined") {
+          item[5] = layer;
+        } else {
+          item[1] = "@layer".concat(item[5].length > 0 ? " ".concat(item[5]) : "", " {").concat(item[1], "}");
+          item[5] = layer;
+        }
+      }
+      if (media) {
+        if (!item[2]) {
+          item[2] = media;
+        } else {
+          item[1] = "@media ".concat(item[2], " {").concat(item[1], "}");
+          item[2] = media;
+        }
+      }
+      if (supports) {
+        if (!item[4]) {
+          item[4] = "".concat(supports);
+        } else {
+          item[1] = "@supports (".concat(item[4], ") {").concat(item[1], "}");
+          item[4] = supports;
+        }
+      }
+      list.push(item);
+    }
+  };
+  return list;
+};
+
+/***/ },
+
+/***/ 25
+(module) {
+
+
+
+module.exports = function (item) {
+  var content = item[1];
+  var cssMapping = item[3];
+  if (!cssMapping) {
+    return content;
+  }
+  if (typeof btoa === "function") {
+    var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(cssMapping))));
+    var data = "sourceMappingURL=data:application/json;charset=utf-8;base64,".concat(base64);
+    var sourceMapping = "/*# ".concat(data, " */");
+    return [content].concat([sourceMapping]).join("\n");
+  }
+  return [content].join("\n");
+};
+
+/***/ },
+
+/***/ 102
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(18);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(19);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(20);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(21);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(22);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(23);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(103);
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+
+var options = {};
+
+options.styleTagTransform = (_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default());
+options.setAttributes = (_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default());
+options.insert = _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default().bind(null, "head");
+options.domAPI = (_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default());
+options.insertStyleElement = (_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default());
+
+var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"], options);
+
+
+
+
+       /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"] && _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"].locals ? _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"].locals : undefined);
+
+
+/***/ },
+
+/***/ 18
+(module) {
+
+
+
+var stylesInDOM = [];
+function getIndexByIdentifier(identifier) {
+  var result = -1;
+  for (var i = 0; i < stylesInDOM.length; i++) {
+    if (stylesInDOM[i].identifier === identifier) {
+      result = i;
+      break;
+    }
+  }
+  return result;
+}
+function modulesToDom(list, options) {
+  var idCountMap = {};
+  var identifiers = [];
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    var id = options.base ? item[0] + options.base : item[0];
+    var count = idCountMap[id] || 0;
+    var identifier = "".concat(id, " ").concat(count);
+    idCountMap[id] = count + 1;
+    var indexByIdentifier = getIndexByIdentifier(identifier);
+    var obj = {
+      css: item[1],
+      media: item[2],
+      sourceMap: item[3],
+      supports: item[4],
+      layer: item[5]
+    };
+    if (indexByIdentifier !== -1) {
+      stylesInDOM[indexByIdentifier].references++;
+      stylesInDOM[indexByIdentifier].updater(obj);
+    } else {
+      var updater = addElementStyle(obj, options);
+      options.byIndex = i;
+      stylesInDOM.splice(i, 0, {
+        identifier: identifier,
+        updater: updater,
+        references: 1
+      });
+    }
+    identifiers.push(identifier);
+  }
+  return identifiers;
+}
+function addElementStyle(obj, options) {
+  var api = options.domAPI(options);
+  api.update(obj);
+  var updater = function updater(newObj) {
+    if (newObj) {
+      if (newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap && newObj.supports === obj.supports && newObj.layer === obj.layer) {
+        return;
+      }
+      api.update(obj = newObj);
+    } else {
+      api.remove();
+    }
+  };
+  return updater;
+}
+module.exports = function (list, options) {
+  options = options || {};
+  list = list || [];
+  var lastIdentifiers = modulesToDom(list, options);
+  return function update(newList) {
+    newList = newList || [];
+    for (var i = 0; i < lastIdentifiers.length; i++) {
+      var identifier = lastIdentifiers[i];
+      var index = getIndexByIdentifier(identifier);
+      stylesInDOM[index].references--;
+    }
+    var newLastIdentifiers = modulesToDom(newList, options);
+    for (var _i = 0; _i < lastIdentifiers.length; _i++) {
+      var _identifier = lastIdentifiers[_i];
+      var _index = getIndexByIdentifier(_identifier);
+      if (stylesInDOM[_index].references === 0) {
+        stylesInDOM[_index].updater();
+        stylesInDOM.splice(_index, 1);
+      }
+    }
+    lastIdentifiers = newLastIdentifiers;
+  };
+};
+
+/***/ },
+
+/***/ 20
+(module) {
+
+
+
+var memo = {};
+
+/* istanbul ignore next  */
+function getTarget(target) {
+  if (typeof memo[target] === "undefined") {
+    var styleTarget = document.querySelector(target);
+
+    // Special case to return head of iframe instead of iframe itself
+    if (window.HTMLIFrameElement && styleTarget instanceof window.HTMLIFrameElement) {
+      try {
+        // This will throw an exception if access to iframe is blocked
+        // due to cross-origin restrictions
+        styleTarget = styleTarget.contentDocument.head;
+      } catch (e) {
+        // istanbul ignore next
+        styleTarget = null;
+      }
+    }
+    memo[target] = styleTarget;
+  }
+  return memo[target];
+}
+
+/* istanbul ignore next  */
+function insertBySelector(insert, style) {
+  var target = getTarget(insert);
+  if (!target) {
+    throw new Error("Couldn't find a style target. This probably means that the value for the 'insert' parameter is invalid.");
+  }
+  target.appendChild(style);
+}
+module.exports = insertBySelector;
+
+/***/ },
+
+/***/ 22
+(module) {
+
+
+
+/* istanbul ignore next  */
+function insertStyleElement(options) {
+  var element = document.createElement("style");
+  options.setAttributes(element, options.attributes);
+  options.insert(element, options.options);
+  return element;
+}
+module.exports = insertStyleElement;
+
+/***/ },
+
+/***/ 21
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+/* istanbul ignore next  */
+function setAttributesWithoutAttributes(styleElement) {
+  var nonce =  true ? __webpack_require__.nc : 0;
+  if (nonce) {
+    styleElement.setAttribute("nonce", nonce);
+  }
+}
+module.exports = setAttributesWithoutAttributes;
+
+/***/ },
+
+/***/ 19
+(module) {
+
+
+
+/* istanbul ignore next  */
+function apply(styleElement, options, obj) {
+  var css = "";
+  if (obj.supports) {
+    css += "@supports (".concat(obj.supports, ") {");
+  }
+  if (obj.media) {
+    css += "@media ".concat(obj.media, " {");
+  }
+  var needLayer = typeof obj.layer !== "undefined";
+  if (needLayer) {
+    css += "@layer".concat(obj.layer.length > 0 ? " ".concat(obj.layer) : "", " {");
+  }
+  css += obj.css;
+  if (needLayer) {
+    css += "}";
+  }
+  if (obj.media) {
+    css += "}";
+  }
+  if (obj.supports) {
+    css += "}";
+  }
+  var sourceMap = obj.sourceMap;
+  if (sourceMap && typeof btoa !== "undefined") {
+    css += "\n/*# sourceMappingURL=data:application/json;base64,".concat(btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))), " */");
+  }
+
+  // For old IE
+  /* istanbul ignore if  */
+  options.styleTagTransform(css, styleElement, options.options);
+}
+function removeStyleElement(styleElement) {
+  // istanbul ignore if
+  if (styleElement.parentNode === null) {
+    return false;
+  }
+  styleElement.parentNode.removeChild(styleElement);
+}
+
+/* istanbul ignore next  */
+function domAPI(options) {
+  if (typeof document === "undefined") {
+    return {
+      update: function update() {},
+      remove: function remove() {}
+    };
+  }
+  var styleElement = options.insertStyleElement(options);
+  return {
+    update: function update(obj) {
+      apply(styleElement, options, obj);
+    },
+    remove: function remove() {
+      removeStyleElement(styleElement);
+    }
+  };
+}
+module.exports = domAPI;
+
+/***/ },
+
+/***/ 23
+(module) {
+
+
+
+/* istanbul ignore next  */
+function styleTagTransform(css, styleElement) {
+  if (styleElement.styleSheet) {
+    styleElement.styleSheet.cssText = css;
+  } else {
+    while (styleElement.firstChild) {
+      styleElement.removeChild(styleElement.firstChild);
+    }
+    styleElement.appendChild(document.createTextNode(css));
+  }
+}
+module.exports = styleTagTransform;
+
+/***/ },
+
+/***/ 27
+(__unused_webpack_module, exports) {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+// runtime helper for setting properties on components
+// in a tree-shakable way
+exports["default"] = (sfc, props) => {
+    const target = sfc.__vccOpts || sfc;
+    for (const [key, val] of props) {
+        target[key] = val;
+    }
+    return target;
+};
+
+
+/***/ },
+
+/***/ 96
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _SQLRequests_vue_vue_type_template_id_b1b46442_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(97);
+/* harmony import */ var _SQLRequests_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(99);
+/* harmony import */ var _SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(101);
+/* harmony import */ var _node_modules_vue_loader_dist_exportHelper_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(27);
+
+
+
+
+;
+
+
+const __exports__ = /*#__PURE__*/(0,_node_modules_vue_loader_dist_exportHelper_js__WEBPACK_IMPORTED_MODULE_3__["default"])(_SQLRequests_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"], [['render',_SQLRequests_vue_vue_type_template_id_b1b46442_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render],['__scopeId',"data-v-b1b46442"],['__file',"js/src/vue/Debug/Widget/SQLRequests.vue"]])
+/* hot reload */
+if (false) // removed by dead control flow
+{}
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (__exports__);
+
+/***/ },
+
+/***/ 100
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(9);
+
+
+    const MAX_PARAM_LENGTH = 512;
+
+    
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  __name: 'SQLRequests',
+  props: {
+        initial_request: {
+            type: Object,
+            required: false
+        },
+        ajax_requests: {
+            type: Array,
+            required: false
+        },
+        current_profile: {
+            type: Object,
+            required: false
+        },
+    },
+  setup(__props, { expose: __expose }) {
+  __expose();
+
+    /* global copyTextToClipboard */
+    /* global _ */
+    const props = __props;
+
+    const is_global_mode = (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => {
+        return props.current_profile === undefined && props.ajax_requests !== undefined;
+    });
+
+    function getCombinedSQLData() {
+        const sql_data = {
+            total_requests: 0,
+            total_duration: 0,
+            queries: {}
+        };
+        if (is_global_mode.value) {
+            sql_data.queries[props.initial_request.id] = props.initial_request.sql.queries;
+            props.ajax_requests.forEach((request) => {
+                if (request.profile && request.profile.sql !== undefined) {
+                    sql_data.queries[request.id] = request.profile.sql.queries;
+                }
+            });
+        } else {
+            sql_data.queries[props.current_profile.id] = props.current_profile.sql.queries;
+        }
+        $.each(sql_data.queries, (request_id, data) => {
+            // update the total counters
+            data.forEach((query) => {
+                sql_data.total_requests += 1;
+                sql_data.total_duration += query['time'];
+            });
+        });
+
+        return sql_data;
+    }
+
+    // Longest bound value shown as-is; the copy button always yields the full value.
+    function formatParamValue(value) {
+        if (value === null || value === undefined) {
+            return {type: 'NULL', display: 'NULL'};
+        }
+        if (typeof value === 'boolean') {
+            return {type: 'bool', display: value ? 'true' : 'false'};
+        }
+        if (typeof value === 'number') {
+            return {type: 'number', display: String(value)};
+        }
+        if (typeof value === 'object') {
+            // Should not happen, but never render "[object Object]"
+            return {type: 'object', display: JSON.stringify(value)};
+        }
+
+        const full = String(value);
+        // Neutralize control chars so a binary payload cannot wreck the layout
+        // eslint-disable-next-line no-control-regex -- matching control chars is the point here
+        let display = full.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '\uFFFD');
+        let suffix = '';
+        if (display.length > MAX_PARAM_LENGTH) {
+            display = display.substring(0, MAX_PARAM_LENGTH);
+            suffix = ` … (${full.length} chars)`;
+        }
+        return {type: 'string', display: `'${display}'${suffix}`};
+    }
+
+    function buildParamsList(params) {
+        if (params === null || params === undefined) {
+            return [];
+        }
+        // Params are positional, but PHP may serialize them as an object if they have string keys
+        const entries = Array.isArray(params)
+            ? params.map((value, i) => [String(i + 1), value])
+            : Object.entries(params);
+
+        return entries.map(([label, value]) => ({label: label, raw: value, ...formatParamValue(value)}));
+    }
+
+    const sorted_col = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(is_global_mode.value ? 'request_id' : 'num');
+    const sort_dir = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)('asc');
+    const sorted_queries_data = (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => {
+        let sorted = [];
+
+        const sql_data = getCombinedSQLData();
+        $.each(sql_data.queries, (request_id, data) => {
+            data.forEach((query) => {
+                // Profiles recorded before prepared statements (or by plugins) have no raw_query
+                const raw_query = query['raw_query'] !== undefined && query['raw_query'] !== null
+                    ? query['raw_query']
+                    : query['query'];
+                const params_list = buildParamsList(query['params']);
+                sorted.push({
+                    request_id: request_id,
+                    num: query['num'],
+                    time: query['time'],
+                    query: query['query'],
+                    raw_query: raw_query,
+                    params_list: params_list,
+                    has_params: params_list.length > 0,
+                    has_raw_query: raw_query !== query['query'],
+                    rows: query['rows'],
+                    warnings: _.escape(query['warnings']),
+                    errors: _.escape(query['errors']),
+                });
+            });
+        });
+
+        // Filter by current profile id
+        if (!is_global_mode.value) {
+            sorted = sorted.filter((query) => {
+                return query.request_id === props.current_profile.id;
+            });
+        }
+
+        // Sort by column
+        sorted.sort((a, b) => {
+            let a_val = a[sorted_col.value];
+            let b_val = b[sorted_col.value];
+            if (sorted_col.value === 'time') {
+                a_val = parseFloat(a_val);
+                b_val = parseFloat(b_val);
+            }
+            if (a_val === b_val) {
+                return 0;
+            }
+            if (sort_dir.value === 'asc') {
+                return a_val < b_val ? -1 : 1;
+            } else {
+                return a_val > b_val ? -1 : 1;
+            }
+        });
+        return sorted;
+    });
+
+    function setSortedCol(col) {
+        if (sorted_col.value === col) {
+            if (sort_dir.value === 'asc') {
+                sort_dir.value = 'desc';
+            } else {
+                sort_dir.value = 'asc';
+            }
+        } else {
+            sorted_col.value = col;
+            sort_dir.value = 'asc';
+        }
+    }
+    function copyToClipboard(e, text, normalize_whitespace = true) {
+        // Normalize whitespace as spaces and trim
+        copyTextToClipboard(normalize_whitespace ? text.replace(/\s+/g, ' ').trim() : text);
+
+        // change temporary the button icon to a check then after a while return to the original icon
+        const icon = $(e.currentTarget).find('i');
+        icon.removeClass('ti-clipboard-copy').addClass('ti-check');
+        setTimeout(() => {
+            icon.removeClass('ti-check').addClass('ti-clipboard-copy');
+        }, 1000);
+    }
+
+    function cleanSQLQuery(query) {
+        const newline_keywords = ['UNION', 'FROM', 'WHERE', 'INNER JOIN', 'LEFT JOIN', 'ORDER BY', 'SORT'];
+        const post_newline_keywords = ['UNION'];
+        query = query.replace(/\n/g, ' ');
+
+        return Promise.resolve(window.GLPI.Monaco.colorizeText(query, 'sql')).then((html) => {
+            // get all 'span' elements with mtk6 class (keywords) and insert the needed line breaks
+            const newline_before_selector = newline_keywords.map((keyword) => `span.mtk6:contains(${CSS.escape(keyword)})`).join(',');
+            const post_newline_selector = post_newline_keywords.map((keyword) => `span.mtk6:contains(${CSS.escape(keyword)})`).join(',');
+            return $($.parseHTML(html)).find(newline_before_selector).before('</br>').end().find(post_newline_selector).after('</br>').end().html();
+        });
+    }
+
+    const colorized_queries = (0,vue__WEBPACK_IMPORTED_MODULE_0__.reactive)(new Map());
+    const expanded_rows = (0,vue__WEBPACK_IMPORTED_MODULE_0__.reactive)(new Set());
+
+    function rowKey(query) {
+        return `${query.request_id}-${query.num}`;
+    }
+
+    // Both the interpolated and the prepared query may be colorized, hence the field suffix
+    function codeKey(query, field) {
+        return `${rowKey(query)}-${field}`;
+    }
+
+    function ensureColorized(key, sql) {
+        if (colorized_queries.has(key)) {
+            return;
+        }
+        // Show uncolored query until the colorized version is ready
+        colorized_queries.set(key, _.escape(sql));
+        cleanSQLQuery(sql).then((html) => {
+            colorized_queries.set(key, html);
+        });
+    }
+
+    function isExpanded(query) {
+        return expanded_rows.has(rowKey(query));
+    }
+
+    function toggleParams(query) {
+        const key = rowKey(query);
+        if (expanded_rows.has(key)) {
+            expanded_rows.delete(key);
+            return;
+        }
+        expanded_rows.add(key);
+        // Only colorize the prepared query for rows the user actually opens
+        if (query.has_raw_query) {
+            ensureColorized(codeKey(query, 'raw_query'), query.raw_query);
+        }
+    }
+
+    function copyParams(e, query) {
+        copyToClipboard(e, JSON.stringify(query.params_list.map((param) => param.raw), null, 2), false);
+    }
+
+    ;(0,vue__WEBPACK_IMPORTED_MODULE_0__.watch)(() => sorted_queries_data.value, () => {
+        sorted_queries_data.value.forEach((query) => {
+            ensureColorized(codeKey(query, 'query'), query.query);
+        });
+    }, {
+        immediate: true,
+        deep: true
+    });
+
+const __returned__ = { props, is_global_mode, getCombinedSQLData, MAX_PARAM_LENGTH, formatParamValue, buildParamsList, sorted_col, sort_dir, sorted_queries_data, setSortedCol, copyToClipboard, cleanSQLQuery, colorized_queries, expanded_rows, rowKey, codeKey, ensureColorized, isExpanded, toggleParams, copyParams, computed: vue__WEBPACK_IMPORTED_MODULE_0__.computed, reactive: vue__WEBPACK_IMPORTED_MODULE_0__.reactive, ref: vue__WEBPACK_IMPORTED_MODULE_0__.ref, watch: vue__WEBPACK_IMPORTED_MODULE_0__.watch }
+Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+return __returned__
+}
+
+});
+
+/***/ },
+
+/***/ 101
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_style_loader_dist_cjs_js_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_dist_stylePostLoader_js_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_style_index_0_id_b1b46442_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(102);
+
+
+/***/ },
+
+/***/ 99
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* reexport safe */ _node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"])
+/* harmony export */ });
+/* harmony import */ var _node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(100);
+ 
+
+/***/ },
+
+/***/ 97
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_1_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_template_id_b1b46442_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render)
+/* harmony export */ });
+/* harmony import */ var _node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_1_node_modules_vue_loader_dist_index_js_ruleSet_1_rules_4_use_0_SQLRequests_vue_vue_type_template_id_b1b46442_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(98);
+
+
+/***/ },
+
+/***/ 98
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render)
+/* harmony export */ });
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(9);
+
+
+const _hoisted_1 = { class: "overflow-auto py-2 px-3" }
+const _hoisted_2 = {
+  id: "debug-sql-request-table",
+  class: "table card-table"
+}
+const _hoisted_3 = { key: 0 }
+const _hoisted_4 = { class: "btn btn-link request-link" }
+const _hoisted_5 = {
+  class: "d-flex align-items-start",
+  style: {"max-width":"50vw"}
+}
+const _hoisted_6 = {
+  style: {"max-width":"50vw","white-space":"break-spaces"},
+  class: "w-100"
+}
+const _hoisted_7 = ["innerHTML"]
+const _hoisted_8 = ["onClick"]
+const _hoisted_9 = ["aria-expanded", "onClick"]
+const _hoisted_10 = { class: "badge bg-secondary text-secondary-fg ms-1" }
+const _hoisted_11 = {
+  key: 0,
+  class: "sql-params-panel border rounded p-2 mt-1"
+}
+const _hoisted_12 = {
+  key: 0,
+  class: "d-flex align-items-start"
+}
+const _hoisted_13 = {
+  style: {"white-space":"break-spaces"},
+  class: "w-100"
+}
+const _hoisted_14 = ["innerHTML"]
+const _hoisted_15 = ["onClick"]
+const _hoisted_16 = { class: "d-flex align-items-start mt-2" }
+const _hoisted_17 = { class: "sql-params-list list-unstyled mb-0 w-100" }
+const _hoisted_18 = { class: "param-index text-muted me-2" }
+const _hoisted_19 = { class: "param-type text-muted me-2" }
+const _hoisted_20 = { class: "param-value font-monospace" }
+const _hoisted_21 = ["onClick"]
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", _hoisted_1, [
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("table", _hoisted_2, [
+      (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("thead", null, [
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("tr", null, [
+          ($setup.is_global_mode)
+            ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("th", {
+                key: 0,
+                onClick: _cache[0] || (_cache[0] = $event => ($setup.setSortedCol('request_id')))
+              }, "Request ID"))
+            : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[1] || (_cache[1] = $event => ($setup.setSortedCol('num')))
+          }, "Number"),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[2] || (_cache[2] = $event => ($setup.setSortedCol('query')))
+          }, "Query"),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[3] || (_cache[3] = $event => ($setup.setSortedCol('time')))
+          }, "Time"),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[4] || (_cache[4] = $event => ($setup.setSortedCol('rows')))
+          }, "Rows"),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[5] || (_cache[5] = $event => ($setup.setSortedCol('warnings')))
+          }, "Warnings"),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("th", {
+            onClick: _cache[6] || (_cache[6] = $event => ($setup.setSortedCol('errors')))
+          }, "Errors")
+        ])
+      ]),
+      (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("tbody", null, [
+        ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(true), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderList)($setup.sorted_queries_data, (query) => {
+          return ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("tr", {
+            key: query.request_id + '-' + query.num
+          }, [
+            ($setup.is_global_mode)
+              ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("td", _hoisted_3, [
+                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", _hoisted_4, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.request_id), 1 /* TEXT */)
+                ]))
+              : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.num), 1 /* TEXT */),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, [
+              (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_5, [
+                (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_6, [
+                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("code", {
+                    class: "d-block cm-s-default border-0",
+                    innerHTML: $setup.colorized_queries.get($setup.codeKey(query, 'query'))
+                  }, null, 8 /* PROPS */, _hoisted_7)
+                ]),
+                (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+                  type: "button",
+                  onClick: $event => ($setup.copyToClipboard($event, query.query)),
+                  class: "ms-1 copy-code btn btn-sm btn-ghost-secondary",
+                  title: "Copy query to clipboard"
+                }, [...(_cache[7] || (_cache[7] = [
+                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("i", {
+                    class: "ti ti-clipboard-copy",
+                    "aria-hidden": "true"
+                  }, null, -1 /* CACHED */)
+                ]))], 8 /* PROPS */, _hoisted_8)
+              ]),
+              (query.has_params)
+                ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, { key: 0 }, [
+                    (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+                      type: "button",
+                      class: "toggle-sql-params btn btn-sm btn-ghost-secondary px-1 py-0 mt-1",
+                      "aria-expanded": $setup.isExpanded(query),
+                      "aria-label": "Toggle prepared statement and parameters",
+                      onClick: $event => ($setup.toggleParams(query))
+                    }, [
+                      (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("i", {
+                        class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)($setup.isExpanded(query) ? 'ti ti-chevron-down' : 'ti ti-chevron-right'),
+                        "aria-hidden": "true"
+                      }, null, 2 /* CLASS */),
+                      _cache[8] || (_cache[8] = (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("span", { class: "ms-1" }, "Prepared statement", -1 /* CACHED */)),
+                      (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("span", _hoisted_10, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.params_list.length), 1 /* TEXT */)
+                    ], 8 /* PROPS */, _hoisted_9),
+                    ($setup.isExpanded(query))
+                      ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", _hoisted_11, [
+                          (query.has_raw_query)
+                            ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", _hoisted_12, [
+                                (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_13, [
+                                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("code", {
+                                    class: "d-block cm-s-default border-0",
+                                    innerHTML: $setup.colorized_queries.get($setup.codeKey(query, 'raw_query'))
+                                  }, null, 8 /* PROPS */, _hoisted_14)
+                                ]),
+                                (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+                                  type: "button",
+                                  onClick: $event => ($setup.copyToClipboard($event, query.raw_query)),
+                                  class: "ms-1 copy-raw-query btn btn-sm btn-ghost-secondary",
+                                  title: "Copy prepared query to clipboard"
+                                }, [...(_cache[9] || (_cache[9] = [
+                                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("i", {
+                                    class: "ti ti-clipboard-copy",
+                                    "aria-hidden": "true"
+                                  }, null, -1 /* CACHED */)
+                                ]))], 8 /* PROPS */, _hoisted_15)
+                              ]))
+                            : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true),
+                          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_16, [
+                            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("ul", _hoisted_17, [
+                              ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(true), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderList)(query.params_list, (param) => {
+                                return ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("li", {
+                                  key: param.label,
+                                  class: "d-flex"
+                                }, [
+                                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("span", _hoisted_18, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(param.label), 1 /* TEXT */),
+                                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("span", _hoisted_19, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(param.type), 1 /* TEXT */),
+                                  (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("span", _hoisted_20, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(param.display), 1 /* TEXT */)
+                                ]))
+                              }), 128 /* KEYED_FRAGMENT */))
+                            ]),
+                            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+                              type: "button",
+                              onClick: $event => ($setup.copyParams($event, query)),
+                              class: "ms-1 copy-params btn btn-sm btn-ghost-secondary",
+                              title: "Copy parameters to clipboard"
+                            }, [...(_cache[10] || (_cache[10] = [
+                              (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("i", {
+                                class: "ti ti-clipboard-copy",
+                                "aria-hidden": "true"
+                              }, null, -1 /* CACHED */)
+                            ]))], 8 /* PROPS */, _hoisted_21)
+                          ])
+                        ]))
+                      : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true)
+                  ], 64 /* STABLE_FRAGMENT */))
+                : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true)
+            ]),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.time.toFixed(1)) + " ms", 1 /* TEXT */),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.rows), 1 /* TEXT */),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.warnings), 1 /* TEXT */),
+            (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("td", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(query.errors), 1 /* TEXT */)
+          ]))
+        }), 128 /* KEYED_FRAGMENT */))
+      ])
+    ])
+  ]))
+}
+
+/***/ }
+
+}]);
+//# sourceMappingURL=Debug-Widget-SQLRequests-vue-1868c2c05712d572df03.js.map

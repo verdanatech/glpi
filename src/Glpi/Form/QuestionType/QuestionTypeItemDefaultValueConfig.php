@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+namespace Glpi\Form\QuestionType;
+
+use Glpi\DBAL\JsonFieldInterface;
+use Override;
+
+final class QuestionTypeItemDefaultValueConfig implements JsonFieldInterface
+{
+    // Unique reference to hardcoded name used for serialization
+    public const KEY_ITEMS_IDS = "items_ids";
+
+    /**
+     * @param array<int|string>|null $items_ids Must accept a string because the foreign key handler
+     *                              replaces the ID with the item name during serialization.
+     */
+    public function __construct(
+        private ?array $items_ids = null
+    ) {}
+
+    #[Override]
+    public static function jsonDeserialize(array $data): self
+    {
+        $items_ids = $data[self::KEY_ITEMS_IDS] ?? null;
+        if ($items_ids !== null && !is_array($items_ids)) {
+            $items_ids = [$items_ids];
+        }
+
+        return new self(items_ids: $items_ids);
+    }
+
+    #[Override]
+    public function jsonSerialize(): array
+    {
+        return [
+            self::KEY_ITEMS_IDS => $this->items_ids,
+        ];
+    }
+
+    /** @return array<int|string>|null */
+    public function getItemsIds(): ?array
+    {
+        return $this->items_ids;
+    }
+}

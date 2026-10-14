@@ -1,0 +1,84 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+namespace Glpi\ContentTemplates\Parameters;
+
+use CommonDBTM;
+use Glpi\ContentTemplates\Parameters\ParametersTypes\ObjectParameter;
+use Group;
+use OLA;
+
+/**
+ * Parameters for "OLA" items.
+ *
+ * @since 10.0.0
+ */
+class OLAParameters extends LevelAgreementParameters
+{
+    public function getAvailableParameters(): array
+    {
+        $parameters = parent::getAvailableParameters();
+        $parameters[] = new ObjectParameter(new GroupParameters());
+        return $parameters;
+    }
+
+    protected function defineValues(CommonDBTM $la): array
+    {
+        $values = parent::defineValues($la);
+
+        if ($group = Group::getById($la->fields['groups_id'])) {
+            $values['group'] = (new GroupParameters())->getValues($group);
+        } else {
+            $values['group'] = null;
+        }
+
+        return $values;
+    }
+
+    public static function getDefaultNodeName(): string
+    {
+        return 'ola';
+    }
+
+    public static function getObjectLabel(): string
+    {
+        return OLA::getTypeName(1);
+    }
+
+    protected function getTargetClasses(): array
+    {
+        return [OLA::class];
+    }
+}
