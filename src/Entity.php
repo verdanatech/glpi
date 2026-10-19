@@ -3246,69 +3246,178 @@ class Entity extends CommonTreeDropdown implements
      * @return array
      */
     public static function getEntitySelectorTree($rand = 0): array
-    {
-        $twig = TemplateRenderer::getInstance();
+{
+    $profiler = Profiler::getInstance();
+    $profiler->start('Generate entity tree');
 
-        $ancestors = getAncestorsOf('glpi_entities', $_SESSION['glpiactive_entity']);
+    $twig = TemplateRenderer::getInstance();
 
-        Profiler::getInstance()->start('Generate entity tree');
-        $entitiestree = [];
-        foreach ($_SESSION['glpiactiveprofile']['entities'] as $default_entity) {
-            $default_entity_id = $default_entity['id'];
-            $entitytree = $default_entity['is_recursive'] ? self::getEntityTree($default_entity_id) : [$default_entity['id'] => $default_entity];
+    $active_entity = (int) $_SESSION['glpiactive_entity'];
 
-            $adapt_tree = static function (&$entities) use (&$adapt_tree, $twig, $rand) {
-                foreach ($entities as $entities_id => &$entity) {
-                    $entity['key']   = $entities_id;
+    // Entidades ancestrais da entidade atualmente selecionada.
+    $ancestors = getAncestorsOf(
+        'glpi_entities',
+        $active_entity
+    );
 
-                    if (isset($entity['tree']) && count($entity['tree']) > 0) {
-                        $entity['folder'] = true;
-                        $is_recursive = true;
+    $entities_tree = [];
 
-                        $children = $adapt_tree($entity['tree']);
-                        $entity['children'] = array_values($children);
-                    } else {
-                        $is_recursive = false;
-                    }
+    /**
+     * Faz toda a adaptação em uma única passagem:
+     *
+     * - converte tree => children;
+     * - remove tree;
+     * - cria key;
+     * - renderiza title;
+     * - marca expanded;
+     * - marca selected;
+     * - remove campos desnecessários.
+     */
+    $adapt_tree = static function (array &$entities) use (
+        &$adapt_tree,
+        $twig,
+        $rand,
+        $active_entity,
+        $ancestors
+    ): void {
+        foreach ($entities as $entity_id => &$entity) {
+            $entity_id = (int) $entity_id;
 
-                    $title = $twig->render('layout/parts/profile_selector_form.html.twig', [
-                        'id' => $entities_id,
-                        'name' => $entity['name'],
-                        'is_recursive' => $is_recursive,
-                        'rand' => $rand,
-                    ]);
-                    $title = preg_replace('/\s+/', ' ', $title); // compact spaces to reduce output size
-                    $entity['title'] = $title;
-                }
+            $name = (string) ($entity['name'] ?? '');
 
-                unset($entity);
+            /*
+             * IMPORTANTE:
+             * determinar antes de remover tree.
+             */
+            $has_children = !empty($entity['tree']);
 
-                return $entities;
-            };
-            $adapt_tree($entitytree);
+            /*
+             * Processa filhos.
+             */
+            if ($has_children) {
+                $adapt_tree($entity['tree']);
 
-            $entitiestree = array_merge($entitiestree, $entitytree);
-        }
-        Profiler::getInstance()->stop('Generate entity tree');
+                /*
+                 * Fancytree espera uma lista JSON para children.
+                 */
+                $entity['children'] = array_values(
+                    $entity['tree']
+                );
 
-        /* scans the tree to select the active entity */
-        $select_tree = static function (&$entities) use (&$select_tree, $ancestors) {
-            foreach ($entities as &$entity) {
-                if (isset($ancestors[$entity['key']])) {
-                    $entity['expanded'] = 'true';
-                }
-                if ($entity['key'] == $_SESSION['glpiactive_entity']) {
-                    $entity['selected'] = 'true';
-                }
-                if (isset($entity['children'])) {
-                    $select_tree($entity['children']);
-                }
+                $entity['folder'] = true;
             }
-        };
-        $select_tree($entitiestree);
 
-        return $entitiestree;
+            /*
+             * FUNDAMENTAL:
+             *
+             * Não manter tree junto de children.
+             * Isso elimina a duplicação recursiva da estrutura.
+             */
+            unset($entity['tree']);
+
+            /*
+             * ID utilizado pelo componente de árvore.
+             */
+            $entity['key'] = $entity_id;
+
+            /*
+             * Mantemos o Twig para compatibilidade com
+             * profile_selector_form.html.twig do GLPI 11.
+             */
+            $title = $twig->render(
+                'layout/parts/profile_selector_form.html.twig',
+                [
+                    'id'           => $entity_id,
+                    'name'         => $name,
+                    'is_recursive' => $has_children,
+                    'rand'         => $rand,
+                ]
+            );
+
+            /*
+             * Compactação do HTML.
+             */
+            $entity['title'] = trim(
+                preg_replace('/\s+/', ' ', $title)
+            );
+
+            /*
+             * Já fazemos expanded e selected aqui.
+             *
+             * Isso elimina a segunda varredura completa
+             * existente no método original.
+             */
+            if (isset($ancestors[$entity_id])) {
+                $entity['expanded'] = true;
+            }
+
+            if ($entity_id === $active_entity) {
+                $entity['selected'] = true;
+            }
+
+            /*
+             * Esses dados não são mais necessários no JSON.
+             *
+             * Quanto menos atributos por nó,
+             * menor será a resposta HTTP.
+             */
+            unset(
+                $entity['id'],
+                $entity['name'],
+                $entity['entities_id'],
+                $entity['is_recursive']
+            );
+        }
+
+        unset($entity);
+    };
+
+    /*
+     * Evita processar exatamente a mesma raiz duas vezes.
+     */
+    $processed_roots = [];
+
+    foreach ($_SESSION['glpiactiveprofile']['entities'] as $default_entity) {
+        $default_entity_id = (int) $default_entity['id'];
+
+        if (isset($processed_roots[$default_entity_id])) {
+            continue;
+        }
+
+        $processed_roots[$default_entity_id] = true;
+
+        if (!empty($default_entity['is_recursive'])) {
+            $entity_tree = self::getEntityTree(
+                $default_entity_id
+            );
+        } else {
+            $entity_tree = [
+                $default_entity_id => $default_entity,
+            ];
+        }
+
+        /*
+         * Adaptação in-place.
+         */
+        $adapt_tree($entity_tree);
+
+        /*
+         * getEntityTree() retorna uma raiz.
+         *
+         * Evitamos array_merge(), que cria outro array
+         * e aumenta consumo de memória.
+         */
+        foreach ($entity_tree as $entity) {
+            $entities_tree[] = $entity;
+        }
+
+        unset($entity_tree);
     }
+
+    $profiler->stop('Generate entity tree');
+
+    return $entities_tree;
+}
 
     public function showHelpdeskHomeConfig(): bool
     {
