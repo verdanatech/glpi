@@ -75,6 +75,7 @@ class QuestionTypeItemDropdown extends QuestionTypeItem
                 'categories_filter' => $this->getCategoriesFilter($question),
                 'root_items_id'     => $this->getRootItemsId($question),
                 'subtree_depth'     => $this->getSubtreeDepth($question),
+                'selectable_tree_root'  => $this->isSelectableTreeRoot($question),
             ]
         );
     }
