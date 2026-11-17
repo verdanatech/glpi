@@ -1,0 +1,82 @@
+{
+    "name": "tecnickcom/tcpdf",
+    "type": "library",
+    "description": "Deprecated legacy PDF engine for PHP. Use instead tecnickcom/tc-lib-pdf.",
+    "keywords": [
+        "PDF",
+        "tcpdf",
+        "PDFD32000-2008",
+        "qrcode",
+        "datamatrix",
+        "pdf417",
+        "barcodes"
+    ],
+    "homepage": "https://tcpdf.org",
+    "license": "LGPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "Nicola Asuni",
+            "email": "info@tecnick.com",
+            "role": "lead"
+        }
+    ],
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/tecnickcom"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "tecnickcom/tc-lib-pdf": "^8"
+    },
+    "require-dev": {
+        "pdepend/pdepend": "^2.16",
+        "phpunit/phpunit": "^11.5 || ^12.5 || ^13.3"
+    },
+    "suggest": {
+        "tecnickcom/tc-lib-pdf": "Modern replacement for TCPDF for new projects.",
+        "ext-gd": "Enables additional image handling in some workflows.",
+        "ext-imagick": "Enables additional image format support when available.",
+        "ext-zlib": "Recommended for compressed streams and related features."
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "classmap": [
+            "config",
+            "tcpdf.php"
+        ]
+    },
+    "archive": {
+        "exclude": [
+            "/.github",
+            "/.phpdoc",
+            "/examples",
+            "/scripts",
+            "/tests"
+        ]
+    },
+    "support": {
+        "issues": "https://github.com/tecnickcom/TCPDF/issues",
+        "source": "https://github.com/tecnickcom/TCPDF"
+    },
+    "scripts": {
+        "test": "@php -d xdebug.mode=coverage vendor/bin/phpunit --stderr test",
+        "analyse": ["@analyse:src", "@analyse:test"],
+        "analyse:src": "vendor/bin/mago --config mago.src.toml analyze scripts",
+        "analyse:test": "vendor/bin/mago --config mago.test.toml analyze test",
+        "cs-check": ["@cs-check:src", "@cs-check:test"],
+        "cs-check:src": "vendor/bin/mago --config mago.src.toml lint scripts",
+        "cs-check:test": "vendor/bin/mago --config mago.test.toml lint test",
+        "cs-fix": "vendor/bin/mago fmt scripts test examples",
+        "qa": ["@cs-check", "@analyse", "@test"],
+        "post-install-cmd": [
+            "[ -d vendor/tecnickcom/tc-lib-pdf-font ] && make -C vendor/tecnickcom/tc-lib-pdf-font deps fonts"
+        ],
+        "post-update-cmd": [
+            "[ -d vendor/tecnickcom/tc-lib-pdf-font ] && make -C vendor/tecnickcom/tc-lib-pdf-font deps fonts"
+        ]
+    }
+}

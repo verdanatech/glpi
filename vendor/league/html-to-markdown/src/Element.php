@@ -1,0 +1,300 @@
+<?php
+
+declare(strict_types=1);
+
+namespace League\HTMLToMarkdown;
+
+class Element implements ElementInterface
+{
+    /** @var \DOMNode */
+    protected $node;
+
+    /** @var ElementInterface|null */
+    private $nextCached;
+
+    /** @var \DOMNode|null */
+    private $previousSiblingCached;
+
+    /** @var SiblingPositionCache|null */
+    private $siblingPositions;
+
+    public function __construct(\DOMNode $node)
+    {
+        $this->node = $node;
+
+        $this->previousSiblingCached = $this->node->previousSibling;
+    }
+
+    public function isBlock(): bool
+    {
+        switch ($this->getTagName()) {
+            case 'blockquote':
+            case 'body':
+            case 'div':
+            case 'h1':
+            case 'h2':
+            case 'h3':
+            case 'h4':
+            case 'h5':
+            case 'h6':
+            case 'hr':
+            case 'html':
+            case 'li':
+            case 'p':
+            case 'ol':
+            case 'ul':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public function isText(): bool
+    {
+        return $this->getTagName() === '#text';
+    }
+
+    public function isWhitespace(): bool
+    {
+        return $this->getTagName() === '#text' && \trim($this->getValue()) === '';
+    }
+
+    public function getTagName(): string
+    {
+        return $this->node->nodeName;
+    }
+
+    public function getValue(): string
+    {
+        return $this->node->nodeValue ?? '';
+    }
+
+    public function hasParent(): bool
+    {
+        return $this->node->parentNode !== null;
+    }
+
+    public function getParent(): ?ElementInterface
+    {
+        return $this->node->parentNode ? new self($this->node->parentNode) : null;
+    }
+
+    public function getNextSibling(): ?ElementInterface
+    {
+        return $this->node->nextSibling !== null ? new self($this->node->nextSibling) : null;
+    }
+
+    public function getPreviousSibling(): ?ElementInterface
+    {
+        return $this->previousSiblingCached !== null ? new self($this->previousSiblingCached) : null;
+    }
+
+    /**
+     * @internal
+     *
+     * @return iterable<string> The current value of each earlier sibling, nearest first
+     */
+    public function getPrecedingSiblingValues(): iterable
+    {
+        for ($sibling = $this->node->previousSibling; $sibling !== null; $sibling = $sibling->previousSibling) {
+            // Anything else was never converted, such as the declarations before the root element
+            if ($sibling->nodeType === XML_TEXT_NODE) {
+                yield $sibling->textContent;
+            }
+        }
+    }
+
+    /**
+     * @internal
+     */
+    public function hasAttributes(): bool
+    {
+        return $this->node->hasAttributes();
+    }
+
+    public function hasChildren(): bool
+    {
+        return $this->node->hasChildNodes();
+    }
+
+    /**
+     * @return ElementInterface[]
+     */
+    public function getChildren(): array
+    {
+        $ret              = [];
+        $siblingPositions = new SiblingPositionCache();
+        foreach ($this->node->childNodes as $node) {
+            // PHPStan 1.x, which is what PHP 7.2 resolves to, has no generic type for
+            // DOMNodeList and infers mixed here.
+            /** @psalm-suppress RedundantCondition */
+            \assert($node instanceof \DOMNode);
+            $child                   = new self($node);
+            $child->siblingPositions = $siblingPositions;
+            $ret[]                   = $child;
+        }
+
+        return $ret;
+    }
+
+    public function getNext(): ?ElementInterface
+    {
+        if ($this->nextCached === null) {
+            $nextNode = $this->getNextNode($this->node);
+            if ($nextNode !== null) {
+                $this->nextCached = new self($nextNode);
+            }
+        }
+
+        return $this->nextCached;
+    }
+
+    private function getNextNode(\DOMNode $node, bool $checkChildren = true): ?\DOMNode
+    {
+        if ($checkChildren && $node->firstChild) {
+            return $node->firstChild;
+        }
+
+        if ($node->nextSibling) {
+            return $node->nextSibling;
+        }
+
+        if ($node->parentNode) {
+            return $this->getNextNode($node->parentNode, false);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param string[]|string $tagNames
+     */
+    public function isDescendantOf($tagNames): bool
+    {
+        if (! \is_array($tagNames)) {
+            $tagNames = [$tagNames];
+        }
+
+        for ($p = $this->node->parentNode; $p !== null; $p = $p->parentNode) {
+            if (\in_array($p->nodeName, $tagNames, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function setFinalMarkdown(string $markdown): void
+    {
+        if ($this->node->ownerDocument === null) {
+            throw new \RuntimeException('Unowned node');
+        }
+
+        if ($this->node->parentNode === null) {
+            throw new \RuntimeException('Cannot setFinalMarkdown() on a node without a parent');
+        }
+
+        $markdownNode = $this->node->ownerDocument->createTextNode($markdown);
+        $this->node->parentNode->insertBefore($markdownNode, $this->node);
+
+        // Replacing or removing a child directly takes time proportional to how many siblings come before it,
+        // on older versions of PHP, whereas the only child of a fragment is found straight away
+        $fragment = $this->node->ownerDocument->createDocumentFragment();
+        $fragment->appendChild($this->node);
+        $fragment->removeChild($this->node);
+    }
+
+    public function getChildrenAsString(): string
+    {
+        if (! $this->node instanceof \DOMElement) {
+            return $this->node->C14N();
+        }
+
+        // Canonicalizing anything less than a whole document takes time proportional to the size of the document
+        // for each node output, so the element is put in a document of its own
+        $document = new \DOMDocument();
+        $document->appendChild($document->importNode($this->node, true));
+
+        return $document->C14N();
+    }
+
+    public function getSiblingPosition(): int
+    {
+        if ($this->node->parentNode === null) {
+            return 0;
+        }
+
+        if ($this->siblingPositions === null) {
+            $this->siblingPositions = new SiblingPositionCache();
+        }
+
+        // Siblings are converted in order, so only those since the last one asked about need counting
+        $cache    = $this->siblingPositions;
+        $own      = self::isWhitespaceNode($this->node) ? 0 : 1;
+        $position = $own;
+        $previous = $this->node->previousSibling;
+
+        // Anything other than text is yet to be replaced by its Markdown, which could change whether it counts
+        $isSettled = true;
+        for ($sibling = $previous; $sibling !== null; $sibling = $sibling->previousSibling) {
+            if ($sibling === $cache->anchor) {
+                $position += $cache->position;
+                break;
+            }
+
+            if ($sibling->nodeType !== XML_TEXT_NODE) {
+                $isSettled = false;
+            }
+
+            if (! self::isWhitespaceNode($sibling)) {
+                $position++;
+            }
+        }
+
+        if ($isSettled && $previous !== null) {
+            $cache->anchor   = $previous;
+            $cache->position = $position - $own;
+        }
+
+        return $position;
+    }
+
+    private static function isWhitespaceNode(\DOMNode $node): bool
+    {
+        return $node->nodeName === '#text' && \trim($node->nodeValue ?? '') === '';
+    }
+
+    public function getListItemLevel(): int
+    {
+        $level  = 0;
+        $parent = $this->getParent();
+
+        while ($parent !== null && $parent->hasParent()) {
+            if ($parent->getTagName() === 'li') {
+                $level++;
+            }
+
+            $parent = $parent->getParent();
+        }
+
+        return $level;
+    }
+
+    public function getAttribute(string $name): string
+    {
+        if ($this->node instanceof \DOMElement) {
+            return $this->node->getAttribute($name);
+        }
+
+        return '';
+    }
+
+    public function equals(ElementInterface $element): bool
+    {
+        if ($element instanceof self) {
+            return $element->node === $this->node;
+        }
+
+        return false;
+    }
+}

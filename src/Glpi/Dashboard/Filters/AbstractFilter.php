@@ -1,0 +1,336 @@
+<?php
+
+/**
+ * ---------------------------------------------------------------------
+ *
+ * GLPI - Gestionnaire Libre de Parc Informatique
+ *
+ * http://glpi-project.org
+ *
+ * @copyright 2015-2026 Teclib' and contributors.
+ * @copyright 2003-2014 by the INDEPNET Development Team.
+ * @licence   https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * ---------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of GLPI.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------------------------------------------------------------------
+ */
+
+namespace Glpi\Dashboard\Filters;
+
+use Html;
+use Search;
+
+use function Safe\strtotime;
+
+abstract class AbstractFilter
+{
+    /**
+     * Get the filter name
+     *
+     * @return string
+     */
+    abstract public static function getName(): string;
+
+    /**
+     * Get the html for the filter
+     *
+     * @param mixed $value
+     *
+     * @return string
+     */
+    abstract public static function getHtml($value): string;
+
+    /**
+    * Get the filter id
+    *
+    * @return string
+    */
+    abstract public static function getId(): string;
+
+    /**
+     * Can the filter be applied to the given table?
+     *
+     * @param string $table
+     *
+     * @return bool
+     */
+    abstract public static function canBeApplied(string $table): bool;
+
+    /**
+     * Get the filter criteria
+     *
+     * @param string $table
+     * @param mixed  $value
+     *
+     * @return array
+     */
+    abstract public static function getCriteria(string $table, $value): array;
+
+    /**
+     * Get the search filter criteria
+     *
+     * example :
+     * [
+     * 'link'       => 'AND',
+     * 'field'      => self::getSearchOptionID($table, 'itilcategories_id', 'glpi_itilcategories'), // itilcategory
+     * 'searchtype' => 'under',
+     * 'value'      => (int) $apply_filters[ItilCategoryFilter::getId()]
+     * ]
+     *
+     * @param string $table
+     * @param mixed  $value
+     *
+     * @return array
+     */
+    abstract public static function getSearchCriteria(string $table, $value): array;
+
+    protected static function getSearchOptionID(string $table, string $name, string $tableToSearch): int
+    {
+        $data = Search::getOptions(getItemTypeForTable($table), true);
+        $sort = [];
+        foreach ($data as $ref => $opt) {
+            if (isset($opt['field'])) {
+                $sort[$ref] = $opt['linkfield'] . "-" . $opt['table'];
+            }
+        }
+        return array_search($name . "-" . $tableToSearch, $sort);
+    }
+
+    /**
+     * Build a SQL alias unique to this filter, for use in a JOIN this filter
+     * adds to a query. Several filters can be active on the same query at
+     * once (e.g. two different group filters); a hardcoded/shared alias
+     * would make their JOIN/WHERE keys collide, and Provider::getFiltersCriteria()
+     * would silently drop one filter's conditions when merging them.
+     *
+     * @param string $prefix short prefix describing what's joined (e.g. 'gl' for a group link table)
+     *
+     * @return string e.g. "gl_group_tech" for GroupTechFilter with prefix 'gl'
+     */
+    protected static function uniqueAlias(string $prefix): string
+    {
+        return $prefix . '_' . static::getId();
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected static function normalizeIntValues(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        $ids = [];
+        foreach ($values as $v) {
+            if ((int) $v > 0) {
+                $ids[] = (int) $v;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Get generic HTML for a filter
+     *
+     * @param string $id system name of the filter (ex "dates")
+     * @param string $field html of the filter
+     * @param string $label displayed label for the filter
+     * @param bool   $filled
+     *
+     * @return string the html for the complete field
+     */
+    final protected static function field(
+        string $id,
+        string $field,
+        string $label,
+        bool $filled = false
+    ): string {
+
+        $rand  = mt_rand();
+        $class = $filled ? "filled" : "";
+
+        // First Step: Add 'filled' class if the filter has a default value on load
+        $js = "
+            $(function () {
+                var select_elem = $('#filter-{$rand} select');
+                if (select_elem.length > 0) {
+                    var initial_val = select_elem.val();
+                    if (initial_val !== null && initial_val !== '') {
+                        $('#filter-{$rand}').addClass('filled');
+                    }
+                }
+
+                $('#filter-{$rand} input')
+                    .on('input', function() {
+                        var str_len = $(this).val().length;
+                        if (str_len > 0) {
+                            $('#filter-{$rand}').addClass('filled');
+                        } else {
+                            $('#filter-{$rand}').removeClass('filled');
+                        }
+
+                        $(this).width((str_len + 1) * 8 );
+                    });
+
+                $('#filter-{$rand}')
+                    .hover(function() {
+                        $('.dashboard .card.filter-" . \jsescape($id) . "').addClass('filter-impacted');
+                    }, function() {
+                        $('.dashboard .card.filter-" . \jsescape($id) . "').removeClass('filter-impacted');
+                    });
+                });
+        ";
+        $js = Html::scriptBlock($js);
+
+        $html  = '
+            <fieldset id="filter-' . $rand . '" class="filter ' . \htmlescape($class) . '" data-filter-id="' . \htmlescape($id) . '">
+                ' . $field . '
+                <legend>' . \htmlescape($label) . '</legend>
+                <button class="btn btn-sm btn-icon btn-ghost-secondary delete-filter" aria-label="' . __s('Delete') . '">
+                    <i class="ti ti-trash" aria-hidden="true"></i>
+                </button>
+                ' . $js . '
+            </fieldset>
+        ';
+
+        return $html;
+    }
+
+    protected static function displayList(
+        string $label,
+        string $value,
+        string $fieldname,
+        string $itemtype,
+        array $add_params = [],
+        string $function = 'dropdown',
+    ): string {
+        $value     = !empty($value) ? $value : null;
+        $rand      = mt_rand();
+        $field     = $itemtype::$function([
+            'name'                => $fieldname,
+            'rand'                => $rand,
+            'display'             => false,
+            'display_emptychoice' => false,
+            'emptylabel'          => '',
+            'placeholder'         => $label,
+            'on_change'           => "on_change_{$rand}()",
+            'allowClear'          => true,
+            'width'               => '',
+        ] + ($value !== null ? ['value' => $value] : []) + $add_params);
+
+        $js = "
+            var on_change_{$rand} = function() {
+                var dom_elem    = $('#dropdown_" . \jsescape($fieldname . $rand) . "');
+                var selected    = dom_elem.find(':selected').val();
+
+                GLPI.Dashboard.getActiveDashboard().saveFilter('" . \jsescape($fieldname) . "', selected);
+
+                $(dom_elem).closest('fieldset').toggleClass('filled', selected !== null);
+            };
+
+            $(function() {
+             if ($('#dropdown_" . \jsescape($fieldname . $rand) . "').val()) on_change_{$rand}();
+            });
+
+        ";
+        $field .= Html::scriptBlock($js);
+
+        return self::field($fieldname, $field, $label, $value !== null);
+    }
+
+    /**
+     * @param array<int|string> $values
+     * @param array<string, mixed> $add_params
+     */
+    protected static function displayMultipleList(
+        string $label,
+        array $values,
+        string $fieldname,
+        string $itemtype,
+        array $add_params = [],
+    ): string {
+        $rand  = mt_rand();
+        $field = $itemtype::dropdown([
+            'name'                => $fieldname,
+            'values'              => $values,
+            'rand'                => $rand,
+            'display'             => false,
+            'display_emptychoice' => false,
+            'emptylabel'          => '',
+            'placeholder'         => $label,
+            'on_change'           => "on_change_{$rand}()",
+            'allowClear'          => true,
+            'width'               => '',
+            'multiple'            => true,
+        ] + $add_params);
+
+        $js = "
+            var on_change_{$rand} = function() {
+                var dom_elem = $('#dropdown_" . \jsescape($fieldname . $rand) . "');
+                var selected = dom_elem.val() || [];
+
+                GLPI.Dashboard.getActiveDashboard().saveFilter('" . \jsescape($fieldname) . "', selected);
+
+                dom_elem.closest('fieldset').toggleClass('filled', selected.length > 0);
+            };
+        ";
+        $field .= Html::scriptBlock($js);
+
+        return self::field($fieldname, $field, $label, count($values) > 0);
+    }
+
+    protected static function getDatesCriteria(string $field, array $dates): array
+    {
+        $begin    = strtotime($dates[0]);
+        $end      = strtotime($dates[1]);
+        $next_day = strtotime('+1 day', $end);
+
+        return [
+            [$field => ['>=', date('Y-m-d', $begin)]],
+            // Use strict less-than against the following day so that the entire end day is
+            // included. MySQL compares DATETIME against a bare date as 'YYYY-MM-DD 00:00:00',
+            // which would otherwise exclude any record created after midnight on end_date.
+            [$field => ['<',  date('Y-m-d', $next_day)]],
+        ];
+    }
+
+    protected static function getDatesSearchCriteria(int $searchoption_id, array $dates, string $when): array
+    {
+        if ($when == "begin") {
+            $begin = strtotime($dates[0]);
+            return [
+                'link'       => 'AND',
+                'field'      => $searchoption_id,
+                'searchtype' => 'morethan',
+                'value'      => date('Y-m-d 00:00:00', $begin),
+            ];
+        } else {
+            $end = strtotime($dates[1]);
+            return [
+                'link'       => 'AND',
+                'field'      => $searchoption_id,
+                'searchtype' => 'lessthan',
+                // +1 day so the whole end day is included (same logic as getDatesCriteria).
+                'value'      => date('Y-m-d 00:00:00', strtotime('+1 day', $end)),
+            ];
+        }
+    }
+}

@@ -1,0 +1,100 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\Cache\Messenger;
+
+use Symfony\Component\Cache\CacheItem;
+use Symfony\Component\DependencyInjection\ReverseContainer;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+
+/**
+ * Computes cached values sent to a message bus.
+ */
+#[AsMessageHandler]
+class EarlyExpirationHandler
+{
+    private array $processedNonces = [];
+
+    public function __construct(
+        private ReverseContainer $reverseContainer,
+    ) {
+    }
+
+    /**
+     * @return EarlyExpirationResult|null
+     */
+    public function __invoke(EarlyExpirationMessage $message)
+    {
+        $item = $message->getItem();
+        $metadata = $item->getMetadata();
+        $expiry = $metadata[CacheItem::METADATA_EXPIRY] ?? 0;
+        $ctime = $metadata[CacheItem::METADATA_CTIME] ?? 0;
+
+        if ($expiry && $ctime) {
+            // skip duplicate or expired messages
+
+            $processingNonce = (object) ['value' => [$expiry, $ctime]];
+            $pool = $message->getPool();
+            $key = $item->getKey();
+
+            if (($this->processedNonces[$pool][$key]->value ?? null) === $processingNonce->value) {
+                return null;
+            }
+
+            if (microtime(true) >= $expiry) {
+                return null;
+            }
+
+            $this->processedNonces[$pool] = [$key => $processingNonce] + ($this->processedNonces[$pool] ?? []);
+
+            if (\count($this->processedNonces[$pool]) > 100) {
+                array_pop($this->processedNonces[$pool]);
+            }
+        }
+
+        static $setMetadata;
+
+        $setMetadata ??= \Closure::bind(
+            static function (CacheItem $item, float $startTime) {
+                if ($item->expiry > $endTime = microtime(true)) {
+                    $item->newMetadata[CacheItem::METADATA_EXPIRY] = $item->expiry;
+                    $item->newMetadata[CacheItem::METADATA_CTIME] = (int) ceil(1000 * ($endTime - $startTime));
+                }
+            },
+            null,
+            CacheItem::class
+        );
+
+        try {
+            $startTime = microtime(true);
+            $pool = $message->findPool($this->reverseContainer);
+            $callback = $message->findCallback($this->reverseContainer);
+            $save = true;
+            $item->set($callback($item, $save));
+
+            if ($save) {
+                $setMetadata($item, $startTime);
+                $pool->save($item);
+            }
+
+            return new EarlyExpirationResult($item);
+        } catch (\Throwable $e) {
+            $pool = $message->getPool();
+            $key = $item->getKey();
+
+            if (isset($processingNonce) && ($this->processedNonces[$pool][$key] ?? null) === $processingNonce) {
+                unset($this->processedNonces[$pool][$key]);
+            }
+
+            throw $e;
+        }
+    }
+}
